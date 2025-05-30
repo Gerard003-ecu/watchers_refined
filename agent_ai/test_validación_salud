@@ -1,0 +1,31 @@
+
+    # --- Tests de Validación de Salud y Notificación (AJUSTADOS) ---
+
+        def requests_side_effect(*args, **kwargs):
+            url = args[0]
+            if url == module_url_salud:
+                # Llamada GET para salud
+                return mock_health_resp
+            elif url == HARMONY_CONTROLLER_REGISTER_URL:
+                # Llamada POST para notificación
+                # Definir y verificar payload SÓLO en este caso
+                expected_payload = {
+                    "nombre": module_name, "url": module_url_control,
+                    "aporta_a": module_aporta, "naturaleza": module_nat
+                }
+                unittest.TestCase().assertEqual(kwargs.get('json'), expected_payload)
+                return mock_notify_resp
+            # Default para otras URLs
+            return mock.MagicMock(status_code=404)
+
+        mock_requests.get.side_effect = requests_side_effect
+        mock_requests.post.side_effect = requests_side_effect
+
+        # Ejecutar validación
+        self.agent._validar_salud_modulo(module_name)
+
+        # Verificar llamadas (sin cambios)
+        mock_requests.get.assert_called_once_with(module_url_salud, timeout=REQUESTS_TIMEOUT)
+        # Verificar que post fue llamado (la verificación del payload se hizo en side_effect)
+        mock_requests.post.assert_called_once()
+

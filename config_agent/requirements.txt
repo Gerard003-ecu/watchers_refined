@@ -1,0 +1,2 @@
+PyYAML>=6.0
+# Puedes incluir otras dependencias específicas para el manejo de archivos o para la edición de configuración.

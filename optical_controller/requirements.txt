@@ -1,0 +1,4 @@
+opencv-python>=4.6,<5.0
+numpy>=1.22,<2.1
+flask>=2.2
+requests>=2.28

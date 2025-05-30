@@ -1,0 +1,7 @@
+# Configuración para la comunicación con watchers_wave y otros ajustes
+watchers_wave:
+  base_url: "http://localhost:5000"
+  endpoints:
+    event: "/api/event"
+    error: "/api/error"
+    config: "/api/config"

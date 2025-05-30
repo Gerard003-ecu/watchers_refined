@@ -1,0 +1,50 @@
+name: CI/CD - Watchers
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.9", "3.10" ]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Asegúrate de incluir en requirements.txt:
+          # flask, requests, pytest, flake8, etc.
+
+      - name: Lint code with flake8
+        run: |
+          pip install flake8
+          flake8 .
+
+      - name: Run unit and integration tests
+        run: |
+          pip install pytest
+          pytest
+
+      - name: Run integration test for REST endpoint (malla_watcher)
+        run: |
+          # Lanza el servidor de malla en segundo plano
+          nohup python malla_watcher.py &
+          # Espera unos segundos para que el servidor se inicie
+          sleep 10
+          # Ejecuta una prueba básica: consulta el endpoint y muestra el resultado
+          curl --fail http://localhost:5000/api/malla
+          # Finaliza el proceso de malla (opcional, según cómo se gestione el shutdown)
+          pkill -f malla_watcher.py

@@ -1,0 +1,43 @@
+# Entornos virtuales (¡Muy Importante!)
+watchers_env/
+venv/
+env/
+*.venv
+
+# Logs (¡Muy Importante!)
+logs/
+*.log
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos de compilación y distribución
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Archivos de configuración local/sensibles (¡Cuidado!)
+# Si tienes archivos con contraseñas o claves API, añádelos aquí.
+# Por ejemplo: .env, config_local.py
+
+# Archivos de testeo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Archivos temporales
+*~
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
