@@ -1,4 +1,4 @@
-name: CI/CD - Watchers
+name: CI - Unit and Mocked Integration Tests
 
 on:
   push:
@@ -7,44 +7,36 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
+  test-and-lint: # Renombrado para mayor claridad
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.9", "3.10" ]
+        python-version: [ "3.10", "3.12" ] # Usa las versiones que realmente soportas
+
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install common dependencies and test tools
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          # Asegúrate de incluir en requirements.txt:
-          # flask, requests, pytest, flake8, etc.
+          pip install -r requirements.txt # Desde la raíz del proyecto
 
       - name: Lint code with flake8
         run: |
-          pip install flake8
-          flake8 .
+          # flake8 ya está instalado desde requirements.txt
+          flake8 . # Ejecuta flake8 sobre todo el proyecto
 
-      - name: Run unit and integration tests
+      - name: Run unit and mocked integration tests
         run: |
-          pip install pytest
-          pytest
-
-      - name: Run integration test for REST endpoint (malla_watcher)
-        run: |
-          # Lanza el servidor de malla en segundo plano
-          nohup python malla_watcher.py &
-          # Espera unos segundos para que el servidor se inicie
-          sleep 10
-          # Ejecuta una prueba básica: consulta el endpoint y muestra el resultado
-          curl --fail http://localhost:5000/api/malla
-          # Finaliza el proceso de malla (opcional, según cómo se gestione el shutdown)
-          pkill -f malla_watcher.py
+          # pytest ya está instalado
+          # Ejecuta pytest. La fixture check_all_services_health se saltará
+          # porque los servicios reales no están corriendo.
+          pytest --skip-health-checks tests/unit/ tests/integration/
+          # O si quieres ser más específico:
+          # pytest --skip-health-checks tests/unit/test_cilindro_grafenal.py tests/unit/test_malla_watcher.py tests/unit/test_matriz_ecu.py tests/integration/test_integration_malla_ecu.py

@@ -1,0 +1,11 @@
+# mi-proyecto/requirements.txt
+flask
+requests
+numpy
+jsonschema
+responses
+pytest
+pytest-mock
+pytest-cov
+flake8
+# ... cualquier otra dependencia de test o común ...
