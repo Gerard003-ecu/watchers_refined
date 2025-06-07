@@ -9,15 +9,164 @@ Código Claro, Equipos Eficientes. Herramienta para armonizar código y optimiza
 ############################################################################
 
 Es la armonización del lenguaje de máquina para hacer de la comunicación, de apps y entornos de desarrollo, un canal más intuitivo y objetivo para el ser humanno. Una frontera al alcance de los sentidos. 
-El ecosistema "watchers" se compone de 4 atributos: a. Podman para la gestión de contenedores. b. config_agent agente proactivo de configuración. c. agent_ai es la lógica central (orquestación, validación en tiempo de ejecución, distribución de comandos) y d. watcher_security el volumen de control de seguridad. Los módulos tienen el atributo "plug and play" denominados "watcher_tool" que pueden ser un volumen de control (un conjunto ordenado de "watcher_tool" con instrucciones específicas que robustecen la lógica a favor del sistema o potenciar y/o amplificar un módulo ya existente) o una herramienta específica como "watcher_tool_text" (editor de texto inteligente que comunica los estados con el resto de módulos de su misma clase y/o tipo como "watcher_tool_calc", en general, cualquier script de la forma "watcher_tool_nombre"). La estrategia de comunicación del ecosistema "watchers" se basa en una estructura hexagonal (lenguaje de marca) que esta presente en los diferentes módulos "watcher_tool" del ecosistema. Por ejemplo, en "watchers_modules/watchers_wave/malla_watcher". El script "malla_watcher" define la estructura de la malla hexagonal (inspirada en grafeno) y los módulos que modelan la transmisión de la señal en el sistema:
 
-    PhosWave: el resonador de onda variable, con el atributo de un fotón, que ahora incorpora un campo escalar Q para modular la transmisión.
+Mapa Mental de Comunicación del Ecosistema Watchers
 
-    Electron: el estabilizador que reduce la amplitud, simulando la acción de
-    partículas cargadas que neutralizan la energía excesiva.
-    La malla se utiliza para representar el flujo de "energía" del sistema.
+Este mapa describe la arquitectura de comunicación jerárquica y los flujos de datos dentro del ecosistema "watchers", diseñada para ser coherente, escalable y objetiva.
 
-En el módulo (watcher_tool) "benzwatcher", es un script que simula una reacción catalítica inspirada en la estructura hexagonal del benceno. Esta clase procesa una señal de entrada y ajusta un valor base en función de una transformación no lineal, que modela la cinética de la reacción catalítica. De esta manera, el ecosistema "watchers" adquiere un atributo de identidad que refuerza y comunica la propuesta de valor.De esta manera se garantiza la modularidad, robustez, escalabilidad y objetividad del ecosistema "watchers". De este modo se puede ofrecer soluciones integrales a los segmentos de mercado de las industrias 4.0, IoT hogar y corporativo.
+Analogía Central: Mente, Cuerpo y Entorno
+
+    Capa Estratégica (agent_ai): La Mente. Define los objetivos y la intención a largo plazo. No se ocupa de la mecánica, sino del "porqué".
+
+    Capa Táctica (harmony_controller): El Sistema Nervioso Autónomo. Traduce la intención en comandos concretos y mantiene el equilibrio (homeostasis) del sistema mediante bucles de control.
+
+    Capa Física (matriz_ecu, malla_watcher): El Cuerpo y su Entorno. El mundo físico simulado donde las acciones tienen lugar y generan retroalimentación.
+
+1. ◈ Capa Estratégica (La Mente)
+
+    agent_ai (El Orquestador Central)
+
+        Rol Principal: Cerebro estratégico del ecosistema. Define el objetivo de armonía (target_setpoint_vector) basado en una estrategia global (ej: "rendimiento", "estabilidad"), en la composición actual del sistema y en señales externas.
+
+        Comunicaciones Clave:
+
+            [SALIDA] ➔ harmony_controller
+
+                Acción: Define el Objetivo Estratégico.
+
+                Endpoint: POST /api/harmony/setpoint
+
+                Payload: { "setpoint_vector": [x, y, ...] }
+
+                Propósito: Comunicar el estado deseado que la capa táctica debe alcanzar.
+
+            [SALIDA] ➔ harmony_controller
+
+                Acción: Notifica sobre un watcher_tool saludable y listo para ser controlado.
+
+                Endpoint: POST /api/harmony/register_tool
+
+                Payload: { "nombre", "url", "aporta_a", "naturaleza_auxiliar" }
+
+                Propósito: Integrar dinámicamente nuevas capacidades en el bucle de control táctico.
+
+            [ENTRADA] ↞ Cualquier Watcher Tool
+
+                Acción: Registro inicial de un módulo en el ecosistema.
+
+                Endpoint: POST /api/register
+
+                Payload: { "nombre", "url", "url_salud", "tipo", "aporta_a", ... }
+
+                Propósito: Punto de entrada único y universal para todos los módulos, permitiendo el descubrimiento y la validación de salud.
+
+            [ENTRADA] ↞ harmony_controller
+
+                Acción: Monitoreo del estado táctico.
+
+                Endpoint: GET /api/harmony/state
+
+                Payload: Estado completo de harmony_controller (PID, last_measurement, etc.).
+
+                Propósito: Recolectar información para la toma de decisiones estratégicas.
+
+2. ◈ Capa Táctica (El Sistema Nervioso)
+
+    harmony_controller (El Controlador de Armonía)
+
+        Rol Principal: Ingeniero de control. Implementa un bucle de control (PID) para llevar el estado medido del sistema hacia el setpoint definido por agent_ai. Traduce el "qué" estratégico en el "cómo" táctico.
+
+        Comunicaciones Clave:
+
+            [SALIDA] ➔ malla_watcher (y otros watcher_tools)
+
+                Acción: Envía una Señal de Control Táctico.
+
+                Endpoint: POST /api/control
+
+                Payload: { "control_signal": valor_pid_ponderado }
+
+                Propósito: Ajustar los parámetros internos de los watcher_tools para influir en la física del sistema. La señal se adapta según la "naturaleza" del tool (potenciador, reductor, modulador).
+
+            [ENTRADA] ↞ matriz_ecu
+
+                Acción: Mide el Estado del Sistema.
+
+                Endpoint: GET /api/ecu
+
+                Payload: { "estado_campo_unificado": [...] }
+
+                Propósito: Obtener la variable de proceso (current_measurement) para el cálculo del error en el controlador PID. Es el "sentido" principal del sistema.
+
+3. ◈ Capa Física (El Entorno y los Actores)
+
+Este es el nivel donde las "leyes de la física" del ecosistema operan y donde se produce la interacción más fundamental.
+
+    matriz_ecu (El Entorno - Campo Toroidal)
+
+        Rol Principal: Simula el espacio, el "campo unificado" donde existen e interactúan los watchers. Tiene su propia dinámica interna.
+
+        Comunicaciones Clave:
+
+            [RESPUESTA A PETICIÓN] ➔ malla_watcher
+
+                Acción: Provee el Campo Vectorial completo.
+
+                Endpoint: GET /api/ecu/field_vector
+
+                Payload: { "field_vector": [...] }
+
+                Propósito: Permitir que malla_watcher "sienta" la estructura detallada del campo en cada punto para modular su propia dinámica.
+
+            [ENTRADA] ↞ malla_watcher
+
+                Acción: Recibe una Influencia Inducida.
+
+                Endpoint: POST /api/ecu/influence
+
+                Payload: { "vector": [dPhi/dt, 0.0], ... }
+
+                Propósito: Simular la "Ley de Inducción de Faraday". La malla influye de vuelta en el campo que la atraviesa, creando un bucle de retroalimentación simbiótico.
+
+    malla_watcher (El Actor Principal - Malla de Grafeno)
+
+        Rol Principal: Un actor que co-evoluciona con el entorno. Su estado interno (osciladores) es modulado por el campo de matriz_ecu, y a su vez, influye en ese mismo campo.
+
+        Comunicaciones Clave:
+
+            [SALIDA] ➔ matriz_ecu
+
+                Acción: Obtiene el Entorno Vectorial.
+
+                Endpoint: GET /api/ecu/field_vector
+
+                Propósito: "Leer" el campo vectorial de matriz_ecu para modular el acoplamiento de sus osciladores internos.
+
+            [ENTRADA] ↞ harmony_controller
+
+                Acción: Recibe la Señal de Control Táctico.
+
+                Endpoint: POST /api/control
+
+                Payload: { "control_signal": valor }
+
+                Propósito: Ajustar sus parámetros base (amortiguación D y acoplamiento C) según las directivas del controlador táctico.
+
+4. ◈ Módulos Auxiliares (Plug-and-Play)
+
+    watcher_tool_auxiliar (Ej: benzwatcher, watcher_focus)
+
+        Rol Principal: Especialistas que se acoplan a los componentes centrales (matriz_ecu o malla_watcher) para ampliar o refinar sus capacidades.
+
+        Flujo de Integración Típico:
+
+            Registro: Se registra en agent_ai al iniciar.
+
+            Notificación: agent_ai valida su salud y lo notifica a harmony_controller, indicando a quién apoya (aporta_a) y cuál es su naturaleza_auxiliar.
+
+            Control: harmony_controller comienza a enviarle señales de control.
+
+            Acción: El watcher_tool utiliza la señal de control para ejecutar su lógica específica, interactuando directamente (vía API) con el componente central al que está asociado.
 
 ## Propósito
 
