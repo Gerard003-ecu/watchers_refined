@@ -79,11 +79,11 @@ class AgentAI:
                     "El valor parseado no es una lista de números"
                 )
         except (json.JSONDecodeError, ValueError) as e:
-            logger.error(
-                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando default [1.0, 0.0]",
-                initial_vector_str,
-                e,
+            log_msg = (
+                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), "
+                "usando default [1.0, 0.0]"
             )
+            logger.error(log_msg, initial_vector_str, e)
             self.target_setpoint_vector = [1.0, 0.0]
         self.current_strategy: str = os.environ.get(
             "AA_INITIAL_STRATEGY", "default"
@@ -237,7 +237,9 @@ class AgentAI:
 
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
         # Usar la URL almacenada
-        hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
+        hc_url = self.central_urls.get(
+            "harmony_controller", DEFAULT_HC_URL
+        )  # Wrapped
         url = f"{hc_url}/api/harmony/state"
         # --- INICIO BLOQUE INDENTADO ---
         for attempt in range(MAX_RETRIES):
@@ -251,21 +253,22 @@ class AgentAI:
                     response_data.get("status") == "success"
                     and "data" in response_data
                 ):
-                    data_preview = str(response_data["data"])[:100]
+                    data_preview = str(response_data["data"])[:70] + "..."
                     logger.debug(
-                        "Estado válido recibido de Harmony: %s", data_preview
+                        "Estado válido Harmony: %s", data_preview
                     )
                     # <-- Correcto: dentro de if/try/for/def
                     return response_data["data"]
                 else:
+                    resp_preview = str(response_data)[:70] + "..."
                     logger.warning(
-                        "Respuesta inválida desde Harmony: %s", response_data
+                        "Respuesta inválida Harmony: %s", resp_preview
                     )
 
             # --- Orden de Excepts Revisado (o simplificado a Exception) ---
             except Exception as e:
                 logger.exception(
-                    "Error inesperado (intento %s): %s", attempt + 1, e
+                    "Err inesperado (intento %s): %s", attempt + 1, e
                 )
                 # estado_salud = "error_inesperado"  # Comentario de estado
             # --- Fin Excepts ---
@@ -274,15 +277,14 @@ class AgentAI:
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
                 logger.debug(
-                    "Reintentando obtener estado de Harmony en %.2fs...", delay
+                    "Reintentando estado Harmony en %.2fs...", delay
                 )
                 time.sleep(delay)
         # --- FIN BLOQUE INDENTADO ---
 
         # Si el bucle termina sin éxito
         logger.error(
-            "No se pudo obtener estado de Harmony tras %s intentos.",
-            MAX_RETRIES,
+            "No se pudo obtener estado Harmony tras %s intentos.", MAX_RETRIES
         )
         return None  # <-- Correcto: return final fuera del bucle
 
@@ -429,14 +431,14 @@ class AgentAI:
             except (ValueError, TypeError):
                 logger.warning(
                     "No se pudo convertir señal cogniboard a float: %s",
-                    cogniboard_signal,
+                    str(cogniboard_signal)[:30],  # Truncate
                 )
 
         if not isinstance(new_target_vector, list):
             type_generated = type(new_target_vector)
             logger.error(
                 "Error: _determine_harmony_setpoint no generó lista: %s",
-                type_generated,
+                type_generated.__name__,  # Use name for brevity
             )
             return list(self.target_setpoint_vector)
 
@@ -446,9 +448,8 @@ class AgentAI:
         """
         Envía el setpoint vectorial calculado a Harmony Controller con reintentos.
         """
-        # Usar la URL almacenada leída desde ENV o default
         hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
-        url = f"{hc_url}/api/harmony/setpoint"
+        url = f"{hc_url}/api/harmony/setpoint" # This line should be fine
         payload = {"setpoint_vector": setpoint_vector}
         # Log inicial
         logger.debug(
@@ -469,11 +470,17 @@ class AgentAI:
                 )
                 return  # Salir de la función si el envío es exitoso
 
-            except Exception as e:  # Captura simplificada de cualquier excepción
+            except (
+                Exception
+            ) as e:  # Captura simplificada de cualquier excepción
                 err_type = type(e).__name__
                 logger.error(
                     "Error al enviar setpoint a HC (%s) intento %s/%s: %s - %s",
-                    url, attempt + 1, MAX_RETRIES, err_type, e
+                    url,
+                    attempt + 1,
+                    MAX_RETRIES,
+                    err_type,
+                    e,
                 )
                 # Lógica de espera para reintento (DENTRO DEL BUCLE)
                 if attempt < MAX_RETRIES - 1:
