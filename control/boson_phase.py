@@ -12,10 +12,15 @@ actual y el setpoint deseado.
 
 import logging
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
 
 class BosonPhase:
-    def __init__(self, Kp, Ki, Kd, setpoint=0.0, integral_max=100.0, integral_min=-100.0):
+    def __init__(
+        self, Kp, Ki, Kd, setpoint=0.0, integral_max=100.0, integral_min=-100.0
+    ):
         """
         Inicializa el controlador PID adaptativo.
 
@@ -35,7 +40,9 @@ class BosonPhase:
         self.last_error = None
         self.integral_max = integral_max
         self.integral_min = integral_min
-        logging.debug(f"PID inicializado: Kp={Kp}, Ki={Ki}, Kd={Kd}, setpoint={setpoint}")
+        logging.debug(
+            f"PID inicializado: Kp={Kp}, Ki={Ki}, Kd={Kd}, setpoint={setpoint}"
+        )
 
     def update(self, measurement, dt):
         """
@@ -49,37 +56,45 @@ class BosonPhase:
             float: La salida del PID.
         """
         if dt <= 0:
-            logging.warning("Intervalo de tiempo dt debe ser mayor a cero. Se usará dt=1.0 por defecto.")
+            logging.warning(
+                "Intervalo de tiempo dt debe ser mayor a cero. Se usará dt=1.0 por defecto."
+            )
             dt = 1.0
 
         error = self.setpoint - measurement
         self.integral += error * dt
         # Saturar el término integral
-        self.integral = max(min(self.integral, self.integral_max), self.integral_min)
+        self.integral = max(
+            min(self.integral, self.integral_max), self.integral_min
+        )
         derivative = 0.0
         if self.last_error is not None:
             derivative = (error - self.last_error) / dt
         self.last_error = error
 
-        output = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
-        logging.debug(f"update() -> error: {error:.3f}, integral: {self.integral:.3f}, derivative: {derivative:.3f}, output: {output:.3f}")
-        
+        output = (
+            self.Kp * error + self.Ki * self.integral + self.Kd * derivative
+        )
+        logging.debug(
+            f"update() -> error: {error:.3f}, integral: {self.integral:.3f}, derivative: {derivative:.3f}, output: {output:.3f}"
+        )
+
         # Ajuste adaptativo simple: aumentar Kp si el error es grande
         if abs(error) > 0.1 * self.setpoint:
             self.Kp += 0.01
             logging.info(f"Ajuste adaptativo: Kp incrementado a {self.Kp:.3f}")
-        
+
         return output
 
     def compute(self, setpoint, measurement, dt):
         """
         Actualiza el setpoint y calcula la salida del PID.
-        
+
         Args:
             setpoint (float): El nuevo valor deseado.
             measurement (float): El valor medido actualmente.
             dt (float): Intervalo de tiempo transcurrido.
-        
+
         Returns:
             float: La salida del PID.
         """
@@ -94,6 +109,7 @@ class BosonPhase:
         self.integral = 0.0
         self.last_error = None
         logging.info("PID reset: acumuladores reiniciados.")
+
 
 if __name__ == "__main__":
     # Prueba simple del controlador PID adaptativo.
