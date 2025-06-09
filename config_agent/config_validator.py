@@ -5,14 +5,16 @@ config_validator.py
 Funciones para validar archivos de configuración del ecosistema watchers:
   - Validar que un Dockerfile cumpla con ciertos criterios básicos.
   - Validar la estructura del archivo docker-compose.yml.
-  - Validar que el archivo de requirements no esté vacío y cumpla con el formato esperado.
-  
-Estas funciones ayudan al config_agent a asegurar que la infraestructura esté correctamente configurada.
+  - Validar que el archivo de requirements no esté vacío y cumpla con el
+    formato esperado.
+
+Estas funciones ayudan al config_agent a asegurar que la infraestructura
+esté correctamente configurada.
 """
 
-import os
 import yaml  # Necesitas PyYAML
 from common.validators_common import file_exists, read_file_lines
+
 
 def validate_dockerfile(dockerfile_path: str):
     """
@@ -21,13 +23,14 @@ def validate_dockerfile(dockerfile_path: str):
     """
     if not file_exists(dockerfile_path):
         return False, "Dockerfile no encontrado."
-    
+
     lines = read_file_lines(dockerfile_path)
     if not any(line.strip().startswith("FROM") for line in lines):
         return False, "Falta instrucción FROM."
     if not any(line.strip().startswith("CMD") for line in lines):
         return False, "Falta instrucción CMD."
     return True, "Dockerfile válido."
+
 
 def validate_docker_compose(compose_path: str):
     """
@@ -47,9 +50,11 @@ def validate_docker_compose(compose_path: str):
     except Exception as e:
         return False, f"Error parseando docker-compose.yml: {e}"
 
+
 def validate_requirements_file(req_path: str):
     """
-    Valida que el archivo de requirements (generado globalmente) exista y no esté vacío.
+    Valida que el archivo de requirements (generado globalmente) exista y no
+    esté vacío.
     """
     if not file_exists(req_path):
         return False, "Archivo requirements.txt no encontrado."
