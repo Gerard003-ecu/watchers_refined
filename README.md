@@ -2,7 +2,7 @@
 
 ¡Bienvenido al ecosistema **Watchers**!
 
-Código Claro, Equipos Eficientes. Herramienta para armonizar código y optimizar entornos de desarrollo."
+"Código Claro, Equipos Eficientes. Herramienta para armonizar código y optimizar entornos de desarrollo."
 
 ############################################################################
 ########################Propósito de watchers###############################
