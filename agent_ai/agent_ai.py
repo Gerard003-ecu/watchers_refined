@@ -80,7 +80,9 @@ class AgentAI:
                 )
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(
-                f"AA_INITIAL_SETPOINT_VECTOR ('{initial_vector_str}') inválido ({e}), usando default [1.0, 0.0]"
+                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando default [1.0, 0.0]",
+                initial_vector_str,
+                e,
             )
             self.target_setpoint_vector = [1.0, 0.0]
         self.current_strategy: str = os.environ.get(
@@ -235,7 +237,8 @@ class AgentAI:
 
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
         # Usar la URL almacenada
-        url = f"{self.central_urls.get('harmony_controller', DEFAULT_HC_URL)}/api/harmony/state"
+        hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
+        url = f"{hc_url}/api/harmony/state"
         # --- INICIO BLOQUE INDENTADO ---
         for attempt in range(MAX_RETRIES):
             response_data = None
@@ -248,20 +251,21 @@ class AgentAI:
                     response_data.get("status") == "success"
                     and "data" in response_data
                 ):
+                    data_preview = str(response_data["data"])[:100]
                     logger.debug(
-                        f"Estado válido recibido de Harmony: {response_data['data']}"
+                        "Estado válido recibido de Harmony: %s", data_preview
                     )
                     # <-- Correcto: dentro de if/try/for/def
                     return response_data["data"]
                 else:
                     logger.warning(
-                        f"Respuesta inválida desde Harmony: {response_data}"
+                        "Respuesta inválida desde Harmony: %s", response_data
                     )
 
             # --- Orden de Excepts Revisado (o simplificado a Exception) ---
             except Exception as e:
                 logger.exception(
-                    f"Error inesperado (intento {attempt+1}): {e}"
+                    "Error inesperado (intento %s): %s", attempt + 1, e
                 )
                 # estado_salud = "error_inesperado"  # Comentario de estado
             # --- Fin Excepts ---
@@ -270,14 +274,15 @@ class AgentAI:
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
                 logger.debug(
-                    f"Reintentando obtener estado de Harmony en {delay:.2f}s..."
+                    "Reintentando obtener estado de Harmony en %.2fs...", delay
                 )
                 time.sleep(delay)
         # --- FIN BLOQUE INDENTADO ---
 
         # Si el bucle termina sin éxito
         logger.error(
-            f"No se pudo obtener estado válido de Harmony después de {MAX_RETRIES} intentos."
+            "No se pudo obtener estado de Harmony tras %s intentos.",
+            MAX_RETRIES,
         )
         return None  # <-- Correcto: return final fuera del bucle
 
@@ -304,7 +309,10 @@ class AgentAI:
         new_target_vector = list(current_target_vector)
         error_global = current_target_norm - measurement
         logger.debug(
-            f"[SetpointLogic] Norma Actual: {measurement:.3f}, Norma Objetivo: {current_target_norm:.3f}, Error Global: {error_global:.3f}"
+            "[SetpointLogic] MA:%.3f, MO:%.3f, EG:%.3f",
+            measurement,
+            current_target_norm,
+            error_global,
         )
 
         # Analizar composición de auxiliares activos
@@ -329,11 +337,15 @@ class AgentAI:
                 ):
                     aux_stats["ecu"][naturaleza] += 1
 
-        logger.debug(f"[SetpointLogic] Estrategia: {strategy}")
+        logger.debug("[SetpointLogic] Estrategia: %s", strategy)
+        log_msg_aux = "[SetpointLogic] Aux: Malla(P:%s,R:%s), ECU(P:%s,R:%s)"
         logger.debug(
-            f"[SetpointLogic] Aux Activos - Malla(P:{aux_stats['malla']['potenciador']}, "
-            f"R:{aux_stats['malla']['reductor']}), ECU(P:{aux_stats['ecu']['potenciador']}, "
-            f"R:{aux_stats['ecu']['reductor']})")
+            log_msg_aux,
+            aux_stats["malla"]["potenciador"],
+            aux_stats["malla"]["reductor"],
+            aux_stats["ecu"]["potenciador"],
+            aux_stats["ecu"]["reductor"],
+        )
 
         stability_threshold = (
             0.1 * current_target_norm if current_target_norm > 0 else 0.1
@@ -344,10 +356,9 @@ class AgentAI:
             return [x * scale for x in vector]
 
         if strategy == "estabilidad":
-            if (
-                abs(error_global) < stability_threshold
-                or abs(last_pid_output) > pid_effort_threshold
-            ):
+            err_low = abs(error_global) < stability_threshold
+            pid_high = abs(last_pid_output) > pid_effort_threshold
+            if err_low or pid_high:
                 norm_vec = np.linalg.norm(new_target_vector)
                 if norm_vec > 1e-6:
                     logger.info(
@@ -385,7 +396,7 @@ class AgentAI:
             # Ajuste por potenciadores activos
             if aux_stats["ecu"]["potenciador"] > aux_stats["ecu"]["reductor"]:
                 logger.info(
-                    "[Rendimiento] Más potenciadores en ECU, aumento extra."
+                    "[Rendimiento] Más potenciadores ECU, aumento extra."
                 )
                 new_target_vector = adjust_vector(new_target_vector, 1.01)
 
@@ -396,7 +407,7 @@ class AgentAI:
             )
             if total_reductores > 0:
                 logger.info(
-                    "[Ahorro Energía] Reductores activos, reducción de setpoint."
+                    "[Ahorro Energía] Reductores activos, reducción setpoint."
                 )
                 new_target_vector = adjust_vector(new_target_vector, 0.95)
 
@@ -417,12 +428,15 @@ class AgentAI:
                         )
             except (ValueError, TypeError):
                 logger.warning(
-                    f"No se pudo convertir la señal de cogniboard a float: {cogniboard_signal}"
+                    "No se pudo convertir señal cogniboard a float: %s",
+                    cogniboard_signal,
                 )
 
         if not isinstance(new_target_vector, list):
+            type_generated = type(new_target_vector)
             logger.error(
-                f"Error interno: _determine_harmony_setpoint no generó una lista: {type(new_target_vector)}"
+                "Error: _determine_harmony_setpoint no generó lista: %s",
+                type_generated,
             )
             return list(self.target_setpoint_vector)
 
@@ -433,11 +447,14 @@ class AgentAI:
         Envía el setpoint vectorial calculado a Harmony Controller con reintentos.
         """
         # Usar la URL almacenada leída desde ENV o default
-        url = f"{self.central_urls.get('harmony_controller', DEFAULT_HC_URL)}/api/harmony/setpoint"
+        hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
+        url = f"{hc_url}/api/harmony/setpoint"
         payload = {"setpoint_vector": setpoint_vector}
         # Log inicial
         logger.debug(
-            f"Intentando enviar setpoint a HC: {setpoint_vector} a {url}"
+            "Intentando enviar setpoint a HC: %s a %s",
+            setpoint_vector,
+            url,
         )
 
         for attempt in range(MAX_RETRIES):
@@ -452,12 +469,12 @@ class AgentAI:
                 )
                 return  # Salir de la función si el envío es exitoso
 
-            except (
-                Exception
-            ) as e:  # Captura simplificada de cualquier excepción
+            except Exception as e:  # Captura simplificada de cualquier excepción
+                err_type = type(e).__name__
                 logger.error(
-                    f"Error al enviar setpoint a HC ({url}) intento {attempt+1}/{MAX_RETRIES}: "
-                    f"{type(e).__name__} - {e}")
+                    "Error al enviar setpoint a HC (%s) intento %s/%s: %s - %s",
+                    url, attempt + 1, MAX_RETRIES, err_type, e
+                )
                 # Lógica de espera para reintento (DENTRO DEL BUCLE)
                 if attempt < MAX_RETRIES - 1:
                     delay = BASE_RETRY_DELAY * (2**attempt)

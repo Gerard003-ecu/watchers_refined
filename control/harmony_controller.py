@@ -30,8 +30,7 @@ ECU_API_URL = os.environ.get("ECU_API_URL", "http://ecu:8000/api/ecu")
 logging.basicConfig(
     level=logging.INFO,
     format=(
-        "%(asctime)s [%(levelname)s] [%(threadName)s] "
-        "%(name)s: %(message)s"
+        "%(asctime)s [%(levelname)s] [%(threadName)s] " "%(name)s: %(message)s"
     ),
 )
 logger = logging.getLogger("harmony_controller")
@@ -67,12 +66,13 @@ try:
     setpoint_init = np.linalg.norm(setpoint_vector_init)
     logger.info(
         "Setpoint inicial (norma): %.3f (derivado de %s)",
-        setpoint_init, setpoint_vector_init.tolist()
+        setpoint_init,
+        setpoint_vector_init.tolist(),
     )
 except (json.JSONDecodeError, ValueError):
     logger.error(
         "Error al procesar HC_SETPOINT_VECTOR: %s. Usando setpoint=1.0",
-        SETPOINT_VECTOR_JSON
+        SETPOINT_VECTOR_JSON,
     )
     setpoint_vector_init = np.array(
         [1.0, 0.0]
@@ -141,11 +141,15 @@ class HarmonyControllerState:
                 self.managed_tools_details[nombre] = {}
                 logger.info(
                     "Registrando tool: '%s' (URL: %s, Aporta: %s, Nat: %s)",
-                    nombre, url, aporta_a, naturaleza
+                    nombre,
+                    url,
+                    aporta_a,
+                    naturaleza,
                 )  # MODIFICADO
             else:
                 logger.info(
-                    "Actualizando información del tool gestionado: '%s'", nombre
+                    "Actualizando información del tool gestionado: '%s'",
+                    nombre,
                 )
             self.managed_tools_details[nombre]["url"] = url
             self.managed_tools_details[nombre]["aporta_a"] = aporta_a
@@ -168,7 +172,7 @@ class HarmonyControllerState:
                     f"Intento de eliminar tool no gestionado: '{nombre}'"
                 )
 
-    ### MODIFICADO: get_state_snapshot ahora incluye 'naturaleza' ###
+    # --- MODIFICADO: get_state_snapshot ahora incluye 'naturaleza' ---
     def get_state_snapshot(self) -> Dict[str, Any]:
         with self.lock:
             tools_snapshot = {}
@@ -412,19 +416,21 @@ def harmony_control_loop():
                 # Si PID pide aumentar (>0), potenciar más (señal base).
                 # Si PID pide reducir (<0), potenciar menos (señal base).
                 signal_to_send = base_signal
-                log_nature_logic = f"signal = base ({base_signal:.3f})"
+                log_nature_logic = "signal = base ({:.3f})".format(base_signal)
             elif tool_naturaleza == "reductor":
                 # Si PID pide reducir (<0), enviar señal positiva (reducir más).
                 # Si PID pide aumentar (>0), enviar señal negativa (reducir
                 # menos).
                 signal_to_send = -base_signal  # Invertir señal base
-                log_nature_logic = f"signal = -base ({-base_signal:.3f})"
+                log_nature_logic = "signal = -base ({:.3f})".format(
+                    -base_signal
+                )
             elif (
                 tool_naturaleza == "modulador" or tool_naturaleza == "actuador"
             ):
                 # Pasar señal base, el tool la interpreta.
                 signal_to_send = base_signal
-                log_nature_logic = f"signal = base ({base_signal:.3f})"
+                log_nature_logic = "signal = base ({:.3f})".format(base_signal)
             elif (
                 tool_naturaleza == "sensor" or tool_naturaleza == "convertidor"
             ):
@@ -605,8 +611,8 @@ def set_harmony_setpoint():
 def register_tool_from_ai():
     """
     Endpoint para que AgentAI notifique sobre un tool auxiliar gestionable.
-    Espera JSON: {"nombre": str, "url": str, "aporta_a": str, "naturaleza": str}
-    # MODIFICADO
+    Espera JSON: {"nombre": str, "url": str, "aporta_a": str,
+                  "naturaleza": str}  # MODIFICADO
     """
     data = request.get_json()
     if not data:
@@ -654,7 +660,7 @@ def register_tool_from_ai():
             ),
             400,
         )
-    ### NUEVO: Validar naturaleza ###
+    # --- NUEVO: Validar naturaleza ---
     if not naturaleza or not isinstance(naturaleza, str):
         return (
             jsonify(
