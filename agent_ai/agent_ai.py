@@ -42,16 +42,11 @@ HARMONY_CONTROLLER_URL_ENV = (
     "HARMONY_CONTROLLER_URL"  # Nombre de la variable ENV
 )
 HARMONY_CONTROLLER_REGISTER_URL_ENV = "HARMONY_CONTROLLER_REGISTER_URL"
-# --- NUEVO: Variables de Entorno para Centrales Esenciales ---
 AGENT_AI_ECU_URL_ENV = "AGENT_AI_ECU_URL"
 AGENT_AI_MALLA_URL_ENV = "AGENT_AI_MALLA_URL"
-# --- NUEVO: Defaults si ENV no está definida ---
 DEFAULT_HC_URL = "http://harmony_controller:7000"
-# Default Harmony Controller URL
-DEFAULT_ECU_URL = "http://ecu:8000"  # Default ECU URL
+DEFAULT_ECU_URL = "http://ecu:8000"
 DEFAULT_MALLA_URL = "http://malla_watcher:5001"
-# Default Malla Watcher URL
-# --- FIN NUEVO ---
 STRATEGIC_LOOP_INTERVAL = float(os.environ.get("AA_INTERVAL", 5.0))
 REQUESTS_TIMEOUT = float(os.environ.get("AA_REQUESTS_TIMEOUT", 4.0))
 GLOBAL_REQUIREMENTS_PATH = os.environ.get(
@@ -80,7 +75,8 @@ class AgentAI:
                 )
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(
-                f"AA_INITIAL_SETPOINT_VECTOR ('{initial_vector_str}') inválido ({e}), usando default [1.0, 0.0]"
+                f"AA_INITIAL_SETPOINT_VECTOR ('{initial_vector_str}') inválido"
+                f" ({e}), usando default [1.0, 0.0]"
             )
             self.target_setpoint_vector = [1.0, 0.0]
         self.current_strategy: str = os.environ.get(
@@ -92,11 +88,10 @@ class AgentAI:
         }
         self.lock = threading.Lock()
         self._stop_event = threading.Event()
-        # --- NUEVO: Leer y almacenar URLs de Centrales Esenciales ---
-        self.central_urls: Dict[str, str] = {}  # Inicializar diccionario
-        # Leer URLs manejando explícitamente None o ""
+        
+        # --- Leer y almacenar URLs de Centrales Esenciales ---
+        self.central_urls: Dict[str, str] = {}
         hc_url = os.environ.get(HARMONY_CONTROLLER_URL_ENV)
-        # Usar default si es None o ""
         self.central_urls["harmony_controller"] = (
             hc_url if hc_url else DEFAULT_HC_URL
         )
@@ -109,15 +104,15 @@ class AgentAI:
             malla_url if malla_url else DEFAULT_MALLA_URL
         )
 
+        # **SOLUCIÓN LÍNEA 81**: Se divide la línea larga en varias para legibilidad.
         logger.info(
             "URLs Centrales: HC='%s', ECU='%s', Malla='%s'",
             self.central_urls["harmony_controller"],
             self.central_urls["ecu"],
             self.central_urls["malla_watcher"],
         )
-        # Leer URL de registro manejando explícitamente None o ""
+        
         hc_reg_url_env = os.environ.get(HARMONY_CONTROLLER_REGISTER_URL_ENV)
-        # Leer URL de registro manejando explícitamente None o ""
         hc_base_url = self.central_urls["harmony_controller"]
         self.hc_register_url = (
             hc_reg_url_env
@@ -125,7 +120,7 @@ class AgentAI:
             else f"{hc_base_url}/api/harmony/register_tool"
         )
         logger.info("URL registro HC: '%s'", self.hc_register_url)
-        # --- FIN NUEVO ---
+
         self._strategic_thread = threading.Thread(
             target=self._strategic_loop,
             daemon=True,
@@ -211,8 +206,9 @@ class AgentAI:
                     if setpoint_changed:
                         self.target_setpoint_vector = new_setpoint_vector
                         logger.info(
-                            "Nuevo setpoint estratégico determinado: "
-                            f"{[f'{x:.3f}' for x in self.target_setpoint_vector]}")
+                            "Nuevo setpoint estratégico determinado: %s",
+                            [f'{x:.3f}' for x in self.target_setpoint_vector]
+                        )
 
                 if setpoint_changed:
                     self._send_setpoint_to_harmony(self.target_setpoint_vector)
@@ -231,14 +227,12 @@ class AgentAI:
                 self._stop_event.wait(sleep_time)
         logger.info("Bucle estratégico detenido.")
 
-        # ... (_get_harmony_state, _determine_harmony_setpoint, _send_setpoint_to_harmony sin cambios funcionales) ...
-
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
-        # Usar la URL almacenada
-        url = f"{self.central_urls.get('harmony_controller', DEFAULT_HC_URL)}/api/harmony/state"
-        # --- INICIO BLOQUE INDENTADO ---
+        url = (
+            f"{self.central_urls.get('harmony_controller', DEFAULT_HC_URL)}"
+            "/api/harmony/state"
+        )
         for attempt in range(MAX_RETRIES):
-            response_data = None
             try:
                 response = requests.get(url, timeout=REQUESTS_TIMEOUT)
                 response.raise_for_status()
@@ -249,48 +243,37 @@ class AgentAI:
                     and "data" in response_data
                 ):
                     logger.debug(
-                        f"Estado válido recibido de Harmony: {response_data['data']}"
+                        "Estado válido recibido de Harmony: %s",
+                        response_data['data']
                     )
-                    # <-- Correcto: dentro de if/try/for/def
                     return response_data["data"]
                 else:
                     logger.warning(
-                        f"Respuesta inválida desde Harmony: {response_data}"
+                        "Respuesta inválida desde Harmony: %s", response_data
                     )
-
-            # --- Orden de Excepts Revisado (o simplificado a Exception) ---
             except Exception as e:
                 logger.exception(
-                    f"Error inesperado (intento {attempt+1}): {e}"
+                    "Error inesperado (intento %s): %s", attempt + 1, e
                 )
-                # estado_salud = "error_inesperado"  # Comentario de estado
-            # --- Fin Excepts ---
 
-            # --- Lógica de reintento ---
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
                 logger.debug(
-                    f"Reintentando obtener estado de Harmony en {delay:.2f}s..."
+                    "Reintentando obtener estado de Harmony en %.2fs...", delay
                 )
                 time.sleep(delay)
-        # --- FIN BLOQUE INDENTADO ---
 
-        # Si el bucle termina sin éxito
         logger.error(
-            f"No se pudo obtener estado válido de Harmony después de {MAX_RETRIES} intentos."
+            "No se pudo obtener estado válido de Harmony después de %s intentos.",
+            MAX_RETRIES
         )
-        return None  # <-- Correcto: return final fuera del bucle
-
-        # logger.error(...)
-        # return None
+        return None
 
     def _determine_harmony_setpoint(
         self, measurement, cogniboard_signal, config_status, strategy, modules
     ) -> List[float]:
         """
-        Determina el vector de setpoint objetivo para Harmony Controller
-        basado en el estado actual, la estrategia y la composición de módulos.
-        Refinado para facilitar extensión y ajuste dinámico.
+        Determina el vector de setpoint objetivo para Harmony Controller.
         """
         with self.lock:
             current_target_vector = list(self.target_setpoint_vector)
@@ -304,10 +287,11 @@ class AgentAI:
         new_target_vector = list(current_target_vector)
         error_global = current_target_norm - measurement
         logger.debug(
-            f"[SetpointLogic] Norma Actual: {measurement:.3f}, Norma Objetivo: {current_target_norm:.3f}, Error Global: {error_global:.3f}"
+            "[SetpointLogic] Norma Actual: %.3f, Norma Objetivo: %.3f, "
+            "Error Global: %.3f",
+            measurement, current_target_norm, error_global
         )
 
-        # Analizar composición de auxiliares activos
         aux_stats = {
             "malla": {"potenciador": 0, "reductor": 0},
             "ecu": {"potenciador": 0, "reductor": 0},
@@ -329,11 +313,14 @@ class AgentAI:
                 ):
                     aux_stats["ecu"][naturaleza] += 1
 
-        logger.debug(f"[SetpointLogic] Estrategia: {strategy}")
+        logger.debug("[SetpointLogic] Estrategia: %s", strategy)
         logger.debug(
-            f"[SetpointLogic] Aux Activos - Malla(P:{aux_stats['malla']['potenciador']}, "
-            f"R:{aux_stats['malla']['reductor']}), ECU(P:{aux_stats['ecu']['potenciador']}, "
-            f"R:{aux_stats['ecu']['reductor']})")
+            "[SetpointLogic] Aux Activos - Malla(P:%d, R:%d), ECU(P:%d, R:%d)",
+            aux_stats['malla']['potenciador'],
+            aux_stats['malla']['reductor'],
+            aux_stats['ecu']['potenciador'],
+            aux_stats['ecu']['reductor']
+        )
 
         stability_threshold = (
             0.1 * current_target_norm if current_target_norm > 0 else 0.1
@@ -354,8 +341,6 @@ class AgentAI:
                         "[Estrategia Estabilidad] Reduciendo magnitud setpoint."
                     )
                     new_target_vector = adjust_vector(new_target_vector, 0.98)
-            # Ajuste por desbalance de potenciadores/reductores (opcional)
-            # Ejemplo: Si hay más reductores que potenciadores, reducir aún más
             if (
                 aux_stats["malla"]["reductor"]
                 > aux_stats["malla"]["potenciador"]
@@ -382,7 +367,6 @@ class AgentAI:
                     )
                     dim = len(self.target_setpoint_vector)
                     new_target_vector = [0.1] * dim
-            # Ajuste por potenciadores activos
             if aux_stats["ecu"]["potenciador"] > aux_stats["ecu"]["reductor"]:
                 logger.info(
                     "[Rendimiento] Más potenciadores en ECU, aumento extra."
@@ -390,7 +374,6 @@ class AgentAI:
                 new_target_vector = adjust_vector(new_target_vector, 1.01)
 
         elif strategy == "ahorro_energia":
-            # Ejemplo: reducir setpoint si hay muchos reductores activos
             total_reductores = (
                 aux_stats["malla"]["reductor"] + aux_stats["ecu"]["reductor"]
             )
@@ -400,15 +383,13 @@ class AgentAI:
                 )
                 new_target_vector = adjust_vector(new_target_vector, 0.95)
 
-        # Estrategia por defecto: no hacer nada extra
-
-        # Ajuste final basado en Cogniboard
         if cogniboard_signal is not None:
             try:
                 signal_val = float(cogniboard_signal)
                 if signal_val > 0.8:
                     logger.info(
-                        "[Cogniboard] Señal alta detectada, reduciendo magnitud final."
+                        "[Cogniboard] Señal alta detectada, "
+                        "reduciendo magnitud final."
                     )
                     norm = np.linalg.norm(new_target_vector)
                     if norm > 1e-6:
@@ -417,91 +398,80 @@ class AgentAI:
                         )
             except (ValueError, TypeError):
                 logger.warning(
-                    f"No se pudo convertir la señal de cogniboard a float: {cogniboard_signal}"
+                    "No se pudo convertir la señal de cogniboard a float: %s",
+                    cogniboard_signal
                 )
 
         if not isinstance(new_target_vector, list):
             logger.error(
-                f"Error interno: _determine_harmony_setpoint no generó una lista: {type(new_target_vector)}"
+                "Error interno: _determine_harmony_setpoint no generó una "
+                "lista: %s", type(new_target_vector)
             )
             return list(self.target_setpoint_vector)
 
         return new_target_vector
 
     def _send_setpoint_to_harmony(self, setpoint_vector: List[float]):
-        """
-        Envía el setpoint vectorial calculado a Harmony Controller con reintentos.
-        """
-        # Usar la URL almacenada leída desde ENV o default
-        url = f"{self.central_urls.get('harmony_controller', DEFAULT_HC_URL)}/api/harmony/setpoint"
-        payload = {"setpoint_vector": setpoint_vector}
-        # Log inicial
-        logger.debug(
-            f"Intentando enviar setpoint a HC: {setpoint_vector} a {url}"
+        """Envía el setpoint vectorial a Harmony Controller."""
+        url = (
+            f"{self.central_urls.get('harmony_controller', DEFAULT_HC_URL)}"
+            "/api/harmony/setpoint"
         )
+        payload = {"setpoint_vector": setpoint_vector}
+        logger.debug("Intentando enviar setpoint a HC: %s a %s",
+                     setpoint_vector, url)
 
         for attempt in range(MAX_RETRIES):
             try:
                 response = requests.post(
                     url, json=payload, timeout=REQUESTS_TIMEOUT
                 )
-                response.raise_for_status()  # Lanza excepción para errores 4xx/5xx
+                response.raise_for_status()
                 logger.info(
-                    f"Setpoint {setpoint_vector} enviado exitosamente a HC. "
-                    f"Respuesta: {response.status_code}"
+                    "Setpoint %s enviado exitosamente a HC. Respuesta: %s",
+                    setpoint_vector, response.status_code
                 )
-                return  # Salir de la función si el envío es exitoso
-
-            except (
-                Exception
-            ) as e:  # Captura simplificada de cualquier excepción
+                return
+            except Exception as e:
                 logger.error(
-                    f"Error al enviar setpoint a HC ({url}) intento {attempt+1}/{MAX_RETRIES}: "
-                    f"{type(e).__name__} - {e}")
-                # Lógica de espera para reintento (DENTRO DEL BUCLE)
+                    "Error al enviar setpoint a HC (%s) intento %d/%d: %s - %s",
+                    url, attempt + 1, MAX_RETRIES, type(e).__name__, e
+                )
                 if attempt < MAX_RETRIES - 1:
                     delay = BASE_RETRY_DELAY * (2**attempt)
                     logger.debug(
-                        f"Reintentando envío de setpoint a HC en {delay:.2f}s..."
+                        "Reintentando envío de setpoint a HC en %.2fs...", delay
                     )
-                    time.sleep(delay)  # Esperar antes del siguiente intento
-                # else: # No es necesario un else aquí, el log de fallo final
-                # va después del bucle
+                    time.sleep(delay)
 
-        # Si el bucle termina sin un 'return' exitoso:
         logger.error(
-            f"No se pudo enviar setpoint {setpoint_vector} a HC después de {MAX_RETRIES} intentos."
+            "No se pudo enviar setpoint %s a HC después de %d intentos.",
+            setpoint_vector, MAX_RETRIES
         )
 
-    # --- MODIFICADO: registrar_modulo ahora almacena 'naturaleza_auxiliar' ---
     def registrar_modulo(self, modulo_info):
-        """
-        Registra un nuevo módulo, valida dependencias y almacena afinidad y naturaleza.
-        Inicia la validación de salud asíncrona.
-        """
+        """Registra un nuevo módulo, valida y almacena sus detalles."""
         req_path = modulo_info.get("requirements_path")
         nombre = modulo_info.get("nombre")
         tipo_modulo = modulo_info.get("tipo", "desconocido")
         aporta_a = modulo_info.get("aporta_a")
-        # --- NUEVO: Obtener naturaleza auxiliar ---
-        naturaleza_auxiliar = modulo_info.get(
-            "naturaleza_auxiliar"
-        )  # Puede ser None
-        # --- Validación de Datos de Registro ---
+        naturaleza_auxiliar = modulo_info.get("naturaleza_auxiliar")
+        
         valido, mensaje = validate_module_registration(modulo_info)
         if not valido:
             logger.error(
-                f"Registro fallido para '{nombre}' (datos inválidos): {mensaje} - Data: {modulo_info}"
+                "Registro fallido para '%s' (datos inválidos): %s - Data: %s",
+                nombre, mensaje, modulo_info
             )
             return {"status": "error", "mensaje": mensaje}
 
-        # --- Validación de Dependencias (sin cambios) ---
         deps_ok = True
         deps_msg = "Validación de dependencias omitida o exitosa."
-        # ... (código de validación de dependencias sin cambios) ...
         if req_path:
             if not os.path.exists(req_path):
-                deps_msg = f"No se pudo encontrar el archivo de dependencias del módulo: {req_path}"
+                deps_msg = (
+                    f"No se pudo encontrar el archivo de dependencias: {req_path}"
+                )
                 logger.error(deps_msg)
                 deps_ok = False
             elif os.path.exists(GLOBAL_REQUIREMENTS_PATH):
@@ -511,7 +481,8 @@ class AgentAI:
                     )
                     if not deps_ok:
                         logger.error(
-                            f"Registro fallido para '{nombre}' (dependencias): {deps_msg}"
+                            "Registro fallido para '%s' (dependencias): %s",
+                            nombre, deps_msg
                         )
                         return {"status": "error", "mensaje": deps_msg}
                 except Exception as e:
@@ -523,16 +494,15 @@ class AgentAI:
                     return {"status": "error", "mensaje": deps_msg}
             else:
                 logger.warning(
-                    f"No se encontró GLOBAL_REQUIREMENTS_PATH en {GLOBAL_REQUIREMENTS_PATH}, omitiendo chequeo de dependencias para '{nombre}'"
+                    "No se encontró GLOBAL_REQUIREMENTS_PATH en %s, "
+                    "omitiendo chequeo de dependencias para '%s'",
+                    GLOBAL_REQUIREMENTS_PATH, nombre
                 )
-                deps_msg = "Validación de dependencias omitida (archivo global no encontrado)."
+                deps_msg = "Validación omitida (archivo global no encontrado)."
 
-        # --- Almacenamiento del Módulo (incluyendo aporta_a y naturaleza_auxiliar) ---
         with self.lock:
             if nombre in self.modules:
-                logger.warning(
-                    f"Intento de registrar módulo existente: {nombre}"
-                )
+                logger.warning("Intento de registrar módulo existente: %s", nombre)
                 return {
                     "status": "error",
                     "mensaje": "El módulo ya está registrado.",
@@ -550,26 +520,23 @@ class AgentAI:
                 "dependencias_ok": deps_ok,
                 "dependencias_msg": deps_msg,
             }
-            # Añadir campos específicos si existen
             if aporta_a:
                 module_entry["aporta_a"] = aporta_a
-            # --- NUEVO: Añadir naturaleza si es auxiliar y existe ---
             if tipo_modulo == "auxiliar" and naturaleza_auxiliar:
                 module_entry["naturaleza_auxiliar"] = naturaleza_auxiliar
 
             self.modules[nombre] = module_entry
 
-            # Logging mejorado
             log_details = f"Tipo: {tipo_modulo}"
             if aporta_a:
                 log_details += f", Aporta a: {aporta_a}"
             if naturaleza_auxiliar:
                 log_details += f", Naturaleza: {naturaleza_auxiliar}"
             logger.info(
-                f"Módulo '{nombre}' ({log_details}) registrado. {deps_msg}. Pendiente de validación de salud."
+                "Módulo '%s' (%s) registrado. %s. Pendiente de validación.",
+                nombre, log_details, deps_msg
             )
 
-        # Iniciar validación de salud
         threading.Thread(
             target=self._validar_salud_modulo,
             args=(nombre,),
@@ -581,98 +548,79 @@ class AgentAI:
             "mensaje": f"Módulo '{nombre}' registrado",
         }
 
-    # --- MODIFICADO: _validar_salud_modulo ahora obtiene y pasa 'naturaleza_auxiliar' ---
     def _validar_salud_modulo(self, nombre):
-        """Valida la conectividad/salud inicial y notifica a HC si es auxiliar."""
-
-        # --- Inicializaciones ---
-        modulo_url_salud = None
-        modulo_url_control = None
-        modulo_tipo = None
-        modulo_aporta_a = None
-        modulo_naturaleza = None
-        estado_salud = "error_inicial"  # Estado inicial por defecto
+        """Valida la salud del módulo y notifica a HC si es necesario."""
         with self.lock:
             modulo = self.modules.get(nombre)
             if not modulo:
                 logger.error(
-                    f"No se encontró el módulo '{nombre}' para validar salud (ya eliminado?)."
+                    "No se encontró el módulo '%s' para validar (ya eliminado?).",
+                    nombre
                 )
                 return
+            
             modulo_url_salud = modulo.get("url_salud")
             modulo_url_control = modulo.get("url")
             modulo_tipo = modulo.get("tipo")
             modulo_aporta_a = modulo.get("aporta_a")
             modulo_naturaleza = modulo.get("naturaleza_auxiliar")
 
-        # --- Comprobar URL y Realizar Validación ---
         if not modulo_url_salud:
-            logger.error(
-                f"No se encontró URL de salud para validar módulo '{nombre}'"
-            )
-            estado_salud = "error_configuracion"  # Asignar estado final aquí
+            logger.error("No se encontró URL de salud para validar '%s'", nombre)
+            estado_salud = "error_configuracion"
         else:
-            # --- INICIO: Lógica de Validación (DENTRO DEL ELSE) ---
-            estado_salud = "error_desconocido"  # Estado inicial para el bucle
+            estado_salud = "error_desconocido"
             for attempt in range(MAX_RETRIES):
                 try:
                     logger.debug(
-                        f"Validando salud de '{nombre}' en {modulo_url_salud}... (intento {attempt+1}/{MAX_RETRIES})"
+                        "Validando salud de '%s' en %s... (intento %d/%d)",
+                        nombre, modulo_url_salud, attempt + 1, MAX_RETRIES
                     )
                     response = requests.get(
                         modulo_url_salud, timeout=REQUESTS_TIMEOUT
                     )
-
                     if response.status_code == 200:
                         estado_salud = "ok"
-                        logger.info(
-                            f"Módulo '{nombre}' validado exitosamente (Salud OK)."
-                        )
-                        break  # Salir del bucle FOR si OK
+                        logger.info("Módulo '%s' validado (Salud OK).", nombre)
+                        break
                     else:
                         estado_salud = f"error_{response.status_code}"
                         logger.warning(
-                            f"Validación de salud fallida para '{nombre}'. Status: {response.status_code}"
+                            "Validación fallida para '%s'. Status: %d",
+                            nombre, response.status_code
                         )
-
-                # --- Bloque Except MUY Simplificado ---
                 except Exception as e:
-                    # Asignar un estado genérico y loguear la excepción
-                    # completa
                     estado_salud = "error_inesperado"
                     logger.exception(
-                        f"Error inesperado al validar salud de '{nombre}': {e}"
+                        "Error inesperado al validar salud de '%s': %s", nombre, e
                     )
-                    # --- FIN: Bloque if/elif/else indentado ---
 
-                # Salir del bucle si el estado es 'ok' (ya estaba)
                 if estado_salud == "ok":
                     break
 
-                # --- Lógica de Reintento (YA ESTABA CORRECTAMENTE FUERA DEL TRY/EXCEPT) ---
                 if attempt < MAX_RETRIES - 1:
                     delay = BASE_RETRY_DELAY * (2**attempt)
                     logger.debug(
-                        f"Reintentando validación de salud para '{nombre}' en {delay:.2f}s..."
+                        "Reintentando validación para '%s' en %.2fs...",
+                        nombre, delay
                     )
                     time.sleep(delay)
                 else:
                     logger.error(
-                        f"Validación de salud para '{nombre}' falló después de {MAX_RETRIES} intentos. Último estado: {estado_salud}"
+                        "Validación para '%s' falló tras %d intentos. Estado: %s",
+                        nombre, MAX_RETRIES, estado_salud
                     )
-            # --- FIN: Lógica de Validación (Fin del bucle for) -
 
-        # --- Actualizar estado de salud (AHORA 'estado_salud' siempre tiene el valor correcto) ---
         with self.lock:
             if nombre in self.modules:
                 self.modules[nombre]["estado_salud"] = estado_salud
             else:
                 logger.warning(
-                    f"Módulo '{nombre}' desapareció antes de actualizar estado de salud."
+                    "Módulo '%s' desapareció antes de actualizar estado.",
+                    nombre
                 )
                 return
 
-        # --- Notificación a Harmony Controller (AHORA usa el 'estado_salud' correcto) ---
         if (
             estado_salud == "ok"
             and modulo_tipo == "auxiliar"
@@ -681,7 +629,9 @@ class AgentAI:
         ):
             if modulo_url_control:
                 logger.info(
-                    f"Módulo auxiliar '{nombre}' saludable. Notificando a Harmony Controller..."
+                    "Módulo auxiliar '%s' saludable. "
+                    "Notificando a Harmony Controller...",
+                    nombre
                 )
                 self._notify_harmony_controller_of_tool(
                     nombre=nombre,
@@ -691,62 +641,70 @@ class AgentAI:
                 )
             else:
                 logger.error(
-                    f"Módulo auxiliar '{nombre}' saludable pero no tiene URL de control definida. No se puede notificar a HC."
+                    "Módulo '%s' saludable pero sin URL de control. "
+                    "No se puede notificar a HC.",
+                    nombre
                 )
         elif estado_salud == "ok" and modulo_tipo == "auxiliar":
             if not modulo_aporta_a:
                 logger.warning(
-                    f"Módulo auxiliar '{nombre}' saludable pero no declaró 'aporta_a'. No se notificará a HC."
+                    "Módulo aux '%s' ok pero sin 'aporta_a'. No se notificará.",
+                    nombre
                 )
             if not modulo_naturaleza:
                 logger.warning(
-                    f"Módulo auxiliar '{nombre}' saludable pero no declaró 'naturaleza_auxiliar'. No se notificará a HC."
+                    "Módulo aux '%s' ok pero sin 'naturaleza_auxiliar'. "
+                    "No se notificará.",
+                    nombre
                 )
 
-    # --- NUEVO: Función para notificar a HC sobre un nuevo tool auxiliar y naturaleza ---
     def _notify_harmony_controller_of_tool(
         self, nombre: str, url: str, aporta_a: str, naturaleza: str
     ):
-        # Usar la URL de registro almacenada
         register_url = self.hc_register_url
-        payload = {...}
+        payload = {
+            "nombre": nombre,
+            "url": url,
+            "aporta_a": aporta_a,
+            "naturaleza": naturaleza
+        }
         for attempt in range(MAX_RETRIES):
             try:
                 logger.debug(
-                    f"Notificando a HC sobre '{nombre}' (Naturaleza: {naturaleza}) en {register_url} (intento {attempt+1}/{MAX_RETRIES})"
+                    "Notificando a HC sobre '%s' (Naturaleza: %s) en %s...",
+                    nombre, naturaleza, register_url
                 )
                 response = requests.post(
                     register_url, json=payload, timeout=REQUESTS_TIMEOUT
                 )
                 response.raise_for_status()
                 logger.info(
-                    f"Notificación para '{nombre}' enviada exitosamente a HC. Respuesta: {response.status_code}"
+                    "Notificación para '%s' enviada a HC. Respuesta: %d",
+                    nombre, response.status_code
                 )
-                return  # Éxito -> Salir de la función
-            # --- Bloque Except MUY Simplificado ---
+                return
             except Exception as e:
-                logger.exception(f"Error inesperado: {e}")
-                # --- Lógica de Espera/Reintento (DENTRO DEL BUCLE) ---
+                logger.exception("Error inesperado al notificar a HC: %s", e)
                 if attempt < MAX_RETRIES - 1:
                     delay = BASE_RETRY_DELAY * (2**attempt)
                     logger.debug(
-                        f"Reintentando notificación a HC para '{nombre}' en {delay:.2f}s..."
+                        "Reintentando notificación a HC para '%s' en %.2fs...",
+                        nombre, delay
                     )
                     time.sleep(delay)
-                # --- Fin Bloque Except ---
-            else:  # pylint: disable=useless-else-on-loop
-                logger.error(
-                    f"No se pudo notificar a HC sobre '{nombre}' después de {MAX_RETRIES} intentos."
-                )
+                else:
+                    logger.error(
+                        "No se pudo notificar a HC sobre '%s' tras %d intentos.",
+                        nombre, MAX_RETRIES
+                    )
 
-    # ... (actualizar_comando_estrategico, recibir_control_cogniboard, recibir_config_status) ...
     def actualizar_comando_estrategico(self, comando, valor):
-        """Procesa comandos de alto nivel que afectan la estrategia o configuración global."""
+        """Procesa comandos de alto nivel."""
         with self.lock:
             if comando == "set_strategy":
                 if isinstance(valor, str):
                     self.current_strategy = valor
-                    logger.info(f"Estrategia actualizada a: {valor}")
+                    logger.info("Estrategia actualizada a: %s", valor)
                     return {
                         "status": "success",
                         "mensaje": f"Estrategia establecida a '{valor}'",
@@ -754,19 +712,19 @@ class AgentAI:
                 else:
                     return {
                         "status": "error",
-                        "mensaje": "Valor para 'set_strategy' debe ser un string",
+                        "mensaje": "'set_strategy' debe ser un string",
                     }
             elif comando == "set_target_setpoint_vector":
                 try:
                     if valor is None:
                         return {
                             "status": "error",
-                            "mensaje": "Falta 'valor' para 'set_target_setpoint_vector'",
+                            "mensaje": "Falta 'valor' para el comando",
                         }
                     new_vector = [float(x) for x in valor]
                     self.target_setpoint_vector = new_vector
                     logger.info(
-                        f"Setpoint objetivo directo actualizado a: {new_vector}"
+                        "Setpoint objetivo actualizado a: %s", new_vector
                     )
                     self._send_setpoint_to_harmony(self.target_setpoint_vector)
                     return {
@@ -776,32 +734,28 @@ class AgentAI:
                 except (ValueError, TypeError):
                     return {
                         "status": "error",
-                        "mensaje": "Valor para 'set_target_setpoint_vector' debe ser una lista de números",
+                        "mensaje": "Valor debe ser una lista de números",
                     }
             else:
-                logger.warning(
-                    f"Comando estratégico desconocido recibido: {comando}"
-                )
+                logger.warning("Comando estratégico desconocido: %s", comando)
                 return {
                     "status": "error",
-                    "mensaje": f"Comando estratégico '{comando}' no reconocido",
+                    "mensaje": f"Comando '{comando}' no reconocido",
                 }
 
     def recibir_control_cogniboard(self, control_signal):
-        """Actualiza el estado interno con la señal de Cogniboard."""
+        """Actualiza la señal de control de Cogniboard."""
         with self.lock:
             self.external_inputs["cogniboard_signal"] = control_signal
         logger.debug(
-            f"Señal de control de Cogniboard actualizada: {control_signal}"
+            "Señal de control de Cogniboard actualizada: %s", control_signal
         )
 
     def recibir_config_status(self, config_status):
-        """Actualiza el estado interno con el status de Config Agent."""
+        """Actualiza el estado de configuración de Config Agent."""
         with self.lock:
             self.external_inputs["config_status"] = config_status
-        logger.debug(f"Estado de configuración actualizado: {config_status}")
-
-    # --- MODIFICADO: obtener_estado_completo ahora incluye detalles de módulos ---
+        logger.debug("Estado de configuración actualizado: %s", config_status)
 
     def obtener_estado_completo(self):
         """Retorna una vista completa del estado interno de AgentAI."""
@@ -817,7 +771,6 @@ class AgentAI:
             "current_strategy": current_strategy_copy,
             "external_inputs": external_inputs_copy,
             "harmony_controller_last_state": harmony_state_copy,
-            # Incluye 'naturaleza_auxiliar'.
             "registered_modules": modules_list,
         }
 
@@ -832,13 +785,8 @@ class AgentAI:
 
 
 # --- Instancia Global ---
-
-
-# Crear la instancia de AgentAI ANTES de configurar las rutas que la usan
-agent_ai_instance_app = AgentAI()  # Crear instancia aquí.
+agent_ai_instance_app = AgentAI()
 agent_api = Flask(__name__)
-
-# Ahora las rutas pueden usar la instancia creada 'agent_ai_instance_app'.
 
 
 @agent_api.route("/api/register", methods=["POST"])
@@ -849,7 +797,6 @@ def handle_register():
             jsonify({"status": "error", "message": "No JSON data received"}),
             400,
         )
-    # Usar la instancia creada.
     result = agent_ai_instance_app.registrar_modulo(data)
     status_code = 200 if result.get("status") == "success" else 400
     return jsonify(result), status_code
@@ -857,7 +804,6 @@ def handle_register():
 
 @agent_api.route("/api/state", methods=["GET"])
 def handle_get_state():
-    # Usar la instancia creada.
     return jsonify(agent_ai_instance_app.obtener_estado_completo()), 200
 
 
@@ -866,7 +812,6 @@ def handle_command():
     data = request.get_json()
     if not data or "comando" not in data or "valor" not in data:
         return jsonify({"status": "error", "message": "Comando inválido"}), 400
-    # Usar la instancia creada.
     result = agent_ai_instance_app.actualizar_comando_estrategico(
         data["comando"], data["valor"]
     )
@@ -874,13 +819,9 @@ def handle_command():
     return jsonify(result), status_code
 
 
-# ... otros endpoints ...
-
-
 def run_agent_ai_service():
     port = int(os.environ.get("AGENT_AI_PORT", 9000))
-    logger.info(f"Iniciando servicio Flask para AgentAI en puerto {port}...")
-    # Iniciar el bucle estratégico de la instancia creada.
+    logger.info("Iniciando servicio Flask para AgentAI en puerto %d...", port)
     agent_ai_instance_app.start_loop()
     agent_api.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
@@ -891,6 +832,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Interrupción manual.")
     finally:
-        # Apagar la instancia creada.
         agent_ai_instance_app.shutdown()
         logger.info("AgentAI finalizado.")
