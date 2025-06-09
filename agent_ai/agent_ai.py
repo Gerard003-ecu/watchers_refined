@@ -75,8 +75,10 @@ class AgentAI:
                 )
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(
-                f"AA_INITIAL_SETPOINT_VECTOR ('{initial_vector_str}') inválido"
-                f" ({e}), usando default [1.0, 0.0]"
+                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), "
+                "usando default [1.0, 0.0]",
+                initial_vector_str,
+                e,
             )
             self.target_setpoint_vector = [1.0, 0.0]
         self.current_strategy: str = os.environ.get(
@@ -88,7 +90,7 @@ class AgentAI:
         }
         self.lock = threading.Lock()
         self._stop_event = threading.Event()
-        
+
         # --- Leer y almacenar URLs de Centrales Esenciales ---
         self.central_urls: Dict[str, str] = {}
         hc_url = os.environ.get(HARMONY_CONTROLLER_URL_ENV)
@@ -104,14 +106,13 @@ class AgentAI:
             malla_url if malla_url else DEFAULT_MALLA_URL
         )
 
-        # **SOLUCIÓN LÍNEA 81**: Se divide la línea larga en varias para legibilidad.
         logger.info(
             "URLs Centrales: HC='%s', ECU='%s', Malla='%s'",
             self.central_urls["harmony_controller"],
             self.central_urls["ecu"],
             self.central_urls["malla_watcher"],
         )
-        
+
         hc_reg_url_env = os.environ.get(HARMONY_CONTROLLER_REGISTER_URL_ENV)
         hc_base_url = self.central_urls["harmony_controller"]
         self.hc_register_url = (
@@ -228,10 +229,9 @@ class AgentAI:
         logger.info("Bucle estratégico detenido.")
 
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
-        url = (
-            f"{self.central_urls.get('harmony_controller', DEFAULT_HC_URL)}"
-            "/api/harmony/state"
-        )
+        # Usar la URL almacenada
+        hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
+        url = f"{hc_url}/api/harmony/state"
         for attempt in range(MAX_RETRIES):
             try:
                 response = requests.get(url, timeout=REQUESTS_TIMEOUT)
@@ -242,9 +242,9 @@ class AgentAI:
                     response_data.get("status") == "success"
                     and "data" in response_data
                 ):
+                    data_preview = str(response_data["data"])[:100]
                     logger.debug(
-                        "Estado válido recibido de Harmony: %s",
-                        response_data['data']
+                        "Estado válido recibido de Harmony: %s", data_preview
                     )
                     return response_data["data"]
                 else:
@@ -264,8 +264,8 @@ class AgentAI:
                 time.sleep(delay)
 
         logger.error(
-            "No se pudo obtener estado válido de Harmony después de %s intentos.",
-            MAX_RETRIES
+            "No se pudo obtener estado de Harmony tras %s intentos.",
+            MAX_RETRIES,
         )
         return None
 
@@ -287,9 +287,10 @@ class AgentAI:
         new_target_vector = list(current_target_vector)
         error_global = current_target_norm - measurement
         logger.debug(
-            "[SetpointLogic] Norma Actual: %.3f, Norma Objetivo: %.3f, "
-            "Error Global: %.3f",
-            measurement, current_target_norm, error_global
+            "[SetpointLogic] MA:%.3f, MO:%.3f, EG:%.3f",
+            measurement,
+            current_target_norm,
+            error_global,
         )
 
         aux_stats = {
@@ -314,12 +315,13 @@ class AgentAI:
                     aux_stats["ecu"][naturaleza] += 1
 
         logger.debug("[SetpointLogic] Estrategia: %s", strategy)
+        log_msg_aux = "[SetpointLogic] Aux: Malla(P:%s,R:%s), ECU(P:%s,R:%s)"
         logger.debug(
-            "[SetpointLogic] Aux Activos - Malla(P:%d, R:%d), ECU(P:%d, R:%d)",
-            aux_stats['malla']['potenciador'],
-            aux_stats['malla']['reductor'],
-            aux_stats['ecu']['potenciador'],
-            aux_stats['ecu']['reductor']
+            log_msg_aux,
+            aux_stats["malla"]["potenciador"],
+            aux_stats["malla"]["reductor"],
+            aux_stats["ecu"]["potenciador"],
+            aux_stats["ecu"]["reductor"],
         )
 
         stability_threshold = (
@@ -331,10 +333,9 @@ class AgentAI:
             return [x * scale for x in vector]
 
         if strategy == "estabilidad":
-            if (
-                abs(error_global) < stability_threshold
-                or abs(last_pid_output) > pid_effort_threshold
-            ):
+            err_low = abs(error_global) < stability_threshold
+            pid_high = abs(last_pid_output) > pid_effort_threshold
+            if err_low or pid_high:
                 norm_vec = np.linalg.norm(new_target_vector)
                 if norm_vec > 1e-6:
                     logger.info(
@@ -369,7 +370,7 @@ class AgentAI:
                     new_target_vector = [0.1] * dim
             if aux_stats["ecu"]["potenciador"] > aux_stats["ecu"]["reductor"]:
                 logger.info(
-                    "[Rendimiento] Más potenciadores en ECU, aumento extra."
+                    "[Rendimiento] Más potenciadores ECU, aumento extra."
                 )
                 new_target_vector = adjust_vector(new_target_vector, 1.01)
 
@@ -379,7 +380,7 @@ class AgentAI:
             )
             if total_reductores > 0:
                 logger.info(
-                    "[Ahorro Energía] Reductores activos, reducción de setpoint."
+                    "[Ahorro Energía] Reductores activos, reducción setpoint."
                 )
                 new_target_vector = adjust_vector(new_target_vector, 0.95)
 
@@ -398,28 +399,33 @@ class AgentAI:
                         )
             except (ValueError, TypeError):
                 logger.warning(
-                    "No se pudo convertir la señal de cogniboard a float: %s",
-                    cogniboard_signal
+                    "No se pudo convertir señal cogniboard a float: %s",
+                    cogniboard_signal,
                 )
 
         if not isinstance(new_target_vector, list):
+            type_generated = type(new_target_vector)
             logger.error(
-                "Error interno: _determine_harmony_setpoint no generó una "
-                "lista: %s", type(new_target_vector)
+                "Error: _determine_harmony_setpoint no generó lista: %s",
+                type_generated,
             )
             return list(self.target_setpoint_vector)
 
         return new_target_vector
 
     def _send_setpoint_to_harmony(self, setpoint_vector: List[float]):
-        """Envía el setpoint vectorial a Harmony Controller."""
-        url = (
-            f"{self.central_urls.get('harmony_controller', DEFAULT_HC_URL)}"
-            "/api/harmony/setpoint"
-        )
+        """
+        Envía el setpoint vectorial calculado a Harmony Controller con reintentos.
+        """
+        hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
+        url = f"{hc_url}/api/harmony/setpoint"
         payload = {"setpoint_vector": setpoint_vector}
-        logger.debug("Intentando enviar setpoint a HC: %s a %s",
-                     setpoint_vector, url)
+
+        logger.debug(
+            "Intentando enviar setpoint a HC: %s a %s",
+            setpoint_vector,
+            url,
+        )
 
         for attempt in range(MAX_RETRIES):
             try:
@@ -433,9 +439,10 @@ class AgentAI:
                 )
                 return
             except Exception as e:
+                err_type = type(e).__name__
                 logger.error(
-                    "Error al enviar setpoint a HC (%s) intento %d/%d: %s - %s",
-                    url, attempt + 1, MAX_RETRIES, type(e).__name__, e
+                    "Error al enviar setpoint a HC (%s) intento %s/%s: %s - %s",
+                    url, attempt + 1, MAX_RETRIES, err_type, e
                 )
                 if attempt < MAX_RETRIES - 1:
                     delay = BASE_RETRY_DELAY * (2**attempt)
@@ -456,7 +463,7 @@ class AgentAI:
         tipo_modulo = modulo_info.get("tipo", "desconocido")
         aporta_a = modulo_info.get("aporta_a")
         naturaleza_auxiliar = modulo_info.get("naturaleza_auxiliar")
-        
+
         valido, mensaje = validate_module_registration(modulo_info)
         if not valido:
             logger.error(
@@ -558,7 +565,7 @@ class AgentAI:
                     nombre
                 )
                 return
-            
+
             modulo_url_salud = modulo.get("url_salud")
             modulo_url_control = modulo.get("url")
             modulo_tipo = modulo.get("tipo")
