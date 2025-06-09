@@ -90,8 +90,7 @@ class AgentAI:
         }
         self.lock = threading.Lock()
         self._stop_event = threading.Event()
-
-        # --- Leer y almacenar URLs de Centrales Esenciales ---
+        
         self.central_urls: Dict[str, str] = {}
         hc_url = os.environ.get(HARMONY_CONTROLLER_URL_ENV)
         self.central_urls["harmony_controller"] = (
@@ -112,7 +111,7 @@ class AgentAI:
             self.central_urls["ecu"],
             self.central_urls["malla_watcher"],
         )
-
+        
         hc_reg_url_env = os.environ.get(HARMONY_CONTROLLER_REGISTER_URL_ENV)
         hc_base_url = self.central_urls["harmony_controller"]
         self.hc_register_url = (
@@ -229,7 +228,6 @@ class AgentAI:
         logger.info("Bucle estratégico detenido.")
 
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
-        # Usar la URL almacenada
         hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         url = f"{hc_url}/api/harmony/state"
         for attempt in range(MAX_RETRIES):
@@ -463,7 +461,7 @@ class AgentAI:
         tipo_modulo = modulo_info.get("tipo", "desconocido")
         aporta_a = modulo_info.get("aporta_a")
         naturaleza_auxiliar = modulo_info.get("naturaleza_auxiliar")
-
+        
         valido, mensaje = validate_module_registration(modulo_info)
         if not valido:
             logger.error(
@@ -565,7 +563,7 @@ class AgentAI:
                     nombre
                 )
                 return
-
+            
             modulo_url_salud = modulo.get("url_salud")
             modulo_url_control = modulo.get("url")
             modulo_tipo = modulo.get("tipo")
@@ -841,3 +839,4 @@ if __name__ == "__main__":
     finally:
         agent_ai_instance_app.shutdown()
         logger.info("AgentAI finalizado.")
+        
