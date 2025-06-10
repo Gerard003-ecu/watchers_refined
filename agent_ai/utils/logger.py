@@ -33,7 +33,8 @@ logger.propagate = False
 # --- Lógica de Configuración Idempotente Refinada ---
 def setup_logger_handlers():
     """Configura los handlers si no existen o si son diferentes."""
-    # global logger  # Asegurar que usamos la instancia global - logger is module level
+    # global logger
+    # Asegurar que usamos la instancia global - logger is module level
     log_format = (
         "%(asctime)s [%(levelname)s] "
         "%(name)s: %(message)s"

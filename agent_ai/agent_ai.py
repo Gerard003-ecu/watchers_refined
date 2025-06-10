@@ -86,12 +86,14 @@ class AgentAI:
                 raise ValueError("El valor parseado no es una lista de números")
         except (json.JSONDecodeError, ValueError) as e:
             log_msg = (
-                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), "
-                "usando default [1.0, 0.0]"
+                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando "
+                "default [1.0, 0.0]"
             )
             logger.error(log_msg, initial_vector_str, e)
             self.target_setpoint_vector = [1.0, 0.0]
-        self.current_strategy: str = os.environ.get("AA_INITIAL_STRATEGY", "default")
+        self.current_strategy: str = os.environ.get(
+            "AA_INITIAL_STRATEGY", "default"
+        )
         self.external_inputs: Dict[str, Any] = {
             "cogniboard_signal": None,
             "config_status": None,
@@ -138,7 +140,6 @@ class AgentAI:
         )
         logger.info("AgentAI inicializado.")
 
-
     def start_loop(self):
         """Inicia el bucle estratégico si no está corriendo."""
         if not self._strategic_thread.is_alive():
@@ -152,7 +153,6 @@ class AgentAI:
             logger.info("Bucle estratégico iniciado.")
         else:
             logger.info("Bucle estratégico ya está corriendo.")
-
 
     def _strategic_loop(self):
         """Bucle principal que ejecuta la lógica estratégica periódicamente."""
@@ -195,8 +195,12 @@ class AgentAI:
                         self.harmony_state = current_harmony_state
 
                 with self.lock:
-                    current_measurement = self.harmony_state.get("last_measurement", 0.0)
-                    cogniboard_signal = self.external_inputs["cogniboard_signal"]
+                    current_measurement = self.harmony_state.get(
+                        "last_measurement", 0.0
+                    )
+                    cogniboard_signal = self.external_inputs[
+                        "cogniboard_signal"
+                    ]
                     config_status = self.external_inputs["config_status"]
                     strategy = self.current_strategy
                     modules_copy = dict(self.modules)
@@ -219,7 +223,10 @@ class AgentAI:
                         self.target_setpoint_vector = new_setpoint_vector
                         logger.info(
                             "Nuevo setpoint estratégico determinado: %s",
-                            [f"{x:.3f}" for x in self.target_setpoint_vector],
+                            [
+                                f"{x:.3f}"
+                                for x in self.target_setpoint_vector
+                            ],
                         )
 
                 if setpoint_changed:
@@ -237,7 +244,6 @@ class AgentAI:
                 self._stop_event.wait(sleep_time)
         logger.info("Bucle estratégico detenido.")
 
-
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
         hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         url = f"{hc_url}/api/harmony/state"
@@ -247,9 +253,12 @@ class AgentAI:
                 response.raise_for_status()
                 response_data = response.json()
 
-                if response_data.get("status") == "success" and "data" in response_data:
+                if (response_data.get("status") == "success" and
+                        "data" in response_data):
                     data_preview = str(response_data["data"])[:100]
-                    logger.debug("Estado válido recibido de Harmony: %s", data_preview)
+                    logger.debug(
+                        "Estado válido recibido de Harmony: %s", data_preview
+                    )
                     return response_data["data"]
                 else:
                     logger.warning("Respuesta inválida desde Harmony: %s", response_data)
@@ -270,7 +279,6 @@ class AgentAI:
         )
         return None
 
-
     def _determine_harmony_setpoint(
         self,
         measurement,
@@ -283,21 +291,17 @@ class AgentAI:
         """
         with self.lock:
             current_target_vector = list(self.target_setpoint_vector)
-            current_target_norm = (
-                np.linalg.norm(current_target_vector)
-                if current_target_vector
-                else 0.0
+            current_target_norm = np.linalg.norm(current_target_vector) \
+                if current_target_vector else 0.0
+            last_pid_output = self.harmony_state.get(
+                "last_pid_output", 0.0
             )
-            last_pid_output = self.harmony_state.get("last_pid_output", 0.0)
 
         new_target_vector = list(current_target_vector)
         error_global = current_target_norm - measurement
         logger.debug(
             "[SetpointLogic] MA:%.3f, MO:%.3f, EG:%.3f",
-            measurement,
-            current_target_norm,
-            error_global,
-        )
+            measurement, current_target_norm, error_global)
 
         aux_stats = {
             "malla": {"potenciador": 0, "reductor": 0},
@@ -435,7 +439,6 @@ class AgentAI:
 
         return new_target_vector
 
-
     def _send_setpoint_to_harmony(self, setpoint_vector: List[float]):
         """
         Envía el setpoint vectorial calculado a Harmony Controller con
@@ -532,7 +535,7 @@ class AgentAI:
                 except Exception as e:
                     deps_ok = False
                     deps_msg = (
-                    "Error inesperado al verificar dependencias: f"{e}"
+                    f"Error inesperado al verificar dependencias: {e}"
                 )
                 logger.exception(deps_msg)
                 return {"status": "error", "mensaje": deps_msg}
@@ -552,7 +555,8 @@ class AgentAI:
             module_entry = {
                 "nombre": nombre,
                 "url": modulo_info.get("url"),
-                "url_salud": modulo_info.get("url_salud", modulo_info.get("url")),
+                "url_salud": modulo_info.get("url_salud",
+                                             modulo_info.get("url")),
                 "tipo": tipo_modulo,
                 "descripcion": modulo_info.get("descripcion", ""),
                 "estado_salud": "pendiente",
@@ -575,24 +579,24 @@ class AgentAI:
                 "Módulo '%s' (%s) registrado. %s. Pendiente de validación.",
                 nombre,
                 log_details,
-                deps_msg,
-            )
+                deps_msg)
 
         threading.Thread(
             target=self._validar_salud_modulo,
             args=(nombre,),
             daemon=True,
-            name=f"HealthCheck-{nombre}",
-        ).start()
+            name=f"HealthCheck-{nombre}").start()
         return {"status": "success", "mensaje": f"Módulo '{nombre}' registrado"}
-
 
     def _validar_salud_modulo(self, nombre):
         """Valida la salud del módulo y notifica a HC si es necesario."""
         with self.lock:
             modulo = self.modules.get(nombre)
             if not modulo:
-                logger.error("No se encontró el módulo '%s' para validar (ya eliminado?).", nombre)
+                logger.error(
+                    "No se encontró el módulo '%s' para validar (ya eliminado?).",
+                    nombre
+                )
                 return
 
             modulo_url_salud = modulo.get("url_salud")
@@ -613,25 +617,26 @@ class AgentAI:
                         nombre,
                         modulo_url_salud,
                         attempt + 1,
-                        MAX_RETRIES,
+                        MAX_RETRIES)
+                    response = requests.get(
+                        modulo_url_salud, timeout=REQUESTS_TIMEOUT
                     )
-                    response = requests.get(modulo_url_salud, timeout=REQUESTS_TIMEOUT)
                     if response.status_code == 200:
                         estado_salud = "ok"
-                        logger.info("Módulo '%s' validado (Salud OK).", nombre)
+                        logger.info(
+                            "Módulo '%s' validado (Salud OK).", nombre
+                        )
                         break
                     else:
                         estado_salud = f"error_{response.status_code}"
                         logger.warning(
                             "Validación fallida para '%s'. Status: %d",
-                            nombre,
-                            response.status_code,
-                        )
+                            nombre, response.status_code)
                 except Exception as e:
                     estado_salud = "error_inesperado"
                     logger.exception(
-                        "Error inesperado al validar salud de '%s': %s", nombre, e
-                    )
+                        "Error inesperado al validar salud de '%s': %s",
+                        nombre, e)
 
                 if estado_salud == "ok":
                     break
@@ -648,10 +653,7 @@ class AgentAI:
                     logger.error(
                         "Validación para '%s' falló tras %d intentos. "
                         "Estado: %s",
-                        nombre,
-                        MAX_RETRIES,
-                        estado_salud,
-                    )
+                        nombre, MAX_RETRIES, estado_salud)
 
         with self.lock:
             if nombre in self.modules:
@@ -749,7 +751,6 @@ class AgentAI:
                         MAX_RETRIES,
                     )
 
-
     def actualizar_comando_estrategico(self, comando, valor):
         """Procesa comandos de alto nivel."""
         with self.lock:
@@ -808,17 +809,14 @@ class AgentAI:
             self.external_inputs["cogniboard_signal"] = control_signal
         logger.debug(
             "Señal de control de Cogniboard actualizada: %s",
-            control_signal,
-        )
-
+            control_signal)
 
     def recibir_config_status(self, config_status):
         """Actualiza el estado de configuración de Config Agent."""
         with self.lock:
             self.external_inputs["config_status"] = config_status
         logger.debug(
-            "Estado de configuración actualizado: %s", config_status
-        )
+            "Estado de configuración actualizado: %s", config_status)
 
     def obtener_estado_completo(self):
         """Retorna una vista completa del estado interno de AgentAI."""
@@ -883,8 +881,10 @@ def handle_get_state():
 def handle_command():
     data = request.get_json()
     if not data or "comando" not in data or "valor" not in data:
-            return jsonify({"status": "error", "message": "Comando inválido"}), 400
-        result = agent_ai_instance_app.actualizar_comando_estrategico(data["comando"], data["valor"])
+        return jsonify({"status": "error", "message": "Comando inválido"}), 400
+    result = agent_ai_instance_app.actualizar_comando_estrategico(
+        data["comando"], data["valor"]
+    )
     status_code = 200 if result.get("status") == "success" else 400
     return jsonify(result), status_code
 
@@ -893,7 +893,9 @@ def run_agent_ai_service():
     port = int(os.environ.get("AGENT_AI_PORT", 9000))
     logger.info("Iniciando servicio Flask para AgentAI en puerto %d...", port)
     agent_ai_instance_app.start_loop()
-    agent_api.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+    agent_api.run(
+        host="0.0.0.0", port=port, debug=False, use_reloader=False
+    )
 
 
 if __name__ == "__main__":

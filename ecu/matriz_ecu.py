@@ -38,7 +38,10 @@ if not logging.getLogger("matriz_ecu").hasHandlers():
     logging.basicConfig(
         level=logging.INFO,
         # Añadido threadName
-        format="%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s",
+        format=(
+            "%(asctime)s [%(levelname)s] [%(threadName)s] "
+            "%(name)s: %(message)s"
+        ),
         handlers=[
             logging.FileHandler(os.path.join(log_dir, "matriz_ecu.log")),
             logging.StreamHandler()
@@ -171,8 +174,12 @@ class ToroidalField:
             logger.info(
                 "'%s' aplicó influencia en capa %d, nodo (%d, %d): %s. "
                 "Nuevo valor: %s",
-                nombre_watcher, capa, row, col, vector_valido, valor_actual
-            )
+                nombre_watcher,
+                capa,
+                row,
+                col,
+                vector_valido,
+                valor_actual)
             return True
         except Exception:
             # SOLUCIÓN F841: Se elimina 'as e' ya que la variable no se usa.
@@ -287,15 +294,23 @@ class ToroidalField:
                 for r in range(self.num_rows):
                     for c in range(self.num_cols):
                         v_curr = self.campo[capa_idx][r, c]
-                        v_left = self.campo[capa_idx][r, (c - 1) % self.num_cols]
-                        v_up = self.campo[capa_idx][(r - 1) % self.num_rows, c]
-                        v_down = self.campo[capa_idx][(r + 1) % self.num_rows, c]
+                        v_left = self.campo[capa_idx][
+                            r, (c - 1) % self.num_cols
+                        ]
+                        v_up = self.campo[capa_idx][
+                            (r - 1) % self.num_rows, c
+                        ]
+                        v_down = self.campo[capa_idx][
+                            (r + 1) % self.num_rows, c
+                        ]
 
                         damped = v_curr * (1.0 - damping_capa * dt)
                         advected = alpha_capa * v_left * dt
                         coupled = beta * (v_up + v_down) * dt
 
-                        next_campo[capa_idx][r, c] = damped + advected + coupled
+                        next_campo[capa_idx][r, c] = (
+                            damped + advected + coupled
+                        )
             self.campo = next_campo
 
 
@@ -347,14 +362,17 @@ def simulation_loop(dt: float, beta: float):
     """Bucle que ejecuta la simulación dinámica periódicamente."""
     logger.info(f"Iniciando bucle de simulación ECU con dt={dt}, "
                 f"beta={beta}...")
-    def simulation_loop(dt: float, beta: float):
-    """Bucle que ejecuta la simulación dinámica periódicamente."""
-    while not stop_event.is_set():
+    # Removed duplicated inner function definition.
+    # The loop now correctly belongs to the outer simulation_loop function.
+    # Also corrected stop_event to stop_simulation_event and campo_toroidal_global
+    # to campo_toroidal_global_servicio for consistency with the rest of the module.
+    while not stop_simulation_event.is_set():
         start_time = time.monotonic()
-        campo_toroidal_global.apply_rotational_step(dt, beta)
+        campo_toroidal_global_servicio.apply_rotational_step(dt, beta)
         elapsed = time.monotonic() - start_time
         sleep_time = max(0, dt - elapsed)
-        stop_event.wait(sleep_time)
+        stop_simulation_event.wait(sleep_time)
+
 
 # --- Servidor Flask ---
 app = Flask(__name__)
@@ -415,9 +433,8 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
             "status": "success",
             "estado_campo_unificado": campo_unificado.tolist(),
             "metadata": {
-                "descripcion": (
-                    "Mapa de intensidad del campo toroidal ponderado por capa"
-                ),
+                "descripcion":
+                    "Mapa de intensidad del campo toroidal ponderado por capa",
                 "capas": campo_toroidal_global.num_capas,
                 "filas": campo_toroidal_global.num_rows,
                 "columnas": campo_toroidal_global.num_cols,
@@ -562,8 +579,10 @@ def get_field_vector_api() -> Tuple[Any, int]:
             "status": "success",
             "field_vector": campo_copia,
             "metadata": {
-                "descripcion": "Campo vectorial 2D en grilla 3D toroidal "
-                               "(Analogía Densidad Flujo Magnético)",
+                "descripcion": (
+                    "Campo vectorial 2D en grilla 3D toroidal "
+                    "(Analogía Densidad Flujo Magnético)"
+                ),
                 "capas": campo_toroidal_global_servicio.num_capas,
                 "filas": campo_toroidal_global_servicio.num_rows,
                 "columnas": campo_toroidal_global_servicio.num_cols,
@@ -587,8 +606,10 @@ def get_field_vector_api() -> Tuple[Any, int]:
 def main():
     global simulation_thread
 
-    logger.info(f"Configuración ECU: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS}, "
-                f"SimInterval={SIMULATION_INTERVAL}s, Beta={BETA_COUPLING}")
+    logger.info(
+        f"Configuración ECU: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS}, "
+        f"SimInterval={SIMULATION_INTERVAL}s, Beta={BETA_COUPLING}"
+    )
 
     logger.info("Creando e iniciando hilo de simulación ECU...")
     stop_simulation_event.clear()
@@ -604,8 +625,10 @@ def main():
     logger.info(
         f"Iniciando servicio Flask de matriz_ecu en puerto {puerto_servicio}..."
     )
-    app.run(host="0.0.0.0", port=puerto_servicio,
-            debug=False, use_reloader=False)
+    app.run(
+        host="0.0.0.0", port=puerto_servicio,
+        debug=False, use_reloader=False
+    )
 
 
 # --- Punto de Entrada ---
@@ -619,7 +642,9 @@ if __name__ == "__main__":
         stop_simulation_event.set()
         if simulation_thread and simulation_thread.is_alive():
             logger.info("Esperando finalización del hilo de simulación...")
-            simulation_thread.join(timeout=SIMULATION_INTERVAL * 2)
+            simulation_thread.join(
+                timeout=SIMULATION_INTERVAL * 2
+            )
             if simulation_thread.is_alive():
                 logger.warning(
                     "El hilo de simulación ECU no terminó limpiamente."

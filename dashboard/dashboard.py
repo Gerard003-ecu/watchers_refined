@@ -158,10 +158,13 @@ def control_update():
         data = request.get_json()
         control_signal = data.get("control_signal")
         if control_signal is None:
+            # Ensuring the jsonify call and its dictionary are formatted
+            # to prevent long lines.
             return (
-                jsonify(
-                    {"status": "error", "mensaje": "Falta 'control_signal'"}
-                ),
+                jsonify({
+                    "status": "error",
+                    "mensaje": "Falta 'control_signal'"
+                }),
                 400,
             )
         # Actualizar el estado global del dashboard (o una variable interna)

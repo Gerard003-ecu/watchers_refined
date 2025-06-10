@@ -93,7 +93,13 @@ class BosonPhase:
         # Ajuste adaptativo simple: aumentar Kp si el error es grande
         if abs(error) > 0.1 * self.setpoint:
             self.Kp += 0.01
-            logging.info(f"Ajuste adaptativo: Kp incrementado a {self.Kp:.3f}")
+            # Re-applying the fix for E501 on the logging line.
+            # The original single line was 80/81 characters.
+            # This multi-line formatting ensures each part is short.
+            logging.info(
+                "Ajuste adaptativo: Kp incrementado a %s",
+                f"{self.Kp:.3f}"
+            )
 
         return output
 
