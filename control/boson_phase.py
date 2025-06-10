@@ -3,11 +3,11 @@
 boson_phase.py
 
 Este módulo implementa un controlador PID adaptativo llamado "BosonPhase"
-para armonizar el estado de la matriz ECU (Experiencia Cuántica Unificada), es decir,
-para ajustar el estado ideal de la malla vectorial (matriz_ecu).
+para armonizar el estado de la matriz ECU (Experiencia Cuántica Unificada),
+es decir, para ajustar el estado ideal de la malla vectorial (matriz_ecu).
 
-El controlador PID se ajusta automáticamente según la diferencia entre la medida
-actual y el setpoint deseado.
+El controlador PID se ajusta automáticamente según la diferencia entre la
+medida actual y el setpoint deseado.
 """
 
 import logging
@@ -19,7 +19,13 @@ logging.basicConfig(
 
 class BosonPhase:
     def __init__(
-        self, Kp, Ki, Kd, setpoint=0.0, integral_max=100.0, integral_min=-100.0
+        self,
+        Kp,
+        Ki,
+        Kd,
+        setpoint=0.0,
+        integral_max=100.0,
+        integral_min=-100.0,
     ):
         """
         Inicializa el controlador PID adaptativo.
@@ -29,8 +35,10 @@ class BosonPhase:
             Ki (float): Ganancia integral.
             Kd (float): Ganancia derivativa.
             setpoint (float, opcional): Valor deseado. Por defecto 0.0.
-            integral_max (float, opcional): Límite superior para el término integral.
-            integral_min (float, opcional): Límite inferior para el término integral.
+            integral_max (float, opcional): Límite superior para el
+                                            término integral.
+            integral_min (float, opcional): Límite inferior para el
+                                            término integral.
         """
         self.Kp = Kp
         self.Ki = Ki
@@ -41,7 +49,8 @@ class BosonPhase:
         self.integral_max = integral_max
         self.integral_min = integral_min
         logging.debug(
-            f"PID inicializado: Kp={Kp}, Ki={Ki}, Kd={Kd}, setpoint={setpoint}"
+            f"PID inicializado: Kp={Kp}, Ki={Ki}, Kd={Kd}, "
+            f"setpoint={setpoint}"
         )
 
     def update(self, measurement, dt):
@@ -57,7 +66,8 @@ class BosonPhase:
         """
         if dt <= 0:
             logging.warning(
-                "Intervalo de tiempo dt debe ser mayor a cero. Se usará dt=1.0 por defecto."
+                "Intervalo de tiempo dt debe ser mayor a cero. "
+                "Se usará dt=1.0 por defecto."
             )
             dt = 1.0
 
@@ -72,11 +82,12 @@ class BosonPhase:
             derivative = (error - self.last_error) / dt
         self.last_error = error
 
-        output = (
-            self.Kp * error + self.Ki * self.integral + self.Kd * derivative
-        )
+        output = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
         logging.debug(
-            f"update() -> error: {error:.3f}, integral: {self.integral:.3f}, derivative: {derivative:.3f}, output: {output:.3f}"
+            f"update() -> error: {error:.3f}, "
+            f"integral: {self.integral:.3f}, "
+            f"derivative: {derivative:.3f}, "
+            f"output: {output:.3f}"
         )
 
         # Ajuste adaptativo simple: aumentar Kp si el error es grande
@@ -113,7 +124,9 @@ class BosonPhase:
 
 if __name__ == "__main__":
     # Prueba simple del controlador PID adaptativo.
-    controller = BosonPhase(Kp=1.0, Ki=0.1, Kd=0.05, setpoint=10.0)
+    controller = BosonPhase(
+        Kp=1.0, Ki=0.1, Kd=0.05, setpoint=10.0
+    )
     print("Prueba de BosonPhase (PID adaptativo):")
     for i in range(10):
         # Simula una medida constante de 5.0 y dt=1.0 en cada paso
