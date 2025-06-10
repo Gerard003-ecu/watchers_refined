@@ -214,13 +214,21 @@ def get_tool_state(tool_name: str, base_url: str) -> Dict[str, Any]:
             response = requests.get(state_url, timeout=REQUESTS_TIMEOUT)
             response.raise_for_status()
             data = response.json()
-            logger.debug("Estado recibido de %s: %s",
-                         tool_name, data.get('state', data))
+            # Ensuring the logger.debug call is compliant
+            logger.debug(
+                "Estado recibido de %s: %s",  # Format string
+                tool_name,                     # First arg
+                data.get('state', data)        # Second arg
+            )
             return data.get("state", {"status": "success", "raw_data": data})
         except Exception as e:
+            # Ensuring the logger.warning call is compliant
             logger.warning(
-                "Error al obtener estado de %s (%s) intento %d: %s",
-                tool_name, state_url, attempt + 1, e
+                "Error al obtener estado de %s (%s) intento %d: %s",  # Format string
+                tool_name,                                           # First arg
+                state_url,                                           # Second arg
+                attempt + 1,                                         # Third arg
+                e                                                    # Fourth arg
             )
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
