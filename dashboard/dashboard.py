@@ -158,8 +158,9 @@ def control_update():
         data = request.get_json()
         control_signal = data.get("control_signal")
         if control_signal is None:
-            # Ensuring the jsonify call and its dictionary are formatted
-            # to prevent long lines.
+            # Re-applying the fix for E501 on the jsonify call.
+            # The original single line for the dictionary was too long.
+            # This multi-line formatting ensures each part is short.
             return (
                 jsonify({
                     "status": "error",
