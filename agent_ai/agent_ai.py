@@ -85,11 +85,11 @@ class AgentAI:
             else:
                 raise ValueError("El valor parseado no es una lista de números")
         except (json.JSONDecodeError, ValueError) as e:
-            logger.error(
-                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando default [1.0, 0.0]",
-                initial_vector_str,
-                e,
+            log_msg = (
+                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), "
+                "usando default [1.0, 0.0]"
             )
+            logger.error(log_msg, initial_vector_str, e)
             self.target_setpoint_vector = [1.0, 0.0]
         self.current_strategy: str = os.environ.get("AA_INITIAL_STRATEGY", "default")
         self.external_inputs: Dict[str, Any] = {
@@ -904,4 +904,3 @@ if __name__ == "__main__":
     finally:
         agent_ai_instance_app.shutdown()
         logger.info("AgentAI finalizado.")
-        

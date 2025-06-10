@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 harmony_controller.py - Controlador Táctico del Ecosistema Watchers
 
