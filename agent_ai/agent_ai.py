@@ -86,7 +86,8 @@ class AgentAI:
                 raise ValueError("El valor parseado no es una lista de números")
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(
-                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando default [1.0, 0.0]",
+                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando "
+                "default [1.0, 0.0]",
                 initial_vector_str,
                 e,
             )
@@ -532,8 +533,9 @@ class AgentAI:
                 except Exception as e:
                     deps_ok = False
                     deps_msg = (
-                    "Error inesperado al verificar dependencias: f"{e}"
-                )
+                        "Error inesperado al verificar dependencias: "
+                            f"{e}"
+                    )
                 logger.exception(deps_msg)
                 return {"status": "error", "mensaje": deps_msg}
             else:
@@ -592,7 +594,11 @@ class AgentAI:
         with self.lock:
             modulo = self.modules.get(nombre)
             if not modulo:
-                logger.error("No se encontró el módulo '%s' para validar (ya eliminado?).", nombre)
+                logger.error(
+                    "No se encontró el módulo '%s' para validar (ya "
+                    "eliminado?).",
+                    nombre
+                )
                 return
 
             modulo_url_salud = modulo.get("url_salud")
@@ -602,7 +608,9 @@ class AgentAI:
             modulo_naturaleza = modulo.get("naturaleza_auxiliar")
 
         if not modulo_url_salud:
-            logger.error("No se encontró URL de salud para validar '%s'", nombre)
+            logger.error(
+                "No se encontró URL de salud para validar '%s'", nombre
+            )
             estado_salud = "error_configuracion"
         else:
             estado_salud = "error_desconocido"
