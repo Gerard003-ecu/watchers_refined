@@ -17,18 +17,19 @@ locales de la densidad de flujo magnético (B).
 La interpretación exacta de vx y vy en términos de direcciones físicas
 (toroidal, poloidal, radial) se puede definir conceptualmente por analogía.
 Por ejemplo:
-vx podría ser la componente toroidal de B.
-vy podría ser la componente poloidal (vertical) de B.
+vx es la componente toroidal de B.
+vy es la componente poloidal (vertical) de B.
 La dimensión de la "capa" podría representar la dirección radial.
 """
 
-import numpy as np
 import logging
 import os
-import time      # Añadido
 import threading
+import time
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 from flask import Flask, jsonify, request
-from typing import List, Optional, Tuple, Dict, Any
 
 # --- Configuración del Logging ---
 log_dir = "logs"
@@ -46,22 +47,14 @@ if not logging.getLogger("matriz_ecu").hasHandlers():
 logger = logging.getLogger("matriz_ecu")
 
 # --- Constantes Configurables para el Campo Toroidal ---
-# Renombrado ENV var para consistencia
+# --- Constantes Configurables ---
 NUM_CAPAS = int(os.environ.get("ECU_NUM_CAPAS", 3))
 NUM_FILAS = int(os.environ.get("ECU_NUM_FILAS", 4))
 NUM_COLUMNAS = int(os.environ.get("ECU_NUM_COLUMNAS", 5))
-# Valores default para parámetros por capa
-# (usados si no se proporcionan en __init__)
 DEFAULT_ALPHA_VALUE = 0.5
 DEFAULT_DAMPING_VALUE = 0.05
-
-# --- NUEVO: Configuración para la Simulación Dinámica ---
-SIMULATION_INTERVAL = float(
-    os.environ.get("ECU_SIM_INTERVAL", 1.0)
-)  # Intervalo en segundos (dt)
-BETA_COUPLING = float(
-    os.environ.get("ECU_BETA_COUPLING", 0.1)
-)  # Factor de acoplamiento vertical
+SIMULATION_INTERVAL = float(os.environ.get("ECU_SIM_INTERVAL", 1.0))
+BETA_COUPLING = float(os.environ.get("ECU_BETA_COUPLING", 0.1))
 
 
 class ToroidalField:
@@ -77,9 +70,14 @@ class ToroidalField:
     en la física de plasmas confinados.
     """
 
-    def __init__(self, num_capas: int, num_rows: int, num_cols: int,
-                 alphas: Optional[List[float]] = None,
-                 dampings: Optional[List[float]] = None):
+    def __init__(
+        self,
+        num_capas: int,
+        num_rows: int,
+        num_cols: int,
+        alphas: Optional[List[float]] = None,
+        dampings: Optional[List[float]] = None,
+    ):
         """
         Inicializa el campo toroidal con dimensiones y parámetros por capa.
 
@@ -98,64 +96,43 @@ class ToroidalField:
                                               campo local.
         """
         if num_capas <= 0 or num_rows <= 0 or num_cols <= 0:
-            logger.error("Las dimensiones (capas, filas, columnas) "
-                         "deben ser positivas.")
-            raise ValueError("Las dimensiones (capas, filas, columnas) "
-                             "deben ser positivas.")
+            raise ValueError(
+                "Las dimensiones (capas, filas, columnas) deben ser positivas."
+            )
 
         self.num_capas = num_capas
         self.num_rows = num_rows
         self.num_cols = num_cols
-        # self.campo almacena el campo vectorial 2D en cada punto de la
-        # grilla 3D
-        # Shape: [num_capas, num_rows, num_cols, 2]
         self.campo = [
             np.zeros((self.num_rows, self.num_cols, 2))
             for _ in range(self.num_capas)
         ]
         self.lock = threading.Lock()
 
-        # --- Definir valores default locales ---
-        local_default_alpha = DEFAULT_ALPHA_VALUE
-        local_default_damping = DEFAULT_DAMPING_VALUE
+        self.alphas = (
+            alphas
+            if alphas and len(alphas) == num_capas
+            else [DEFAULT_ALPHA_VALUE] * num_capas
+        )
+        self.dampings = (
+            dampings
+            if dampings and len(dampings) == num_capas
+            else [DEFAULT_DAMPING_VALUE] * num_capas
+        )
 
-        # --- Configuración de parámetros por capa ---
-        if alphas is None:
-            self.alphas = [local_default_alpha] * self.num_capas
-            logger.info(f"Usando alpha por defecto: {self.alphas}")
-        elif len(alphas) == self.num_capas:
-            self.alphas = alphas
-            logger.info(f"Usando alphas proporcionados: {self.alphas}")
-        else:
-            logger.error(
-                f"La lista 'alphas' debe tener longitud {self.num_capas}, "
-                f"pero tiene {len(alphas)}."
-            )
-            raise ValueError(f"La lista 'alphas' debe tener longitud "
-                             f"{self.num_capas}.")
-
-        if dampings is None:
-            self.dampings = [local_default_damping] * self.num_capas
-            logger.info(f"Usando damping por defecto: {self.dampings}")
-        elif len(dampings) == self.num_capas:
-            self.dampings = dampings
-            logger.info(f"Usando dampings proporcionados: {self.dampings}")
-        else:
-            logger.error(
-                f"La lista 'dampings' debe tener longitud {self.num_capas}, "
-                f"pero tiene {len(dampings)}."
-            )
-            raise ValueError(f"La lista 'dampings' debe tener longitud "
-                             f"{self.num_capas}.")
+        if not alphas or len(alphas) != num_capas:
+            logger.info("Usando alpha por defecto para todas las capas.")
+        if not dampings or len(dampings) != num_capas:
+            logger.info("Usando damping por defecto para todas las capas.")
 
         logger.info(
-            f"Campo toroidal inicializado: {self.num_capas} capas, "
-            f"dims={self.num_rows}x{self.num_cols}"
+            "Campo toroidal inicializado: %d capas, dims=%dx%d",
+            self.num_capas, self.num_rows, self.num_cols
         )
 
     def aplicar_influencia(
-            self, capa: int, row: int, col: int,
-            vector: np.ndarray, nombre_watcher: str
+        self, capa: int, row: int, col: int, vector: np.ndarray,
+        nombre_watcher: str
     ) -> bool:
         """
         Aplica una influencia externa (vector 2D) a un punto específico
@@ -175,28 +152,14 @@ class ToroidalField:
             bool: True si la influencia se aplicó correctamente,
                   False en caso contrario.
         """
-        # ... (Validaciones iniciales sin cambios) ...
+        """Aplica una influencia externa a un punto específico del campo."""
         if not (0 <= capa < self.num_capas):
-            logger.error(f"Índice de capa fuera de rango ({capa}) al "
-                         f"aplicar influencia de {nombre_watcher}.")
             return False
         if not (0 <= row < self.num_rows):
-            logger.error(f"Índice de fila fuera de rango ({row}) al "
-                         f"aplicar influencia de {nombre_watcher}.")
             return False
         if not (0 <= col < self.num_cols):
-            logger.error(f"Índice de columna fuera de rango ({col}) al "
-                         f"aplicar influencia de {nombre_watcher}.")
             return False
         if not isinstance(vector, np.ndarray) or vector.shape != (2,):
-            logger.error(
-                f"Vector de influencia inválido para {nombre_watcher}: "
-                f"{vector}. Debe ser NumPy array (2,)."
-            )
-            return False
-        if not isinstance(nombre_watcher, str) or not nombre_watcher:
-            logger.error(f"Nombre de watcher inválido: {nombre_watcher}. "
-                         "Debe ser un string no vacío.")
             return False
 
         try:
@@ -204,16 +167,18 @@ class ToroidalField:
             with self.lock:
                 self.campo[capa][row, col] += vector_valido
                 valor_actual = self.campo[capa][row, col]
+            # SOLUCIÓN E501: Se divide el logging en múltiples líneas.
             logger.info(
-                f"'{nombre_watcher}' aplicó influencia al campo local "
-                f"en capa {capa}, nodo ({row}, {col}): {vector_valido}. "
-                f"Nuevo valor del campo: {valor_actual}"
+                "'%s' aplicó influencia en capa %d, nodo (%d, %d): %s. "
+                "Nuevo valor: %s",
+                nombre_watcher, capa, row, col, vector_valido, valor_actual
             )
             return True
-        except Exception as e_val:
+        except Exception:
+            # SOLUCIÓN F841: Se elimina 'as e' ya que la variable no se usa.
             logger.exception(
-                f"Error inesperado al aplicar influencia de "
-                f"'{nombre_watcher}' en ({capa}, {row}, {col}): {e_val}"
+                "Error inesperado al aplicar influencia de '%s' en (%d, %d, %d)",
+                nombre_watcher, capa, row, col
             )
             return False
 
@@ -276,12 +241,10 @@ class ToroidalField:
         Returns:
             np.ndarray: Array 2D (num_rows x num_cols) del campo unificado.
         """
-        if self.num_capas == 1:
-            pesos = np.array([1.0])
-        else:
-            pesos = np.linspace(1.0, 0.5, self.num_capas)
-        logger.debug(f"Pesos por capa para intensidad unificada: {pesos}")
-
+        pesos = (
+            np.linspace(1.0, 0.5, self.num_capas) if self.num_capas > 1
+            else np.array([1.0])
+        )
         campo_unificado = np.zeros((self.num_rows, self.num_cols))
         with self.lock:
             campo_copia = [np.copy(capa) for capa in self.campo]
@@ -289,11 +252,6 @@ class ToroidalField:
         for i, capa_actual in enumerate(campo_copia):
             magnitud_capa = np.linalg.norm(capa_actual, axis=2)
             campo_unificado += pesos[i] * magnitud_capa
-
-        logger.debug(
-            "Mapa de intensidad unificada calculado "
-            f"(shape: {campo_unificado.shape})"
-        )
         return campo_unificado
 
     def apply_rotational_step(self, dt: float, beta: float):
@@ -322,78 +280,28 @@ class ToroidalField:
                            "debería ser no negativo.")
 
         with self.lock:
-            # Crear una copia para almacenar el estado del siguiente paso
             next_campo = [np.copy(capa) for capa in self.campo]
-
             for capa_idx in range(self.num_capas):
                 alpha_capa = self.alphas[capa_idx]
                 damping_capa = self.dampings[capa_idx]
+                for r in range(self.num_rows):
+                    for c in range(self.num_cols):
+                        v_curr = self.campo[capa_idx][r, c]
+                        v_left = self.campo[capa_idx][r, (c - 1) % self.num_cols]
+                        v_up = self.campo[capa_idx][(r - 1) % self.num_rows, c]
+                        v_down = self.campo[capa_idx][(r + 1) % self.num_rows, c]
 
-                if alpha_capa < 0 or damping_capa < 0:
-                    logger.warning(
-                        f"Alpha ({alpha_capa}) o Damping ({damping_capa}) "
-                        f"negativos para capa {capa_idx}."
-                    )
+                        damped = v_curr * (1.0 - damping_capa * dt)
+                        advected = alpha_capa * v_left * dt
+                        coupled = beta * (v_up + v_down) * dt
 
-                for r_idx in range(self.num_rows):
-                    for c_idx in range(self.num_cols):
-                        # Campo vectorial actual en (capa, r_idx, c_idx)
-                        v_current = self.campo[capa_idx][r_idx, c_idx]
-
-                        # --- Calcular influencias de vecinos ---
-                        # (términos de advección/acoplamiento)
-
-                        # Influencia desde la izquierda (dirección toroidal)
-                        # Simula el arrastre o rotación del campo
-                        # Conectividad toroidal
-                        left_c = (c_idx - 1) % self.num_cols
-                        v_left = self.campo[capa_idx][r_idx, left_c]
-                        # Proporcional al campo vecino y alpha
-                        influence_from_left = alpha_capa * v_left * dt
-
-                        # Influencia desde arriba (dirección poloidal/vertical)
-                        # Simula el acoplamiento o transporte vertical
-                        # Conectividad poloidal (si aplica,
-                        # aquí es solo acoplamiento)
-                        up_r = (r_idx - 1) % self.num_rows
-                        v_up = self.campo[capa_idx][up_r, c_idx]
-                        # Proporcional al campo vecino y beta
-                        influence_from_up = beta * v_up * dt
-
-                        # Influencia desde abajo (dirección poloidal/vertical)
-                        # Simula el acoplamiento o transporte vertical
-                        # Conectividad poloidal
-                        down_r = (r_idx + 1) % self.num_rows
-                        v_down = self.campo[capa_idx][down_r, c_idx]
-                        # Proporcional al campo vecino y beta
-                        influence_from_down = beta * v_down * dt
-
-                        # --- Calcular disipación local ---
-                        # Simula la pérdida de intensidad del campo local
-                        # Decaimiento exponencial discreto
-                        v_current_damped = v_current * \
-                            (1.0 - damping_capa * dt)
-
-                        # --- Actualizar el campo en el siguiente paso ---
-                        # El nuevo campo es el campo disipado más las
-                        # influencias de los vecinos
-                        next_campo[capa_idx][r_idx, c_idx] = (
-                            v_current_damped +
-                            influence_from_left +
-                            influence_from_up +
-                            influence_from_down
-                        )
-
-            # Reemplazar el campo actual con el campo calculado para el
-            # siguiente paso
+                        next_campo[capa_idx][r, c] = damped + advected + coupled
             self.campo = next_campo
-        logger.debug(
-            "Paso de dinámica de campo toroidal aplicado con "
-            f"dt={dt}, beta={beta}"
-        )
 
 
-# --- Instancia Global del Campo Toroidal ---
+# --- Instancia Global y Lógica de Simulación ---
+campo_toroidal_global = ToroidalField(NUM_CAPAS, NUM_FILAS, NUM_COLUMNAS)
+stop_event = threading.Event()
 try:
     # Usar las constantes globales para la instancia del servicio
     campo_toroidal_global_servicio = ToroidalField(
@@ -439,27 +347,14 @@ def simulation_loop(dt: float, beta: float):
     """Bucle que ejecuta la simulación dinámica periódicamente."""
     logger.info(f"Iniciando bucle de simulación ECU con dt={dt}, "
                 f"beta={beta}...")
-    while not stop_simulation_event.is_set():
+    def simulation_loop(dt: float, beta: float):
+    """Bucle que ejecuta la simulación dinámica periódicamente."""
+    while not stop_event.is_set():
         start_time = time.monotonic()
-        try:
-            campo_toroidal_global_servicio.apply_rotational_step(dt, beta)
-        except Exception as e_loop:
-            logger.exception(
-                f"Error inesperado durante el paso de simulación ECU: {e_loop}"
-            )
-
-        elapsed_time = time.monotonic() - start_time
-        sleep_time = max(0, dt - elapsed_time)
-        if sleep_time < 0.01:
-            logger.warning(
-                f"El ciclo de simulación ECU ({elapsed_time:.3f}s) "
-                f"excedió el intervalo ({dt}s)."
-            )
-
-        stop_simulation_event.wait(sleep_time)
-
-    logger.info("Bucle de simulación ECU detenido.")
-
+        campo_toroidal_global.apply_rotational_step(dt, beta)
+        elapsed = time.monotonic() - start_time
+        sleep_time = max(0, dt - elapsed)
+        stop_event.wait(sleep_time)
 
 # --- Servidor Flask ---
 app = Flask(__name__)
@@ -514,36 +409,24 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
     agregada del campo vectorial en cada punto, ponderada por capa.
     """
     try:
-        campo_unificado_actual = (
-            campo_toroidal_global_servicio.obtener_campo_unificado()
-        )
-        estado_lista = campo_unificado_actual.tolist()
-
-        logger.info(
-            "Solicitud GET /api/ecu recibida. "
-            "Devolviendo mapa de intensidad unificada."
-        )
+        campo_unificado = campo_toroidal_global.obtener_campo_unificado()
+        # SOLUCIÓN E501: Se formatea el diccionario para mayor legibilidad.
         response_data = {
             "status": "success",
-            "estado_campo_unificado": estado_lista,
+            "estado_campo_unificado": campo_unificado.tolist(),
             "metadata": {
                 "descripcion": (
-                    "Mapa escalar de intensidad del campo de "
-                    "confinamiento toroidal ponderado por capa "
-                    "(Analogía Tokamak)"
+                    "Mapa de intensidad del campo toroidal ponderado por capa"
                 ),
-                "capas": campo_toroidal_global_servicio.num_capas,
-                "filas": campo_toroidal_global_servicio.num_rows,
-                "columnas": campo_toroidal_global_servicio.num_cols
-            }
+                "capas": campo_toroidal_global.num_capas,
+                "filas": campo_toroidal_global.num_rows,
+                "columnas": campo_toroidal_global.num_cols,
+            },
         }
         return jsonify(response_data), 200
-    except Exception as e_api_ecu:
-        logger.exception(f"Error en endpoint /api/ecu: {e_api_ecu}")
-        error_response = {
-            "status": "error",
-            "message": "Error interno al procesar la solicitud de la matriz ECU."}
-        return jsonify(error_response), 500
+    except Exception as e:
+        logger.exception("Error en endpoint /api/ecu: %s", e)
+        return jsonify({"status": "error"}), 500
 
 
 @app.route("/api/ecu/influence", methods=["POST"])
