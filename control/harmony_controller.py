@@ -38,7 +38,7 @@ logger = logging.getLogger("harmony_controller")
 
 # --- Configuración del Controlador ---
 
-# --- MODIFICADO: MANAGED_TOOLS ya no se lee de ENV, se poblará dinámicamente ---
+# --- MODIFICADO: MANAGED_TOOLS ya no se lee de ENV, se poblará dinámicamente
 # WATCHERS_TOOLS_JSON = os.environ.get('WATCHERS_TOOLS_CONFIG', '{}')
 # try:
 #     MANAGED_TOOLS_INIT: Dict[str, str] = json.loads(WATCHERS_TOOLS_JSON)
@@ -58,25 +58,17 @@ KI_INIT = float(os.environ.get("HC_KI", 0.1))
 KD_INIT = float(os.environ.get("HC_KD", 0.05))
 
 SETPOINT_VECTOR_JSON = os.environ.get(
-    "HC_SETPOINT_VECTOR", "[1.0, 0.0]"
-)  # Ajustado default
+    "HC_SETPOINT_VECTOR", "[1.0, 0.0]")  # Default
 try:
     setpoint_vector_init = np.array(
-        json.loads(SETPOINT_VECTOR_JSON), dtype=float
-    )
+        json.loads(SETPOINT_VECTOR_JSON), dtype=float)
     setpoint_init = np.linalg.norm(setpoint_vector_init)
-    logger.info(
-        "Setpoint inicial (norma): %.3f (derivado de %s)",
-        setpoint_init, setpoint_vector_init.tolist()
-    )
+    logger.info("SP inicial (norma): %.3f (vec: %s)",
+                setpoint_init, setpoint_vector_init.tolist())
 except (json.JSONDecodeError, ValueError):
-    logger.error(
-        "Error al procesar HC_SETPOINT_VECTOR: %s. Usando setpoint=1.0",
-        SETPOINT_VECTOR_JSON
-    )
-    setpoint_vector_init = np.array(
-        [1.0, 0.0]
-    )  # Default consistente con AgentAI
+    logger.error("Error HC_SETPOINT_VECTOR: %s. Usando SP=1.0",
+                 SETPOINT_VECTOR_JSON)
+    setpoint_vector_init = np.array([1.0, 0.0])  # Default
     setpoint_init = 1.0
 
 CONTROL_LOOP_INTERVAL = float(os.environ.get("HC_INTERVAL", 1.0))
@@ -95,17 +87,17 @@ class HarmonyControllerState:
         initial_setpoint=setpoint_init,
         initial_setpoint_vector=setpoint_vector_init,
     ):
-        self.pid_controller = BosonPhase(kp, ki, kd, setpoint=initial_setpoint)
+        self.pid_controller = BosonPhase(kp, ki, kd,
+                                         setpoint=initial_setpoint)
         self.current_setpoint = initial_setpoint
-        self.setpoint_vector = (
-            initial_setpoint_vector.tolist()
-            if isinstance(initial_setpoint_vector, np.ndarray)
-            else initial_setpoint_vector
-        )
+        if isinstance(initial_setpoint_vector, np.ndarray):
+            self.setpoint_vector = initial_setpoint_vector.tolist()
+        else:
+            self.setpoint_vector = initial_setpoint_vector
         self.last_ecu_state: List[List[float]] = []
-        # --- MODIFICADO: Estructura para almacenar detalles, incluyendo naturaleza ---
-        # Clave: nombre_tool, Valor: Dict{'url': str, 'aporta_a': str, 'naturaleza': str,
-        # 'last_state': Any, 'last_control': float}
+        # MODIFICADO: Estructura para almacenar detalles, incluyendo naturaleza
+        # Clave: nombre_tool, Valor: Dict{'url': str, 'aporta_a': str,
+        # 'naturaleza': str, 'last_state': Any, 'last_control': float}
         self.managed_tools_details: Dict[str, Dict[str, Any]] = {}
         self.last_measurement: float = 0.0
         self.last_pid_output: float = 0.0
@@ -132,26 +124,19 @@ class HarmonyControllerState:
             )
 
     # MODIFICADO: register_managed_tool ahora acepta y almacena 'naturaleza'
-    # ###
-    def register_managed_tool(
-        self, nombre: str, url: str, aporta_a: str, naturaleza: str
-    ):  # MODIFICADO
+    def register_managed_tool(self, nombre: str, url: str, aporta_a: str,
+                              naturaleza: str):  # MODIFICADO
         with self.lock:
             if nombre not in self.managed_tools_details:
                 self.managed_tools_details[nombre] = {}
-                logger.info(
-                    "Registrando tool: '%s' (URL: %s, Aporta: %s, Nat: %s)",
-                    nombre, url, aporta_a, naturaleza
-                )  # MODIFICADO
+                logger.info("Registrando tool: '%s' (URL: %s, Aporta: %s, "
+                            "Nat: %s)", nombre, url, aporta_a, naturaleza)
             else:
-                logger.info(
-                    "Actualizando información del tool gestionado: '%s'", nombre
-                )
+                logger.info("Actualizando información del tool gestionado: "
+                            "'%s'", nombre)
             self.managed_tools_details[nombre]["url"] = url
             self.managed_tools_details[nombre]["aporta_a"] = aporta_a
-            self.managed_tools_details[nombre][
-                "naturaleza"
-            ] = naturaleza  # NUEVO ###
+            self.managed_tools_details[nombre]["naturaleza"] = naturaleza
             self.managed_tools_details[nombre]["last_state"] = {
                 "status": "unknown"
             }
@@ -165,10 +150,9 @@ class HarmonyControllerState:
                 del self.managed_tools_details[nombre]
             else:
                 logger.warning(
-                    f"Intento de eliminar tool no gestionado: '{nombre}'"
-                )
+                    f"Intento de eliminar tool no gestionado: '{nombre}'")
 
-    ### MODIFICADO: get_state_snapshot ahora incluye 'naturaleza' ###
+    # MODIFICADO: get_state_snapshot ahora incluye 'naturaleza'
     def get_state_snapshot(self) -> Dict[str, Any]:
         with self.lock:
             tools_snapshot = {}
@@ -176,10 +160,9 @@ class HarmonyControllerState:
                 tools_snapshot[name] = {
                     "url": details.get("url"),
                     "aporta_a": details.get("aporta_a"),
-                    "naturaleza": details.get("naturaleza"),  # NUEVO ###
-                    "last_state": details.get(
-                        "last_state", {"status": "unknown"}
-                    ),
+                    "naturaleza": details.get("naturaleza"),  # NUEVO
+                    "last_state": details.get("last_state",
+                                              {"status": "unknown"}),
                     "last_control": details.get("last_control", 0.0),
                 }
 
@@ -202,7 +185,8 @@ class HarmonyControllerState:
 controller_state = HarmonyControllerState()
 
 
-# --- Funciones Auxiliares de Comunicación (get_ecu_state, get_tool_state, send_tool_control sin cambios funcionales) ---
+# --- Funciones Auxiliares de Comunicación (get_ecu_state, get_tool_state,
+# send_tool_control sin cambios funcionales) ---
 def get_ecu_state() -> Optional[List[List[float]]]:
     """Obtiene el estado unificado de la ECU vía API REST con reintentos."""
     url = ECU_API_URL
@@ -214,24 +198,21 @@ def get_ecu_state() -> Optional[List[List[float]]]:
             if data.get("status") == "success":
                 state_list = data.get("estado_campo_unificado")
                 if isinstance(state_list, list) and all(
-                    isinstance(row, list) for row in state_list
-                ):
-                    logger.debug(
-                        f"Estado ECU recibido: {len(state_list)}x{len(state_list[0]) if state_list else 0} puntos"
-                    )
+                        isinstance(row, list) for row in state_list):
+                    logger.debug(f"Estado ECU recibido: {len(state_list)}x"
+                                 f"{len(state_list[0]) if state_list else 0} "
+                                 "puntos")
                     return state_list
                 else:
-                    logger.error(
-                        f"Clave 'estado_campo_unificado' encontrada pero no es lista de listas: {type(state_list)}"
-                    )
+                    logger.error("Clave 'estado_campo_unificado' encontrada "
+                                 "pero no es lista de listas: "
+                                 f"{type(state_list)}")
             else:
-                logger.warning(
-                    f"Respuesta de ECU no exitosa: {data.get('message', 'Formato desconocido')}"
-                )
+                logger.warning("Respuesta de ECU no exitosa: "
+                               f"{data.get('message', 'Formato desconocido')}")
         except BaseException as e:
-            logger.error(
-                f"Error al obtener/procesar estado de ECU ({url}) intento {attempt+1}: {type(e).__name__} - {e}"
-            )
+            logger.error(f"Error al obtener/procesar estado de ECU ({url}) "
+                         f"intento {attempt+1}: {type(e).__name__} - {e}")
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
                 time.sleep(delay)
@@ -239,54 +220,51 @@ def get_ecu_state() -> Optional[List[List[float]]]:
 
 
 def get_tool_state(tool_name: str, base_url: str) -> Dict[str, Any]:
-    """Obtiene el estado de un watcher_tool específico vía API REST con reintentos."""
+    """Obtiene el estado de un watcher_tool específico vía API REST."""
     state_url = f"{base_url}/api/state"
     for attempt in range(MAX_RETRIES):
         try:
             response = requests.get(state_url, timeout=REQUESTS_TIMEOUT)
             response.raise_for_status()
             data = response.json()
-            logger.debug(
-                f"Estado recibido de {tool_name}: {data.get('state', data)}"
-            )
+            logger.debug(f"Estado recibido de {tool_name}: "
+                         f"{data.get('state', data)}")
             return data.get("state", {"status": "success", "raw_data": data})
         except Exception as e:
-            logger.warning(
-                f"Error al obtener estado de {tool_name} ({state_url}) intento {attempt+1}: {type(e).__name__} - {e}"
-            )
+            logger.warning(f"Error al obtener estado de {tool_name} "
+                           f"({state_url}) intento {attempt+1}: "
+                           f"{type(e).__name__} - {e}")
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
                 time.sleep(delay)
     return {
         "status": "error",
-        "message": f"No se pudo obtener estado después de {MAX_RETRIES} intentos",
+        "message": f"No se pudo obtener estado después de {MAX_RETRIES} "
+                   "intentos",
     }
 
 
 def send_tool_control(tool_name: str, base_url: str, control_signal: float):
-    """Envía una señal de control a un watcher_tool específico vía API REST con reintentos."""
+    """Envía señal de control a un watcher_tool específico vía API REST."""
     control_url = f"{base_url}/api/control"
     payload = {"control_signal": control_signal}
     for attempt in range(MAX_RETRIES):
         try:
-            response = requests.post(
-                control_url, json=payload, timeout=REQUESTS_TIMEOUT
-            )
+            response = requests.post(control_url, json=payload,
+                                     timeout=REQUESTS_TIMEOUT)
             response.raise_for_status()
-            logger.info(
-                f"Señal de control {control_signal:.3f} enviada a {tool_name}. Respuesta: {response.status_code}"
-            )
+            logger.info(f"Señal de control {control_signal:.3f} enviada a "
+                        f"{tool_name}. Respuesta: {response.status_code}")
             return True
         except Exception as e:
-            logger.warning(
-                f"Error al enviar control a {tool_name} ({control_url}) intento {attempt+1}: {type(e).__name__} - {e}"
-            )
+            logger.warning(f"Error al enviar control a {tool_name} "
+                           f"({control_url}) intento {attempt+1}: "
+                           f"{type(e).__name__} - {e}")
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
                 time.sleep(delay)
-    logger.error(
-        f"No se pudo enviar señal de control a {tool_name} después de {MAX_RETRIES} intentos."
-    )
+    logger.error(f"No se pudo enviar señal de control a {tool_name} "
+                 f"después de {MAX_RETRIES} intentos.")
     return False
 
 
@@ -348,39 +326,30 @@ def harmony_control_loop():
         pid_output = 0.0
         if hasattr(controller_state, "pid_controller"):
             pid_output = controller_state.pid_controller.compute(
-                current_sp_norm, current_measurement, dt
-            )
-            logger.debug(
-                f"[ControlLoop] SetpointNorm={current_sp_norm:.3f}, Measurement={current_measurement:.3f}, PID Output={pid_output:.3f}"
-            )
+                current_sp_norm, current_measurement, dt)
+            logger.debug("[CtrlLoop] SP=%.3f, PV=%.3f, PIDOut=%.3f",
+                         current_sp_norm, current_measurement, pid_output)
         else:
             logger.error("Instancia PID no encontrada en controller_state.")
 
         # 4. Calcular Pesos y Enviar Señales de Control Específicas
-        control_weights = [
-            1.0 / num_control_axes
-        ] * num_control_axes  # Default: pesos iguales
+        control_weights = [1.0 / num_control_axes] * num_control_axes
         if len(current_setpoint_vector) >= num_control_axes:
-            relevant_setpoint_components = [
-                current_setpoint_vector[i] for i in range(num_control_axes)
-            ]
-            abs_components = np.abs(relevant_setpoint_components)
-            sum_abs_components = np.sum(abs_components)
-            if sum_abs_components > 1e-9:
-                control_weights = abs_components / sum_abs_components
-                logger.debug(
-                    f"[ControlLoop] SetpointVector (relevant): {relevant_setpoint_components}, Calculated Weights: {control_weights.tolist()}"
-                )
+            rel_sp_comps = [current_setpoint_vector[i]
+                            for i in range(num_control_axes)]
+            abs_comps = np.abs(rel_sp_comps)
+            sum_abs_comps = np.sum(abs_comps)
+            if sum_abs_comps > 1e-9:
+                control_weights = abs_comps / sum_abs_comps
+                logger.debug("[CtrlLoop] RelSPComps: %s, Wgts: %s",
+                             rel_sp_comps, control_weights.tolist())
             else:
                 logger.debug(
-                    f"[ControlLoop] SetpointVector componentes relevantes cero. Usando pesos iguales."
-                )
-                # Mantener pesos iguales ya asignados
+                    "[CtrlLoop] RelSPComps zero. Equal wgts.")  # Corrected
         else:
             logger.warning(
-                f"[ControlLoop] SetpointVector (len={len(current_setpoint_vector)}) "
-                f"no tiene suficientes dimensiones ({num_control_axes}). Usando pesos iguales.")
-            # Mantener pesos iguales ya asignados
+                "[CtrlLoop] SPVec (len=%d) no axes (%d). Eq Wgts.",  # Corrected
+                len(current_setpoint_vector), num_control_axes)
 
         current_tools_state: Dict[str, Any] = {}
         control_signals_sent: Dict[str, float] = {}
@@ -388,9 +357,7 @@ def harmony_control_loop():
         for name, details in managed_tools_loop_copy.items():
             tool_url = details.get("url")
             tool_aporta_a = details.get("aporta_a")
-            tool_naturaleza = details.get(
-                "naturaleza"
-            )  # NUEVO: Obtener naturaleza ###
+            tool_naturaleza = details.get("naturaleza")  # NUEVO
 
             if not tool_url:
                 logger.error(f"No hay URL definida para '{name}'. Saltando.")
@@ -401,53 +368,46 @@ def harmony_control_loop():
                 continue
 
             # --- Calcular Señal Específica (CON LÓGICA DE NATURALEZA) ---
-        signal_to_send = 0.0  # Default seguro
-        control_index = affinity_to_setpoint_index.get(tool_aporta_a)
+            signal_to_send = 0.0  # Default seguro
+            control_index = affinity_to_setpoint_index.get(tool_aporta_a)
 
-        if control_index is not None:
-            weight = control_weights[control_index]
-            base_signal = pid_output * weight
-            # --- INICIO: Lógica basada en tool_naturaleza ---
-            if tool_naturaleza == "potenciador":
-                # Si PID pide aumentar (>0), potenciar más (señal base).
-                # Si PID pide reducir (<0), potenciar menos (señal base).
-                signal_to_send = base_signal
-                log_nature_logic = f"signal = base ({base_signal:.3f})"
-            elif tool_naturaleza == "reductor":
-                # Si PID pide reducir (<0), enviar señal positiva (reducir más).
-                # Si PID pide aumentar (>0), enviar señal negativa (reducir
-                # menos).
-                signal_to_send = -base_signal  # Invertir señal base
-                log_nature_logic = f"signal = -base ({-base_signal:.3f})"
-            elif (
-                tool_naturaleza == "modulador" or tool_naturaleza == "actuador"
-            ):
-                # Pasar señal base, el tool la interpreta.
-                signal_to_send = base_signal
-                log_nature_logic = f"signal = base ({base_signal:.3f})"
-            elif (
-                tool_naturaleza == "sensor" or tool_naturaleza == "convertidor"
-            ):
-                # No controlar activamente.
-                signal_to_send = 0.0
-                log_nature_logic = "signal = 0.0 (pasivo)"
-            else:
-                # Naturaleza desconocida.
-                logger.warning(
-                    f"[CtrlDiff] Naturaleza '{tool_naturaleza}' desconocida para '{name}'. Enviando señal 0.0."
-                )
-                signal_to_send = 0.0
-                log_nature_logic = "signal = 0.0 (desconocido)"
+            if control_index is not None:
+                # Use the original name
+                weight = control_weights[control_index]
+                base_signal = pid_output * weight
+                # --- INICIO: Lógica basada en tool_naturaleza ---
+                if tool_naturaleza == "potenciador":
+                    signal_to_send = base_signal
+                    log_nature_logic = f"signal = base ({base_signal:.3f})"
+                elif tool_naturaleza == "reductor":
+                    signal_to_send = -base_signal  # Invertir señal base
+                    log_nature_logic = f"signal = -base ({-base_signal:.3f})"
+                elif tool_naturaleza in ("modulador", "actuador"):
+                    signal_to_send = base_signal
+                    log_nature_logic = f"signal = base ({base_signal:.3f})"
+                elif tool_naturaleza in ("sensor", "convertidor"):
+                    signal_to_send = 0.0
+                    log_nature_logic = "signal = 0.0 (pasivo)"
+                else:  # Naturaleza desconocida
+                    logger.warning("[CtrlDiff] Naturaleza '%s' desconocida "
+                                   "para '%s'. Enviando señal 0.0.",
+                                   tool_naturaleza, name)
+                    signal_to_send = 0.0
+                    log_nature_logic = "signal = 0.0 (desconocido)"
                 # --- FIN: Lógica basada en tool_naturaleza ---
 
-                logger.debug(
-                    f"[CtrlDiff] Tool '{name}' (Aporta: {tool_aporta_a}, Nat: {tool_naturaleza}, Idx: {control_index}): "
-                    f"Weight={weight:.3f}, PIDOut={pid_output:.3f}, BaseSig={base_signal:.3f} -> Logic: {log_nature_logic} -> FinalSignal={signal_to_send:.3f}")
-        else:  # control_index is None
-            logger.warning(
-                f"[CtrlDiff] Afinidad '{tool_aporta_a}' para tool '{name}' no mapeada. Enviando señal 0.0."
-            )
-            signal_to_send = 0.0
+                logger.debug("[CtrlDiff] Tool '%s' (Aporta: %s, Nat: %s, "
+                             "Idx: %s): W=%.3f, PIDOut=%.3f, BaseSig=%.3f -> "
+                             "Idx: %s): W=%.3f, PIDOut=%.3f, BaseSig=%.3f",
+                             name, tool_aporta_a, tool_naturaleza,
+                             control_index, weight, pid_output, base_signal)
+                logger.debug("  -> Logic: %s, FinalSig=%.3f",
+                             log_nature_logic, signal_to_send)
+            else:  # control_index is None
+                logger.warning(
+                    "[CtrlDiff] Affinity '%s'/'%s' unmapped. Sig 0.0.",  # Corrected
+                    tool_aporta_a, name)
+                signal_to_send = 0.0
             # --- Fin Calcular Señal Específica ---
 
             if send_tool_control(name, tool_url, signal_to_send):
@@ -546,67 +506,47 @@ def set_harmony_setpoint():
             vec = np.array(new_vector, dtype=float)
             val = np.linalg.norm(vec)
             controller_state.update_setpoint(val, vec.tolist())
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": f"Setpoint actualizado a norma({val:.3f}) desde vector.",
-                        "new_setpoint_value": val,
-                        "new_setpoint_vector": vec.tolist(),
-                    }),
-                200,
-            )
+            return jsonify({
+                "status": "success",
+                "message": f"Setpoint norma({val:.3f}) desde vector.",
+                "new_setpoint_value": val,
+                "new_setpoint_vector": vec.tolist(),
+            }), 200
         elif new_value is not None:
             val = float(new_value)
             controller_state.update_setpoint(val, None)
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": "Setpoint actualizado a valor.",
-                        "new_setpoint_value": val,
-                    }
-                ),
-                200,
-            )
+            return jsonify({
+                "status": "success",
+                "message": "Setpoint actualizado a valor.",
+                "new_setpoint_value": val,
+            }), 200
         else:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Se requiere 'setpoint_value' o 'setpoint_vector' en el JSON.",
-                    }),
-                400,
-            )
+            return jsonify({
+                "status": "error",
+                "message": ("Se requiere 'setpoint_value' o "
+                            "'setpoint_vector' en el JSON.")
+            }), 400
     except (ValueError, TypeError) as e:
         logger.error(f"Error al procesar nuevo setpoint: {e}")
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": f"Error en el formato de los datos: {e}",
-                }
-            ),
-            400,
-        )
-    except Exception:  # F841: e is not used when logger.exception is called
+        return jsonify({
+            "status": "error",
+            "message": f"Error en el formato de los datos: {e}",
+        }), 400
+    except Exception:  # F841: e is not used
         logger.exception("Error inesperado al actualizar setpoint.")
-        return (
-            jsonify(
-                {"status": "error", "message": "Error interno del servidor."}
-            ),
-            500,
-        )
+        return jsonify({
+            "status": "error",
+            "message": "Error interno del servidor."
+        }), 500
 
 
-# MODIFICADO: Endpoint /api/harmony/register_tool ahora espera
-# 'naturaleza' ###
+# MODIFICADO: Endpoint /api/harmony/register_tool ahora espera 'naturaleza'
 @app.route("/api/harmony/register_tool", methods=["POST"])
 def register_tool_from_ai():
     """
     Endpoint para que AgentAI notifique sobre un tool auxiliar gestionable.
-    Espera JSON: {"nombre": str, "url": str, "aporta_a": str, "naturaleza": str}
-    # MODIFICADO
+    Espera JSON: {"nombre": str, "url": str, "aporta_a": str,
+                  "naturaleza": str} # MODIFICADO
     """
     data = request.get_json()
     if not data:
@@ -654,47 +594,39 @@ def register_tool_from_ai():
             ),
             400,
         )
-    ### NUEVO: Validar naturaleza ###
+    # NUEVO: Validar naturaleza
     if not naturaleza or not isinstance(naturaleza, str):
         return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "Campo 'naturaleza' ausente o inválido.",
-                }
-            ),
+            jsonify({
+                "status": "error",
+                "message": "Campo 'naturaleza' ausente o inválido.",
+            }),
             400,
         )
-    # Podrías añadir validación contra una lista de naturalezas permitidas si quieres ser estricto
-    # naturalezas_validas = ["potenciador", "reductor", "modulador", "sensor", "actuador", "convertidor"]
+    # Podrías añadir validación contra una lista de naturalezas permitidas
+    # si quieres ser estricto.
+    # naturalezas_validas = ["potenciador", "reductor", "modulador",
+    # "sensor", "actuador", "convertidor"]
     # if naturaleza not in naturalezas_validas:
-    # return jsonify({"status": "error", "message": f"Naturaleza
-    # '{naturaleza}' no reconocida."}), 400
+    #     return jsonify({"status": "error", "message":
+    #                     f"Naturaleza '{naturaleza}' no reconocida."}), 400
 
     try:
         # Pasar naturaleza al método de registro
         controller_state.register_managed_tool(
-            nombre, url, aporta_a, naturaleza
-        )  # MODIFICADO ###
-        return (
-            jsonify(
-                {
-                    "status": "success",
-                    "message": f"Tool '{nombre}' registrado/actualizado en Harmony Controller.",
-                }),
-            200,
-        )
-    except Exception:  # F841: e is not used when logger.exception is called
-        logger.exception(f"Error al registrar tool '{nombre}' desde AgentAI.")
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "Error interno al registrar el tool.",
-                }
-            ),
-            500,
-        )
+            nombre, url, aporta_a, naturaleza)  # MODIFICADO
+        return jsonify({
+            "status": "success",
+            "message": (f"Tool '{nombre}' registrado/actualizado en "
+                        "Harmony Controller.")
+        }), 200
+    except Exception as e:
+        logger.exception(
+            f"Error al registrar tool '{nombre}' desde AgentAI: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Error interno al registrar el tool."
+        }), 500
 
 
 # ... (Endpoint /api/harmony/pid/reset sin cambios) ...
@@ -704,28 +636,21 @@ def reset_pid():
     try:
         if hasattr(controller_state, "pid_controller"):
             controller_state.pid_controller.reset()
-            return (
-                jsonify({"status": "success", "message": "PID reiniciado."}),
-                200,
-            )
+            return jsonify({
+                "status": "success",
+                "message": "PID reiniciado."
+            }), 200
         else:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Controlador PID no encontrado.",
-                    }
-                ),
-                500,
-            )
-    except Exception:  # F841: e is not used when logger.exception is called
-        logger.exception("Error inesperado al reiniciar PID.")
-        return (
-            jsonify(
-                {"status": "error", "message": "Error interno del servidor."}
-            ),
-            500,
-        )
+            return jsonify({
+                "status": "error",
+                "message": "Controlador PID no encontrado."
+            }), 500
+    except Exception as e:
+        logger.exception(f"Error inesperado al reiniciar PID: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Error interno del servidor."
+        }), 500
 
 
 # --- Punto de Entrada (sin cambios) ---
@@ -735,9 +660,8 @@ def main():
     )
     control_thread.start()
     port = int(os.environ.get("HC_PORT", 7000))
-    logger.info(
-        f"Iniciando servidor Flask para Harmony Controller en puerto {port}..."
-    )
+    logger.info("Iniciando servidor Flask para Harmony Controller "
+                f"en puerto {port}...")
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
 
