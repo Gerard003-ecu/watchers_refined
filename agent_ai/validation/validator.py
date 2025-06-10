@@ -15,7 +15,7 @@ def validate_module_registration(module_data):
     """
     Verifica que el módulo a registrar contenga los campos obligatorios:
       - nombre, url.
-      # - requirements_path (Opcional/Eliminado temporalmente si no se implementa check)
+      # - requirements_path (Opcional, temporalmente eliminado)
 
     Retorna:
       (True, "Módulo válido") si la validación es exitosa;

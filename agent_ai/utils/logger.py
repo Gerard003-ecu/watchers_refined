@@ -12,7 +12,8 @@ try:
     os.makedirs(LOG_DIR, exist_ok=True)  # Ahora LOG_DIR está definido
 except OSError as e:
     print(
-        f"ADVERTENCIA: No se pudo crear el directorio de logs '{LOG_DIR}': {e}",
+        f"ADVERTENCIA: No se pudo crear el directorio de logs '{LOG_DIR}': "
+        f"{e}",
         file=sys.stderr,
     )
 
