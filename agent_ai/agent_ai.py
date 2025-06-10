@@ -89,7 +89,9 @@ class AgentAI:
                 "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando "
                 "default [1.0, 0.0]"
             )
-            logger.error(log_msg, initial_vector_str, e)
+            logger.error(
+                log_msg, initial_vector_str, e
+            )
             self.target_setpoint_vector = [1.0, 0.0]
         self.current_strategy: str = os.environ.get(
             "AA_INITIAL_STRATEGY", "default"
@@ -261,9 +263,13 @@ class AgentAI:
                     )
                     return response_data["data"]
                 else:
-                    logger.warning("Respuesta inválida desde Harmony: %s", response_data)
+                    logger.warning(
+                        "Respuesta inválida desde Harmony: %s", response_data
+                    )
             except Exception as e:
-                logger.exception("Error inesperado (intento %s): %s", attempt + 1, e)
+                logger.exception(
+                    "Error inesperado (intento %s): %s", attempt + 1, e
+                )
 
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2 ** attempt)
@@ -337,7 +343,10 @@ class AgentAI:
         )
 
         stability_threshold = (
-            0.1 * current_target_norm if current_target_norm > 0 else 0.1)
+            0.1 * current_target_norm 
+            if current_target_norm > 0 
+            else 0.1
+        )
         pid_effort_threshold = 0.5
 
         def adjust_vector(vector, scale):
@@ -356,10 +365,8 @@ class AgentAI:
                     new_target_vector = adjust_vector(
                         new_target_vector, 0.98
                     )
-            if (
-                aux_stats["malla"]["reductor"]
-                > aux_stats["malla"]["potenciador"]
-            ):
+            if aux_stats["malla"]["reductor"] > \
+                    aux_stats["malla"]["potenciador"]:
                 logger.info(
                     "[Estabilidad] Más reductores en malla, reducción extra."
                 )
@@ -388,7 +395,8 @@ class AgentAI:
                     )
                     dim = len(self.target_setpoint_vector)
                     new_target_vector = [0.1] * dim
-            if aux_stats["ecu"]["potenciador"] > aux_stats["ecu"]["reductor"]:
+            if aux_stats["ecu"]["potenciador"] > \
+                    aux_stats["ecu"]["reductor"]:
                 logger.info(
                     "[Rendimiento] Más potenciadores ECU, aumento extra."
                 )
@@ -492,7 +500,6 @@ class AgentAI:
             MAX_RETRIES,
         )
 
-
     def registrar_modulo(self, modulo_info):
         """Registra un nuevo módulo, valida y almacena sus detalles."""
         req_path = modulo_info.get("requirements_path")
@@ -541,7 +548,8 @@ class AgentAI:
                 return {"status": "error", "mensaje": deps_msg}
             else:
                 logger.warning(
-                    "No se encontró GLOBAL_REQUIREMENTS_PATH en %s, omitiendo chequeo de dependencias para '%s'",
+                    "No se encontró GLOBAL_REQUIREMENTS_PATH en %s, "
+                    "omitiendo chequeo de dependencias para '%s'",
                     GLOBAL_REQUIREMENTS_PATH,
                     nombre,
                 )
@@ -549,7 +557,9 @@ class AgentAI:
 
         with self.lock:
             if nombre in self.modules:
-                logger.warning("Intento de registrar módulo existente: %s", nombre)
+                logger.warning(
+                    "Intento de registrar módulo existente: %s", nombre
+                )
                 return {"status": "error", "mensaje": "El módulo ya está registrado."}
 
             module_entry = {
@@ -606,7 +616,9 @@ class AgentAI:
             modulo_naturaleza = modulo.get("naturaleza_auxiliar")
 
         if not modulo_url_salud:
-            logger.error("No se encontró URL de salud para validar '%s'", nombre)
+            logger.error(
+                "No se encontró URL de salud para validar '%s'", nombre
+            )
             estado_salud = "error_configuracion"
         else:
             estado_salud = "error_desconocido"
@@ -802,7 +814,6 @@ class AgentAI:
                     "mensaje": f"Comando '{comando}' no reconocido",
                 }
 
-
     def recibir_control_cogniboard(self, control_signal):
         """Actualiza la señal de control de Cogniboard."""
         with self.lock:
@@ -836,7 +847,6 @@ class AgentAI:
             "harmony_controller_last_state": harmony_state_copy,
             "registered_modules": modules_list,
         }
-
 
     def shutdown(self):
         """Detiene el bucle estratégico."""
