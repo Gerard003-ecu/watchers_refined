@@ -5,28 +5,33 @@ agent_ai.py - Núcleo Estratégico del Ecosistema Watchers
 Orquesta el sistema a alto nivel:
 - Gestiona el registro y salud de módulos (watchers_tools), capturando
   afinidad ('aporta_a') y naturaleza ('naturaleza_auxiliar').
-- Notifica a Harmony Controller sobre módulos auxiliares saludables,
-  su afinidad y naturaleza.
+- Notifica a Harmony Controller sobre módulos auxiliares saludables, su
+  afinidad y naturaleza.
 - Monitoriza el estado general a través de harmony_controller.
 - Determina el estado deseado (setpoint de armonía).
 - Comunica el setpoint a harmony_controller.
-- Procesa entradas externas (cogniboard, config_agent) y comandos estratégicos.
+- Procesa entradas externas (cogniboard, config_agent) y comandos
+  estratégicos.
 """
 
-
-from flask import Flask, request, jsonify
+# Standard library imports
+import json
+import os
 import threading
 import time
-import requests
-import os
-import json
+from typing import Any, Dict, List, Optional
+
+# Third-party imports
+from flask import Flask, jsonify, request
 import numpy as np
-from typing import Dict, List, Any, Optional
-from validation.validator import (
-    validate_module_registration,
-    check_missing_dependencies,
-)
+import requests
+
+# Local application imports
 from utils.logger import get_logger
+from validation.validator import (
+    check_missing_dependencies,
+    validate_module_registration,
+)
 
 logger = get_logger()
 
@@ -38,25 +43,33 @@ HARMONY_CONTROLLER_REGISTER_URL = os.environ.get(
     "HARMONY_CONTROLLER_REGISTER_URL",
     f"{HARMONY_CONTROLLER_URL}/api/harmony/register_tool",
 )
-HARMONY_CONTROLLER_URL_ENV = (
-    "HARMONY_CONTROLLER_URL"  # Nombre de la variable ENV
+# Nombre de la variable ENV
+HARMONY_CONTROLLER_URL_ENV = "HARMONY_CONTROLLER_URL"
+HARMONY_CONTROLLER_REGISTER_URL_ENV = (
+    "HARMONY_CONTROLLER_REGISTER_URL"
 )
-HARMONY_CONTROLLER_REGISTER_URL_ENV = "HARMONY_CONTROLLER_REGISTER_URL"
 AGENT_AI_ECU_URL_ENV = "AGENT_AI_ECU_URL"
 AGENT_AI_MALLA_URL_ENV = "AGENT_AI_MALLA_URL"
 DEFAULT_HC_URL = "http://harmony_controller:7000"
 DEFAULT_ECU_URL = "http://ecu:8000"
 DEFAULT_MALLA_URL = "http://malla_watcher:5001"
-STRATEGIC_LOOP_INTERVAL = float(os.environ.get("AA_INTERVAL", 5.0))
-REQUESTS_TIMEOUT = float(os.environ.get("AA_REQUESTS_TIMEOUT", 4.0))
+STRATEGIC_LOOP_INTERVAL = float(
+    os.environ.get("AA_INTERVAL", 5.0)
+)
+REQUESTS_TIMEOUT = float(
+    os.environ.get("AA_REQUESTS_TIMEOUT", 4.0)
+)
 GLOBAL_REQUIREMENTS_PATH = os.environ.get(
     "AA_GLOBAL_REQ_PATH", "/app/requirements.txt"
 )
 MAX_RETRIES = int(os.environ.get("AA_MAX_RETRIES", 3))
-BASE_RETRY_DELAY = float(os.environ.get("AA_BASE_RETRY_DELAY", 0.5))
+BASE_RETRY_DELAY = float(
+    os.environ.get("AA_BASE_RETRY_DELAY", 0.5)
+)
 
 
 class AgentAI:
+
     def __init__(self):
         self.modules: Dict[str, Dict] = {}
         self.harmony_state: Dict[str, Any] = {}
@@ -70,27 +83,22 @@ class AgentAI:
             ):
                 self.target_setpoint_vector: List[float] = parsed_vector
             else:
-                raise ValueError(
-                    "El valor parseado no es una lista de números"
-                )
+                raise ValueError("El valor parseado no es una lista de números")
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(
-                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), "
-                "usando default [1.0, 0.0]",
+                "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando default [1.0, 0.0]",
                 initial_vector_str,
                 e,
             )
             self.target_setpoint_vector = [1.0, 0.0]
-        self.current_strategy: str = os.environ.get(
-            "AA_INITIAL_STRATEGY", "default"
-        )
+        self.current_strategy: str = os.environ.get("AA_INITIAL_STRATEGY", "default")
         self.external_inputs: Dict[str, Any] = {
             "cogniboard_signal": None,
             "config_status": None,
         }
         self.lock = threading.Lock()
         self._stop_event = threading.Event()
-        
+
         self.central_urls: Dict[str, str] = {}
         hc_url = os.environ.get(HARMONY_CONTROLLER_URL_ENV)
         self.central_urls["harmony_controller"] = (
@@ -111,8 +119,10 @@ class AgentAI:
             self.central_urls["ecu"],
             self.central_urls["malla_watcher"],
         )
-        
-        hc_reg_url_env = os.environ.get(HARMONY_CONTROLLER_REGISTER_URL_ENV)
+
+        hc_reg_url_env = os.environ.get(
+            HARMONY_CONTROLLER_REGISTER_URL_ENV
+        )
         hc_base_url = self.central_urls["harmony_controller"]
         self.hc_register_url = (
             hc_reg_url_env
@@ -128,6 +138,7 @@ class AgentAI:
         )
         logger.info("AgentAI inicializado.")
 
+
     def start_loop(self):
         """Inicia el bucle estratégico si no está corriendo."""
         if not self._strategic_thread.is_alive():
@@ -142,9 +153,12 @@ class AgentAI:
         else:
             logger.info("Bucle estratégico ya está corriendo.")
 
+
     def _strategic_loop(self):
         """Bucle principal que ejecuta la lógica estratégica periódicamente."""
-        logger.info("Esperando a que harmony_controller esté disponible...")
+        logger.info(
+            "Esperando a que harmony_controller esté disponible..."
+        )
         max_retries_hc_wait = 30
         retry_interval_hc_wait = 2
         hc_ready = False
@@ -153,7 +167,9 @@ class AgentAI:
                 url = f"{HARMONY_CONTROLLER_URL}/api/harmony/state"
                 response = requests.get(url, timeout=REQUESTS_TIMEOUT)
                 if response.status_code == 200:
-                    logger.info("Conexión establecida con harmony_controller")
+                    logger.info(
+                        "Conexión establecida con harmony_controller"
+                    )
                     hc_ready = True
                     break
             except Exception as e:
@@ -179,12 +195,8 @@ class AgentAI:
                         self.harmony_state = current_harmony_state
 
                 with self.lock:
-                    current_measurement = self.harmony_state.get(
-                        "last_measurement", 0.0
-                    )
-                    cogniboard_signal = self.external_inputs[
-                        "cogniboard_signal"
-                    ]
+                    current_measurement = self.harmony_state.get("last_measurement", 0.0)
+                    cogniboard_signal = self.external_inputs["cogniboard_signal"]
                     config_status = self.external_inputs["config_status"]
                     strategy = self.current_strategy
                     modules_copy = dict(self.modules)
@@ -207,7 +219,7 @@ class AgentAI:
                         self.target_setpoint_vector = new_setpoint_vector
                         logger.info(
                             "Nuevo setpoint estratégico determinado: %s",
-                            [f'{x:.3f}' for x in self.target_setpoint_vector]
+                            [f"{x:.3f}" for x in self.target_setpoint_vector],
                         )
 
                 if setpoint_changed:
@@ -215,9 +227,7 @@ class AgentAI:
 
             except BaseException as e:
                 if isinstance(e, (SystemExit, KeyboardInterrupt)):
-                    logger.info(
-                        "Señal de salida recibida en bucle estratégico."
-                    )
+                    logger.info("Señal de salida recibida en bucle estratégico.")
                     break
                 logger.exception("Error inesperado en el bucle estratégico.")
 
@@ -226,6 +236,7 @@ class AgentAI:
             if sleep_time > 0:
                 self._stop_event.wait(sleep_time)
         logger.info("Bucle estratégico detenido.")
+
 
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
         hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
@@ -236,28 +247,20 @@ class AgentAI:
                 response.raise_for_status()
                 response_data = response.json()
 
-                if (
-                    response_data.get("status") == "success"
-                    and "data" in response_data
-                ):
+                if response_data.get("status") == "success" and "data" in response_data:
                     data_preview = str(response_data["data"])[:100]
-                    logger.debug(
-                        "Estado válido recibido de Harmony: %s", data_preview
-                    )
+                    logger.debug("Estado válido recibido de Harmony: %s", data_preview)
                     return response_data["data"]
                 else:
-                    logger.warning(
-                        "Respuesta inválida desde Harmony: %s", response_data
-                    )
+                    logger.warning("Respuesta inválida desde Harmony: %s", response_data)
             except Exception as e:
-                logger.exception(
-                    "Error inesperado (intento %s): %s", attempt + 1, e
-                )
+                logger.exception("Error inesperado (intento %s): %s", attempt + 1, e)
 
             if attempt < MAX_RETRIES - 1:
-                delay = BASE_RETRY_DELAY * (2**attempt)
+                delay = BASE_RETRY_DELAY * (2 ** attempt)
                 logger.debug(
-                    "Reintentando obtener estado de Harmony en %.2fs...", delay
+                    "Reintentando obtener estado de Harmony en %.2fs...",
+                    delay,
                 )
                 time.sleep(delay)
 
@@ -267,8 +270,13 @@ class AgentAI:
         )
         return None
 
+
     def _determine_harmony_setpoint(
-        self, measurement, cogniboard_signal, config_status, strategy, modules
+        self,
+        measurement,
+        cogniboard_signal,
+        strategy,
+        modules,
     ) -> List[float]:
         """
         Determina el vector de setpoint objetivo para Harmony Controller.
@@ -313,7 +321,9 @@ class AgentAI:
                     aux_stats["ecu"][naturaleza] += 1
 
         logger.debug("[SetpointLogic] Estrategia: %s", strategy)
-        log_msg_aux = "[SetpointLogic] Aux: Malla(P:%s,R:%s), ECU(P:%s,R:%s)"
+        log_msg_aux = (
+            "[SetpointLogic] Aux: Malla(P:%s,R:%s), ECU(P:%s,R:%s)"
+        )
         logger.debug(
             log_msg_aux,
             aux_stats["malla"]["potenciador"],
@@ -323,8 +333,7 @@ class AgentAI:
         )
 
         stability_threshold = (
-            0.1 * current_target_norm if current_target_norm > 0 else 0.1
-        )
+            0.1 * current_target_norm if current_target_norm > 0 else 0.1)
         pid_effort_threshold = 0.5
 
         def adjust_vector(vector, scale):
@@ -337,9 +346,12 @@ class AgentAI:
                 norm_vec = np.linalg.norm(new_target_vector)
                 if norm_vec > 1e-6:
                     logger.info(
-                        "[Estrategia Estabilidad] Reduciendo magnitud setpoint."
+                        "[Estrategia Estabilidad] Reduciendo magnitud "
+                        "setpoint."
                     )
-                    new_target_vector = adjust_vector(new_target_vector, 0.98)
+                    new_target_vector = adjust_vector(
+                        new_target_vector, 0.98
+                    )
             if (
                 aux_stats["malla"]["reductor"]
                 > aux_stats["malla"]["potenciador"]
@@ -347,7 +359,9 @@ class AgentAI:
                 logger.info(
                     "[Estabilidad] Más reductores en malla, reducción extra."
                 )
-                new_target_vector = adjust_vector(new_target_vector, 0.97)
+                new_target_vector = adjust_vector(
+                    new_target_vector, 0.97
+                )
 
         elif strategy == "rendimiento":
             if (
@@ -357,12 +371,16 @@ class AgentAI:
                 norm_vec = np.linalg.norm(new_target_vector)
                 if norm_vec > 1e-6:
                     logger.info(
-                        "[Estrategia Rendimiento] Aumentando magnitud setpoint."
+                        "[Estrategia Rendimiento] Aumentando magnitud "
+                        "setpoint."
                     )
-                    new_target_vector = adjust_vector(new_target_vector, 1.02)
+                    new_target_vector = adjust_vector(
+                        new_target_vector, 1.02
+                    )
                 elif norm_vec < 1e-6:
                     logger.info(
-                        "[Estrategia Rendimiento] Estableciendo setpoint mínimo."
+                        "[Estrategia Rendimiento] Estableciendo setpoint "
+                        "mínimo."
                     )
                     dim = len(self.target_setpoint_vector)
                     new_target_vector = [0.1] * dim
@@ -370,25 +388,31 @@ class AgentAI:
                 logger.info(
                     "[Rendimiento] Más potenciadores ECU, aumento extra."
                 )
-                new_target_vector = adjust_vector(new_target_vector, 1.01)
+                new_target_vector = adjust_vector(
+                    new_target_vector, 1.01
+                )
 
         elif strategy == "ahorro_energia":
             total_reductores = (
-                aux_stats["malla"]["reductor"] + aux_stats["ecu"]["reductor"]
+                aux_stats["malla"]["reductor"]
+                + aux_stats["ecu"]["reductor"]
             )
             if total_reductores > 0:
                 logger.info(
-                    "[Ahorro Energía] Reductores activos, reducción setpoint."
+                    "[Ahorro Energía] Reductores activos, reducción "
+                    "setpoint."
                 )
-                new_target_vector = adjust_vector(new_target_vector, 0.95)
+                new_target_vector = adjust_vector(
+                    new_target_vector, 0.95
+                )
 
         if cogniboard_signal is not None:
             try:
                 signal_val = float(cogniboard_signal)
                 if signal_val > 0.8:
                     logger.info(
-                        "[Cogniboard] Señal alta detectada, "
-                        "reduciendo magnitud final."
+                        "[Cogniboard] Señal alta detectada, reduciendo "
+                        "magnitud final."
                     )
                     norm = np.linalg.norm(new_target_vector)
                     if norm > 1e-6:
@@ -411,11 +435,15 @@ class AgentAI:
 
         return new_target_vector
 
+
     def _send_setpoint_to_harmony(self, setpoint_vector: List[float]):
         """
-        Envía el setpoint vectorial calculado a Harmony Controller con reintentos.
+        Envía el setpoint vectorial calculado a Harmony Controller con
+        reintentos.
         """
-        hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
+        hc_url = self.central_urls.get(
+            "harmony_controller", DEFAULT_HC_URL
+        )
         url = f"{hc_url}/api/harmony/setpoint"
         payload = {"setpoint_vector": setpoint_vector}
 
@@ -428,31 +456,39 @@ class AgentAI:
         for attempt in range(MAX_RETRIES):
             try:
                 response = requests.post(
-                    url, json=payload, timeout=REQUESTS_TIMEOUT
-                )
+                    url, json=payload, timeout=REQUESTS_TIMEOUT)
                 response.raise_for_status()
                 logger.info(
                     "Setpoint %s enviado exitosamente a HC. Respuesta: %s",
-                    setpoint_vector, response.status_code
+                    setpoint_vector,
+                    response.status_code,
                 )
                 return
             except Exception as e:
                 err_type = type(e).__name__
                 logger.error(
-                    "Error al enviar setpoint a HC (%s) intento %s/%s: %s - %s",
-                    url, attempt + 1, MAX_RETRIES, err_type, e
+                    "Error al enviar setpoint a HC (%s) intento %s/%s: %s - "
+                    "%s",
+                    url,
+                    attempt + 1,
+                    MAX_RETRIES,
+                    err_type,
+                    e,
                 )
                 if attempt < MAX_RETRIES - 1:
                     delay = BASE_RETRY_DELAY * (2**attempt)
                     logger.debug(
-                        "Reintentando envío de setpoint a HC en %.2fs...", delay
+                        "Reintentando envío de setpoint a HC en %.2fs...",
+                        delay,
                     )
                     time.sleep(delay)
 
         logger.error(
             "No se pudo enviar setpoint %s a HC después de %d intentos.",
-            setpoint_vector, MAX_RETRIES
+            setpoint_vector,
+            MAX_RETRIES,
         )
+
 
     def registrar_modulo(self, modulo_info):
         """Registra un nuevo módulo, valida y almacena sus detalles."""
@@ -461,12 +497,15 @@ class AgentAI:
         tipo_modulo = modulo_info.get("tipo", "desconocido")
         aporta_a = modulo_info.get("aporta_a")
         naturaleza_auxiliar = modulo_info.get("naturaleza_auxiliar")
-        
+
         valido, mensaje = validate_module_registration(modulo_info)
         if not valido:
             logger.error(
-                "Registro fallido para '%s' (datos inválidos): %s - Data: %s",
-                nombre, mensaje, modulo_info
+                "Registro fallido para '%s' (datos inválidos): %s - Data: "
+                "%s",
+                nombre,
+                mensaje,
+                modulo_info,
             )
             return {"status": "error", "mensaje": mensaje}
 
@@ -475,50 +514,45 @@ class AgentAI:
         if req_path:
             if not os.path.exists(req_path):
                 deps_msg = (
-                    f"No se pudo encontrar el archivo de dependencias: {req_path}"
-                )
+                    "No se pudo encontrar el archivo de dependencias: "
+                    f"{req_path}")
                 logger.error(deps_msg)
                 deps_ok = False
             elif os.path.exists(GLOBAL_REQUIREMENTS_PATH):
                 try:
                     deps_ok, deps_msg = check_missing_dependencies(
-                        req_path, GLOBAL_REQUIREMENTS_PATH
-                    )
+                        req_path, GLOBAL_REQUIREMENTS_PATH)
                     if not deps_ok:
                         logger.error(
                             "Registro fallido para '%s' (dependencias): %s",
-                            nombre, deps_msg
+                            nombre,
+                            deps_msg,
                         )
                         return {"status": "error", "mensaje": deps_msg}
                 except Exception as e:
                     deps_ok = False
                     deps_msg = (
-                        f"Error inesperado al verificar dependencias: {e}"
-                    )
-                    logger.exception(deps_msg)
-                    return {"status": "error", "mensaje": deps_msg}
+                    "Error inesperado al verificar dependencias: f"{e}"
+                )
+                logger.exception(deps_msg)
+                return {"status": "error", "mensaje": deps_msg}
             else:
                 logger.warning(
-                    "No se encontró GLOBAL_REQUIREMENTS_PATH en %s, "
-                    "omitiendo chequeo de dependencias para '%s'",
-                    GLOBAL_REQUIREMENTS_PATH, nombre
+                    "No se encontró GLOBAL_REQUIREMENTS_PATH en %s, omitiendo chequeo de dependencias para '%s'",
+                    GLOBAL_REQUIREMENTS_PATH,
+                    nombre,
                 )
                 deps_msg = "Validación omitida (archivo global no encontrado)."
 
         with self.lock:
             if nombre in self.modules:
                 logger.warning("Intento de registrar módulo existente: %s", nombre)
-                return {
-                    "status": "error",
-                    "mensaje": "El módulo ya está registrado.",
-                }
+                return {"status": "error", "mensaje": "El módulo ya está registrado."}
 
             module_entry = {
                 "nombre": nombre,
                 "url": modulo_info.get("url"),
-                "url_salud": modulo_info.get(
-                    "url_salud", modulo_info.get("url")
-                ),
+                "url_salud": modulo_info.get("url_salud", modulo_info.get("url")),
                 "tipo": tipo_modulo,
                 "descripcion": modulo_info.get("descripcion", ""),
                 "estado_salud": "pendiente",
@@ -539,7 +573,9 @@ class AgentAI:
                 log_details += f", Naturaleza: {naturaleza_auxiliar}"
             logger.info(
                 "Módulo '%s' (%s) registrado. %s. Pendiente de validación.",
-                nombre, log_details, deps_msg
+                nombre,
+                log_details,
+                deps_msg,
             )
 
         threading.Thread(
@@ -548,22 +584,17 @@ class AgentAI:
             daemon=True,
             name=f"HealthCheck-{nombre}",
         ).start()
-        return {
-            "status": "success",
-            "mensaje": f"Módulo '{nombre}' registrado",
-        }
+        return {"status": "success", "mensaje": f"Módulo '{nombre}' registrado"}
+
 
     def _validar_salud_modulo(self, nombre):
         """Valida la salud del módulo y notifica a HC si es necesario."""
         with self.lock:
             modulo = self.modules.get(nombre)
             if not modulo:
-                logger.error(
-                    "No se encontró el módulo '%s' para validar (ya eliminado?).",
-                    nombre
-                )
+                logger.error("No se encontró el módulo '%s' para validar (ya eliminado?).", nombre)
                 return
-            
+
             modulo_url_salud = modulo.get("url_salud")
             modulo_url_control = modulo.get("url")
             modulo_tipo = modulo.get("tipo")
@@ -579,11 +610,12 @@ class AgentAI:
                 try:
                     logger.debug(
                         "Validando salud de '%s' en %s... (intento %d/%d)",
-                        nombre, modulo_url_salud, attempt + 1, MAX_RETRIES
+                        nombre,
+                        modulo_url_salud,
+                        attempt + 1,
+                        MAX_RETRIES,
                     )
-                    response = requests.get(
-                        modulo_url_salud, timeout=REQUESTS_TIMEOUT
-                    )
+                    response = requests.get(modulo_url_salud, timeout=REQUESTS_TIMEOUT)
                     if response.status_code == 200:
                         estado_salud = "ok"
                         logger.info("Módulo '%s' validado (Salud OK).", nombre)
@@ -592,7 +624,8 @@ class AgentAI:
                         estado_salud = f"error_{response.status_code}"
                         logger.warning(
                             "Validación fallida para '%s'. Status: %d",
-                            nombre, response.status_code
+                            nombre,
+                            response.status_code,
                         )
                 except Exception as e:
                     estado_salud = "error_inesperado"
@@ -604,16 +637,20 @@ class AgentAI:
                     break
 
                 if attempt < MAX_RETRIES - 1:
-                    delay = BASE_RETRY_DELAY * (2**attempt)
+                    delay = BASE_RETRY_DELAY * (2 ** attempt)
                     logger.debug(
                         "Reintentando validación para '%s' en %.2fs...",
-                        nombre, delay
+                        nombre,
+                        delay,
                     )
                     time.sleep(delay)
                 else:
                     logger.error(
-                        "Validación para '%s' falló tras %d intentos. Estado: %s",
-                        nombre, MAX_RETRIES, estado_salud
+                        "Validación para '%s' falló tras %d intentos. "
+                        "Estado: %s",
+                        nombre,
+                        MAX_RETRIES,
+                        estado_salud,
                     )
 
         with self.lock:
@@ -622,7 +659,7 @@ class AgentAI:
             else:
                 logger.warning(
                     "Módulo '%s' desapareció antes de actualizar estado.",
-                    nombre
+                    nombre,
                 )
                 return
 
@@ -634,9 +671,9 @@ class AgentAI:
         ):
             if modulo_url_control:
                 logger.info(
-                    "Módulo auxiliar '%s' saludable. "
-                    "Notificando a Harmony Controller...",
-                    nombre
+                    "Módulo auxiliar '%s' saludable. Notificando a Harmony "
+                    "Controller...",
+                    nombre,
                 )
                 self._notify_harmony_controller_of_tool(
                     nombre=nombre,
@@ -646,21 +683,22 @@ class AgentAI:
                 )
             else:
                 logger.error(
-                    "Módulo '%s' saludable pero sin URL de control. "
-                    "No se puede notificar a HC.",
-                    nombre
+                    "Módulo '%s' saludable pero sin URL de control. No se "
+                    "puede notificar a HC.",
+                    nombre,
                 )
         elif estado_salud == "ok" and modulo_tipo == "auxiliar":
             if not modulo_aporta_a:
                 logger.warning(
-                    "Módulo aux '%s' ok pero sin 'aporta_a'. No se notificará.",
-                    nombre
+                    "Módulo aux '%s' ok pero sin 'aporta_a'. No se "
+                    "notificará.",
+                    nombre,
                 )
             if not modulo_naturaleza:
                 logger.warning(
-                    "Módulo aux '%s' ok pero sin 'naturaleza_auxiliar'. "
-                    "No se notificará.",
-                    nombre
+                    "Módulo aux '%s' ok pero sin 'naturaleza_auxiliar'. No "
+                    "se notificará.",
+                    nombre,
                 )
 
     def _notify_harmony_controller_of_tool(
@@ -671,37 +709,46 @@ class AgentAI:
             "nombre": nombre,
             "url": url,
             "aporta_a": aporta_a,
-            "naturaleza": naturaleza
+            "naturaleza": naturaleza,
         }
         for attempt in range(MAX_RETRIES):
             try:
                 logger.debug(
                     "Notificando a HC sobre '%s' (Naturaleza: %s) en %s...",
-                    nombre, naturaleza, register_url
+                    nombre,
+                    naturaleza,
+                    register_url,
                 )
                 response = requests.post(
-                    register_url, json=payload, timeout=REQUESTS_TIMEOUT
-                )
+                    register_url, json=payload, timeout=REQUESTS_TIMEOUT)
                 response.raise_for_status()
                 logger.info(
                     "Notificación para '%s' enviada a HC. Respuesta: %d",
-                    nombre, response.status_code
+                    nombre,
+                    response.status_code,
                 )
                 return
             except Exception as e:
-                logger.exception("Error inesperado al notificar a HC: %s", e)
+                logger.exception(
+                    "Error inesperado al notificar a HC: %s", e
+                )
                 if attempt < MAX_RETRIES - 1:
                     delay = BASE_RETRY_DELAY * (2**attempt)
                     logger.debug(
-                        "Reintentando notificación a HC para '%s' en %.2fs...",
-                        nombre, delay
+                        "Reintentando notificación a HC para '%s' en "
+                        "%.2fs...",
+                        nombre,
+                        delay,
                     )
                     time.sleep(delay)
                 else:
                     logger.error(
-                        "No se pudo notificar a HC sobre '%s' tras %d intentos.",
-                        nombre, MAX_RETRIES
+                        "No se pudo notificar a HC sobre '%s' tras %d "
+                        "intentos.",
+                        nombre,
+                        MAX_RETRIES,
                     )
+
 
     def actualizar_comando_estrategico(self, comando, valor):
         """Procesa comandos de alto nivel."""
@@ -731,10 +778,14 @@ class AgentAI:
                     logger.info(
                         "Setpoint objetivo actualizado a: %s", new_vector
                     )
-                    self._send_setpoint_to_harmony(self.target_setpoint_vector)
+                    self._send_setpoint_to_harmony(
+                        self.target_setpoint_vector
+                    )
                     return {
                         "status": "success",
-                        "mensaje": f"Setpoint objetivo establecido a {new_vector}",
+                        "mensaje": (
+                            f"Setpoint objetivo establecido a {new_vector}"
+                        ),
                     }
                 except (ValueError, TypeError):
                     return {
@@ -742,30 +793,39 @@ class AgentAI:
                         "mensaje": "Valor debe ser una lista de números",
                     }
             else:
-                logger.warning("Comando estratégico desconocido: %s", comando)
+                logger.warning(
+                    "Comando estratégico desconocido: %s", comando
+                )
                 return {
                     "status": "error",
                     "mensaje": f"Comando '{comando}' no reconocido",
                 }
+
 
     def recibir_control_cogniboard(self, control_signal):
         """Actualiza la señal de control de Cogniboard."""
         with self.lock:
             self.external_inputs["cogniboard_signal"] = control_signal
         logger.debug(
-            "Señal de control de Cogniboard actualizada: %s", control_signal
+            "Señal de control de Cogniboard actualizada: %s",
+            control_signal,
         )
+
 
     def recibir_config_status(self, config_status):
         """Actualiza el estado de configuración de Config Agent."""
         with self.lock:
             self.external_inputs["config_status"] = config_status
-        logger.debug("Estado de configuración actualizado: %s", config_status)
+        logger.debug(
+            "Estado de configuración actualizado: %s", config_status
+        )
 
     def obtener_estado_completo(self):
         """Retorna una vista completa del estado interno de AgentAI."""
         with self.lock:
-            modules_list = [dict(info) for info in self.modules.values()]
+            modules_list = [
+                dict(info) for info in self.modules.values()
+            ]
             harmony_state_copy = dict(self.harmony_state)
             external_inputs_copy = dict(self.external_inputs)
             target_setpoint_copy = list(self.target_setpoint_vector)
@@ -779,14 +839,19 @@ class AgentAI:
             "registered_modules": modules_list,
         }
 
+
     def shutdown(self):
         """Detiene el bucle estratégico."""
         logger.info("Solicitando detención del bucle estratégico...")
         self._stop_event.set()
         if self._strategic_thread.is_alive():
-            self._strategic_thread.join(timeout=STRATEGIC_LOOP_INTERVAL + 1)
+            self._strategic_thread.join(
+                timeout=STRATEGIC_LOOP_INTERVAL + 1
+            )
             if self._strategic_thread.is_alive():
-                logger.warning("El hilo estratégico no terminó limpiamente.")
+                logger.warning(
+                    "El hilo estratégico no terminó limpiamente."
+                )
 
 
 # --- Instancia Global ---
@@ -799,7 +864,9 @@ def handle_register():
     data = request.get_json()
     if not data:
         return (
-            jsonify({"status": "error", "message": "No JSON data received"}),
+            jsonify(
+                {"status": "error", "message": "No JSON data received"}
+            ),
             400,
         )
     result = agent_ai_instance_app.registrar_modulo(data)
@@ -816,10 +883,8 @@ def handle_get_state():
 def handle_command():
     data = request.get_json()
     if not data or "comando" not in data or "valor" not in data:
-        return jsonify({"status": "error", "message": "Comando inválido"}), 400
-    result = agent_ai_instance_app.actualizar_comando_estrategico(
-        data["comando"], data["valor"]
-    )
+            return jsonify({"status": "error", "message": "Comando inválido"}), 400
+        result = agent_ai_instance_app.actualizar_comando_estrategico(data["comando"], data["valor"])
     status_code = 200 if result.get("status") == "success" else 400
     return jsonify(result), status_code
 
