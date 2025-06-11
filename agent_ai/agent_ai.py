@@ -627,7 +627,7 @@ class AgentAI:
             modulo = self.modules.get(nombre)
             if not modulo:
                 logger.error(
-                    "No se encontró el módulo '%s' para validar (ya eliminado?).",
+                    "No se encontró el módulo '%s' para validar.",
                     nombre
                 )
                 return
