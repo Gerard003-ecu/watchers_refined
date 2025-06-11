@@ -40,8 +40,8 @@ HARMONY_CONTROLLER_URL = os.environ.get(
     "HARMONY_CONTROLLER_URL", "http://harmony_controller:7000"
 )
 HARMONY_CONTROLLER_REGISTER_URL = os.environ.get(
-    "HARMONY_CONTROLLER_REGISTER_URL",
-    f"{HARMONY_CONTROLLER_URL}/api/harmony/register_tool",
+    "HARMONY_CONTROLLER_REGISTER_URL", 
+    f"{HARMONY_CONTROLLER_URL}/api/harmony/register_tool"
 )
 # Nombre de la variable ENV
 HARMONY_CONTROLLER_URL_ENV = "HARMONY_CONTROLLER_URL"
