@@ -153,7 +153,7 @@ class HexCylindricalMesh:
             raise ValueError("El tamaño del hexágono debe ser positivo.")
         if radius < hex_size:  # Un hexágono no cabría bien
             logger.warning(
-                f"El radio ({radius}) es menor que el tamaño del hexágono "  # noqa: E501
+                f"El radio ({radius}) es menor que el tamaño del hexágono " # noqa: E501
                 f"({hex_size}). La malla podría ser degenerada."
             )
         if height_segments < 0:
@@ -268,6 +268,7 @@ class HexCylindricalMesh:
         # Altura de dos filas de hexágonos apilados verticalmente
         hex_row_pair_height = math.sqrt(3.0) * self.hex_size
         _ = hex_row_pair_height  # Prevent F841
+
 
         # Si height_segments = 1, queremos al menos una capa de hexágonos.
         # Si height_segments = N, queremos N "capas" de hexágonos.
@@ -456,8 +457,7 @@ class HexCylindricalMesh:
                             (NumVecinos: NumCeldas).
         """
         if not self.cells:
-            logger.warning(
-                "Intento de verificar conectividad en una malla vacía.")
+            logger.warning("Intento de verificar conectividad en una malla vacía.")
             return {}
 
         neighbor_counts = Counter()
@@ -477,10 +477,8 @@ class HexCylindricalMesh:
             actual_neighbor_count = len(actual_neighbors)
 
             neighbor_counts[actual_neighbor_count] += 1
-            min_neighbors_found = min(
-                min_neighbors_found, actual_neighbor_count)
-            max_neighbors_found = max(
-                max_neighbors_found, actual_neighbor_count)
+            min_neighbors_found = min(min_neighbors_found, actual_neighbor_count)
+            max_neighbors_found = max(max_neighbors_found, actual_neighbor_count)
 
             is_on_z_border = False
             # Solo relevante si no es periódico en Z y tiene altura
@@ -701,9 +699,9 @@ class HexCylindricalMesh:
             target_q_wrapped_for_comparison += self.circumference_segments_actual
 
         # logger.debug(
-        #     "    Buscando Z-vecino para q_orig={target_q_original} "
-        #     "(envuelto={target_q_wrapped_for_comparison}), "
-        #     "z_teor={target_z_theoretical:.2f}"
+        #     f"    Buscando Z-vecino para q_orig={target_q_original} "
+        #     f"(envuelto={target_q_wrapped_for_comparison}), "
+        #     f"z_teor={target_z_theoretical:.2f}"
         # )
 
         if self.max_z - self.min_z <= EPSILON:  # Altura real de la malla es cero o despreciable
@@ -722,8 +720,7 @@ class HexCylindricalMesh:
                 candidate_q_wrapped_for_comparison += self.circumference_segments_actual
 
             if candidate_q_wrapped_for_comparison != target_q_wrapped_for_comparison:
-                # No coincide en q (envuelto), no es el candidato correcto
-                continue
+                continue  # No coincide en q (envuelto), no es el candidato correcto
             # en la "columna"
 
             # Coincide en q (envuelto). Ahora comparar Z con envolvimiento.
@@ -735,10 +732,8 @@ class HexCylindricalMesh:
             #    (como si target_z estuviera arriba)
 
             dz1 = abs(cell_candidate.z - target_z_theoretical)
-            dz2 = abs(cell_candidate.z -
-                      (target_z_theoretical + actual_mesh_height))
-            dz3 = abs(cell_candidate.z -
-                      (target_z_theoretical - actual_mesh_height))
+            dz2 = abs(cell_candidate.z - (target_z_theoretical + actual_mesh_height))
+            dz3 = abs(cell_candidate.z - (target_z_theoretical - actual_mesh_height))
 
             effective_dz = min(dz1, dz2, dz3)
 
@@ -780,7 +775,7 @@ class HexCylindricalMesh:
             "metadata": {
                 "radius": self.radius,
                 "height_segments": self.height_segments,
-                "circumference_segments_actual": self.circumference_segments_actual,  # noqa: E501
+                "circumference_segments_actual": self.circumference_segments_actual, # noqa: E501
                 "hex_size": self.hex_size,
                 "periodic_z": self.periodic_z,
                 "num_cells": len(self.cells),

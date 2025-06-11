@@ -735,9 +735,9 @@ class HexCylindricalMesh:
             #    (como si target_z estuviera arriba)
 
             dz1 = abs(cell_candidate.z - target_z_theoretical)
-            dz2 = abs(cell_candidate.z -
+            dz2 = abs(cell_candidate.z - \
                       (target_z_theoretical + actual_mesh_height))
-            dz3 = abs(cell_candidate.z -
+            dz3 = abs(cell_candidate.z - \
                       (target_z_theoretical - actual_mesh_height))
 
             effective_dz = min(dz1, dz2, dz3)

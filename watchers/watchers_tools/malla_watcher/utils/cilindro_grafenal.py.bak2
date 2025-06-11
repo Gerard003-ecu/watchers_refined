@@ -456,8 +456,7 @@ class HexCylindricalMesh:
                             (NumVecinos: NumCeldas).
         """
         if not self.cells:
-            logger.warning(
-                "Intento de verificar conectividad en una malla vacía.")
+            logger.warning("Intento de verificar conectividad en una malla vacía.")
             return {}
 
         neighbor_counts = Counter()
@@ -477,10 +476,8 @@ class HexCylindricalMesh:
             actual_neighbor_count = len(actual_neighbors)
 
             neighbor_counts[actual_neighbor_count] += 1
-            min_neighbors_found = min(
-                min_neighbors_found, actual_neighbor_count)
-            max_neighbors_found = max(
-                max_neighbors_found, actual_neighbor_count)
+            min_neighbors_found = min(min_neighbors_found, actual_neighbor_count)
+            max_neighbors_found = max(max_neighbors_found, actual_neighbor_count)
 
             is_on_z_border = False
             # Solo relevante si no es periódico en Z y tiene altura
@@ -722,8 +719,7 @@ class HexCylindricalMesh:
                 candidate_q_wrapped_for_comparison += self.circumference_segments_actual
 
             if candidate_q_wrapped_for_comparison != target_q_wrapped_for_comparison:
-                # No coincide en q (envuelto), no es el candidato correcto
-                continue
+                continue  # No coincide en q (envuelto), no es el candidato correcto
             # en la "columna"
 
             # Coincide en q (envuelto). Ahora comparar Z con envolvimiento.
@@ -735,10 +731,8 @@ class HexCylindricalMesh:
             #    (como si target_z estuviera arriba)
 
             dz1 = abs(cell_candidate.z - target_z_theoretical)
-            dz2 = abs(cell_candidate.z -
-                      (target_z_theoretical + actual_mesh_height))
-            dz3 = abs(cell_candidate.z -
-                      (target_z_theoretical - actual_mesh_height))
+            dz2 = abs(cell_candidate.z - (target_z_theoretical + actual_mesh_height))
+            dz3 = abs(cell_candidate.z - (target_z_theoretical - actual_mesh_height))
 
             effective_dz = min(dz1, dz2, dz3)
 
