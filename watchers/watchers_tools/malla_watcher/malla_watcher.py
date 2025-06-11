@@ -49,7 +49,8 @@ if not logger.hasHandlers():
     )
     logger.addHandler(handler)
     # Los logs DEBUG en métodos como _initialize_mesh o get_neighbor_cells
-    # solo se mostrarán si el nivel del logger se cambia a DEBUG (ej. en desarrollo)
+    # solo se mostrarán si el nivel del logger se cambia a DEBUG (ej. desarrollo)
+
 # Pequeña tolerancia para comparaciones de flotantes
 EPSILON = 1e-9
 
@@ -92,7 +93,9 @@ class PhosWave:
     def ajustar_coeficientes(self, nuevos_C):
         """Ajusta el coeficiente de acoplamiento."""
         self.C = max(0.0, nuevos_C)
-        logger.debug(f"PhosWave coeficiente de acoplamiento ajustado a C={self.C:.3f}")
+        logger.debug(
+            "PhosWave coeficiente de acoplamiento ajustado a C=%.3f", self.C
+        )
 
 
 class Electron:
@@ -105,7 +108,9 @@ class Electron:
     def ajustar_coeficientes(self, nuevos_D):
         """Ajusta el coeficiente de amortiguación."""
         self.D = max(0.0, nuevos_D)
-        logger.debug(f"Electron coeficiente de amortiguación ajustado a D={self.D:.3f}")
+        logger.debug(
+            "Electron coeficiente de amortiguación ajustado a D=%.3f", self.D
+        )
 
 
 def apply_external_field_to_mesh(
@@ -123,45 +128,52 @@ def apply_external_field_to_mesh(
         field_vector_map (List[List[List[float]]]): Datos del campo vectorial.
     """
     if not mesh_instance or not mesh_instance.cells:
-        logger.warning("Intento de aplicar campo externo a malla no inicializada o vacía.")
+        logger.warning(
+            "Intento de aplicar campo externo a malla no inicializada o vacía."
+        )
         return
 
-    # Convertir la lista de listas a un array NumPy para facilitar el acceso e interpolación
+    # Convertir la lista de listas a un array NumPy para facilitar acceso
     try:
         field_vector_np = np.array(field_vector_map, dtype=float)
         if field_vector_np.ndim != 4 or field_vector_np.shape[-1] != 2:
             logger.error(
                 "El campo vectorial externo no tiene el shape esperado "
-                f"[capas, filas, columnas, 2]. Recibido: {field_vector_np.shape}"
+                "[capas, filas, columnas, 2]. Recibido: %s",
+                field_vector_np.shape
             )
             return
     except (ValueError, TypeError) as e:
-        logger.error(f"Error al convertir field_vector_map a NumPy array: {e}")
+        logger.error(
+            "Error al convertir field_vector_map a NumPy array: %s", e
+        )
         return
 
     logger.debug(
-        "Aplicando campo vectorial externo "
-        f"(shape={field_vector_np.shape}) a la malla cilíndrica usando "
-        "interpolación bilineal..."
+        "Aplicando campo vectorial externo (shape=%s) a la malla cilíndrica "
+        "usando interpolación bilineal...", field_vector_np.shape
     )
     num_capas_torus, num_rows_torus, num_cols_torus, _ = field_vector_np.shape
 
     if num_capas_torus <= 0 or num_rows_torus <= 0 or num_cols_torus <= 0:
-        logger.error("El campo vectorial externo tiene dimensiones inválidas (<= 0).")
+        logger.error(
+            "El campo vectorial externo tiene dimensiones inválidas (<= 0)."
+        )
         return
 
     # La instancia de malla (mesh_instance) no debe almacenar el campo completo.
     # Si necesitas este campo para otros cálculos DENTRO de malla_watcher.py,
-    # guárdalo en una variable global de malla_watcher.py o pásalo como argumento.
+    # guárdalo en una variable global o pásalo como argumento.
 
     # Usar los métodos/atributos de la instancia de malla proporcionada
     all_mesh_cells = mesh_instance.get_all_cells()
     if not all_mesh_cells:
-        logger.warning("No hay celdas para aplicar campo externo (obtenido de get_all_cells).")
+        logger.warning(
+            "No hay celdas para aplicar campo externo (obtenido de get_all_cells)."
+        )
         return
     
-    # Usar los atributos min_z y max_z de la instancia de malla,
-    # que son calculados por cilindro_grafenal.HexCylindricalMesh durante su inicialización.
+    # Usar atributos min_z y max_z de la instancia de malla
     cylinder_z_min = mesh_instance.min_z
     cylinder_z_max = mesh_instance.max_z
     cylinder_height = cylinder_z_max - cylinder_z_min
@@ -174,21 +186,20 @@ def apply_external_field_to_mesh(
                 "para mapeo a filas del toroide puede no ser efectiva o dar "
                 "resultados inesperados."
             )
-        # Si la altura es cero, todas las celdas se mapearán a la misma fila del toroide (row_float = 0.0).
-        # Esto es manejado por la lógica de `normalized_z` y `row_float` más abajo.
+        # Si la altura es cero, todas las celdas se mapearán a la misma fila
 
     update_count = 0
     for cell in all_mesh_cells:
         try:
-            # Mapear coordenadas cilíndricas (theta, z) a coordenadas 2D (col, row) del toroide
+            # Mapear coordenadas cilíndricas (theta, z) a coordenadas 2D
             col_float = (cell.theta / (2 * math.pi)) * num_cols_torus
-            col_float = max(0.0, min(col_float, num_cols_torus - EPSILON))  # Clamp
+            col_float = max(0.0, min(col_float, num_cols_torus - EPSILON))
 
-            row_float = 0.0  # Default para malla plana o si no hay altura en el toroide
+            row_float = 0.0  # Default para malla plana
             if cylinder_height > EPSILON and num_rows_torus > 1:
                 normalized_z = (cell.z - cylinder_z_min) / cylinder_height
-                row_float = normalized_z * (num_rows_torus - 1)  # Mapear a [0, num_rows_torus - 1]
-                row_float = max(0.0, min(row_float, num_rows_torus - 1.0 - EPSILON))  # Clamp
+                row_float = normalized_z * (num_rows_torus - 1)
+                row_float = max(0.0, min(row_float, num_rows_torus - 1.0 - EPSILON))
             elif num_rows_torus == 1:
                 row_float = 0.0
 
@@ -197,7 +208,7 @@ def apply_external_field_to_mesh(
             r1 = math.floor(row_float)
             c1 = math.floor(col_float)
 
-            # Asegurar que los índices estén dentro de los límites del array field_vector_np
+            # Asegurar que los índices estén dentro de los límites
             c1_idx = int(c1 % num_cols_torus)
             c2_idx = int((c1 + 1) % num_cols_torus)
             r1_idx = int(max(0, min(r1, num_rows_torus - 1)))
@@ -230,22 +241,22 @@ def apply_external_field_to_mesh(
 
         except IndexError:
             logger.warning(
-                f"Índice fuera de rango al acceder a field_vector_np. "
-                f"Celda ({cell.q_axial},{cell.r_axial}) mapeada a "
-                f"(row_f={row_float:.2f},col_f={col_float:.2f}) en capa {capa_idx_torus}. "
-                f"Índices calculados: r1_idx={r1_idx}, r2_idx={r2_idx}, "
-                f"c1_idx={c1_idx}, c2_idx={c2_idx}. Shape: {field_vector_np.shape}"
+                "Índice fuera de rango al acceder a field_vector_np. "
+                "Celda (%d,%d) mapeada a (row_f=%.2f,col_f=%.2f) en capa %d. "
+                "Índices calculados: r1_idx=%d, r2_idx=%d, "
+                "c1_idx=%d, c2_idx=%d. Shape: %s",
+                cell.q_axial, cell.r_axial, row_float, col_float, capa_idx_torus,
+                r1_idx, r2_idx, c1_idx, c2_idx, field_vector_np.shape
             )
-        except Exception as e:
+        except Exception:
             logger.error(
-                f"Error inesperado durante interpolación vectorial para celda "
-                f"({cell.q_axial},{cell.r_axial}): {e}", 
-                exc_info=True
+                "Error inesperado durante interpolación vectorial para celda "
+                "(%d,%d)", cell.q_axial, cell.r_axial, exc_info=True
             )
 
     logger.debug(
-        f"Campo vectorial externo aplicado a {update_count}/{len(mesh_instance.cells)} "
-        "celdas mediante interpolación."
+        "Campo vectorial externo aplicado a %d/%d celdas mediante interpolación.",
+        update_count, len(mesh_instance.cells)
     )
 
 
@@ -268,18 +279,25 @@ try:
     # Inicializar el flujo previo
     malla_cilindrica_global.previous_flux = 0.0
     logger.info(
-        f"Instancia global inicial (import time) creada con "
-        f"{len(malla_cilindrica_global.cells)} celdas."
+        "Instancia global inicial (import time) creada con %d celdas.",
+        len(malla_cilindrica_global.cells)
     )
 except Exception as e:
-    logger.exception("Error al inicializar HexCylindricalMesh global (import time). Será re-inicializada en __main__.")
+    logger.exception(
+        "Error al inicializar HexCylindricalMesh global (import time). "
+        "Será re-inicializada en __main__."
+    )
     malla_cilindrica_global = None
 
 
 # --- Instancias de PhosWave y Electron ---
 # Inicializadas con valores base.
-resonador_global = PhosWave(coef_acoplamiento=float(os.environ.get("MW_BASE_T", 0.6)))
-electron_global = Electron(coef_amortiguacion=float(os.environ.get("MW_BASE_E", 0.1)))
+resonador_global = PhosWave(
+    coef_acoplamiento=float(os.environ.get("MW_BASE_T", 0.6))
+)
+electron_global = Electron(
+    coef_amortiguacion=float(os.environ.get("MW_BASE_E", 0.1))
+)
 
 
 # --- Estado Agregado y Control ---
@@ -325,7 +343,7 @@ def simular_paso_malla():
         coupling_force = 0.0
         neighbors = mesh.get_neighbor_cells(cell_i.q_axial, cell_i.r_axial)
 
-        # Coeficiente de acoplamiento modulado por la MAGNITUD del campo vectorial local
+        # Coeficiente de acoplamiento modulado por la MAGNITUD del campo local
         modulator = 1.0 + np.linalg.norm(cell_i.q_vector)
         modulated_coupling_C = resonador_global.C * max(0.0, modulator)
 
@@ -353,11 +371,11 @@ def simular_paso_malla():
         cell_i.amplitude = next_amplitudes[i]
         cell_i.velocity = next_velocities[i]
 
-    logger.debug(f"Paso de simulación completado para {num_cells} celdas.")
+    logger.debug("Paso de simulación completado para %d celdas.", num_cells)
 
 
 def update_aggregate_state():
-    """Calcula y actualiza el estado agregado de la malla, incluyendo métricas de energía/actividad."""
+    """Calcula y actualiza el estado agregado de la malla."""
     global aggregate_state
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
@@ -426,11 +444,11 @@ def update_aggregate_state():
         aggregate_state["cells_over_threshold"] = over_thresh
 
     logger.debug(
-        f"Estado agregado actualizado: AvgAmp={avg_amp:.3f}, "
-        f"MaxAmp={max_amp:.3f}, AvgVel={avg_vel:.3f}, "
-        f"MaxVel={max_vel:.3f}, AvgKE={avg_ke:.3f}, "
-        f"MaxKE={max_ke:.3f}, AvgActivity={avg_activity:.3f}, "
-        f"MaxActivity={max_activity:.3f}, OverThresh={over_thresh}"
+        "Estado agregado actualizado: AvgAmp=%.3f, MaxAmp=%.3f, "
+        "AvgVel=%.3f, MaxVel=%.3f, AvgKE=%.3f, MaxKE=%.3f, "
+        "AvgActivity=%.3f, MaxActivity=%.3f, OverThresh=%d",
+        avg_amp, max_amp, avg_vel, max_vel, avg_ke, max_ke,
+        avg_activity, max_activity, over_thresh
     )
 
 
@@ -447,14 +465,19 @@ def calculate_flux(mesh: HexCylindricalMesh) -> float:
     for cell in mesh.cells.values():
         if cell.q_vector is not None and cell.q_vector.shape == (2,):
             total_flux += cell.q_vector[flux_component_index]
-    logger.debug(f"Flujo calculado (suma de componente {flux_component_index}): {total_flux:.3f}")
+    logger.debug(
+        "Flujo calculado (suma de componente %d): %.3f",
+        flux_component_index, total_flux
+    )
     return total_flux
 
 
 def fetch_and_apply_torus_field():
     """Obtiene el campo vectorial completo de matriz_ecu y lo aplica a la malla."""
     ecu_vector_field_url = f"{MATRIZ_ECU_BASE_URL}/api/ecu/field_vector"
-    logger.debug(f"Intentando obtener campo vectorial de ECU en {ecu_vector_field_url}")
+    logger.debug(
+        "Intentando obtener campo vectorial de ECU en %s", ecu_vector_field_url
+    )
     try:
         response = requests.get(ecu_vector_field_url, timeout=REQUESTS_TIMEOUT)
         response.raise_for_status()
@@ -470,39 +493,62 @@ def fetch_and_apply_torus_field():
             if mesh:
                 if mesh.cells:
                     logger.debug(
-                        "Aplicando campo vectorial de ECU (primer elemento: "
-                        f"{actual_field_vector_list[0] if actual_field_vector_list else 'vacío'})"
+                        "Aplicando campo vectorial de ECU (primer elemento: %s)",
+                        actual_field_vector_list[0] if actual_field_vector_list else 'vacío'
                     )
                     apply_external_field_to_mesh(mesh, actual_field_vector_list)
-                    logger.info("Campo vectorial toroidal (V) obtenido y aplicado exitosamente a la malla.")
+                    logger.info(
+                        "Campo vectorial toroidal (V) obtenido y aplicado exitosamente."
+                    )
                 else:
-                    logger.warning("Malla global no tiene celdas. No se aplicará el campo vectorial obtenido.")
+                    logger.warning(
+                        "Malla global no tiene celdas. "
+                        "No se aplicará el campo vectorial obtenido."
+                    )
             else:
-                logger.warning("Malla global no inicializada. No se pudo aplicar el campo vectorial obtenido.")
+                logger.warning(
+                    "Malla global no inicializada. "
+                    "No se pudo aplicar el campo vectorial obtenido."
+                )
         else:
             logger.error(
-                f"Respuesta JSON inválida, no exitosa, o 'field_vector' ausente de "
-                f"{ecu_vector_field_url}. Respuesta: {response_data_dict}"
+                "Respuesta JSON inválida, no exitosa, o 'field_vector' ausente "
+                "de %s. Respuesta: %s",
+                ecu_vector_field_url, response_data_dict
             )
 
     except requests.exceptions.Timeout:
-        logger.error(f"Timeout al intentar obtener campo vectorial de {ecu_vector_field_url}")
+        logger.error(
+            "Timeout al intentar obtener campo vectorial de %s",
+            ecu_vector_field_url
+        )
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error de red o HTTP al obtener campo vectorial de {ecu_vector_field_url}: {e}")
+        logger.error(
+            "Error de red o HTTP al obtener campo vectorial de %s: %s",
+            ecu_vector_field_url, e
+        )
     except (ValueError, TypeError, json.JSONDecodeError) as e:
-        logger.error(f"Error al procesar/decodificar respuesta JSON de {ecu_vector_field_url}: {e}")
-    except Exception as e:
-        logger.exception(f"Error inesperado al obtener/aplicar campo vectorial de {ecu_vector_field_url}")
+        logger.error(
+            "Error al procesar/decodificar respuesta JSON de %s: %s",
+            ecu_vector_field_url, e
+        )
+    except Exception:
+        logger.exception(
+            "Error inesperado al obtener/aplicar campo vectorial de %s",
+            ecu_vector_field_url
+        )
 
 
 def map_cylinder_to_torus_coords(cell: Cell) -> Optional[Tuple[int, int, int]]:
     """
-    Mapea coordenadas y estado de una celda del cilindro a coordenadas del toroide (capa, row, col).
-    Retorna None si el mapeo no es posible o las dimensiones del toroide son inválidas.
+    Mapea coordenadas y estado de una celda del cilindro a coordenadas del toroide.
+    Retorna None si el mapeo no es posible o dimensiones inválidas.
     """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
-        logger.warning("Malla no inicializada o vacía. Saltando mapeo a toroide.")
+        logger.warning(
+            "Malla no inicializada o vacía. Saltando mapeo a toroide."
+        )
         return None
 
     if TORUS_NUM_CAPAS <= 0 or TORUS_NUM_FILAS <= 0 or TORUS_NUM_COLUMNAS <= 0:
@@ -511,7 +557,7 @@ def map_cylinder_to_torus_coords(cell: Cell) -> Optional[Tuple[int, int, int]]:
 
     # Mapeo de theta a columna del toroide (0 a 2*pi -> 0 a num_cols)
     col_float = (cell.theta / (2 * math.pi)) * TORUS_NUM_COLUMNAS
-    col = int(math.floor(col_float)) % TORUS_NUM_COLUMNAS  # Usar módulo para periodicidad
+    col = int(math.floor(col_float)) % TORUS_NUM_COLUMNAS  # Periodicidad
 
     # Mapeo de Z a fila del toroide (min_z a max_z -> 0 a num_rows-1)
     cylinder_height = mesh.max_z - mesh.min_z
@@ -533,7 +579,7 @@ def map_cylinder_to_torus_coords(cell: Cell) -> Optional[Tuple[int, int, int]]:
         max(0.0, activity_magnitude / MAX_AMPLITUDE_FOR_NORMALIZATION)
     )
 
-    # Mayor actividad -> menor índice de capa (capas "más internas" o "críticas")
+    # Mayor actividad -> menor índice de capa (capas "más internas")
     capa = int(round((1.0 - normalized_activity) * (TORUS_NUM_CAPAS - 1)))
     capa = max(0, min(capa, TORUS_NUM_CAPAS - 1))
 
@@ -542,10 +588,10 @@ def map_cylinder_to_torus_coords(cell: Cell) -> Optional[Tuple[int, int, int]]:
 
 def send_influence_to_torus(dphi_dt: float):
     """
-    Envía una influencia a matriz_ecu basada en la tasa de cambio del flujo magnético (dPhi/dt).
-    La influencia se aplica a una ubicación fija o representativa en el toroide.
+    Envía una influencia a matriz_ecu basada en la tasa de cambio 
+    del flujo magnético (dPhi/dt).
     """
-    # Definir una ubicación fija o representativa en el toroide para aplicar la influencia
+    # Definir una ubicación fija o representativa en el toroide
     target_capa = 0  # Capa más interna/crítica
     target_row = TORUS_NUM_FILAS // 2  # Fila central
     target_col = TORUS_NUM_COLUMNAS // 2  # Columna central
@@ -563,19 +609,31 @@ def send_influence_to_torus(dphi_dt: float):
 
     ecu_influence_url = f"{MATRIZ_ECU_BASE_URL}/api/ecu/influence"
     try:
-        response = requests.post(ecu_influence_url, json=payload, timeout=REQUESTS_TIMEOUT)
+        response = requests.post(
+            ecu_influence_url, json=payload, timeout=REQUESTS_TIMEOUT
+        )
         response.raise_for_status()
         logger.info(
-            f"Influencia (dPhi/dt) enviada a {ecu_influence_url} en "
-            f"({target_capa}, {target_row}, {target_col}). "
-            f"Payload: {payload}. Respuesta: {response.status_code}"
+            "Influencia (dPhi/dt) enviada a %s en (%d, %d, %d). "
+            "Payload: %s. Respuesta: %d",
+            ecu_influence_url, target_capa, target_row, target_col,
+            payload, response.status_code
         )
     except requests.exceptions.Timeout:
-        logger.error(f"Timeout al enviar influencia (dPhi/dt) a {ecu_influence_url}")
+        logger.error(
+            "Timeout al enviar influencia (dPhi/dt) a %s",
+            ecu_influence_url
+        )
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error de red al enviar influencia (dPhi/dt) a {ecu_influence_url}: {e}")
-    except Exception as e:
-        logger.exception(f"Error inesperado al enviar influencia (dPhi/dt) a {ecu_influence_url}")
+        logger.error(
+            "Error de red al enviar influencia (dPhi/dt) a %s: %s",
+            ecu_influence_url, e
+        )
+    except Exception:
+        logger.exception(
+            "Error inesperado al enviar influencia (dPhi/dt) a %s",
+            ecu_influence_url
+        )
 
 
 # --- Bucle de Simulación (Thread) ---
@@ -590,59 +648,75 @@ def simulation_loop():
 
     mesh = malla_cilindrica_global
     if mesh is None:
-        logger.error("Malla global no inicializada. No se puede iniciar el bucle de simulación.")
+        logger.error(
+            "Malla global no inicializada. "
+            "No se puede iniciar el bucle de simulación."
+        )
         return
 
     if not hasattr(mesh, 'previous_flux'):
         mesh.previous_flux = 0.0
-        logger.warning("previous_flux no inicializado en malla_cilindrica_global. Inicializando a 0.0")
+        logger.warning(
+            "previous_flux no inicializado en malla_cilindrica_global. "
+            "Inicializando a 0.0"
+        )
 
     while not stop_simulation_event.is_set():
         start_time = time.monotonic()
         step_count += 1
-        logger.debug(f"--- Iniciando paso de simulación {step_count} ---")
+        logger.debug("--- Iniciando paso de simulación %d ---", step_count)
 
         try:
-            logger.debug(f"Paso {step_count}: Obteniendo campo vectorial del toroide...")
+            logger.debug(
+                "Paso %d: Obteniendo campo vectorial del toroide...", step_count
+            )
             fetch_and_apply_torus_field()
 
-            logger.debug(f"Paso {step_count}: Calculando flujo magnético...")
+            logger.debug(
+                "Paso %d: Calculando flujo magnético...", step_count
+            )
             current_flux = calculate_flux(mesh)
 
             dphi_dt = (current_flux - mesh.previous_flux) / dt if dt > 0 else 0.0
             mesh.previous_flux = current_flux
 
             logger.debug(
-                f"Paso {step_count}: Flujo actual={current_flux:.3f}, "
-                f"dPhi/dt={dphi_dt:.3f}"
+                "Paso %d: Flujo actual=%.3f, dPhi/dt=%.3f",
+                step_count, current_flux, dphi_dt
             )
 
-            logger.debug(f"Paso {step_count}: Simulando dinámica interna de la malla...")
+            logger.debug(
+                "Paso %d: Simulando dinámica interna de la malla...", step_count
+            )
             simular_paso_malla()
 
-            logger.debug(f"Paso {step_count}: Actualizando estado agregado...")
+            logger.debug(
+                "Paso %d: Actualizando estado agregado...", step_count
+            )
             update_aggregate_state()
 
             if abs(dphi_dt) > DPHI_DT_INFLUENCE_THRESHOLD:
                 logger.info(
-                    f"Paso {step_count}: |dPhi/dt|={abs(dphi_dt):.3f} supera umbral "
-                    f"{DPHI_DT_INFLUENCE_THRESHOLD}. Enviando influencia..."
+                    "Paso %d: |dPhi/dt|=%.3f supera umbral %.3f. Enviando influencia...",
+                    step_count, abs(dphi_dt), DPHI_DT_INFLUENCE_THRESHOLD
                 )
                 send_influence_to_torus(dphi_dt)
             else:
                 logger.debug(
-                    f"Paso {step_count}: |dPhi/dt|={abs(dphi_dt):.3f} no supera umbral "
-                    "para influenciar toroide."
+                    "Paso %d: |dPhi/dt|=%.3f no supera umbral para influenciar toroide.",
+                    step_count, abs(dphi_dt)
                 )
 
-        except Exception as e:
-            logger.exception(f"Error durante el paso de simulación {step_count} de malla.")
+        except Exception:
+            logger.exception(
+                "Error durante el paso de simulación %d de malla.", step_count
+            )
 
         elapsed_time = time.monotonic() - start_time
         sleep_time = max(0, dt - elapsed_time)
         logger.debug(
-            f"--- Paso {step_count} completado en {elapsed_time:.3f}s. "
-            f"Durmiendo por {sleep_time:.3f}s ---"
+            "--- Paso %d completado en %.3fs. Durmiendo por %.3fs ---",
+            step_count, elapsed_time, sleep_time
         )
         if sleep_time > 0:
             stop_simulation_event.wait(sleep_time)
@@ -650,7 +724,9 @@ def simulation_loop():
     logger.info("Bucle de simulación de malla detenido.")
 
 
-AGENT_AI_REGISTER_URL = os.environ.get("AGENT_AI_REGISTER_URL", "http://agent_ai:9000/api/register")
+AGENT_AI_REGISTER_URL = os.environ.get(
+    "AGENT_AI_REGISTER_URL", "http://agent_ai:9000/api/register"
+)
 MAX_REGISTRATION_RETRIES = 5
 RETRY_DELAY = 5
 
@@ -674,35 +750,47 @@ def register_with_agent_ai(
         "naturaleza_auxiliar": naturaleza,
         "descripcion": description
     }
-    logger.info(f"Intentando registrar '{module_name}' en AgentAI ({AGENT_AI_REGISTER_URL})...")
+    logger.info(
+        "Intentando registrar '%s' en AgentAI (%s)...",
+        module_name, AGENT_AI_REGISTER_URL
+    )
     for attempt in range(MAX_REGISTRATION_RETRIES):
         try:
-            response = requests.post(AGENT_AI_REGISTER_URL, json=payload, timeout=4.0)
+            response = requests.post(
+                AGENT_AI_REGISTER_URL, json=payload, timeout=4.0
+            )
             response.raise_for_status()
             if response.status_code == 200:
-                logger.info(f"Registro de '{module_name}' exitoso en AgentAI.")
+                logger.info(
+                    "Registro de '%s' exitoso en AgentAI.", module_name
+                )
                 return True
             else:
                 logger.warning(
-                    f"Registro de '{module_name}' recibido con status {response.status_code}. "
-                    f"Respuesta: {response.text}"
+                    "Registro de '%s' recibido con status %d. Respuesta: %s",
+                    module_name, response.status_code, response.text
                 )
         except requests.exceptions.RequestException as e:
             logger.error(
-                f"Error de conexión al intentar registrar '{module_name}' "
-                f"(intento {attempt + 1}/{MAX_REGISTRATION_RETRIES}): {e}"
+                "Error de conexión al intentar registrar '%s' "
+                "(intento %d/%d): %s",
+                module_name, attempt + 1, MAX_REGISTRATION_RETRIES, e
             )
         except Exception as e:
             logger.error(
-                f"Error inesperado durante el registro de '{module_name}' "
-                f"(intento {attempt + 1}/{MAX_REGISTRATION_RETRIES}): {e}"
+                "Error inesperado durante el registro de '%s' "
+                "(intento %d/%d): %s",
+                module_name, attempt + 1, MAX_REGISTRATION_RETRIES, e
             )
 
         if attempt < MAX_REGISTRATION_RETRIES - 1:
-            logger.info(f"Reintentando registro en {RETRY_DELAY} segundos...")
+            logger.info("Reintentando registro en %d segundos...", RETRY_DELAY)
             time.sleep(RETRY_DELAY)
         else:
-            logger.error(f"No se pudo registrar '{module_name}' en AgentAI después de {MAX_REGISTRATION_RETRIES} intentos.")
+            logger.error(
+                "No se pudo registrar '%s' en AgentAI después de %d intentos.",
+                module_name, MAX_REGISTRATION_RETRIES
+            )
             return False
     return False
 
@@ -742,21 +830,21 @@ def health_check():
                 if max_neighbors > 6 or (min_neighbors < 3 and num_cells > 1):
                     connectivity_status = "error"
                     status = "error"
-                    message = "Error estructural: Problemas graves de conectividad en la malla."
+                    message = "Error estructural: Problemas graves de conectividad."
                 elif min_neighbors < 6 and num_cells > 1:
                     connectivity_status = "warning"
                     if status == "success":
                         status = "warning"
-                        message = "Advertencia: Posibles problemas de conectividad en la malla."
+                        message = "Advertencia: Posibles problemas de conectividad."
                 else:
                     connectivity_status = "ok"
             else:
                 connectivity_status = "warning"
                 if status == "success":
                     status = "warning"
-                    message = "Advertencia: verify_connectivity retornó un resultado vacío inesperado."
+                    message = "Advertencia: verify_connectivity retornó vacío."
         except Exception as e:
-            logger.error(f"Error durante verify_connectivity en health check: {e}")
+            logger.error("Error durante verify_connectivity: %s", e)
             connectivity_status = "error"
             status = "error"
             message = f"Error interno al verificar conectividad: {e}"
@@ -787,13 +875,15 @@ def health_check():
     elif status == "error":
         http_status_code = 500
 
-    logger.debug(f"Health check response: Status={status}, HTTP={http_status_code}")
+    logger.debug(
+        "Health check response: Status=%s, HTTP=%d", status, http_status_code
+    )
     return jsonify(response_data), http_status_code
 
 
 @app.route('/api/state', methods=['GET'])
 def get_malla_state():
-    """Devuelve el estado agregado actual de la malla y los parámetros de control."""
+    """Devuelve el estado agregado actual de la malla y parámetros de control."""
     state_data = {}
     with aggregate_state_lock:
         state_data.update(aggregate_state)
@@ -807,7 +897,7 @@ def get_malla_state():
     mesh = malla_cilindrica_global
     state_data["num_cells"] = len(mesh.cells) if mesh and mesh.cells else 0
 
-    logger.debug(f"Devolviendo estado agregado: {state_data}")
+    logger.debug("Devolviendo estado agregado: %s", state_data)
     return jsonify({"status": "success", "state": state_data})
 
 
@@ -815,7 +905,9 @@ def get_malla_state():
 def set_malla_control():
     data = request.get_json(silent=True)
     if data is None or "control_signal" not in data:
-        logger.error("Solicitud a /api/control sin payload JSON válido o 'control_signal'")
+        logger.error(
+            "Solicitud a /api/control sin payload JSON válido o 'control_signal'"
+        )
         return jsonify({
             "status": "error",
             "message": "Payload JSON vacío, inválido o falta 'control_signal'"
@@ -837,8 +929,8 @@ def set_malla_control():
         control_params["electron_D"] = electron_global.D
 
     logger.info(
-        f"Parámetros de control ajustados: C={resonador_global.C:.3f}, "
-        f"D={electron_global.D:.3f} (señal={signal:.3f})"
+        "Parámetros de control ajustados: C=%.3f, D=%.3f (señal=%.3f)",
+        resonador_global.C, electron_global.D, signal
     )
     return jsonify({
         "status": "success",
@@ -879,16 +971,23 @@ def aplicar_influencia_toroide_push():
     """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
-        logger.warning("Malla no inicializada o vacía. Saltando aplicación de influencia (push).")
+        logger.warning(
+            "Malla no inicializada o vacía. Saltando aplicación de influencia."
+        )
         return jsonify({
             "status": "warning",
             "message": "Malla no inicializada o vacía. Influencia no aplicada."
         }), 503
 
-    logger.warning("Recibida llamada a endpoint pasivo /api/malla/influence. Se recomienda usar el fetch activo.")
+    logger.warning(
+        "Recibida llamada a endpoint pasivo /api/malla/influence. "
+        "Se recomienda usar el fetch activo."
+    )
     data = request.get_json(silent=True)
     if data is None or "field_vector" not in data:
-        logger.error("Solicitud POST a /api/malla/influence sin 'field_vector'.")
+        logger.error(
+            "Solicitud POST a /api/malla/influence sin 'field_vector'."
+        )
         return jsonify({
             "status": "error",
             "message": "Payload JSON vacío, inválido o falta 'field_vector'"
@@ -898,20 +997,24 @@ def aplicar_influencia_toroide_push():
 
     try:
         apply_external_field_to_mesh(mesh, field_vector_data)
-        logger.info("Influencia del campo vectorial toroidal (push) aplicada correctamente a la malla.")
+        logger.info(
+            "Influencia del campo vectorial toroidal (push) aplicada correctamente."
+        )
         return jsonify({
             "status": "success",
-            "message": "Campo vectorial externo (push) aplicado a q_vector de las celdas vía interpolación."
+            "message": "Campo vectorial externo aplicado a q_vector de las celdas."
         }), 200
 
     except ValueError as ve:
-        logger.error(f"Error de valor al procesar campo vectorial externo (push): {ve}")
+        logger.error(
+            "Error de valor al procesar campo vectorial externo (push): %s", ve
+        )
         return jsonify({
             "status": "error",
             "message": f"Error en los datos recibidos (push): {ve}"
         }), 400
-    except Exception as e:
-        logger.exception("Error inesperado al aplicar influencia del toroide (push).")
+    except Exception:
+        logger.exception("Error inesperado al aplicar influencia del toroide.")
         return jsonify({
             "status": "error",
             "message": "Error interno al aplicar campo externo (push)."
@@ -922,7 +1025,9 @@ def aplicar_influencia_toroide_push():
 def receive_event():
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
-        logger.warning("Malla no inicializada o vacía. Saltando aplicación de evento.")
+        logger.warning(
+            "Malla no inicializada o vacía. Saltando aplicación de evento."
+        )
         return jsonify({
             "status": "warning",
             "message": "Malla no inicializada o vacía. Evento no aplicado."
@@ -935,7 +1040,7 @@ def receive_event():
             "message": "Payload JSON vacío o inválido"
         }), 400
 
-    logger.info(f"Evento recibido: {data}")
+    logger.info("Evento recibido: %s", data)
     if data.get("type") == "pulse" and "coords" in data and "magnitude" in data:
         q_coord = data["coords"].get("q")
         r_coord = data["coords"].get("r")
@@ -950,11 +1055,20 @@ def receive_event():
         if q_coord is not None and r_coord is not None:
             cell = mesh.get_cell(q_coord, r_coord)
             if cell:
-                logger.info(f"Celda ({q_coord},{r_coord}) - Velocidad antes: {cell.velocity:.3f}")
+                logger.info(
+                    "Celda (%d,%d) - Velocidad antes: %.3f",
+                    q_coord, r_coord, cell.velocity
+                )
                 cell.velocity += mag
-                logger.info(f"Celda ({q_coord},{r_coord}) - Velocidad después: {cell.velocity:.3f}")
+                logger.info(
+                    "Celda (%d,%d) - Velocidad después: %.3f",
+                    q_coord, r_coord, cell.velocity
+                )
             else:
-                logger.warning(f"No se encontró celda ({q_coord},{r_coord}) para aplicar evento.")
+                logger.warning(
+                    "No se encontró celda (%d,%d) para aplicar evento.",
+                    q_coord, r_coord
+                )
                 return jsonify({
                     "status": "warning",
                     "message": f"Celda ({q_coord},{r_coord}) no encontrada."
@@ -982,7 +1096,7 @@ def receive_error():
             "message": "Payload JSON vacío o inválido"
         }), 400
         
-    logger.error(f"Error reportado desde otro servicio: {data}")
+    logger.error("Error reportado desde otro servicio: %s", data)
     return jsonify({"status": "success", "message": "Error procesado"}), 200
 
 
@@ -1053,28 +1167,29 @@ if __name__ == "__main__":
 
     # 2. Loguear la configuración REAL
     logger.info(
-        f"Configuración Malla REAL: R={MESH_RADIUS_REAL}, "
-        f"HSeg={MESH_HEIGHT_SEGMENTS_REAL}, "
-        f"CSeg={MESH_CIRCUMFERENCE_SEGMENTS_REAL}, "
-        f"Hex={MESH_HEX_SIZE_REAL}, PerZ={MESH_PERIODIC_Z_REAL}"
+        "Configuración Malla REAL: R=%.1f, HSeg=%d, CSeg=%d, Hex=%.1f, PerZ=%s",
+        MESH_RADIUS_REAL, MESH_HEIGHT_SEGMENTS_REAL,
+        MESH_CIRCUMFERENCE_SEGMENTS_REAL, MESH_HEX_SIZE_REAL,
+        MESH_PERIODIC_Z_REAL
     )
     logger.info(
-        f"Configuración Comms REAL: ECU_URL={MATRIZ_ECU_BASE_URL_REAL}, "
-        f"Torus={TORUS_NUM_CAPAS_REAL}x{TORUS_NUM_FILAS_REAL}x{TORUS_NUM_COLUMNAS_REAL}, "
-        f"InfThr={AMPLITUDE_INFLUENCE_THRESHOLD_REAL}"
+        "Configuración Comms REAL: ECU_URL=%s, Torus=%dx%dx%d, InfThr=%.1f",
+        MATRIZ_ECU_BASE_URL_REAL, TORUS_NUM_CAPAS_REAL,
+        TORUS_NUM_FILAS_REAL, TORUS_NUM_COLUMNAS_REAL,
+        AMPLITUDE_INFLUENCE_THRESHOLD_REAL
     )
     logger.info(
-        f"Configuración Control REAL: BaseC={BASE_COUPLING_T_REAL}, "
-        f"BaseD={BASE_DAMPING_E_REAL}, GainC={K_GAIN_COUPLING_REAL}, "
-        f"GainD={K_GAIN_DAMPING_REAL}"
+        "Configuración Control REAL: BaseC=%.1f, BaseD=%.1f, GainC=%.1f, GainD=%.1f",
+        BASE_COUPLING_T_REAL, BASE_DAMPING_E_REAL,
+        K_GAIN_COUPLING_REAL, K_GAIN_DAMPING_REAL
     )
     logger.info(
-        f"Configuración Simulación REAL: Interval={SIMULATION_INTERVAL_REAL}s, "
-        f"dPhi/dt Threshold={DPHI_DT_INFLUENCE_THRESHOLD_REAL}"
+        "Configuración Simulación REAL: Interval=%.1fs, dPhi/dt Threshold=%.1f",
+        SIMULATION_INTERVAL_REAL, DPHI_DT_INFLUENCE_THRESHOLD_REAL
     )
     logger.info(
-        f"Configuración Normalización Influencia REAL: "
-        f"MaxActivityNorm={MAX_AMPLITUDE_FOR_NORMALIZATION_REAL}"
+        "Configuración Normalización Influencia REAL: MaxActivityNorm=%.1f",
+        MAX_AMPLITUDE_FOR_NORMALIZATION_REAL
     )
 
     # 3. RE-Inicializar las instancias globales REAL
@@ -1093,7 +1208,9 @@ if __name__ == "__main__":
     DPHI_DT_INFLUENCE_THRESHOLD = DPHI_DT_INFLUENCE_THRESHOLD_REAL
 
     try:
-        logger.info("Intentando RE-inicializar la instancia global REAL de HexCylindricalMesh...")
+        logger.info(
+            "Intentando RE-inicializar la instancia global REAL de HexCylindricalMesh..."
+        )
         malla_cilindrica_global = HexCylindricalMesh(
             radius=MESH_RADIUS_REAL,
             height_segments=MESH_HEIGHT_SEGMENTS_REAL,
@@ -1102,14 +1219,17 @@ if __name__ == "__main__":
             periodic_z=MESH_PERIODIC_Z_REAL
         )
         if not malla_cilindrica_global.cells:
-            logger.error("¡La malla REAL se inicializó pero está vacía! No se generaron celdas.")
+            logger.error("¡La malla REAL se inicializó pero está vacía!")
             exit(1)
         else:
             logger.info(
-                f"Malla REAL inicializada con {len(malla_cilindrica_global.cells)} celdas."
+                "Malla REAL inicializada con %d celdas.",
+                len(malla_cilindrica_global.cells)
             )
-    except Exception as e:
-        logger.exception("Error crítico al RE-inicializar HexCylindricalMesh global REAL. Terminando.")
+    except Exception:
+        logger.exception(
+            "Error crítico al RE-inicializar HexCylindricalMesh global REAL."
+        )
         exit(1)
 
     resonador_global = PhosWave(coef_acoplamiento=BASE_COUPLING_T)
@@ -1118,15 +1238,17 @@ if __name__ == "__main__":
     if not hasattr(malla_cilindrica_global, 'previous_flux'):
         malla_cilindrica_global.previous_flux = 0.0
         logger.info("previous_flux inicializado a 0.0 en instancia REAL.")
-    logger.debug(f"previous_flux en instancia REAL: {malla_cilindrica_global.previous_flux}")
+    logger.debug(
+        "previous_flux en instancia REAL: %.1f",
+        malla_cilindrica_global.previous_flux
+    )
 
     with control_lock:
         control_params["phoswave_C"] = resonador_global.C
         control_params["electron_D"] = electron_global.D
     logger.info(
-        f"Parámetros de control iniciales REALES: "
-        f"C={control_params['phoswave_C']:.3f}, "
-        f"D={control_params['electron_D']:.3f}"
+        "Parámetros de control iniciales REALES: C=%.3f, D=%.3f",
+        control_params['phoswave_C'], control_params['electron_D']
     )
 
     # 4. Registro con AgentAI
@@ -1145,7 +1267,10 @@ if __name__ == "__main__":
         MODULE_NAME, MODULE_URL, HEALTH_URL, "auxiliar", APORTA_A, NATURALEZA, DESCRIPTION
     )
     if not registration_successful:
-        logger.warning(f"El módulo '{MODULE_NAME}' continuará sin registro exitoso en AgentAI.")
+        logger.warning(
+            "El módulo '%s' continuará sin registro exitoso en AgentAI.",
+            MODULE_NAME
+        )
 
     # 5. Iniciar Hilo de Simulación y Servidor Flask
     logger.info("Creando e iniciando hilo de simulación de malla...")
@@ -1158,7 +1283,9 @@ if __name__ == "__main__":
     simulation_thread.start()
     logger.info("Hilo de simulación iniciado.")
 
-    logger.info(f"Iniciando servicio Flask de malla_watcher en puerto {SERVICE_PORT}")
+    logger.info(
+        "Iniciando servicio Flask de malla_watcher en puerto %d", SERVICE_PORT
+    )
     app.run(host="0.0.0.0", port=SERVICE_PORT, debug=False, use_reloader=False)
 
     # Código de limpieza al detener el servidor
