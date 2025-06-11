@@ -94,7 +94,8 @@ def register_with_agent_ai(
         # Podrías añadir más metadata si AgentAI la usa
     }
     logger.info(
-        f"Intentando registrar '{module_name}' en AgentAI ({AGENT_AI_REGISTER_URL})..."
+        f"Intentando registrar '{module_name}' en AgentAI "
+        f"({AGENT_AI_REGISTER_URL})..."
     )
     for attempt in range(MAX_REGISTRATION_RETRIES):
         try:
@@ -108,7 +109,10 @@ def register_with_agent_ai(
             else:
                 # Esto no debería ocurrir si raise_for_status funciona, pero
                 # por si acaso
-                msg = "Registro de '%s' con status %s. Respuesta: %s"
+                msg = (
+                    "Registro de '%s' con status %s. "
+                    "Respuesta: %s"
+                )
                 logger.warning(
                     msg, module_name, response.status_code, response.text[:20]
                 )  # Truncate
@@ -148,7 +152,6 @@ app = Flask(__name__)
 # --- Endpoint de Salud ---
 
 
-# Flask routes typically have 1 blank line
 @app.route("/api/health", methods=["GET"])
 def health():
     # Podría verificar si el hilo de simulación está vivo
@@ -238,7 +241,7 @@ def set_wave_control():
     except (ValueError, TypeError):
         logger.error(
             "Error al procesar control_signal: %s - Data: %s", data, data
-        )  # Removed 'e'
+        )
         return (
             jsonify(
                 {
@@ -248,7 +251,7 @@ def set_wave_control():
             ),
             400,
         )
-    except Exception:  # Removed 'as e'
+    except Exception:
         logger.exception("Error al aplicar señal de control a WatchersWave")
         return (
             jsonify(
@@ -275,7 +278,8 @@ def wave_foton():
             # Recalcular omega_local inmediatamente si depende de lambda
             state["omega_local"] = get_omega_local(new_lambda)
         logger.info(
-            "[Foton] lambda_foton actualizado a %.2f, omega_local a %.3f",
+            "[Foton] lambda_foton actualizado a %.2f, "
+            "omega_local a %.3f",
             new_lambda,
             state["omega_local"],
         )
@@ -473,11 +477,12 @@ def simulate_wave_infinite():
             try:
                 with open(OUTPUT_FILE, "a", encoding="utf-8") as f:
                     f.write(
-                        f"[WaveEvent] amplitude={amplitude:.3f}, t={t_new:.2f}\n"
+                        f"[WaveEvent] amplitude={amplitude:.3f}, "
+                        f"t={t_new:.2f}\n"
                     )
                 logger.info(
-                    f"[WaveEvent] Umbral de amplitud superado: {amplitude:.3f} "
-                    f"en t={t_new:.2f}"
+                    f"[WaveEvent] Umbral de amplitud superado: "
+                    f"{amplitude:.3f} en t={t_new:.2f}"
                 )
                 # Podríamos resetear o modificar algo aquí si superamos el
                 # umbral
@@ -493,9 +498,7 @@ def simulate_wave_infinite():
 
 def run_flask():
     """Inicia el servidor Flask."""
-    # --- MOVER OBTENCIÓN DE PUERTO AQUÍ ---
     port = int(os.environ.get("WATCHERS_WAVE_PORT", 5000))
-    # --------------------------------------
     # Usar 'use_reloader=False' es importante cuando se usa threading con Flask
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
@@ -511,7 +514,7 @@ if __name__ == "__main__":
     # ¿Aumenta la oscilación? ¿O la reduce (reductor)? ¿O la modula?
     NATURALEZA = "potenciador"
     DESCRIPTION = (
-        "Simulador de oscilador 2D amortiguado con ultrasonido."  # Wrapped
+        "Simulador de oscilador 2D amortiguado con ultrasonido."
     )
 
     registration_successful = register_with_agent_ai(
