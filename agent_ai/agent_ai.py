@@ -523,7 +523,10 @@ class AgentAI:
                 mensaje,
                 modulo_info,
             )
-            return {"status": "error", "mensaje": mensaje}
+            return {
+                "status": "error",
+                "mensaje": mensaje
+            }
 
         deps_ok = True
         deps_msg = "Validación de dependencias omitida o exitosa."
@@ -544,14 +547,20 @@ class AgentAI:
                             nombre,
                             deps_msg,
                         )
-                        return {"status": "error", "mensaje": deps_msg}
+                        return {
+                            "status": "error",
+                            "mensaje": deps_msg
+                        }
                 except Exception as e:
                     deps_ok = False
                     deps_msg = (
                         f"Error inesperado al verificar dependencias: {e}"
                     )
                 logger.exception(deps_msg)
-                return {"status": "error", "mensaje": deps_msg}
+                return {
+                    "status": "error",
+                    "mensaje": deps_msg
+                }
             else:
                 logger.warning(
                     "No se encontró GLOBAL_REQUIREMENTS_PATH en %s, "
@@ -607,7 +616,10 @@ class AgentAI:
             name=f"HealthCheck-{nombre}"
         )
         thread.start()
-        return {"status": "success", "mensaje": f"Módulo '{nombre}' registrado"}
+        return {
+            "status": "success",
+            "mensaje": f"Módulo '{nombre}' registrado"
+        }
 
     def _validar_salud_modulo(self, nombre):
         """Valida la salud del módulo y notifica a HC si es necesario."""
