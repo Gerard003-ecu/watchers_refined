@@ -187,7 +187,7 @@ class AgentAI:
                 time.sleep(retry_interval_hc_wait)
         if not hc_ready:
             logger.warning(
-                "No se pudo establecer conexión inicial con harmony_controller."
+                "No existe conexión inicial con harmony_controller."
             )
 
         logger.info("Iniciando bucle estratégico...")
@@ -566,7 +566,10 @@ class AgentAI:
                 logger.warning(
                     "Intento de registrar módulo existente: %s", nombre
                 )
-                return {"status": "error", "mensaje": "El módulo ya está registrado."}
+                return {
+                    "status": "error",
+                    "mensaje": "El módulo ya está registrado."
+                }
 
             module_entry = {
                 "nombre": nombre,
