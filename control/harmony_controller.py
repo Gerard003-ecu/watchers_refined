@@ -185,11 +185,14 @@ def get_ecu_state() -> Optional[List[List[float]]]:
                 ):
                     rows = len(state_list)
                     cols = len(state_list[0]) if rows > 0 else 0
-                    logger.debug("Estado ECU recibido: %dx%d puntos", rows, cols)
+                    logger.debug(
+                        "Estado ECU recibido: %dx%d puntos", rows, cols
+                    )
                     return state_list
                 else:
                     logger.error(
-                        "Clave 'estado_campo_unificado' no es lista de listas: %s",
+                        "Clave 'estado_campo_unificado' no es lista de "
+                        "listas: %s",
                         type(state_list)
                     )
             else:
@@ -216,19 +219,21 @@ def get_tool_state(tool_name: str, base_url: str) -> Dict[str, Any]:
             data = response.json()
             # Ensuring the logger.debug call is compliant
             logger.debug(
-                "Estado recibido de %s: %s",  # Format string
-                tool_name,                     # First arg
-                data.get('state', data)        # Second arg
+                "Estado recibido de %s: %s",
+                tool_name,
+                data.get('state', data)
             )
-            return data.get("state", {"status": "success", "raw_data": data})
+            return data.get("state", {
+                "status": "success", "raw_data": data
+            })
         except Exception as e:
             # Ensuring the logger.warning call is compliant
             logger.warning(
-                "Error al obtener estado de %s (%s) intento %d: %s",  # Format string
-                tool_name,                                           # First arg
-                state_url,                                           # Second arg
-                attempt + 1,                                         # Third arg
-                e                                                    # Fourth arg
+                "Error al obtener estado de %s (%s) intento %d: %s",
+                tool_name,
+                state_url,
+                attempt + 1,
+                e
             )
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
@@ -320,7 +325,9 @@ def harmony_control_loop():
 
         control_weights = [1.0 / num_control_axes] * num_control_axes
         if len(current_sp_vec) >= num_control_axes:
-            rel_sp_comps = [current_sp_vec[i] for i in range(num_control_axes)]
+            rel_sp_comps = [
+                current_sp_vec[i] for i in range(num_control_axes)
+            ]
             abs_comps = np.abs(rel_sp_comps)
             sum_abs_comps = np.sum(abs_comps)
             if sum_abs_comps > 1e-9:
@@ -345,7 +352,9 @@ def harmony_control_loop():
             naturaleza = details.get("naturaleza")
 
             if not tool_url:
-                logger.error("No hay URL definida para '%s'. Saltando.", name)
+                logger.error(
+                    "No hay URL definida para '%s'. Saltando.", name
+                )
                 continue
 
             signal_to_send = 0.0
@@ -426,7 +435,8 @@ def set_harmony_setpoint():
     data = request.get_json()
     if not data:
         return jsonify({
-            "status": "error", "message": "Payload JSON vacío o ausente."
+            "status": "error",
+            "message": "Payload JSON vacío o ausente."
         }), 400
     new_vector = data.get("setpoint_vector")
     try:
@@ -460,7 +470,8 @@ def register_tool_from_ai():
     if not data:
         logger.error("Solicitud a /register_tool sin payload JSON.")
         return jsonify({
-            "status": "error", "message": "Payload JSON vacío o ausente."
+            "status": "error",
+            "message": "Payload JSON vacío o ausente."
         }), 400
 
     required_fields = ["nombre", "url", "aporta_a", "naturaleza"]
@@ -480,7 +491,9 @@ def register_tool_from_ai():
             "message": f"Tool '{data['nombre']}' registrado/actualizado."
         }), 200
     except Exception as e:
-        logger.exception("Error al registrar tool '%s': %s", data["nombre"], e)
+        logger.exception(
+            "Error al registrar tool '%s': %s", data["nombre"], e
+        )
         return jsonify({
             "status": "error",
             "message": "Error interno al registrar el tool."
@@ -498,7 +511,8 @@ def reset_pid():
             }), 200
         else:
             return jsonify({
-                "status": "error", "message": "Controlador PID no encontrado."
+                "status": "error",
+                "message": "Controlador PID no encontrado."
             }), 500
     except Exception as e:
         logger.exception("Error inesperado al reiniciar PID: %s", e)
