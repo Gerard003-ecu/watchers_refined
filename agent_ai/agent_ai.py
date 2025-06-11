@@ -40,7 +40,7 @@ HARMONY_CONTROLLER_URL = os.environ.get(
     "HARMONY_CONTROLLER_URL", "http://harmony_controller:7000"
 )
 HARMONY_CONTROLLER_REGISTER_URL = os.environ.get(
-    "HARMONY_CONTROLLER_REGISTER_URL", 
+    "HARMONY_CONTROLLER_REGISTER_URL",
     f"{HARMONY_CONTROLLER_URL}/api/harmony/register_tool"
 )
 # Nombre de la variable ENV
@@ -83,7 +83,8 @@ class AgentAI:
             ):
                 self.target_setpoint_vector: List[float] = parsed_vector
             else:
-                raise ValueError("El valor parseado no es una lista de números")
+                raise ValueError(
+                    "El valor parseado no es una lista de números")
         except (json.JSONDecodeError, ValueError) as e:
             log_msg = (
                 "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando "
@@ -105,9 +106,11 @@ class AgentAI:
 
         self.central_urls: Dict[str, str] = {}
         hc_url = os.environ.get(HARMONY_CONTROLLER_URL_ENV)
-        self.central_urls["harmony_controller"] = (
-            hc_url if hc_url else DEFAULT_HC_URL
-        )
+        if hc_url:
+            hc_url_val = hc_url
+        else:
+            hc_url_val = DEFAULT_HC_URL
+        self.central_urls["harmony_controller"] = hc_url_val
 
         ecu_url = os.environ.get(AGENT_AI_ECU_URL_ENV)
         self.central_urls["ecu"] = ecu_url if ecu_url else DEFAULT_ECU_URL
@@ -191,7 +194,8 @@ class AgentAI:
         while not self._stop_event.is_set():
             start_time = time.monotonic()
             try:
-                current_harmony_state = self._get_harmony_state()
+                state = self._get_harmony_state()
+                current_harmony_state = state
                 with self.lock:
                     if current_harmony_state is not None:
                         self.harmony_state = current_harmony_state
@@ -236,7 +240,8 @@ class AgentAI:
 
             except BaseException as e:
                 if isinstance(e, (SystemExit, KeyboardInterrupt)):
-                    logger.info("Señal de salida recibida en bucle estratégico.")
+                    logger.info(
+                        "Señal de salida recibida en bucle estratégico.")
                     break
                 logger.exception("Error inesperado en el bucle estratégico.")
 
@@ -253,7 +258,8 @@ class AgentAI:
             try:
                 response = requests.get(url, timeout=REQUESTS_TIMEOUT)
                 response.raise_for_status()
-                response_data = response.json()
+                json_data = response.json()
+                response_data = json_data
 
                 if (response_data.get("status") == "success" and
                         "data" in response_data):
@@ -343,8 +349,8 @@ class AgentAI:
         )
 
         stability_threshold = (
-            0.1 * current_target_norm 
-            if current_target_norm > 0 
+            0.1 * current_target_norm
+            if current_target_norm > 0
             else 0.1
         )
         pid_effort_threshold = 0.5
@@ -542,8 +548,8 @@ class AgentAI:
                 except Exception as e:
                     deps_ok = False
                     deps_msg = (
-                    f"Error inesperado al verificar dependencias: {e}"
-                )
+                        f"Error inesperado al verificar dependencias: {e}"
+                    )
                 logger.exception(deps_msg)
                 return {"status": "error", "mensaje": deps_msg}
             else:
@@ -591,11 +597,13 @@ class AgentAI:
                 log_details,
                 deps_msg)
 
-        threading.Thread(
+        thread = threading.Thread(
             target=self._validar_salud_modulo,
             args=(nombre,),
             daemon=True,
-            name=f"HealthCheck-{nombre}").start()
+            name=f"HealthCheck-{nombre}"
+        )
+        thread.start()
         return {"status": "success", "mensaje": f"Módulo '{nombre}' registrado"}
 
     def _validar_salud_modulo(self, nombre):
@@ -643,7 +651,9 @@ class AgentAI:
                         estado_salud = f"error_{response.status_code}"
                         logger.warning(
                             "Validación fallida para '%s'. Status: %d",
-                            nombre, response.status_code)
+                            nombre,
+                            response.status_code
+                        )
                 except Exception as e:
                     estado_salud = "error_inesperado"
                     logger.exception(
@@ -665,7 +675,10 @@ class AgentAI:
                     logger.error(
                         "Validación para '%s' falló tras %d intentos. "
                         "Estado: %s",
-                        nombre, MAX_RETRIES, estado_salud)
+                        nombre,
+                        MAX_RETRIES,
+                        estado_salud
+                    )
 
         with self.lock:
             if nombre in self.modules:
