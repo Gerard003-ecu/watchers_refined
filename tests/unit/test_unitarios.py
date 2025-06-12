@@ -8,10 +8,10 @@ Suite de pruebas unitarias para los módulos:
 
 import pytest
 import math
-import numpy as np
 
 from watchers_modules.watchers_wave.malla_watcher import Cell, PhosWave
 from watchers_modules.watcher_focus.watcher_focus import update_indicators
+
 
 ##############################
 # Pruebas Unitarias: MÓDULO "watchers_wave"
@@ -21,25 +21,39 @@ def test_phoswave_transmision():
     celda_B = Cell(0, 0, amplitude=0.0, phase=0.0)
     
     resonador = PhosWave(
-        coef_transmision=0.6, 
-        coef_reflexion=0.4, 
+        coef_transmision=0.6,
+        coef_reflexion=0.4,
         tipo_onda=PhosWave.__dict__.get("tipo_onda", None) or "FOTON_A",
         lambda_foton=600
     )
     resonador.transmitir(celda_A, celda_B)
-    assert celda_B.amplitude > 0, "La celda_B no incrementó su amplitud"
-    assert celda_A.amplitude < 1.0, "La celda_A no redujo su amplitud"
+    assert celda_B.amplitude > 0, (
+        "La celda_B no incrementó su amplitud"
+    )
+    assert celda_A.amplitude < 1.0, (
+        "La celda_A no redujo su amplitud"
+    )
+
 
 ##############################
 # Pruebas Unitarias: MÓDULO "watcher_focus"
 ##############################
 def test_update_indicators():
-    """Verifica que update_indicators retorne un diccionario con las claves esperadas."""
+    """Verifica que update_indicators retorne un diccionario con las
+    claves esperadas.
+    """
     resultado = update_indicators(t=1.0, x=1.0, y=0.0, z=0.5)
-    assert isinstance(resultado, dict), "El resultado debe ser un diccionario"
+    assert isinstance(resultado, dict), (
+        "El resultado debe ser un diccionario"
+    )
     expected_keys = {"t", "x", "y", "z", "phase", "z_error"}
-    assert expected_keys.issubset(resultado.keys()), "Faltan claves en el resultado"
-    assert math.isclose(resultado["phase"], 0.0, abs_tol=1e-6), "La fase calculada es incorrecta"
+    assert expected_keys.issubset(resultado.keys()), (
+        "Faltan claves en el resultado"
+    )
+    assert math.isclose(
+        resultado["phase"], 0.0, abs_tol=1e-6
+    ), "La fase calculada es incorrecta"
+
 
 if __name__ == "__main__":
     pytest.main()
