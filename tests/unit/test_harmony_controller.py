@@ -3,19 +3,18 @@
 import unittest
 import unittest.mock as mock
 import json
-import time
-import threading
 import numpy as np
 import os
 import requests
 
 # --- Configuración de Entorno Simulada ANTES de importar ---
-if 'WATCHERS_TOOLS_CONFIG' in os.environ: del os.environ['WATCHERS_TOOLS_CONFIG']
+if 'WATCHERS_TOOLS_CONFIG' in os.environ:
+    del os.environ['WATCHERS_TOOLS_CONFIG']
 os.environ['ECU_API_URL'] = "http://fake-ecu:8000/api/ecu"
 os.environ['HC_SETPOINT_VECTOR'] = '[1.0, 0.0]'
 
 # --- Importar Módulo Bajo Prueba ---
-# Usar un bloque try/except para manejar posible error si el módulo ya fue importado
+# Usar un bloque try/except para manejar posible error
 try:
     from control import harmony_controller
     from control.harmony_controller import (
@@ -24,16 +23,18 @@ try:
         get_tool_state,
         send_tool_control,
     )
-    #from control.boson_phase import BosonPhase  # Descomentar si es necesario
 except ImportError as e:
-    raise ImportError(f"No se pudo importar harmony_controller. Verifica la estructura del proyecto y PYTHONPATH. Error: {e}")
+    raise ImportError(
+        "No se pudo importar harmony_controller. "
+        "Verifica la estructura del proyecto y PYTHONPATH. "
+        f"Error: {e}"
+    )
 
 # --- Mock Global de Requests ---
-# Usaremos MagicMock para simular respuestas HTTP
 mock_requests = mock.MagicMock()
 
+
 class MockResponse:
-    # ... (Clase MockResponse sin cambios) ...
     def __init__(self, json_data, status_code, text=""):
         self._json_data = json_data
         self.status_code = status_code
@@ -41,13 +42,17 @@ class MockResponse:
 
     def json(self):
         if self._json_data is None:
-            # Simular error de decodificación si no hay datos json
-            raise requests.exceptions.JSONDecodeError("Mocked decode error", "", 0)
+            # Simular error de decodificación
+            raise requests.exceptions.JSONDecodeError(
+                "Mocked decode error", "", 0
+            )
         return self._json_data
 
     def raise_for_status(self):
         if self.status_code >= 400:
-            raise requests.exceptions.HTTPError(f"Mocked HTTP Error {self.status_code}", response=self)
+            raise requests.exceptions.HTTPError(
+                f"Mocked HTTP Error {self.status_code}", response=self
+            )
 
 
 # --- Tests para HarmonyControllerState (AJUSTADOS) ---
@@ -56,30 +61,35 @@ class TestHarmonyControllerState(unittest.TestCase):
         self.test_kp = harmony_controller.KP_INIT
         self.test_ki = harmony_controller.KI_INIT
         self.test_kd = harmony_controller.KD_INIT
-        self.test_setpoint_vector = harmony_controller.setpoint_vector_init.tolist()
+        self.test_setpoint_vector = (
+            harmony_controller.setpoint_vector_init.tolist()
+        )
         self.test_setpoint_value = harmony_controller.setpoint_init
         self.state = HarmonyControllerState(
-            kp=self.test_kp, ki=self.test_ki, kd=self.test_kd,
+            kp=self.test_kp,
+            ki=self.test_ki,
+            kd=self.test_kd,
             initial_setpoint=self.test_setpoint_value,
-            initial_setpoint_vector=
-                self.test_setpoint_vector
+            initial_setpoint_vector=self.test_setpoint_vector
         )
 
     def test_initialization(self):
-        """Verifica estado inicial (sin tools gestionados por defecto)."""
+        """Verifica estado inicial (sin tools gestionados)."""
         self.assertEqual(self.state.pid_controller.Kp, self.test_kp)
         self.assertEqual(self.state.pid_controller.Ki, self.test_ki)
         self.assertEqual(self.state.pid_controller.Kd, self.test_kd)
-        self.assertAlmostEqual(self.state.current_setpoint, self.test_setpoint_value)
+        self.assertAlmostEqual(
+            self.state.current_setpoint, self.test_setpoint_value
+        )
         self.assertEqual(self.state.setpoint_vector, self.test_setpoint_vector)
         self.assertEqual(self.state.last_ecu_state, [])
-        # --- AJUSTE: Verificar que managed_tools_details inicia vacío ---
+        # Verificar que managed_tools_details inicia vacío
         self.assertEqual(self.state.managed_tools_details, {})
 
     def test_update_setpoint_value_only(self):
         """Prueba actualizar setpoint solo con valor."""
         new_val = 5.5
-        initial_vec = list(self.state.setpoint_vector)  # Guardar vector inicial
+        initial_vec = list(self.state.setpoint_vector)
         self.state.update_setpoint(new_val)
         self.assertEqual(self.state.current_setpoint, new_val)
         self.assertEqual(self.state.pid_controller.setpoint, new_val)
@@ -89,13 +99,13 @@ class TestHarmonyControllerState(unittest.TestCase):
     def test_update_setpoint_with_vector(self):
         """Prueba actualizar setpoint con vector."""
         new_vec = [3.0, 4.0]
-        new_val = np.linalg.norm(new_vec)  # 5.0
+        new_val = np.linalg.norm(new_val)
         self.state.update_setpoint(new_val, new_vec)
         self.assertAlmostEqual(self.state.current_setpoint, 5.0)
         self.assertAlmostEqual(self.state.pid_controller.setpoint, 5.0)
         self.assertEqual(self.state.setpoint_vector, [3.0, 4.0])
 
-    ### NUEVO: Tests para registro/desregistro de tools  ###
+    # Tests para registro/desregistro de tools
     def test_register_managed_tool_new(self):
         """Prueba registrar un nuevo tool."""
         self.state.register_managed_tool(
@@ -134,7 +144,7 @@ class TestHarmonyControllerState(unittest.TestCase):
         self.assertNotIn("tool_a", self.state.managed_tools_details)
 
     def test_unregister_managed_tool_non_existing(self):
-        """Prueba eliminar un tool que no existe (no debe fallar)."""
+        """Prueba eliminar un tool que no existe."""
         self.assertNotIn("tool_b", self.state.managed_tools_details)
         # No debería lanzar excepción
         self.state.unregister_managed_tool("tool_b")
@@ -142,18 +152,22 @@ class TestHarmonyControllerState(unittest.TestCase):
 
     # MODIFICADO: test_get_state_snapshot refleja nueva estructura
     def test_get_state_snapshot(self):
-        """Prueba obtener snapshot del estado (con tools registrados)."""
+        """Prueba obtener snapshot del estado."""
         self.state.register_managed_tool(
             "tool_a", "http://a", "malla_watcher", "potenciador"
         )
-        self.state.register_managed_tool("tool_b", "http://b", "matriz_ecu", "reductor")
+        self.state.register_managed_tool(
+            "tool_b", "http://b", "matriz_ecu", "reductor"
+        )
         self.state.managed_tools_details["tool_a"]["last_state"] = {"amp": 1.5}
         self.state.managed_tools_details["tool_b"]["last_control"] = -0.2
 
         snapshot = self.state.get_state_snapshot()
 
         self.assertIsInstance(snapshot, dict)
-        self.assertAlmostEqual(snapshot["setpoint_value"], self.test_setpoint_value)
+        self.assertAlmostEqual(
+            snapshot["setpoint_value"], self.test_setpoint_value
+        )
         self.assertEqual(snapshot["setpoint_vector"], self.test_setpoint_vector)
         self.assertEqual(snapshot["last_measurement"], 0.0)
         self.assertEqual(snapshot["last_pid_output"], 0.0)
@@ -165,25 +179,32 @@ class TestHarmonyControllerState(unittest.TestCase):
         self.assertIn("tool_a", managed_tools_snap)
         self.assertIn("tool_b", managed_tools_snap)
         self.assertEqual(managed_tools_snap["tool_a"]["url"], "http://a")
-        self.assertEqual(managed_tools_snap["tool_a"]["aporta_a"], "malla_watcher")
+        self.assertEqual(
+            managed_tools_snap["tool_a"]["aporta_a"], "malla_watcher"
+        )
         self.assertEqual(
             managed_tools_snap["tool_a"]["naturaleza"], "potenciador"
         )
-        self.assertEqual(managed_tools_snap["tool_a"]["last_state"], {"amp": 1.5})
-        self.assertEqual(managed_tools_snap["tool_b"]["aporta_a"], "matriz_ecu")
-        self.assertEqual(managed_tools_snap["tool_b"]["naturaleza"], "reductor")
-        self.assertEqual(managed_tools_snap["tool_b"]["last_control"], -0.2)
+        self.assertEqual(
+            managed_tools_snap["tool_a"]["last_state"], {"amp": 1.5}
+        )
+        self.assertEqual(
+            managed_tools_snap["tool_b"]["aporta_a"], "matriz_ecu"
+        )
+        self.assertEqual(
+            managed_tools_snap["tool_b"]["naturaleza"], "reductor"
+        )
+        self.assertEqual(
+            managed_tools_snap["tool_b"]["last_control"], -0.2
+        )
 
 
-# --- Tests para Funciones de Comunicación (AJUSTADOS/VERIFICADOS) ---
-# Usar mock global de requests
+# --- Tests para Funciones de Comunicación ---
 @mock.patch('control.harmony_controller.requests', mock_requests)
 class TestCommunicationFunctions(unittest.TestCase):
 
     def setUp(self):
-        # Resetear mock antes de cada test
         mock_requests.reset_mock()
-        # Limpiar side effects
         mock_requests.get.side_effect = None
         mock_requests.post.side_effect = None
 
@@ -191,7 +212,7 @@ class TestCommunicationFunctions(unittest.TestCase):
         """Prueba obtener estado ECU exitoso."""
         mock_response_data = {
             "status": "success",
-            "estado_campo_unificado": [[0.5, 0.1], [-0.2, 0.3]] # Ejemplo 2x2
+            "estado_campo_unificado": [[0.5, 0.1], [-0.2, 0.3]]
         }
         mock_requests.get.return_value = MockResponse(mock_response_data, 200)
         state = get_ecu_state()
@@ -202,32 +223,36 @@ class TestCommunicationFunctions(unittest.TestCase):
         self.assertEqual(state, [[0.5, 0.1], [-0.2, 0.3]])
 
     def test_get_ecu_state_network_error_with_retry(self):
-        """Prueba error de red en get_ecu_state con reintentos."""
-        mock_requests.get.side_effect = requests.exceptions.RequestException("Network Error")
-        # Mockear sleep para acelerar
+        """Prueba error de red con reintentos."""
+        mock_requests.get.side_effect = requests.exceptions.RequestException(
+            "Network Error"
+        )
         with mock.patch('time.sleep') as mock_sleep:
             state = get_ecu_state()
-            self.assertIsNone(state)  # Debe devolver None después de fallar reintentos
-            # Verificar reintentos (asumiendo MAX_RETRIES=3)
+            self.assertIsNone(state)
             self.assertEqual(
-                mock_requests.get.call_count, harmony_controller.MAX_RETRIES
+                mock_requests.get.call_count,
+                harmony_controller.MAX_RETRIES
             )
             self.assertEqual(
-                mock_sleep.call_count, harmony_controller.MAX_RETRIES - 1
+                mock_sleep.call_count,
+                harmony_controller.MAX_RETRIES - 1
             )
 
     def test_get_ecu_state_bad_json(self):
-        """Prueba JSON inválido en get_ecu_state."""
-        mock_requests.get.return_value = MockResponse(None, 200, text="<html>bad</html>")
+        """Prueba JSON inválido."""
+        mock_requests.get.return_value = MockResponse(
+            None, 200, text="<html>bad</html>"
+        )
         state = get_ecu_state()
-        self.assertIsNone(state)  # Debe devolver None
+        self.assertIsNone(state)
 
     def test_get_ecu_state_invalid_structure(self):
-        """Prueba estructura inválida en get_ecu_state."""
+        """Prueba estructura inválida."""
         mock_response_data = {"status": "success", "message": "No state found"}
         mock_requests.get.return_value = MockResponse(mock_response_data, 200)
         state = get_ecu_state()
-        self.assertIsNone(state)  # Debe devolver None si falta 'estado_campo_unificado'
+        self.assertIsNone(state)
 
     def test_get_tool_state_success(self):
         """Prueba obtener estado de tool exitoso."""
@@ -246,18 +271,26 @@ class TestCommunicationFunctions(unittest.TestCase):
         self.assertEqual(state, expected_state_data)
 
     def test_get_tool_state_error_with_retry(self):
-        """Prueba error de red en get_tool_state con reintentos."""
+        """Prueba error de red con reintentos."""
         timeout_exception = requests.exceptions.Timeout("Timeout Error")
         mock_requests.get.side_effect = timeout_exception
         with mock.patch('time.sleep') as mock_sleep:
             state = get_tool_state("tool_y", "http://tooly:8888")
-            expected_error = {"status": "error", "message": f"No se pudo obtener estado después de {harmony_controller.MAX_RETRIES} intentos"}
+            expected_error = {
+                "status": "error",
+                "message": (
+                    f"No se pudo obtener estado después de "
+                    f"{harmony_controller.MAX_RETRIES} intentos"
+                )
+            }
             self.assertEqual(state, expected_error)
             self.assertEqual(
-                mock_requests.get.call_count, harmony_controller.MAX_RETRIES
+                mock_requests.get.call_count,
+                harmony_controller.MAX_RETRIES
             )
             self.assertEqual(
-                mock_sleep.call_count, harmony_controller.MAX_RETRIES - 1
+                mock_sleep.call_count,
+                harmony_controller.MAX_RETRIES - 1
             )
 
     def test_send_tool_control_success(self):
@@ -272,7 +305,7 @@ class TestCommunicationFunctions(unittest.TestCase):
         )
 
     def test_send_tool_control_retry_success(self):
-        """Prueba enviar control con reintentos que eventualmente tienen éxito."""
+        """Prueba enviar control con reintentos exitosos."""
         mock_requests.post.side_effect = [
             requests.exceptions.RequestException("Attempt 1 fail"),
             requests.exceptions.RequestException("Attempt 2 fail"),
@@ -290,46 +323,48 @@ class TestCommunicationFunctions(unittest.TestCase):
             )
 
     def test_send_tool_control_retry_failure(self):
-        """Prueba enviar control con reintentos que fallan."""
-        mock_requests.post.side_effect = requests.exceptions.RequestException("Persistent fail")
+        """Prueba enviar control con reintentos fallidos."""
+        mock_requests.post.side_effect = requests.exceptions.RequestException(
+            "Persistent fail"
+        )
         with mock.patch('time.sleep') as mock_sleep:
             success = send_tool_control("tool_v", "http://toolv:5555", 0.1)
             self.assertFalse(success)
-            self.assertEqual(mock_requests.post.call_count, harmony_controller.MAX_RETRIES)
             self.assertEqual(
-                mock_sleep.call_count, harmony_controller.MAX_RETRIES - 1
+                mock_requests.post.call_count,
+                harmony_controller.MAX_RETRIES
+            )
+            self.assertEqual(
+                mock_sleep.call_count,
+                harmony_controller.MAX_RETRIES - 1
             )
 
 
-# --- Tests para API Flask (AJUSTADOS) ---
-# Usar mock global de requests
+# --- Tests para API Flask ---
 @mock.patch('control.harmony_controller.requests', mock_requests)
 class TestHarmonyControllerAPI(unittest.TestCase):
 
     def setUp(self):
         harmony_controller.app.config['TESTING'] = True
         self.client = harmony_controller.app.test_client()
-        # Resetear estado global ANTES de cada test API
         harmony_controller.controller_state = HarmonyControllerState()
-        # Resetear mocks
         mock_requests.reset_mock()
         mock_requests.get.side_effect = None
         mock_requests.post.side_effect = None
-        # Mockear reset de PID si es necesario verificarlo
-        self.mock_pid_reset = mock.patch.object(harmony_controller.controller_state.pid_controller, 'reset').start()
+        self.mock_pid_reset = mock.patch.object(
+            harmony_controller.controller_state.pid_controller, 'reset'
+        ).start()
         self.addCleanup(mock.patch.stopall)
 
     def test_get_harmony_state_api_initial(self):
-        """Prueba obtener estado inicial (sin tools registrados)."""
+        """Prueba obtener estado inicial."""
         response = self.client.get('/api/harmony/state')
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'success')
-        self.assertIn('data', data)
-        # Verificar que managed_tools está vacío inicialmente
         self.assertEqual(data['data']['managed_tools'], {})
 
-    # NUEVO: Tests para el endpoint de registro
+    # Tests para el endpoint de registro
     def test_register_tool_api_success(self):
         """Prueba registrar un tool vía API."""
         payload = {
@@ -339,55 +374,61 @@ class TestHarmonyControllerAPI(unittest.TestCase):
             "naturaleza": "reductor"
         }
         response = self.client.post(
-            '.*/api/harmony/register_tool', json=payload
+            '/api/harmony/register_tool', json=payload
         )
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'success')
 
-        # Verificar estado interno
-        self.assertIn("api_tool_1", harmony_controller.controller_state.managed_tools_details)
-        details = harmony_controller.controller_state.managed_tools_details["api_tool_1"]
+        self.assertIn(
+            "api_tool_1",
+            harmony_controller.controller_state.managed_tools_details
+        )
+        details = harmony_controller.controller_state.managed_tools_details[
+            "api_tool_1"
+        ]
         self.assertEqual(details["url"], "http://apitool1")
         self.assertEqual(details["aporta_a"], "matriz_ecu")
         self.assertEqual(details["naturaleza"], "reductor")
 
-        # Verificar estado expuesto por API
         response_state = self.client.get('/api/harmony/state')
         state_data = json.loads(response_state.data)['data']
         self.assertIn("api_tool_1", state_data['managed_tools'])
-        self.assertEqual(state_data['managed_tools']['api_tool_1']['naturaleza'], "reductor")
-
+        self.assertEqual(
+            state_data['managed_tools']['api_tool_1']['naturaleza'],
+            "reductor"
+        )
 
     def test_register_tool_api_missing_fields(self):
-        """Prueba registrar tool vía API con campos faltantes."""
-        payload = {"nombre": "bad_tool", "url": "http://bad"} # Faltan aporta_a, naturaleza
+        """Prueba campos faltantes."""
+        payload = {"nombre": "bad_tool", "url": "http://bad"}
         response = self.client.post(
-            '.*/api/harmony/register_tool', json=payload
+            '/api/harmony/register_tool', json=payload
         )
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
-        # Mensaje genérico de validación
         self.assertIn("ausente o inválido", data['message'])
 
     def test_register_tool_api_invalid_type(self):
-        """Prueba registrar tool vía API con tipo inválido."""
+        """Prueba tipo inválido."""
         payload = {
-            "nombre": "bad_type", "url": 123, # URL inválida
-            "aporta_a": "ecu", "naturaleza": "mod"
+            "nombre": "bad_type",
+            "url": 123,
+            "aporta_a": "ecu",
+            "naturaleza": "mod"
         }
         response = self.client.post(
-            '.*/api/harmony/register_tool', json=payload
+            '/api/harmony/register_tool', json=payload
         )
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
         self.assertIn("ausente o inválido", data['message'])
 
-
-    # --- Tests para otros endpoints (sin cambios funcionales) ---
+    # --- Tests para otros endpoints ---
     def test_set_harmony_setpoint_value_api(self):
+        """Prueba actualizar setpoint con valor."""
         payload = {"setpoint_value": 9.87}
         response = self.client.post('/api/harmony/setpoint', json=payload)
         self.assertEqual(response.status_code, 200)
@@ -395,45 +436,51 @@ class TestHarmonyControllerAPI(unittest.TestCase):
         self.assertEqual(data['status'], 'success')
         self.assertEqual(data['new_setpoint_value'], 9.87)
         self.assertEqual(
-            controller_state.current_setpoint, 9.87
+            harmony_controller.controller_state.current_setpoint, 9.87
         )
 
     def test_set_harmony_setpoint_vector_api(self):
-        controller_state = harmony_controller.controller_state
+        """Prueba actualizar setpoint con vector."""
         payload = {"setpoint_vector": [6.0, 8.0]}
         expected_norm = 10.0
         response = self.client.post('/api/harmony/setpoint', json=payload)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
-        self.assertEqual(data['status'], 'success')
         self.assertAlmostEqual(data['new_setpoint_value'], expected_norm)
         self.assertEqual(data['new_setpoint_vector'], [6.0, 8.0])
-        self.assertAlmostEqual(controller_state.current_setpoint, expected_norm)
+        self.assertAlmostEqual(
+            harmony_controller.controller_state.current_setpoint,
+            expected_norm
+        )
+
     def test_set_harmony_setpoint_missing_data_api(self):
-        """Prueba el endpoint de setpoint con payload vacío."""
+        """Prueba payload vacío."""
         response = self.client.post('/api/harmony/setpoint', json={})
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
-        # --- CORRECCIÓN DE ASERCIÓN ---
-        # Verificar el mensaje específico para payload vacío
         self.assertIn("payload json vacío o ausente", data['message'].lower())
-    
+
     def test_set_harmony_setpoint_missing_keys_api(self):
-        """Prueba el endpoint de setpoint con payload válido pero sin claves requeridas."""
+        """Prueba claves requeridas faltantes."""
         payload = {"other_key": "some_value"}
         response = self.client.post('/api/harmony/setpoint', json=payload)
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
-        self.assertIn("se requiere 'setpoint_value' o 'setpoint_vector'", data['message'].lower())
+        self.assertIn(
+            "se requiere 'setpoint_value' o 'setpoint_vector'",
+            data['message'].lower()
+        )
 
     def test_set_harmony_setpoint_bad_value_api(self):
+        """Prueba valor inválido."""
         payload = {"setpoint_value": "not a float"}
         response = self.client.post('/api/harmony/setpoint', json=payload)
         self.assertEqual(response.status_code, 400)
-        data = json.loads(response.data)
+
     def test_reset_pid_api(self):
+        """Prueba reinicio de PID."""
         response = self.client.post('/api/harmony/pid/reset')
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
