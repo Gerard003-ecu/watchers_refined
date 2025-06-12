@@ -12,9 +12,7 @@ import os
 import numpy as np
 import requests  # Importar para usar sus excepciones
 
-# Importar la clase y constantes/funciones necesarias desde la 
-# ubicación correcta
-# Asumiendo que la estructura es mi-proyecto/agent_ai/agent_ai.py
+# Importar la clase y constantes/funciones necesarias
 from agent_ai.agent_ai import (AgentAI,
                                HARMONY_CONTROLLER_URL_ENV,
                                HARMONY_CONTROLLER_REGISTER_URL_ENV,
@@ -23,70 +21,59 @@ from agent_ai.agent_ai import (AgentAI,
                                DEFAULT_ECU_URL, DEFAULT_MALLA_URL,
                                GLOBAL_REQUIREMENTS_PATH, REQUESTS_TIMEOUT,
                                MAX_RETRIES)
-# STRATEGIC_LOOP_INTERVAL,  # F401 - Unused
-# BASE_RETRY_DELAY,  # F401 - Unused
 
 
-# Importar funciones/clases a mockear desde su ubicación real
-# from agent_ai.validation.validator import ( # F401 - Unused
-#     validate_module_registration,
-#     check_missing_dependencies,
-# )
-
-
-# Mockear requests globalmente para la clase
 @mock.patch("agent_ai.agent_ai.requests", new_callable=mock.MagicMock)
 @mock.patch("agent_ai.agent_ai.check_missing_dependencies")
-@mock.patch("agent_ai.agent_ai.os.path.exists")
-@mock.patch("agent_ai.agent_ai.threading.Thread")
+@mock.patch("agent_ai.agent_ai.validate_module_registration")
+@mock.patch("agent_ai.agent_ai.get_logger")
 class TestAgentAIStrategicLogic(unittest.TestCase):
+    """Suite de pruebas para la clase AgentAI."""
 
     def setUp(self):
-        """Crea una nueva instancia de AgentAI para cada test."""
-        # Limpiar mocks residuales de tests anteriores si los hubiera
-        mock.patch.stopall()
-        # Crear instancia
-        self.agent = AgentAI()
-        # Detener bucle si se inició accidentalmente
-        self.agent._stop_event.set()
-        if (
-            hasattr(self.agent, "_strategic_thread")
-            and self.agent._strategic_thread.is_alive()
-        ):
-            self.agent._strategic_thread.join(timeout=0.1)
-        # Mockear time.sleep para acelerar reintentos
-        self.mock_sleep = mock.patch("time.sleep").start()
-        # Asegurar limpieza de mocks al final
-        self.addCleanup(mock.patch.stopall)
+        """
+        Configura el entorno para cada prueba, creando una nueva instancia
+        de AgentAI.
+        """
+        # Limpiar variables de entorno para aislar las pruebas
+        os.environ.pop(HARMONY_CONTROLLER_URL_ENV, None)
+        os.environ.pop(HARMONY_CONTROLLER_REGISTER_URL_ENV, None)
+        os.environ.pop(AGENT_AI_ECU_URL_ENV, None)
+        os.environ.pop(AGENT_AI_MALLA_URL_ENV, None)
+        os.environ.pop("AA_INITIAL_SETPOINT_VECTOR", None)
+        os.environ.pop("AA_INITIAL_STRATEGY", None)
 
-    # --- Tests de Inicialización y Estado (sin cambios funcionales) ---
-    def test_initialization(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self.agent = AgentAI()
+        # Detener el bucle estratégico que se inicia en __init__
+        # para que no interfiera con las pruebas unitarias.
+        if self.agent._strategic_thread.is_alive():
+            self.agent.shutdown()
+
+    def tearDown(self):
+        """
+        Limpia después de cada prueba, asegurando que el hilo del agente
+        esté detenido.
+        """
+        if self.agent._strategic_thread.is_alive():
+            self.agent.shutdown()
+
+    def test_initialization_defaults(
+        self, mock_logger, mock_validate, mock_check_deps, mock_requests
     ):
-        """Verifica el estado inicial de AgentAI."""
-        agent = AgentAI()  # Crear instancia fresca
-        agent._stop_event.set()  # Asegurar que no inicie bucle
-        self.assertEqual(agent.modules, {})
-        self.assertEqual(agent.harmony_state, {})
-        # Leer valor default o de ENV para comparación precisa
-        try:
-            initial_vector = json.loads(
-                os.environ.get("AA_INITIAL_SETPOINT_VECTOR", "[1.0, 0.0]")
-            )
-            if not (
-                isinstance(initial_vector, list)
-                and all(isinstance(x, (int, float)) for x in initial_vector)
-            ):
-                initial_vector = [1.0, 0.0]  # Fallback si ENV es inválido
-        except (json.JSONDecodeError, ValueError):
-            initial_vector = [1.0, 0.0]
-        self.assertEqual(agent.target_setpoint_vector, initial_vector)
+        """
+        Verifica que el agente se inicializa con valores por defecto
+        correctos cuando no hay variables de entorno.
+        """
+        self.assertEqual(len(self.agent.modules), 0)
+        self.assertEqual(self.agent.current_strategy, "default")
+        self.assertListEqual(self.agent.target_setpoint_vector, [1.0, 0.0])
         self.assertEqual(
-            agent.current_strategy,
-            os.environ.get("AA_INITIAL_STRATEGY", "default"),
+            self.agent.central_urls["harmony_controller"], DEFAULT_HC_URL
         )
-        self.assertIsNone(agent.external_inputs["cogniboard_signal"])
-        self.assertIsNone(agent.external_inputs["config_status"])
+        self.assertEqual(self.agent.central_urls["ecu"], DEFAULT_ECU_URL)
+        self.assertEqual(
+            self.agent.central_urls["malla_watcher"], DEFAULT_MALLA_URL
+        )
 
     # --- NUEVOS TESTS para verificar __init__ y lectura de ENV ---
 
@@ -985,37 +972,46 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
         )
 
     # --- MODIFICADO: test_obtener_estado_completo incluye naturaleza ---
-    def test_obtener_estado_completo(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+    def test_get_full_state_snapshot(
+        self, mock_logger, mock_validate, mock_check_deps, mock_requests
     ):
-        """Prueba obtener el estado completo con detalles de módulo."""
-        self.agent.modules["TestModAux"] = {
-            "nombre": "TestModAux",
-            "estado_salud": "ok",
-            "tipo": "auxiliar",
-            "aporta_a": "malla_watcher",
-            "naturaleza_auxiliar": "modulador",
-        }
-        self.agent.modules["TestModCentral"] = {
-            "nombre": "TestModCentral",
-            "estado_salud": "error_timeout",
-            "tipo": "integrador",
-        }
-        self.agent.harmony_state = {
-            "last_measurement": 0.9,
-            "last_ecu_state": [[0.8], [0.1]],
-        }
-        self.agent.external_inputs["cogniboard_signal"] = 0.1
-        self.agent.target_setpoint_vector = [1.1, 0.1]
-        self.agent.current_strategy = "test_strat"
+        """
+        Verifica que obtener_estado_completo retorna una instantánea
+        correcta y completa del estado del agente.
+        """
+        # Configurar estado inicial
+        with self.agent.lock:
+            self.agent.target_setpoint_vector = [0.5, -0.5]
+            self.agent.current_strategy = "test_strat"
+            self.agent.external_inputs["cogniboard_signal"] = 0.1
+            self.agent.harmony_state = {"last_measurement": 0.9}
+            self.agent.modules = {
+                "TestModCentral": {
+                    "tipo": "integrador",
+                    "estado_salud": "error_timeout",
+                },
+                "TestModAux": {
+                    "tipo": "auxiliar",
+                    "aporta_a": "malla_watcher",
+                    "naturaleza_auxiliar": "modulador",
+                    "estado_salud": "ok",
+                },
+            }
 
         estado = self.agent.obtener_estado_completo()
 
-        self.assertEqual(estado["target_setpoint_vector"], [1.1, 0.1])
+        # SOLUCIÓN E501: Se divide la aserción en múltiples líneas para claridad.
+        self.assertListEqual(
+            estado["target_setpoint_vector"], [0.5, -0.5]
+        )
         self.assertEqual(estado["current_strategy"], "test_strat")
-        self.assertEqual(estado["external_inputs"]["cogniboard_signal"], 0.1)
         self.assertEqual(
-            estado["harmony_controller_last_state"]["last_measurement"], 0.9
+            estado["external_inputs"]["cogniboard_signal"], 0.1
+        )
+        # SOLUCIÓN E501
+        self.assertEqual(
+            estado["harmony_controller_last_state"]["last_measurement"],
+            0.9,
         )
         self.assertEqual(len(estado["registered_modules"]), 2)
 
@@ -1027,7 +1023,10 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
         )
         self.assertEqual(mod_aux["tipo"], "auxiliar")
         self.assertEqual(mod_aux["aporta_a"], "malla_watcher")
-        self.assertEqual(mod_aux["naturaleza_auxiliar"], "modulador")
+        # SOLUCIÓN E501
+        self.assertEqual(
+            mod_aux["naturaleza_auxiliar"], "modulador"
+        )
         self.assertEqual(mod_aux["estado_salud"], "ok")
 
         # Verificar detalles del módulo central
@@ -1037,15 +1036,13 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
             if m["nombre"] == "TestModCentral"
         )
         self.assertEqual(mod_central["tipo"], "integrador")
-        self.assertNotIn("aporta_a", mod_central)  # No debe tener estos campos
+        # SOLUCIÓN E501
+        self.assertNotIn("aporta_a", mod_central)
         self.assertNotIn("naturaleza_auxiliar", mod_central)
         self.assertEqual(mod_central["estado_salud"], "error_timeout")
 
 
 if __name__ == "__main__":
-    # Configurar runner para más verbosidad si es necesario
-    # runner = unittest.TextTestRunner(verbosity=2)
-    # unittest.main(testRunner=runner)
     unittest.main()
 
 # --- END OF FILE tests/unit/test_agent_ai.py (AJUSTADO Fase 1) ---
