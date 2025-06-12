@@ -15,8 +15,6 @@ from ecu.matriz_ecu import (
 )
 from flask.testing import FlaskClient
 import logging
-from unittest.mock import patch
-import unittest.mock
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +23,9 @@ logger = logging.getLogger(__name__)
 @pytest.fixture
 def campo_toroidal_test():
     """Fixture: Campo toroidal aislado para tests unitarios de la clase."""
-    return ToroidalField(num_capas=2, num_rows=3, num_cols=4, alphas=None, dampings=None)
+    return ToroidalField(
+        num_capas=2, num_rows=3, num_cols=4, alphas=None, dampings=None
+    )
 
 
 @pytest.fixture
@@ -74,22 +74,32 @@ def test_inicializacion_con_params_capa():
 
 def test_inicializacion_params_capa_longitud_incorrecta():
     """Test: Error al crear con listas de params de longitud incorrecta."""
-    with pytest.raises(ValueError, match="La lista 'alphas' debe tener longitud 2"):
+    with pytest.raises(
+        ValueError, match="La lista 'alphas' debe tener longitud 2"
+    ):
         ToroidalField(num_capas=2, num_rows=2, num_cols=2, alphas=[0.1])
     
-    with pytest.raises(ValueError, match="La lista 'dampings' debe tener longitud 3"):
+    with pytest.raises(
+        ValueError, match="La lista 'dampings' debe tener longitud 3"
+    ):
         ToroidalField(num_capas=3, num_rows=2, num_cols=2, dampings=[0.1, 0.2])
 
 
 def test_inicializacion_invalida():
     """Test: Error al crear con dimensiones inválidas."""
-    with pytest.raises(ValueError, match="dimensiones .* deben ser positivas"):
+    with pytest.raises(
+        ValueError, match="dimensiones .* deben ser positivas"
+    ):
         ToroidalField(num_capas=0, num_rows=2, num_cols=2)
     
-    with pytest.raises(ValueError, match="dimensiones .* deben ser positivas"):
+    with pytest.raises(
+        ValueError, match="dimensiones .* deben ser positivas"
+    ):
         ToroidalField(num_capas=1, num_rows=-1, num_cols=2)
     
-    with pytest.raises(ValueError, match="dimensiones .* deben ser positivas"):
+    with pytest.raises(
+        ValueError, match="dimensiones .* deben ser positivas"
+    ):
         ToroidalField(num_capas=1, num_rows=2, num_cols=0)
 
 
@@ -109,7 +119,9 @@ def test_aplicar_influencia_valida(campo_toroidal_test: ToroidalField):
     assert np.array_equal(valor_final, valor_inicial + vector)
 
 
-def test_aplicar_influencia_fuera_rango(campo_toroidal_test: ToroidalField, caplog):
+def test_aplicar_influencia_fuera_rango(
+    campo_toroidal_test: ToroidalField, caplog
+):
     """Test: Manejo de índices fuera de rango."""
     tf = campo_toroidal_test
     vector = np.array([1.0, 0.0])
@@ -143,7 +155,9 @@ def test_aplicar_influencia_fuera_rango(campo_toroidal_test: ToroidalField, capl
             assert np.array_equal(tf.campo[i], valor_original[i])
 
 
-def test_aplicar_influencia_vector_invalido(campo_toroidal_test: ToroidalField, caplog):
+def test_aplicar_influencia_vector_invalido(
+    campo_toroidal_test: ToroidalField, caplog
+):
     """Test: Aplicar influencia con vector de formato incorrecto."""
     tf = campo_toroidal_test
     with tf.lock:
@@ -161,19 +175,27 @@ def test_aplicar_influencia_vector_invalido(campo_toroidal_test: ToroidalField, 
             assert np.array_equal(tf.campo[i], valor_original[i])
 
 
-def test_get_neighbors_conectividad_toroidal(campo_toroidal_test: ToroidalField):
+def test_get_neighbors_conectividad_toroidal(
+    campo_toroidal_test: ToroidalField
+):
     """Test: Vecinos con wraparound toroidal."""
     tf = campo_toroidal_test
     vecinos_00 = tf.get_neighbors(0, 0)
     expected_00 = [(2, 0), (1, 0), (0, 3), (0, 1)]
-    assert set(vecinos_00) == set(expected_00), "Error en vecinos de (0,0)"
+    assert set(vecinos_00) == set(expected_00), (
+        "Error en vecinos de (0,0)"
+    )
 
     vecinos_23 = tf.get_neighbors(2, 3)
     expected_23 = [(1, 3), (0, 3), (2, 2), (2, 0)]
-    assert set(vecinos_23) == set(expected_23), "Error en vecinos de (2,3)"
+    assert set(vecinos_23) == set(expected_23), (
+        "Error en vecinos de (2,3)"
+    )
 
 
-def test_calcular_gradiente_adaptativo(campo_toroidal_test: ToroidalField):
+def test_calcular_gradiente_adaptativo(
+    campo_toroidal_test: ToroidalField
+):
     """Test: Cálculo de gradiente entre capas."""
     tf = campo_toroidal_test
     tf.aplicar_influencia(0, 1, 1, np.array([3.0, 4.0]), "test_grad1_capa0")
@@ -182,7 +204,9 @@ def test_calcular_gradiente_adaptativo(campo_toroidal_test: ToroidalField):
     gradiente = tf.calcular_gradiente_adaptativo()
     assert gradiente.shape == (1, 3, 4)
 
-    expected_diff_mag = np.linalg.norm(np.array([3.0, 10.0]))
+    expected_diff_mag = np.linalg.norm(
+        np.array([3.0, 10.0])
+    )
     assert gradiente[0, 1, 1] == pytest.approx(expected_diff_mag)
     assert gradiente[0, 0, 0] == pytest.approx(0.0)
 
@@ -292,7 +316,10 @@ def test_endpoint_ecu_api(cliente_flask: FlaskClient):
     with campo_toroidal_global_servicio.lock:
         valor_nodo_000 = campo_toroidal_global_servicio.campo[0][0, 0]
     norma_esperada_000 = np.linalg.norm(valor_nodo_000)
-    pesos = np.linspace(1.0, 0.5, NUM_CAPAS) if NUM_CAPAS > 1 else np.array([1.0])
+    pesos = (
+        np.linspace(1.0, 0.5, NUM_CAPAS) 
+        if NUM_CAPAS > 1 
+        else np.array([1.0])
     peso_capa_0 = pesos[0]
     assert datos["estado_campo_unificado"][0][0] == pytest.approx(
         peso_capa_0 * norma_esperada_000
@@ -426,7 +453,8 @@ def test_endpoint_get_field_vector(cliente_flask):
         1, 2, 3, influence_vector_2, "test_vec_api_2"
     )
     campo_toroidal_global_servicio.aplicar_influencia(
-        NUM_CAPAS - 1, NUM_FILAS - 1, NUM_COLUMNAS - 1, influence_vector_3, "test_vec_api_3"
+        NUM_CAPAS - 1, NUM_FILAS - 1, NUM_COLUMNAS - 1, 
+        influence_vector_3, "test_vec_api_3"
     )
 
     response = cliente_flask.get("/api/ecu/field_vector")
