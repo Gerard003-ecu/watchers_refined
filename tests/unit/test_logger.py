@@ -22,7 +22,7 @@ except ImportError:
         import logger as agent_logger
     except ImportError:
         raise ImportError(
-            "No se pudo importar el módulo logger" 
+            "No se pudo importar el módulo logger"
             "Verifica PYTHONPATH y estructura."
         )
 
@@ -76,7 +76,7 @@ class TestLogger(unittest.TestCase):
         """
         log = self.temp_logger_module.get_logger()
         file_handlers = [
-            h for h in log.handlers 
+            h for h in log.handlers
             if isinstance(h, logging.FileHandler)
         ]
         self.assertEqual(
@@ -89,7 +89,7 @@ class TestLogger(unittest.TestCase):
         # Comparar con el subdirectorio 'logs'
         expected_log_dir = self.temp_dir / self.temp_logger_module.LOG_DIR_ENV
         self.assertEqual(
-            self.log_file_path.parent.resolve(), 
+            self.log_file_path.parent.resolve(),
             expected_log_dir.resolve(),
             f"El directorio del log ({self.log_file_path.parent}) "
             f"no coincide con el esperado ({expected_log_dir})"
@@ -104,7 +104,7 @@ class TestLogger(unittest.TestCase):
         """
         log = self.temp_logger_module.get_logger()
         console_handlers = [
-            h for h in log.handlers 
+            h for h in log.handlers
             if isinstance(h, logging.StreamHandler)
             and not isinstance(h, logging.FileHandler)
         ]
@@ -136,7 +136,7 @@ class TestLogger(unittest.TestCase):
                 handler.flush()
 
         self.assertTrue(
-            self.log_file_path.exists(), 
+            self.log_file_path.exists(),
             "El archivo de log no fue creado"
         )
         content = self.log_file_path.read_text()
@@ -148,13 +148,13 @@ class TestLogger(unittest.TestCase):
     @mock.patch('sys.stderr', new_callable=io.StringIO)
     def test_console_output(self, mock_stderr):
         """
-        Verifica que los mensajes de nivel 
+        Verifica que los mensajes de nivel
         INFO y superior se muestren en stderr
         """
         log = self.temp_logger_module.get_logger()
         # Encontrar y remover el handler de consola original
         original_console_handlers = [
-            h for h in log.handlers 
+            h for h in log.handlers
             if isinstance(h, logging.StreamHandler)
             and not isinstance(h, logging.FileHandler)
         ]
@@ -163,8 +163,8 @@ class TestLogger(unittest.TestCase):
 
         # Crear y añadir un NUEVO handler de consola que use el mock_stderr
         formatter = (
-            original_console_handlers[0].formatter 
-            if original_console_handlers 
+            original_console_handlers[0].formatter
+            if original_console_handlers
             else logging.Formatter(
                 "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
             )
@@ -212,7 +212,10 @@ class TestLogger(unittest.TestCase):
         se crea automáticamente
         """
         log_dir = Path(self.temp_logger_module.LOG_DIR)
-        self.assertTrue(log_dir.exists(), "El directorio de logs no fue creado")
+        self.assertTrue(
+            log_dir.exists(),
+            "El directorio de logs no fue creado"
+        )
         self.assertTrue(log_dir.is_dir())
 
 # --- END OF FILE tests/unit/test_logger.py ---
