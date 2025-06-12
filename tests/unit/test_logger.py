@@ -22,7 +22,8 @@ except ImportError:
         import logger as agent_logger
     except ImportError:
         raise ImportError(
-            "No se pudo importar el módulo logger. Verifica PYTHONPATH y estructura."
+            "No se pudo importar el módulo logger" 
+            "Verifica PYTHONPATH y estructura."
         )
 
 logger_instance = logging.getLogger("agent_ai")
@@ -60,13 +61,19 @@ class TestLogger(unittest.TestCase):
         self.temp_dir_obj.cleanup()
 
     def test_logger_configuration(self):
-        """Verifica la configuración básica del logger"""
+        """
+        Verifica la configuración
+        básica del logger
+        """
         log = self.temp_logger_module.get_logger()
         self.assertEqual(log.name, "agent_ai")
         self.assertEqual(log.level, logging.DEBUG)
 
     def test_file_handler_exists(self):
-        """Comprueba que el handler de archivo esté correctamente configurado"""
+        """
+        Comprueba que el handler de archivo
+        esté correctamente configurado
+        """
         log = self.temp_logger_module.get_logger()
         file_handlers = [
             h for h in log.handlers 
@@ -92,7 +99,9 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(file_handler.mode, "a")
 
     def test_console_handler_exists(self):
-        """Verifica el handler de consola con nivel INFO"""
+        """
+        Verifica el handler de consola con nivel INFO
+        """
         log = self.temp_logger_module.get_logger()
         console_handlers = [
             h for h in log.handlers 
@@ -111,7 +120,10 @@ class TestLogger(unittest.TestCase):
         self.assertIs(console_handler.stream, sys.stderr)
 
     def test_log_file_creation_and_content(self):
-        """Verifica que los mensajes se escriban en el archivo de log"""
+        """
+        Verifica que los mensajes
+        se escriban en el archivo de log
+        """
         log = self.temp_logger_module.get_logger()
         test_message_info = "Mensaje INFO para archivo"
         test_message_debug = "Mensaje DEBUG para archivo"
@@ -135,7 +147,10 @@ class TestLogger(unittest.TestCase):
 
     @mock.patch('sys.stderr', new_callable=io.StringIO)
     def test_console_output(self, mock_stderr):
-        """Verifica que los mensajes de nivel INFO y superior se muestren en stderr"""
+        """
+        Verifica que los mensajes de nivel 
+        INFO y superior se muestren en stderr
+        """
         log = self.temp_logger_module.get_logger()
         # Encontrar y remover el handler de consola original
         original_console_handlers = [
@@ -179,13 +194,23 @@ class TestLogger(unittest.TestCase):
         log.removeHandler(mock_console_handler)
 
     def test_get_logger_singleton(self):
-        """Comprueba que get_logger devuelve la misma instancia"""
+        """
+        Comprueba que get_logger
+        devuelve la misma instancia
+        """
         log1 = self.temp_logger_module.get_logger()
         log2 = self.temp_logger_module.get_logger()
-        self.assertIs(log1, log2, "Se esperaba una única instancia del logger")
+        self.assertIs(
+            log1,
+            log2,
+            "Se esperaba una única instancia del logger"
+        )
 
     def test_log_directory_creation(self):
-        """Verifica que el directorio de logs se crea automáticamente"""
+        """
+        Verifica que el directorio de logs
+        se crea automáticamente
+        """
         log_dir = Path(self.temp_logger_module.LOG_DIR)
         self.assertTrue(log_dir.exists(), "El directorio de logs no fue creado")
         self.assertTrue(log_dir.is_dir())
