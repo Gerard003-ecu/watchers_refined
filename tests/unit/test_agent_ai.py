@@ -398,7 +398,9 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_default_sin_cambio_base(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Verifica la estrategia 'default' no cambie el setpoint sin otros factores"""
+        """Verifica la estrategia 'default' no cambie
+           el setpoint sin otros factores.
+        """
         initial_vector = [1.5, -0.5]
         self.agent.target_setpoint_vector = list(initial_vector)
         self.agent.harmony_state = {
@@ -449,7 +451,11 @@ class TestAgentAI(unittest.TestCase):
         np.testing.assert_allclose(final_norm, initial_norm * 0.98, rtol=1e-6)
 
     def test_determine_estrategia_estabilidad_reduce_por_pid_alto(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
         """Verifica 'estabilidad' reduce magnitud si el esfuerzo PID es alto."""
         initial_vector = [2.0, 0.0]
