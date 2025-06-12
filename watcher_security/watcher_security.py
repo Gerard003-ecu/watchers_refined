@@ -1,19 +1,26 @@
-""" 
+"""
 Propósito:
-Emula las capacidades adaptativas del sistema inmunológico biológico para proteger el ecosistema watchers contra fallos y amenazas. Combina detección proactiva, análisis termodinámico y respuesta automatizada.
+Emula las capacidades adaptativas del sistema inmunológico biológico para
+proteger el ecosistema watchers contra fallos y amenazas. Combina detección
+proactiva, análisis termodinámico y respuesta automatizada.
 
 Arquitectura de Capas:
 
-Capa	                     Analogía Biológica	                       Función Técnica
-Detección (T)	               Linfocitos T	                           Monitorea 10 parámetros clave (entropía, exergía, uso de recursos) usando matrices de observación.
-Adaptación (B)	               Linfocitos B	                           Transforma señales crudas usando LIATransformer para generar vectores de respuesta normalizados.
-Ejecución	                   Células efectoras	                   Ejecuta protocolos basados en prioridad exergética: cuarentena (crítico) o rebalanceo energético (alto riesgo).
-
+Capa             Analogía Biológica          Función Técnica
+Detección (T)    Linfocitos T                Monitorea 10 parámetros clave
+                 (entropía, exergía, uso de recursos) usando matrices de
+                 observación.
+Adaptación (B)   Linfocitos B                Transforma señales crudas usando
+                 LIATransformer para generar vectores de respuesta normalizados.
+Ejecución        Células efectoras           Ejecuta protocolos basados en
+                 prioridad exergética: cuarentena (crítico) o rebalanceo
+                 energético (alto riesgo).
 """
 
 import numpy as np
 from lia import LIATransformer
 from exergy_model import ExergyModel
+
 
 class SecurityWatcher:
     def __init__(self):
@@ -23,8 +30,8 @@ class SecurityWatcher:
         
         # Capa 2: Adaptación (Linfocitos B)
         self.lia_transformer = LIATransformer(
-            dimensions=10, 
-            subspace_mapping={'watcher_tool_*': slice(0,5)}
+            dimensions=10,
+            subspace_mapping={'watcher_tool_*': slice(0, 5)}
         )
         
         # Capa 3: Ejecución (Células Efectoras)
@@ -41,7 +48,8 @@ class SecurityWatcher:
         exergy_loss = self.exergy_model.calculate_exergy(system_signals)
         
         detection_vector = np.dot(self.detection_matrix, system_signals)
-        if entropy > self.thresholds['entropy'] or exergy_loss > self.thresholds['exergy_loss']:
+        if (entropy > self.thresholds['entropy'] or
+                exergy_loss > self.thresholds['exergy_loss']):
             return self._analyze_anomaly(detection_vector)
         return None
 

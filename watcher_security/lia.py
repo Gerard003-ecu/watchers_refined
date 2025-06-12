@@ -2,20 +2,26 @@
 Propósito:
 Proporciona un marco algebraico para operaciones vectoriales que garantiza:
 
-    Independencia: Fallos en un subespacio no propagan errores (matrices diagonales por bloques).
+    Independencia: Fallos en un subespacio no propagan errores
+        (matrices diagonales por bloques).
 
-    Escalabilidad: Añade dimensiones sin reentrenar el sistema completo (add_module()).
+    Escalabilidad: Añade dimensiones sin reentrenar el sistema completo
+        (add_module()).
 
-    Ortogonalidad: Módulos operan en ejes no interferentes (autovectores perpendiculares).
+    Ortogonalidad: Módulos operan en ejes no interferentes
+        (autovectores perpendiculares).
 """
 
 import numpy as np
+
 
 class LIATransformer:
     def __init__(self, dimensions, subspace_mapping):
         self.dimensions = dimensions
         # Matriz diagonal por bloques para ortogonalidad
-        self.transformation_matrix = self._create_block_diagonal_matrix(subspace_mapping)
+        self.transformation_matrix = (
+            self._create_block_diagonal_matrix(subspace_mapping)
+        )
         self.subspaces = subspace_mapping
 
     def _create_block_diagonal_matrix(self, subspaces):
@@ -47,6 +53,8 @@ class LIATransformer:
         """Escalabilidad: Añade nuevas dimensiones al espacio"""
         new_total = self.dimensions + new_dimensions
         new_matrix = np.zeros((new_total, new_total))
-        new_matrix[:self.dimensions, :self.dimensions] = self.transformation_matrix
+        new_matrix[:self.dimensions, :self.dimensions] = (
+            self.transformation_matrix
+        )
         self.dimensions = new_total
         self.transformation_matrix = new_matrix
