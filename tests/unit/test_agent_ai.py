@@ -457,7 +457,10 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica 'estabilidad' reduce magnitud si el esfuerzo PID es alto."""
+        """
+        Verifica que 'estabilidad' reduce magnitud
+        si el esfuerzo PID es alto.
+        """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -482,7 +485,11 @@ class TestAgentAI(unittest.TestCase):
         np.testing.assert_allclose(final_norm, initial_norm * 0.98, rtol=1e-6)
 
     def test_determine_estrategia_estabilidad_reduce_extra_por_reductores(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
         """Verifica reducción extra en 'estabilidad' si hay más reductores en malla."""
         initial_vector = [2.0, 0.0]
@@ -528,7 +535,11 @@ class TestAgentAI(unittest.TestCase):
         np.testing.assert_allclose(final_norm, expected_norm, rtol=1e-6)
 
     def test_determine_estrategia_rendimiento_aumenta(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
         """Verifica que 'rendimiento' aumenta magnitud si está estable."""
         initial_vector = [2.0, 0.0]
@@ -548,12 +559,16 @@ class TestAgentAI(unittest.TestCase):
 
         self.assertTrue(
             final_norm > initial_norm,
-            "Rendimiento/Estable: Norma debería aumentar.",
+            "Rendimiento/Estable: Norma debe aumentar.",
         )
         np.testing.assert_allclose(final_norm, initial_norm * 1.02, rtol=1e-6)
 
     def test_determine_estrategia_rendimiento_aumenta_extra_por_potenciadores(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
         """Verifica aumento extra en 'rendimiento' si hay más potenciadores en ECU."""
         initial_vector = [2.0, 0.0]
@@ -586,7 +601,11 @@ class TestAgentAI(unittest.TestCase):
         measurement = initial_norm * 0.99  # Error bajo
 
         new_sp = self.agent._determine_harmony_setpoint(
-            measurement, None, None, "rendimiento", modules
+            measurement,
+            None,
+            None,
+            "rendimiento",
+            modules
         )
         final_norm = np.linalg.norm(new_sp)
 
@@ -599,7 +618,11 @@ class TestAgentAI(unittest.TestCase):
         np.testing.assert_allclose(final_norm, expected_norm, rtol=1e-6)
 
     def test_determine_estrategia_rendimiento_establece_minimo_si_cero(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
         """Verifica que 'rendimiento' establece un mínimo si el setpoint es cero."""
         initial_vector = [0.0, 0.0]  # Setpoint inicial cero
@@ -625,7 +648,11 @@ class TestAgentAI(unittest.TestCase):
         np.testing.assert_allclose(new_sp, expected_vector)
 
     def test_determine_estrategia_ahorro_reduce_con_reductores(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
         """Verifica que 'ahorro_energia' reduce magnitud si hay reductores."""
         initial_vector = [2.0, 0.0]
@@ -657,9 +684,16 @@ class TestAgentAI(unittest.TestCase):
         np.testing.assert_allclose(final_norm, initial_norm * 0.95, rtol=1e-6)
 
     def test_determine_estrategia_ahorro_sin_cambio_sin_reductores(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Verifica que 'ahorro_energia' no cambia si no hay reductores."""
+        """
+        Verifica que 'ahorro_energia'
+        no cambia si no hay reductores.
+        """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -688,9 +722,16 @@ class TestAgentAI(unittest.TestCase):
         )
 
     def test_determine_cogniboard_alto_reduce(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Verifica que la señal alta de cogniboard reduce la magnitud final."""
+        """
+        Verifica que la señal alta de cogniboard
+        reduce la magnitud final.
+        """
         initial_vector = [5.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -718,9 +759,16 @@ class TestAgentAI(unittest.TestCase):
 
     # --- MODIFICADO: Incluir tipo, aporta_a, naturaleza_auxiliar ---
     def test_registrar_modulo_auxiliar_success(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba registro exitoso de módulo auxiliar con afinidad y naturaleza."""
+        """
+        Prueba registro exitoso de módulo auxiliar
+        con afinidad y naturaleza.
+        """
         mock_check_deps.return_value = (True, "Dependencias OK")
         mock_os_exists.return_value = True  # Asumir que archivos existen
 
@@ -760,9 +808,16 @@ class TestAgentAI(unittest.TestCase):
         )
 
     def test_registrar_modulo_central_success(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba registro exitoso de módulo central (sin afinidad/naturaleza)."""
+        """
+        Prueba registro exitoso de módulo central
+        sin afinidad/naturaleza.
+        """
         mock_check_deps.return_value = (True, "Dependencias OK")
         mock_os_exists.return_value = True
 
@@ -784,9 +839,15 @@ class TestAgentAI(unittest.TestCase):
         mock_thread.assert_called_once()  # Hilo de validación se inicia igual
 
     def test_registrar_modulo_invalid_data(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba registro con datos faltantes (validator se encarga)."""
+        """
+        Prueba registro con datos faltantes.
+        """
         # Asumiendo que validator.validate_module_registration verifica campos
         # requeridos
         module_data = {"nombre": "TestReg"}  # Falta url, tipo, etc.
@@ -801,9 +862,15 @@ class TestAgentAI(unittest.TestCase):
         self.assertNotIn("TestReg", self.agent.modules)
 
     def test_registrar_modulo_dep_fail(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba registro con fallo de dependencias."""
+        """
+        Prueba registro con fallo de dependencias.
+        """
         mock_check_deps.return_value = (False, "Falta 'superlib'")
         mock_os_exists.return_value = True
         module_data = {
@@ -818,9 +885,16 @@ class TestAgentAI(unittest.TestCase):
         self.assertNotIn("TestDepFail", self.agent.modules)
 
     def test_validar_salud_modulo_ok_auxiliar_sin_naturaleza(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba validación OK de auxiliar pero sin naturaleza (no notifica)."""
+        """
+        Prueba validación OK de auxiliar
+        pero sin naturaleza (no notifica).
+        """
         module_name = "NoNatureAux"
         module_url = "http://nonature/api"
         # Configurar módulo sin naturaleza_auxiliar
@@ -846,9 +920,16 @@ class TestAgentAI(unittest.TestCase):
         mock_requests.post.assert_not_called()
 
     def test_validar_salud_modulo_ok_central(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba validación OK de central (no notifica a HC)."""
+        """
+        Prueba validación OK de central
+        (no notifica a HC).
+        """
         module_name = "HealthyCentral"
         module_url = "http://healthycentral/api"
         self.agent.modules[module_name] = {
@@ -871,9 +952,16 @@ class TestAgentAI(unittest.TestCase):
         mock_requests.post.assert_not_called()  # No debe notificar centrales
 
     def test_validar_salud_modulo_fail_y_no_notifica(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba validación fallida (no debe notificar)."""
+        """
+        Prueba validación fallida 
+        (no debe notificar).
+        """
         module_name = "FailAux"
         module_url = "http://failaux/api"
         self.agent.modules[module_name] = {
@@ -900,9 +988,16 @@ class TestAgentAI(unittest.TestCase):
         mock_requests.post.assert_not_called()
 
     def test_notify_hc_retry_and_fail(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba que la notificación a HC reintenta y falla."""
+        """
+        Prueba que la notificación a HC
+        reintenta y falla.
+        """
         # Mockear la notificación para que siempre falle
         mock_requests.post.side_effect = requests.exceptions.RequestException(
             "HC down"
@@ -923,9 +1018,15 @@ class TestAgentAI(unittest.TestCase):
     # --- Tests de Comandos y Estado Completo (AJUSTADOS) ---
 
     def test_actualizar_comando_estrategico(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba comandos estratégicos."""
+        """
+        Prueba comandos estratégicos.
+        """
         # Set strategy
         result = self.agent.actualizar_comando_estrategico(
             "set_strategy", "performance"
@@ -964,9 +1065,15 @@ class TestAgentAI(unittest.TestCase):
         self.assertIn("no reconocido", result["mensaje"])
 
     def test_recibir_inputs_externos(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self,
+        mock_thread,
+        mock_os_exists,
+        mock_check_deps,
+        mock_requests
     ):
-        """Prueba la recepción de señales externas."""
+        """
+        Prueba la recepción de señales externas.
+        """
         self.agent.recibir_control_cogniboard(0.77)
         self.assertEqual(self.agent.external_inputs["cogniboard_signal"], 0.77)
         config_data = {"status": "healthy"}
@@ -977,7 +1084,11 @@ class TestAgentAI(unittest.TestCase):
 
     # --- MODIFICADO: test_obtener_estado_completo incluye naturaleza ---
     def test_get_full_state_snapshot(
-        self, mock_get_logger, mock_validate, mock_check_deps, mock_requests
+        self,
+        mock_get_logger,
+        mock_validate,
+        mock_check_deps,
+        mock_requests
     ):
         """
         Verifica que obtener_estado_completo retorna una instantánea
