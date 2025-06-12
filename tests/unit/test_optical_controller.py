@@ -11,8 +11,8 @@ from optical_controller import (
 def test_capturar_imagen():
     """
     Prueba la función `capturar_imagen`.
-    
-    Verifica que la función convierte correctamente una matriz de estado
+    Verifica que la función convierte
+    correctamente una matriz de estado
     en una imagen en escala de grises (0-255).
     """
     # Simulamos una matriz de estado con valores entre 0 y 1.
@@ -32,7 +32,6 @@ def test_capturar_imagen():
 def test_procesar_imagen():
     """
     Prueba la función `procesar_imagen`.
-    
     Verifica que la función refleja horizontalmente la imagen correctamente.
     """
     # Creamos una imagen de ejemplo.
@@ -47,8 +46,8 @@ def test_procesar_imagen():
 def test_generar_retroalimentacion():
     """
     Prueba la función `generar_retroalimentacion`.
-    
-    Verifica que genera una señal de retroalimentación normalizada (0-1).
+    Verifica que genera una señal
+    de retroalimentación normalizada (0-1).
     """
     # Creamos una imagen con valores fijos para predecir el feedback.
     image = np.full((10, 10), 128, dtype=np.uint8)
@@ -64,8 +63,8 @@ def test_generar_retroalimentacion():
 def test_retroalimentacion_optica():
     """
     Prueba la función `retroalimentacion_optica`.
-    
-    Verifica que integra correctamente captura, procesamiento y generación.
+    Verifica que integra correctamente
+    captura, procesamiento y generación.
     """
     # Simulamos una matriz de estado.
     state = np.array([[0.1, 0.9], [0.4, 0.7]])
