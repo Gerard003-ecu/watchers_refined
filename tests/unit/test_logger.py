@@ -8,7 +8,7 @@ import io
 from pathlib import Path
 import importlib
 import sys
-import tempfile # Usar tempfile para directorio temporal más robusto
+import tempfile  # Usar tempfile para directorio temporal más robusto
 
 LOG_DIR_ENV = os.environ.get("WATCHERS_LOG_DIR", "logs")
 base_dir = os.getcwd()
@@ -18,15 +18,16 @@ LOG_DIR = os.path.join(base_dir, LOG_DIR_ENV)
 try:
     from agent_ai.utils import logger as agent_logger
     # Importar la función de setup para llamarla explícitamente si es necesario
-    from agent_ai.utils.logger import setup_logger_handlers
 except ImportError:
     try:
         import logger as agent_logger
-        from logger import setup_logger_handlers
     except ImportError:
-        raise ImportError("No se pudo importar el módulo logger. Verifica PYTHONPATH y estructura.")
+        raise ImportError(
+            "No se pudo importar el módulo logger. Verifica PYTHONPATH y estructura."
+        )
 
 logger_instance = logging.getLogger("agent_ai")
+
 
 class TestLogger(unittest.TestCase):
 
@@ -42,7 +43,7 @@ class TestLogger(unittest.TestCase):
                 handler.close()
             logger_instance.removeHandler(handler)
         logger_instance.handlers.clear()
-        logger_instance.propagate = True # Resetear propagate
+        logger_instance.propagate = True  # Resetear propagate
 
         # Recargar el módulo (esto llamará a setup_logger_handlers dentro de logger.py)
         importlib.reload(agent_logger)
@@ -69,14 +70,17 @@ class TestLogger(unittest.TestCase):
         """Comprueba que el handler de archivo esté correctamente configurado"""
         log = self.temp_logger_module.get_logger()
         file_handlers = [h for h in log.handlers if isinstance(h, logging.FileHandler)]
-        self.assertEqual(len(file_handlers), 1, f"Se encontraron {len(file_handlers)} file handlers, se esperaba 1.")
+        self.assertEqual(len(file_handlers), 1,
+                         f"Se encontraron {len(file_handlers)} file handlers, se esperaba 1.")
         file_handler = file_handlers[0]
         self.assertEqual(file_handler.level, logging.DEBUG)
 
         # --- CORRECCIÓN: Comparar con el subdirectorio 'logs' ---
-        expected_log_dir = self.temp_dir / self.temp_logger_module.LOG_DIR_ENV # Construir la ruta esperada
+        # Construir la ruta esperada
+        expected_log_dir = self.temp_dir / self.temp_logger_module.LOG_DIR_ENV
         self.assertEqual(self.log_file_path.parent.resolve(), expected_log_dir.resolve(),
-                         f"El directorio del log ({self.log_file_path.parent}) no coincide con el esperado ({expected_log_dir})")
+                         f"El directorio del log ({self.log_file_path.parent}) "
+                         f"no coincide con el esperado ({expected_log_dir})")
         # ---------------------------------------------------------
 
         self.assertTrue(str(self.log_file_path).endswith("agent_ai.log"))
@@ -85,15 +89,18 @@ class TestLogger(unittest.TestCase):
     def test_console_handler_exists(self):
         """Verifica el handler de consola con nivel INFO"""
         log = self.temp_logger_module.get_logger()
-        console_handlers = [h for h in log.handlers if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)]
+        console_handlers = [
+            h for h in log.handlers if isinstance(h, logging.StreamHandler)
+            and not isinstance(h, logging.FileHandler)
+        ]
         # Ahora sí debería haber solo 1
-        self.assertEqual(len(console_handlers), 1, f"Se encontraron {len(console_handlers)} console handlers, se esperaba 1.")
+        self.assertEqual(len(console_handlers), 1,
+                         f"Se encontraron {len(console_handlers)} console handlers, se esperaba 1.")
         console_handler = console_handlers[0]
         self.assertEqual(console_handler.level, logging.INFO)
         self.assertIsInstance(console_handler.formatter, logging.Formatter)
         # Verificar que usa stderr (por defecto StreamHandler lo hace)
         self.assertIs(console_handler.stream, sys.stderr)
-
 
     def test_log_file_creation_and_content(self):
         """Verifica que los mensajes se escriban en el archivo de log"""
@@ -121,14 +128,19 @@ class TestLogger(unittest.TestCase):
         # --- AJUSTE: Reconfigurar el handler de consola para usar el mock ---
         log = self.temp_logger_module.get_logger()
         # Encontrar y remover el handler de consola original
-        original_console_handlers = [h for h in log.handlers if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)]
+        original_console_handlers = [
+            h for h in log.handlers if isinstance(h, logging.StreamHandler)
+            and not isinstance(h, logging.FileHandler)
+        ]
         for h in original_console_handlers:
             log.removeHandler(h)
 
         # Crear y añadir un NUEVO handler de consola que use el mock_stderr
         # Usar el formatter existente si es posible
-        formatter = original_console_handlers[0].formatter if original_console_handlers else logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-        mock_console_handler = logging.StreamHandler(mock_stderr) # Pasar el mock stream
+        formatter = original_console_handlers[0].formatter \
+            if original_console_handlers \
+            else logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+        mock_console_handler = logging.StreamHandler(mock_stderr)  # Pasar el mock stream
         mock_console_handler.setLevel(logging.INFO)
         mock_console_handler.setFormatter(formatter)
         log.addHandler(mock_console_handler)
