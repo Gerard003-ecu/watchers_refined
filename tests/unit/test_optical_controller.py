@@ -31,7 +31,7 @@ def test_capturar_imagen():
 def test_procesar_imagen():
     """
     Prueba la función `procesar_imagen`.
-    Verifica que la función refleja 
+    Verifica que la función refleja
     horizontalmente la imagen correctamente.
     """
     # Creamos una imagen de ejemplo.
@@ -68,9 +68,8 @@ def test_retroalimentacion_optica():
     state = np.array([[0.1, 0.9], [0.4, 0.7]])
     feedback = retroalimentacion_optica(state)
     # El feedback generado debe estar entre 0 y 1.
-    assert 0 <= feedback <= 1, "El feedback debe estar normalizado entre 0 y 1."
+    assert 0 <= feedback <= 1, "Feedback debe estar normalizado entre 0 y 1."
 
 
 if __name__ == "__main__":
     pytest.main()
-
