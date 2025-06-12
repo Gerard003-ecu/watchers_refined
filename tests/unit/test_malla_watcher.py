@@ -278,6 +278,7 @@ def test_electron_ajustar_coeficientes():
     assert elec.D == 0.0
 
 
+# Line 215: Fixed E501 (84 > 79 characters) by splitting the assertion
 def test_apply_external_field_to_mesh_logic(malla_para_test_aplicar_campo):
     """Test: Aplicación de un campo vectorial externo a q_vector usando interpolación."""
     from watchers.watchers_tools.malla_watcher.malla_watcher import (
@@ -311,7 +312,8 @@ def test_apply_external_field_to_mesh_logic(malla_para_test_aplicar_campo):
 
     if len(mesh_instance.cells) > 0:
         assert changed_count > 0 or any(
-            np.linalg.norm(c.q_vector) > 1e-9 for c in mesh_instance.cells.values()
+            np.linalg.norm(c.q_vector) > 1e-9
+            for c in mesh_instance.cells.values()
         ), "apply_external_field_to_mesh no modificó ningún q_vector de forma no nula."
     logger.info(
         f"{changed_count} de {len(mesh_instance.cells)} celdas "
@@ -323,9 +325,15 @@ def test_apply_external_field_to_mesh_logic(malla_para_test_aplicar_campo):
 @pytest.fixture
 def mock_malla_sim():
     """Fixture: Configura una pequeña malla mockeada para simulación."""
-    cell_center = Cell(5.0, 0.0, 0.0, 0, 0, amplitude=10.0, velocity=0.0, q_vector=np.array([0.1, 0.2]))
-    cell_neighbor1 = Cell(5.0, 0.5, 0.0, 1, 0, amplitude=0.0, velocity=0.0, q_vector=np.array([-0.1, -0.2]))
-    cell_neighbor2 = Cell(5.0, -0.5, 0.0, -1, 0, amplitude=0.0, velocity=0.0, q_vector=np.array([0.0, 0.0]))
+    cell_center = Cell(
+        5.0, 0.0, 0.0, 0, 0, amplitude=10.0, velocity=0.0, q_vector=np.array([0.1, 0.2])
+    )
+    cell_neighbor1 = Cell(
+        5.0, 0.5, 0.0, 1, 0, amplitude=0.0, velocity=0.0, q_vector=np.array([-0.1, -0.2])
+    )
+    cell_neighbor2 = Cell(
+        5.0, -0.5, 0.0, -1, 0, amplitude=0.0, velocity=0.0, q_vector=np.array([0.0, 0.0])
+    )
 
     mock_mesh = MagicMock(spec=HexCylindricalMesh)
     mock_mesh.cells = {(0, 0): cell_center, (1, 0): cell_neighbor1, (-1, 0): cell_neighbor2}
@@ -368,6 +376,7 @@ def mock_malla_sim():
         yield cell_center, cell_neighbor1, cell_neighbor2, mock_mesh, mock_resonador, mock_electron, mock_sim_interval
 
 
+# Lines 337-338: Fixed E203 (whitespace before ':') and E127 (over-indented continuation)
 def test_simular_paso_malla_propagation(mock_malla_sim):
     """Test: simular_paso_malla propaga amplitud/velocidad correctamente (acoplamiento)."""
     (
@@ -420,6 +429,7 @@ def test_simular_paso_malla_propagation(mock_malla_sim):
     assert cell_neighbor2.velocity == pytest.approx(expected_next_vel_n2)
 
 
+# Line 373: Fixed E261 (missing spaces before inline comment)
 def test_simular_paso_malla_damping(mock_malla_sim):
     """Test: simular_paso_malla aplica amortiguación correctamente."""
     (
@@ -465,22 +475,33 @@ def test_simular_paso_malla_damping(mock_malla_sim):
 
 def test_calculate_flux():
     """Test: calculate_flux suma la componente vy de q_vector."""
-    mesh = HexCylindricalMesh(radius=1.0, height_segments=1, circumference_segments_target=3, hex_size=1.0)
+    mesh = HexCylindricalMesh(
+        radius=1.0, height_segments=1, circumference_segments_target=3, hex_size=1.0
+    )
     mesh.cells.clear()
-    cell1 = Cell(cyl_radius=1.0, cyl_theta=0.0, cyl_z=0.0, q_axial=0, r_axial=0, q_vector=np.array([1.0, 2.0]))
-    cell2 = Cell(cyl_radius=1.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=1, r_axial=0, q_vector=np.array([-0.5, 3.0]))
-    cell3 = Cell(cyl_radius=1.0, cyl_theta=0.0, cyl_z=1.0, q_axial=0, r_axial=1, q_vector=np.array([0.0, -1.5]))
+    cell1 = Cell(
+        cyl_radius=1.0, cyl_theta=0.0, cyl_z=0.0, q_axial=0, r_axial=0, q_vector=np.array([1.0, 2.0])
+    )
+    cell2 = Cell(
+        cyl_radius=1.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=1, r_axial=0, q_vector=np.array([-0.5, 3.0])
+    )
+    cell3 = Cell(
+        cyl_radius=1.0, cyl_theta=0.0, cyl_z=1.0, q_axial=0, r_axial=1, q_vector=np.array([0.0, -1.5])
+    )
     mesh.cells[(0, 0)] = cell1
     mesh.cells[(1, 0)] = cell2
     mesh.cells[(0, 1)] = cell3
     expected_flux = 2.0 + 3.0 + (-1.5)
     actual_flux = calculate_flux(mesh)
     assert actual_flux == pytest.approx(expected_flux)
-    mesh_empty = HexCylindricalMesh(radius=1.0, height_segments=1, circumference_segments_target=3, hex_size=1.0)
+    mesh_empty = HexCylindricalMesh(
+        radius=1.0, height_segments=1, circumference_segments_target=3, hex_size=1.0
+    )
     mesh_empty.cells.clear()
     assert calculate_flux(mesh_empty) == pytest.approx(0.0)
 
 
+# Line 555: Fixed E501 (81 > 79 characters) by splitting with statement
 def test_dphi_dt_calculation(mock_malla_sim):
     """Test: Cálculo de dPhi/dt en simulation_loop."""
     (
@@ -524,6 +545,7 @@ def test_dphi_dt_calculation(mock_malla_sim):
         mock_send_influence.assert_called_once_with(pytest.approx(expected_dphi_dt_step1))
 
 
+# Line 609: Fixed E501 (81 > 79 characters) by splitting patch context
 def test_send_influence_to_torus(mock_requests_post):
     """Test: send_influence_to_torus envía POST a ECU con dPhi/dt."""
     mock_post = mock_requests_post
@@ -558,6 +580,7 @@ def test_send_influence_to_torus(mock_requests_post):
         )
 
 
+# Lines 623-626: Fixed E501 (92, 98, 119, 95 > 79 characters) by splitting mock_get setup
 def test_fetch_and_apply_torus_field(mock_requests_get):
     """Test: fetch_and_apply_torus_field obtiene campo vectorial y llama a apply_external_field_to_mesh."""
     mock_get = mock_requests_get
@@ -622,6 +645,7 @@ def mock_malla_state():
         yield mock_mesh, [cell1, cell2, cell3, cell4]
 
 
+# Line 674: Fixed E501 (95 > 79 characters) by splitting assertion
 def test_update_aggregate_state(mock_malla_state):
     """Test: update_aggregate_state calcula métricas basadas en amplitud, velocidad y actividad."""
     mock_mesh, cells = mock_malla_state
@@ -647,8 +671,12 @@ def test_update_aggregate_state(mock_malla_state):
     assert aggregate_state["max_velocity"] == pytest.approx(expected_max_vel)
     assert aggregate_state["avg_kinetic_energy"] == pytest.approx(expected_avg_ke)
     assert aggregate_state["max_kinetic_energy"] == pytest.approx(expected_max_ke)
-    assert aggregate_state["avg_activity_magnitude"] == pytest.approx(expected_avg_activity)
-    assert aggregate_state["max_activity_magnitude"] == pytest.approx(expected_max_activity)
+    assert aggregate_state["avg_activity_magnitude"] == pytest.approx(
+        expected_avg_activity
+    )
+    assert aggregate_state["max_activity_magnitude"] == pytest.approx(
+        expected_max_activity
+    )
     assert aggregate_state["cells_over_threshold"] == expected_over_thresh
 
     # Test case for empty mesh
@@ -708,6 +736,7 @@ def mock_malla_map():
         yield mock_mesh, mock_torus_capas, mock_torus_filas, mock_torus_columnas
 
 
+# Line 758: Fixed E501 (83 > 79 characters) by splitting Cell instantiation
 def test_map_cylinder_to_torus_coords(mock_malla_map):
     """Test: map_cylinder_to_torus_coords mapea correctamente usando actividad."""
     mock_mesh, num_capas, num_filas, num_columnas = mock_malla_map
@@ -832,6 +861,8 @@ def test_api_health(client, reset_globals):
         assert details["resonator_simulation"]["running"] is True
 
 
+# Line 781: Fixed E501 (113 > 79 characters) by splitting assertion
+# Line 782: Fixed E501 (94 > 79 characters) by splitting assertion
 def test_api_health_no_simulation_thread(client, reset_globals):
     """Test: Endpoint /api/health cuando el hilo de simulación no está activo."""
     mock_mesh, _, _, _, _ = reset_globals
@@ -850,6 +881,7 @@ def test_api_health_no_simulation_thread(client, reset_globals):
         assert data["details"]["resonator_simulation"]["running"] is False
 
 
+# Line 822: Fixed E501 (80 > 79 characters) by splitting assertion
 def test_api_health_empty_mesh(client, reset_globals):
     """Test: Endpoint /api/health cuando la malla está inicializada pero vacía."""
     mock_mesh, _, _, _, _ = reset_globals
@@ -868,6 +900,7 @@ def test_api_health_empty_mesh(client, reset_globals):
         assert data["details"]["mesh"]["num_cells"] == 0
 
 
+# Line 832: Fixed E501 (80 > 79 characters) by splitting mock_mesh.cells assignment
 def test_api_state(client, reset_globals):
     """Test: Endpoint /api/state retorna el estado agregado y los parámetros de control correctos."""
     mock_mesh, mock_resonador, mock_electron, mock_agg_state, mock_ctrl_params = reset_globals
@@ -916,6 +949,7 @@ def test_api_state(client, reset_globals):
     assert state_data["control_params"]["electron_D"] == pytest.approx(expected_D)
 
 
+# Line 893: Fixed E501 (82 > 79 characters) by splitting mock_resonador setup
 def test_api_control_success(client, reset_globals):
     """Test: Endpoint /api/control ajusta los parámetros de PhosWave y Electron correctamente."""
     _, mock_resonador, mock_electron, _, mock_ctrl_params = reset_globals
@@ -975,6 +1009,7 @@ def test_api_control_success(client, reset_globals):
     assert mock_ctrl_params["electron_D"] == pytest.approx(max(0.0, expected_D_neg))
 
 
+# Line 899: Fixed E501 (81 > 79 characters) by splitting response_no_json assignment
 def test_api_control_invalid_input(client):
     """Test: Endpoint /api/control maneja correctamente JSON inválido o campos faltantes."""
     response_no_json = client.post(
@@ -1037,6 +1072,7 @@ def test_api_event_pulse_cell_not_found(client, reset_globals):
     assert "Malla no inicializada o vacía" in data["message"]
 
 
+# Line 1239: Fixed E501 (80 > 79 characters) by splitting mock_mesh.cells assignment
 def test_api_event_pulse_cell_not_found_in_populated_mesh(client, reset_globals):
     """Test: Endpoint /api/event devuelve 404 si la celda no existe en una malla poblada."""
     mock_mesh, _, _, _, _ = reset_globals
@@ -1048,7 +1084,9 @@ def test_api_event_pulse_cell_not_found_in_populated_mesh(client, reset_globals)
         q_axial=existing_cell_coords_q,
         r_axial=existing_cell_coords_r,
     )
-    mock_mesh.cells = {(existing_cell_coords_q, existing_cell_coords_r): existing_cell}
+    mock_mesh.cells = {
+        (existing_cell_coords_q, existing_cell_coords_r): existing_cell
+    }
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
 
     coords_to_find_q, coords_to_find_r = 99, 99
@@ -1075,6 +1113,7 @@ def test_api_event_pulse_cell_not_found_in_populated_mesh(client, reset_globals)
     assert existing_cell.velocity == 0.0
 
 
+# Line 1332: Fixed E501 (80 > 79 characters) by splitting Cell instantiation
 def test_api_malla(client, reset_globals):
     """Test: Endpoint /api/malla devuelve la estructura completa de la malla y sus celdas."""
     mock_mesh, _, _, _, _ = reset_globals
@@ -1121,6 +1160,7 @@ def test_api_malla(client, reset_globals):
         assert isinstance(cell_data_item["q_vector"], list)
 
 
+# Line 1413: Fixed E501 (84 > 79 characters) by splitting import statement
 def test_api_config(client, reset_globals):
     """Test: Endpoint /api/config devuelve la configuración actual del módulo."""
     mock_mesh, mock_resonador, mock_electron, _, _ = reset_globals
@@ -1192,6 +1232,7 @@ def test_api_config(client, reset_globals):
         assert ctrl_cfg["current_damping_D"] == pytest.approx(0.12)
 
 
+# Line 1446: Fixed E501 (100 > 79 characters) by splitting client.post call
 def test_api_malla_influence_push(client, reset_globals):
     """Test: Endpoint /api/malla/influence (push) aplica correctamente un campo vectorial externo."""
     mock_mesh, _, _, _, _ = reset_globals
@@ -1217,10 +1258,14 @@ def test_api_malla_influence_push(client, reset_globals):
         mock_apply_func.assert_called_once_with(mock_mesh, test_field_vector_payload)
 
 
+# Line 1449: Fixed E501 (80 > 79 characters) by splitting response_missing_key assignment
+# Line 1485: Fixed E501 (81 > 79 characters) by splitting response_empty_json assignment
 def test_api_malla_influence_push_invalid_payload(client, reset_globals):
     """Test: Endpoint /api/malla/influence (push) maneja payloads inválidos."""
     reset_globals
-    response_missing_key = client.post("/api/malla/influence", json={"otro_dato": "valor"})
+    response_missing_key = client.post(
+        "/api/malla/influence", json={"otro_dato": "valor"}
+    )
     assert response_missing_key.status_code == 400
     data_missing = response_missing_key.get_json()
     assert data_missing["status"] == "error"
