@@ -22,18 +22,13 @@ from agent_ai.agent_ai import (
     REQUESTS_TIMEOUT,
     MAX_RETRIES
 )
-from agent_ai.validation.validator import (
-    validate_module_registration,
-    check_missing_dependencies,
-)
-from agent_ai.utils.logger import get_logger
 
 
 @mock.patch("agent_ai.agent_ai.requests", new_callable=mock.MagicMock)
 @mock.patch("agent_ai.agent_ai.check_missing_dependencies")
 @mock.patch("agent_ai.agent_ai.validate_module_registration")
 @mock.patch("agent_ai.agent_ai.get_logger")
-class TestAgentAIStrategicLogic(unittest.TestCase):
+class TestAgentAI(unittest.TestCase):
     """Suite de pruebas para la clase AgentAI."""
 
     def setUp(self):
@@ -41,7 +36,6 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
         Configura el entorno para cada prueba, creando una nueva instancia
         de AgentAI.
         """
-        # Limpiar variables de entorno para aislar las pruebas
         os.environ.pop(HARMONY_CONTROLLER_URL_ENV, None)
         os.environ.pop(HARMONY_CONTROLLER_REGISTER_URL_ENV, None)
         os.environ.pop(AGENT_AI_ECU_URL_ENV, None)
@@ -50,8 +44,6 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
         os.environ.pop("AA_INITIAL_STRATEGY", None)
 
         self.agent = AgentAI()
-        # Detener el bucle estratégico que se inicia en __init__
-        # para que no interfiera con las pruebas unitarias.
         if self.agent._strategic_thread.is_alive():
             self.agent.shutdown()
 
@@ -64,7 +56,7 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
             self.agent.shutdown()
 
     def test_initialization_defaults(
-        self, mock_logger, mock_validate, mock_check_deps, mock_requests
+        self, mock_get_logger, mock_validate, mock_check_deps, mock_requests
     ):
         """
         Verifica que el agente se inicializa con valores por defecto
@@ -406,7 +398,7 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
     def test_determine_estrategia_default_sin_cambio_base(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Verifica que la estrategia 'default' no cambia el setpoint sin otros factores."""
+        """Verifica la estrategia 'default' no cambie el setpoint sin otros factores"""
         initial_vector = [1.5, -0.5]
         self.agent.target_setpoint_vector = list(initial_vector)
         self.agent.harmony_state = {
@@ -459,7 +451,7 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
     def test_determine_estrategia_estabilidad_reduce_por_pid_alto(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Verifica que 'estabilidad' reduce magnitud si el esfuerzo PID es alto."""
+        """Verifica 'estabilidad' reduce magnitud si el esfuerzo PID es alto."""
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -1009,9 +1001,12 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
 
         self.assertListEqual(estado["target_setpoint_vector"], [0.5, -0.5])
         self.assertEqual(estado["current_strategy"], "test_strat")
-        self.assertEqual(estado["external_inputs"]["cogniboard_signal"], 0.1)
         self.assertEqual(
-            estado["harmony_controller_last_state"]["last_measurement"], 0.9
+            estado["external_inputs"]["cogniboard_signal"], 0.1
+        )
+        self.assertEqual(
+            estado["harmony_controller_last_state"]["last_measurement"],
+            0.9,
         )
         self.assertEqual(len(estado["registered_modules"]), 2)
 
