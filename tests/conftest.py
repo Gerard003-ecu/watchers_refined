@@ -17,6 +17,7 @@ SERVICES_TO_CHECK = {
     "MallaWatcher": MALLA_URL_HEALTH,
 }
 
+
 @pytest.fixture(scope="session", autouse=True)
 def check_all_services_health(request):
     """
@@ -32,35 +33,61 @@ def check_all_services_health(request):
     logger.info("Iniciando verificación de salud de servicios pre-test...")
     all_healthy = True
     for service_name, base_url in SERVICES_TO_CHECK.items():
-        health_url = f"{base_url}/api/health" # Asumiendo que todos tienen /api/health
+        health_url = f"{base_url}/api/health"  # Asumiendo que todos tienen /api/health
         try:
-            response = requests.get(health_url, timeout=5) # Timeout corto para health check
-            response.raise_for_status() # Lanza excepción para 4xx/5xx
-            
-            # Opcional: Verificar el contenido de la respuesta de salud si es necesario
+            # Timeout corto para health check
+            response = requests.get(health_url, timeout=5)
+            response.raise_for_status()  # Lanza excepción para 4xx/5xx
+
+            # Opcional: Verificar el contenido de la respuesta de salud
             # health_data = response.json()
-            # if health_data.get("status") not in ["success", "ok", "warning"]: # 'warning' puede ser aceptable
-            #     logger.error(f"Servicio {service_name} en {health_url} reportó estado no saludable: {health_data.get('status')}")
+            # if health_data.get("status") not in ["success", "ok", "warning"]:
+            #     logger.error(
+            #         f"Servicio {service_name} en {health_url} "
+            #         f"reportó estado no saludable: {health_data.get('status')}"
+            #     )
             #     all_healthy = False
             # else:
-            #     logger.info(f"Servicio {service_name} en {health_url} está saludable (status: {health_data.get('status')}).")
+            #     logger.info(
+            #         f"Servicio {service_name} en {health_url} "
+            #         f"está saludable (status: {health_data.get('status')})."
+            #     )
 
-            logger.info(f"Servicio {service_name} en {health_url} respondió con status {response.status_code}.")
+            logger.info(
+                f"Servicio {service_name} en {health_url} "
+                f"respondió con status {response.status_code}."
+            )
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"FALLO DE PRECONDICIÓN: No se pudo conectar o verificar la salud del servicio {service_name} en {health_url}. Error: {e}")
+            logger.error(
+                "FALLO DE PRECONDICIÓN: No se pudo conectar o verificar la salud "
+                f"del servicio {service_name} en {health_url}. Error: {e}"
+            )
             all_healthy = False
         except Exception as e:
-            logger.error(f"FALLO DE PRECONDICIÓN: Error inesperado verificando la salud del servicio {service_name} en {health_url}. Error: {e}")
+            logger.error(
+                "FALLO DE PRECONDICIÓN: Error inesperado verificando la salud "
+                f"del servicio {service_name} en {health_url}. Error: {e}"
+            )
             all_healthy = False
-            
+
     if not all_healthy:
-        pytest.exit("Uno o más servicios requeridos no están saludables o no son accesibles. Deteniendo tests de integración.", returncode=1)
+        pytest.exit(
+            "Uno o más servicios requeridos no están saludables o no son accesibles. "
+            "Deteniendo tests de integración.",
+            returncode=1,
+        )
     else:
-        logger.info("Todos los servicios requeridos están saludables. Procediendo con los tests.")
+        logger.info(
+            "Todos los servicios requeridos están saludables. "
+            "Procediendo con los tests."
+        )
+
 
 def pytest_addoption(parser):
     """Permite añadir opciones de línea de comando a pytest."""
     parser.addoption(
-        "--skip-health-checks", action="store_true", help="Saltar las verificaciones de salud de servicios"
+        "--skip-health-checks",
+        action="store_true",
+        help="Saltar las verificaciones de salud de servicios"
     )
