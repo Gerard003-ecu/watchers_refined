@@ -127,7 +127,7 @@ def register_with_agent_ai(
             )
         except Exception as e:
             logger.error(
-                "Error inesperado durante registro de '%s' (intento %s/%s): %s",
+                "Error durante registro de '%s' (intento %s/%s): %s",
                 module_name,
                 attempt + 1,
                 MAX_REGISTRATION_RETRIES,
@@ -210,8 +210,10 @@ def set_wave_control():
 
     try:
         # La señal de control ajustará el amortiguamiento
-        # Una señal positiva podría indicar "reducir oscilación" -> aumentar amortiguamiento
-        # Una señal negativa podría indicar "aumentar oscilación" -> reducir
+        # Señal positiva podría indicar 
+        # "reducir oscilación" -> aumentar amortiguamiento
+        # Una señal negativa podría
+        # indicar "aumentar oscilación" -> reducir
         # amortiguamiento
         control_signal = float(data["control_signal"])
         # Ajustar la fórmula según la semántica deseada para control_signal
@@ -371,7 +373,8 @@ def acoustic():
 
 def get_omega_local(lambda_foton):
     """Calcula omega local basado en lambda."""
-    # Asegurar que lambda no sea el default exacto para evitar división por cero si FACTOR_LAMBDA es grande
+    # Asegurar que lambda no sea el default exacto
+    # para evitar división por cero si FACTOR_LAMBDA es grande
     # O ajustar la fórmula para que sea más estable
     # Ejemplo: usar diferencia relativa o clamping
     lambda_diff = lambda_foton - LAMBDA_DEFAULT

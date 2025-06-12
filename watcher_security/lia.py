@@ -36,12 +36,13 @@ class LIATransformer:
         return matrix
 
     def transform(self, vector):
-        """Aplica transformación lineal manteniendo coherencia en subespacios"""
+        """
+        Aplica transformación lineal 
+        manteniendo coherencia en subespacios
+        """
         if len(vector) != self.dimensions:
             raise ValueError("Dimensionalidad del vector incorrecta")
-        
         transformed = np.dot(self.transformation_matrix, vector)
-        
         # Normalizar por subespacio
         for name, subspace in self.subspaces.items():
             subspace_norm = np.linalg.norm(transformed[subspace])

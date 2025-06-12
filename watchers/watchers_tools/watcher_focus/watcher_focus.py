@@ -1,6 +1,6 @@
 # --- START OF FILE watcher_focus.py (AJUSTADO) ---
 
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 """
 watcher_focus: Simulación Van der Pol con retroalimentación activa.
 Endpoints:
@@ -171,8 +171,8 @@ def set_focus_control():
 
     try:
         # La señal de control ajustará el parámetro mu0
-        # Ejemplo: señal positiva -> aumentar mu0 (más oscilación/inestabilidad)
-        #          señal negativa -> disminuir mu0 (más amortiguamiento VdP)
+        # Señal positiva -> aumentar mu0 (más oscilación/inestabilidad)
+        # Señal negativa -> disminuir mu0 (más amortiguamiento VdP)
         control_signal = float(data["control_signal"])
         # Ajustar fórmula según semántica deseada
         mu0_new = MU0_BASE + K_GAIN_MU * control_signal
@@ -219,7 +219,8 @@ def get_focus():
 # --- Lógica de Simulación (Van der Pol con control z) ---
 def derivatives(t, x, y, z, current_mu0):
     """Calcula las derivadas del sistema."""
-    # El parámetro mu ahora depende de z y del mu0 actual ajustado por el control
+    # El parámetro mu ahora depende de z y del mu0 actual
+    # ajustado por el control
     mu = current_mu0 + K * z
     dxdt = y
     dydt = mu * (1 - x**2) * y - x
@@ -260,7 +261,7 @@ def update_indicators(t, x, y, z):
 
 def simulate_watcher_focus_infinite(dt=0.01):
     """Bucle principal de simulación."""
-    logger.info("Iniciando simulación infinita de watcher_focus (Van der Pol).")
+    logger.info("Inicio de simulación infinita focus tipo Van der Pol.")
     log_interval_steps = 10  # Loguear cada 10 pasos
 
     # Leer estado inicial de forma segura

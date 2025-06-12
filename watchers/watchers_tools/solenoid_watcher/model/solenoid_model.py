@@ -66,5 +66,5 @@ def simulate_solenoid(
         initial_state,
         time,
         args=(current, turns_density, radius)
-    
+      )
     return time, solution

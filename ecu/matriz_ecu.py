@@ -560,7 +560,7 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
 @app.route("/api/ecu/field_vector", methods=["GET"])
 def get_field_vector_api() -> Tuple[Any, int]:
     """
-    Endpoint REST para obtener 
+    Endpoint REST para obtener
     el campo vectorial completo de la grilla toroidal.
     Retorna una estructura 3D (lista de listas de listas)
     donde cada elemento es un vector 2D [vx, vy].

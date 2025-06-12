@@ -320,6 +320,7 @@ def test_endpoint_ecu_api(cliente_flask: FlaskClient):
         np.linspace(1.0, 0.5, NUM_CAPAS) 
         if NUM_CAPAS > 1 
         else np.array([1.0])
+    )
     peso_capa_0 = pesos[0]
     assert datos["estado_campo_unificado"][0][0] == pytest.approx(
         peso_capa_0 * norma_esperada_000

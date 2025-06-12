@@ -1251,4 +1251,4 @@ if __name__ == "__main__":
             logger.warning("El hilo de simulación no terminó a tiempo.")
     logger.info("Servicio malla_watcher finalizado.")
 
-[end of watchers/watchers_tools/malla_watcher/malla_watcher.py]
+# [end of watchers/watchers_tools/malla_watcher/malla_watcher.py]

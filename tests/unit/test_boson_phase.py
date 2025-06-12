@@ -7,14 +7,15 @@ Se utiliza una importación directa para obtener la clase desde el módulo corre
 """
 
 import pytest
-import numpy as np
 from control.boson_phase import BosonPhase
+
 
 @pytest.fixture
 def pid_controller():
     # Instanciamos el PID adaptativo "BosonPhase" con parámetros de ejemplo.
     pid = BosonPhase(Kp=1.0, Ki=0.1, Kd=0.05, setpoint=10.0)
     return pid
+
 
 def test_pid_output_constant_setpoint(pid_controller):
     """
@@ -26,6 +27,7 @@ def test_pid_output_constant_setpoint(pid_controller):
     dt = 0.1
     output = pid_controller.compute(setpoint, measurement, dt)
     assert abs(output) < 1e-3, f"Salida inesperada para error nulo: {output}"
+
 
 def test_pid_response_to_step(pid_controller):
     """
@@ -46,9 +48,11 @@ def test_pid_response_to_step(pid_controller):
     # Se espera que al menos una de las salidas sea significativa.
     assert any(abs(o) > 0.1 for o in outputs), "El PID no reaccionó adecuadamente al cambio."
 
+
 def test_pid_reset(pid_controller):
     """
-    Verifica que el método reset() reinicie correctamente los acumuladores del PID.
+    Verifica que el método reset() reinicie
+    correctamente los acumuladores del PID.
     """
     # Ejecutamos una actualización para modificar los acumuladores.
     pid_controller.compute(10.0, 5.0, 0.1)
@@ -58,3 +62,4 @@ def test_pid_reset(pid_controller):
 
 if __name__ == "__main__":
     pytest.main()
+

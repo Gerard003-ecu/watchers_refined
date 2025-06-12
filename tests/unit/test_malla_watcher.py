@@ -333,12 +333,15 @@ def mock_malla_sim():
     cell_center = Cell(
         5.0, 0.0, 0.0, 0, 0, 
         amplitude=10.0, velocity=0.0, q_vector=np.array([0.1, 0.2])
+    )
     cell_neighbor1 = Cell(
         5.0, 0.5, 0.0, 1, 0, 
         amplitude=0.0, velocity=0.0, q_vector=np.array([-0.1, -0.2])
+    )
     cell_neighbor2 = Cell(
         5.0, -0.5, 0.0, -1, 0, 
-        amplitude=0.0, velocity=0.0, q_vector=np.array([0.0, 0.0]))
+        amplitude=0.0, velocity=0.0, q_vector=np.array([0.0, 0.0])
+    )
 
     mock_mesh = MagicMock(spec=HexCylindricalMesh)
     mock_mesh.cells = {

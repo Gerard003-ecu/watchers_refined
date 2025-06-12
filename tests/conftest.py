@@ -37,7 +37,7 @@ def check_all_services_health(request):
     )
     all_healthy = True
     for service_name, base_url in SERVICES_TO_CHECK.items():
-        health_url = f"{base_url}/api/health"  # Asumiendo que todos tienen /api/health
+        health_url = f"{base_url}/api/health"
         try:
             # Timeout corto para health check
             response = requests.get(health_url, timeout=5)
@@ -47,8 +47,8 @@ def check_all_services_health(request):
             # health_data = response.json()
             # if health_data.get("status") not in ["success", "ok", "warning"]:
             #     logger.error(
-            #         f"Servicio {service_name} en {health_url} "
-            #         f"reportó estado no saludable: {health_data.get('status')}"
+            #         f"Servicio {service_name} en {health_url}"
+            #         f"reportó no saludable: {health_data.get('status')}"
             #     )
             #     all_healthy = False
             # else:

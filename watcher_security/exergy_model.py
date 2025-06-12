@@ -1,6 +1,6 @@
 """
 Propósito:
-Cuantifica la capacidad útil de trabajo del sistema para priorizar acciones de 
+Cuantifica la capacidad útil de trabajo del sistema para priorizar acciones de
 seguridad mediante principios termodinámicos.
 
 Métricas Operativas:
@@ -25,7 +25,6 @@ class ExergyModel:
         S = system_state['entropy']
         p = system_state['pressure']
         V = system_state['volume']
-        
         exergy = U + p * V - self.T0 * S
         return exergy
 
@@ -38,10 +37,8 @@ class ExergyModel:
     def optimize_energy_distribution(self, vector):
         """Maximiza exergía mediante optimización convexa"""
         from scipy.optimize import minimize
-        
         def exergy_loss(x):
             return -np.dot(x, vector) + 0.5 * np.linalg.norm(x)**2
-        
         constraints = {'type': 'ineq', 'fun': lambda x: np.sum(x) - 0.1}
         result = minimize(
             exergy_loss,

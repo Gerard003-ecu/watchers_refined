@@ -1,6 +1,6 @@
 # --- START OF FILE tests/unit/test_validator.py (AJUSTADO) ---
 
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 """test_validator.py - Pruebas unitarias para validation/validator.py."""
 
 import unittest

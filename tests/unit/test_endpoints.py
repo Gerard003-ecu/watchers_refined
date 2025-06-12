@@ -1,12 +1,11 @@
 # --- START OF FILE tests/unit/test_endpoints.py ---
 
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 """
 test_endpoints.py - Pruebas para la API REST de AgentAI (Estratégico)
 """
 
 import pytest
-import json
 import threading
 from unittest.mock import patch, MagicMock
 
@@ -24,7 +23,10 @@ except ImportError:
 
 @pytest.fixture
 def client_and_mock():  # Renombrar para claridad
-    """Configura un cliente de prueba Flask y la instancia mockeada de AgentAI."""
+    """
+    Configura un cliente de prueba
+    Flask y la instancia mockeada de AgentAI.
+    """
     agent_ai_app.config['TESTING'] = True
     agent_ai_app.config['WTF_CSRF_ENABLED'] = False
     with agent_ai_app.test_client() as client:
@@ -132,7 +134,10 @@ def test_register_module_success(client_and_mock):
 
 
 def test_register_module_fail(client_and_mock):
-    """Prueba POST /api/register con fallo en la lógica interna."""
+    """
+    Prueba POST /api/register con
+    fallo en la lógica interna.
+    """
     client, mock_instance = client_and_mock
     module_data = {"nombre": "BadTool", "url": ""}  # URL inválida
     mock_response = {"status": "error", "mensaje": "Faltan campos obligatorios"}
@@ -149,7 +154,10 @@ def test_register_module_fail(client_and_mock):
 
 
 def test_health_check_success(client_and_mock):
-    """Prueba GET /api/health cuando el bucle está activo."""
+    """
+    Prueba GET /api/health
+    cuando el bucle está activo.
+    """
     client, mock_instance = client_and_mock
     # Configurar el mock principal (ya debería tener _strategic_thread)
     mock_instance._strategic_thread.is_alive.return_value = True
@@ -165,7 +173,10 @@ def test_health_check_success(client_and_mock):
 
 
 def test_health_check_fail(client_and_mock):
-    """Prueba GET /api/health cuando el bucle NO está activo."""
+    """
+    Prueba GET /api/health
+    cuando el bucle NO está activo.
+    """
     client, mock_instance = client_and_mock
     # Configurar el mock principal
     mock_instance._strategic_thread.is_alive.return_value = False
@@ -181,7 +192,10 @@ def test_health_check_fail(client_and_mock):
 
 
 def test_control_input_success(client_and_mock):
-    """Prueba POST /api/control (entrada de cogniboard)."""
+    """
+    Prueba POST /api/control
+    (entrada de cogniboard).
+    """
     client, mock_instance = client_and_mock
     payload = {"control_signal": 0.85}
     # Configurar el método del mock principal
@@ -196,7 +210,10 @@ def test_control_input_success(client_and_mock):
 
 
 def test_control_input_missing_data(client_and_mock):
-    """Prueba POST /api/control sin 'control_signal'."""
+    """
+    Prueba POST /api/control
+    sin 'control_signal'.
+    """
     client, mock_instance = client_and_mock
     response = client.post("/api/control", json={})
     assert response.status_code == 400
@@ -204,7 +221,10 @@ def test_control_input_missing_data(client_and_mock):
 
 
 def test_config_input_success(client_and_mock):
-    """Prueba POST /api/config (entrada de config_agent)."""
+    """
+    Prueba POST /api/config
+    (entrada de config_agent).
+    """
     client, mock_instance = client_and_mock
     payload = {"config_status": {"docker": "ok", "network": "warning"}}
     # Configurar el método del mock principal
@@ -221,7 +241,10 @@ def test_config_input_success(client_and_mock):
 
 
 def test_config_input_missing_data(client_and_mock):
-    """Prueba POST /api/config sin 'config_status'."""
+    """
+    Prueba POST /api/config
+    sin 'config_status'.
+    """
     client, mock_instance = client_and_mock
     response = client.post("/api/config", json={})
     assert response.status_code == 400

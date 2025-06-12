@@ -19,7 +19,6 @@ from watchers_modules.watcher_focus.watcher_focus import update_indicators
 def test_phoswave_transmision():
     celda_A = Cell(0, 0, amplitude=1.0, phase=0.0)
     celda_B = Cell(0, 0, amplitude=0.0, phase=0.0)
-    
     resonador = PhosWave(
         coef_transmision=0.6,
         coef_reflexion=0.4,

@@ -168,11 +168,26 @@ class TestHarmonyControllerState(unittest.TestCase):
         self.assertAlmostEqual(
             snapshot["setpoint_value"], self.test_setpoint_value
         )
-        self.assertEqual(snapshot["setpoint_vector"], self.test_setpoint_vector)
-        self.assertEqual(snapshot["last_measurement"], 0.0)
-        self.assertEqual(snapshot["last_pid_output"], 0.0)
-        self.assertEqual(snapshot["last_ecu_state"], [])
-        self.assertEqual(snapshot["pid_gains"]["Kp"], self.test_kp)
+        self.assertEqual(
+            snapshot["setpoint_vector"],
+            self.test_setpoint_vector
+        )
+        self.assertEqual(
+            snapshot["last_measurement"],
+            0.0
+        )
+        self.assertEqual(
+            snapshot["last_pid_output"],
+            0.0
+        )
+        self.assertEqual(
+            snapshot["last_ecu_state"],
+            []
+        )
+        self.assertEqual(
+            snapshot["pid_gains"]["Kp"],
+            self.test_kp
+        )
 
         self.assertIn("managed_tools", snapshot)
         managed_tools_snap = snapshot["managed_tools"]
@@ -180,22 +195,28 @@ class TestHarmonyControllerState(unittest.TestCase):
         self.assertIn("tool_b", managed_tools_snap)
         self.assertEqual(managed_tools_snap["tool_a"]["url"], "http://a")
         self.assertEqual(
-            managed_tools_snap["tool_a"]["aporta_a"], "malla_watcher"
+            managed_tools_snap["tool_a"]["aporta_a"],
+            "malla_watcher"
         )
         self.assertEqual(
-            managed_tools_snap["tool_a"]["naturaleza"], "potenciador"
+            managed_tools_snap["tool_a"]["naturaleza"],
+            "potenciador"
         )
         self.assertEqual(
-            managed_tools_snap["tool_a"]["last_state"], {"amp": 1.5}
+            managed_tools_snap["tool_a"]["last_state"],
+            {"amp": 1.5}
         )
         self.assertEqual(
-            managed_tools_snap["tool_b"]["aporta_a"], "matriz_ecu"
+            managed_tools_snap["tool_b"]["aporta_a"],
+            "matriz_ecu"
         )
         self.assertEqual(
-            managed_tools_snap["tool_b"]["naturaleza"], "reductor"
+            managed_tools_snap["tool_b"]["naturaleza"],
+            "reductor"
         )
         self.assertEqual(
-            managed_tools_snap["tool_b"]["last_control"], -0.2
+            managed_tools_snap["tool_b"]["last_control"],
+            -0.2
         )
 
 

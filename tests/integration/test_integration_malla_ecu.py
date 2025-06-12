@@ -177,7 +177,7 @@ def test_malla_sends_valid_influence_to_ecu(mock_http_server, caplog):
             "capa": 0,
             "row": 1,
             "col": 2,
-        },  # Valores deben coincidir con lo que send_influence_to_torus calcularía
+        },
         "vector": [dphi_dt_test_value, 0.0],
     }
     validate(
