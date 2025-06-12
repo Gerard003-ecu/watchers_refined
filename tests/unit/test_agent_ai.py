@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # --- START OF FILE tests/unit/test_agent_ai.py (AJUSTADO Fase 1) ---
 """
-test_agent_ai.py - Pruebas unitarias para el núcleo estratégico 
+test_agent_ai.py - Pruebas unitarias para el núcleo estratégico
 AgentAI
 """
 
@@ -12,7 +12,7 @@ import os
 import numpy as np
 import requests  # Importar para usar sus excepciones
 
-# Importar la clase y constantes/funciones necesarias desde la 
+# Importar la clase y constantes/funciones necesarias desde la
 # ubicación correcta
 # Asumiendo que la estructura es mi-proyecto/agent_ai/agent_ai.py
 from agent_ai.agent_ai import (AgentAI,
