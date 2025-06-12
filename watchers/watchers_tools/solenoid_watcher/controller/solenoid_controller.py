@@ -10,13 +10,17 @@ from agent_ai.model.solenoid_model import simulate_solenoid
 
 
 class SolenoidController:
+    """Controlador PID para ajustar la señal de control del solenoide."""
+
     def __init__(self, desired_Bz, Kp=1.0, Ki=0.1, Kd=0.05):
         """
         Inicializa el controlador PID para el solenoide.
-        
+
         Parámetros:
-          desired_Bz : valor deseado del campo magnético axial (Tesla)
-          Kp, Ki, Kd : coeficientes del controlador PID
+            desired_Bz: Valor deseado del campo magnético axial (Tesla).
+            Kp: Coeficiente proporcional del controlador PID.
+            Ki: Coeficiente integral del controlador PID.
+            Kd: Coeficiente derivativo del controlador PID.
         """
         self.desired_Bz = desired_Bz
         self.Kp = Kp
@@ -28,36 +32,37 @@ class SolenoidController:
     def pid_control(self, measured_Bz, dt):
         """
         Calcula la señal de control usando PID.
-        
+
         Parámetros:
-          measured_Bz : valor medido del campo axial
-          dt : intervalo de tiempo
-          
+            measured_Bz: Valor medido del campo axial.
+            dt: Intervalo de tiempo.
+
         Retorna:
-          control_signal : señal de control calculada
+            float: Señal de control calculada.
         """
         error = self.desired_Bz - measured_Bz
         self.integral_error += error * dt
         derivative = (error - self.last_error) / dt if dt > 0 else 0.0
         self.last_error = error
-        control_signal = (self.Kp * error + 
-                          self.Ki * self.integral_error + 
+        control_signal = (self.Kp * error +
+                          self.Ki * self.integral_error +
                           self.Kd * derivative)
         return control_signal
 
     def update(self, current, n, R, dt=0.1):
         """
         Ejecuta una simulación del modelo del solenoide y actualiza la señal.
-        
+
         Parámetros:
-          current : corriente actual (amperios)
-          n : densidad de vueltas (vueltas por metro)
-          R : radio del solenoide (metros)
-          dt : intervalo de tiempo para la simulación
-        
+            current: Corriente actual (amperios).
+            n: Densidad de vueltas (vueltas por metro).
+            R: Radio del solenoide (metros).
+            dt: Intervalo de tiempo para la simulación.
+
         Retorna:
-          control_signal : señal de control calculada
-          measured_Bz : valor medido del campo axial (Tesla)
+            tuple: (control_signal, measured_Bz) donde control_signal es la
+                   señal de control calculada y measured_Bz es el valor
+                   medido del campo axial (Tesla).
         """
         t, sol = simulate_solenoid(
             current, n, R, initial_state=[0, 0], t_end=dt, num_points=2
