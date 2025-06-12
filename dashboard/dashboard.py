@@ -150,7 +150,7 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "Watchers Dashboard - SonicHarmonizer v2.0"  # Keep as is
 
 
-# ---- NUEVO: Agregar endpoint para recibir actualizaciones desde cogniboard ----
+# Agregar endpoint para recibir actualizaciones desde cogniboard
 # Usamos el servidor Flask subyacente de Dash
 @app.server.route("/api/control-update", methods=["POST"])
 def control_update():

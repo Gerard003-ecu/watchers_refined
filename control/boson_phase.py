@@ -49,7 +49,7 @@ class BosonPhase:
         self.integral_max = integral_max
         self.integral_min = integral_min
         logging.debug(
-            f"PID inicializado: Kp={Kp}, Ki={Ki}, Kd={Kd}, "
+            f"PID inicializado: Kp={Kp}, Ki={Ki}, Kd={Kd},"
             f"setpoint={setpoint}"
         )
 
@@ -66,7 +66,7 @@ class BosonPhase:
         """
         if dt <= 0:
             logging.warning(
-                "Intervalo de tiempo dt debe ser mayor a cero. "
+                "Intervalo de tiempo dt debe ser mayor a cero."
                 "Se usará dt=1.0 por defecto."
             )
             dt = 1.0

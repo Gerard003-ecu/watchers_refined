@@ -182,9 +182,9 @@ class ToroidalField:
                 valor_actual)
             return True
         except Exception:
-            # SOLUCIÓN F841: Se elimina 'as e' ya que la variable no se usa.
             logger.exception(
-                "Error inesperado al aplicar influencia de '%s' en (%d, %d, %d)",
+                "Error inesperado al aplicar influencia"
+                "de '%s' en (%d, %d, %d)",
                 nombre_watcher, capa, row, col
             )
             return False
@@ -364,8 +364,10 @@ def simulation_loop(dt: float, beta: float):
                 f"beta={beta}...")
     # Removed duplicated inner function definition.
     # The loop now correctly belongs to the outer simulation_loop function.
-    # Also corrected stop_event to stop_simulation_event and campo_toroidal_global
-    # to campo_toroidal_global_servicio for consistency with the rest of the module.
+    # Also corrected stop_event to
+    # stop_simulation_event and campo_toroidal_global
+    # to campo_toroidal_global_servicio for
+    # consistency with the rest of the module.
     while not stop_simulation_event.is_set():
         start_time = time.monotonic()
         campo_toroidal_global_servicio.apply_rotational_step(dt, beta)
@@ -526,8 +528,10 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
             vector=vector_np, nombre_watcher=nombre_watcher
         )
         if success:
-            logger.info(f"Influencia de '{nombre_watcher}' aplicada exitosamente via "
-                        f"API en ({capa}, {row}, {col}).")
+            logger.info(
+                f"Influencia de '{nombre_watcher}' aplicada exitosamente via"
+                f"API en ({capa}, {row}, {col})."
+            )
             return jsonify({
                 "status": "success",
                 "message": f"Influencia de '{nombre_watcher}' aplicada.",
@@ -556,10 +560,10 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
 @app.route("/api/ecu/field_vector", methods=["GET"])
 def get_field_vector_api() -> Tuple[Any, int]:
     """
-    Endpoint REST para obtener el campo vectorial completo de la grilla toroidal.
-
-    Retorna una estructura 3D (lista de listas de listas) donde cada
-    elemento es un vector 2D [vx, vy].
+    Endpoint REST para obtener 
+    el campo vectorial completo de la grilla toroidal.
+    Retorna una estructura 3D (lista de listas de listas)
+    donde cada elemento es un vector 2D [vx, vy].
     Shape: [num_capas, num_rows, num_cols, 2].
     """
     try:
