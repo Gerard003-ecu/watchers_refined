@@ -1,26 +1,32 @@
 #!/usr/bin/env python3
-# --- START OF FILE tests/unit/test_agent_ai.py (AJUSTADO Fase 1) ---
 """
-test_agent_ai.py - Pruebas unitarias para el núcleo estratégico 
-AgentAI
+test_agent_ai.py - Pruebas unitarias para el núcleo estratégico AgentAI.
 """
 
 import unittest
 import unittest.mock as mock
-import json
 import os
 import numpy as np
-import requests  # Importar para usar sus excepciones
+import requests
 
-# Importar la clase y constantes/funciones necesarias
-from agent_ai.agent_ai import (AgentAI,
-                               HARMONY_CONTROLLER_URL_ENV,
-                               HARMONY_CONTROLLER_REGISTER_URL_ENV,
-                               AGENT_AI_ECU_URL_ENV,
-                               AGENT_AI_MALLA_URL_ENV, DEFAULT_HC_URL,
-                               DEFAULT_ECU_URL, DEFAULT_MALLA_URL,
-                               GLOBAL_REQUIREMENTS_PATH, REQUESTS_TIMEOUT,
-                               MAX_RETRIES)
+from agent_ai.agent_ai import (
+    AgentAI,
+    HARMONY_CONTROLLER_URL_ENV,
+    HARMONY_CONTROLLER_REGISTER_URL_ENV,
+    AGENT_AI_ECU_URL_ENV,
+    AGENT_AI_MALLA_URL_ENV,
+    DEFAULT_HC_URL,
+    DEFAULT_ECU_URL,
+    DEFAULT_MALLA_URL,
+    GLOBAL_REQUIREMENTS_PATH,
+    REQUESTS_TIMEOUT,
+    MAX_RETRIES
+)
+from agent_ai.validation.validator import (
+    validate_module_registration,
+    check_missing_dependencies,
+)
+from agent_ai.utils.logger import get_logger
 
 
 @mock.patch("agent_ai.agent_ai.requests", new_callable=mock.MagicMock)
@@ -973,13 +979,12 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
 
     # --- MODIFICADO: test_obtener_estado_completo incluye naturaleza ---
     def test_get_full_state_snapshot(
-        self, mock_logger, mock_validate, mock_check_deps, mock_requests
+        self, mock_get_logger, mock_validate, mock_check_deps, mock_requests
     ):
         """
         Verifica que obtener_estado_completo retorna una instantánea
         correcta y completa del estado del agente.
         """
-        # Configurar estado inicial
         with self.agent.lock:
             self.agent.target_setpoint_vector = [0.5, -0.5]
             self.agent.current_strategy = "test_strat"
@@ -987,10 +992,12 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
             self.agent.harmony_state = {"last_measurement": 0.9}
             self.agent.modules = {
                 "TestModCentral": {
+                    "nombre": "TestModCentral",
                     "tipo": "integrador",
                     "estado_salud": "error_timeout",
                 },
                 "TestModAux": {
+                    "nombre": "TestModAux",
                     "tipo": "auxiliar",
                     "aporta_a": "malla_watcher",
                     "naturaleza_auxiliar": "modulador",
@@ -1000,22 +1007,14 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
 
         estado = self.agent.obtener_estado_completo()
 
-        # SOLUCIÓN E501: Se divide la aserción en múltiples líneas para claridad.
-        self.assertListEqual(
-            estado["target_setpoint_vector"], [0.5, -0.5]
-        )
+        self.assertListEqual(estado["target_setpoint_vector"], [0.5, -0.5])
         self.assertEqual(estado["current_strategy"], "test_strat")
+        self.assertEqual(estado["external_inputs"]["cogniboard_signal"], 0.1)
         self.assertEqual(
-            estado["external_inputs"]["cogniboard_signal"], 0.1
-        )
-        # SOLUCIÓN E501
-        self.assertEqual(
-            estado["harmony_controller_last_state"]["last_measurement"],
-            0.9,
+            estado["harmony_controller_last_state"]["last_measurement"], 0.9
         )
         self.assertEqual(len(estado["registered_modules"]), 2)
 
-        # Verificar detalles del módulo auxiliar
         mod_aux = next(
             m
             for m in estado["registered_modules"]
@@ -1023,20 +1022,15 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
         )
         self.assertEqual(mod_aux["tipo"], "auxiliar")
         self.assertEqual(mod_aux["aporta_a"], "malla_watcher")
-        # SOLUCIÓN E501
-        self.assertEqual(
-            mod_aux["naturaleza_auxiliar"], "modulador"
-        )
+        self.assertEqual(mod_aux["naturaleza_auxiliar"], "modulador")
         self.assertEqual(mod_aux["estado_salud"], "ok")
 
-        # Verificar detalles del módulo central
         mod_central = next(
             m
             for m in estado["registered_modules"]
             if m["nombre"] == "TestModCentral"
         )
         self.assertEqual(mod_central["tipo"], "integrador")
-        # SOLUCIÓN E501
         self.assertNotIn("aporta_a", mod_central)
         self.assertNotIn("naturaleza_auxiliar", mod_central)
         self.assertEqual(mod_central["estado_salud"], "error_timeout")
@@ -1044,5 +1038,3 @@ class TestAgentAIStrategicLogic(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-# --- END OF FILE tests/unit/test_agent_ai.py (AJUSTADO Fase 1) ---
