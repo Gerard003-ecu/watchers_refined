@@ -491,7 +491,10 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica reducción extra en 'estabilidad' si hay más reductores en malla."""
+        """
+        Verifica reducción extra en 'estabilidad'
+        si hay más reductores en malla.
+        """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -541,7 +544,10 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que 'rendimiento' aumenta magnitud si está estable."""
+        """
+        Verifica que 'rendimiento' aumenta
+        magnitud si está estable.
+        """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -570,7 +576,10 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica aumento extra en 'rendimiento' si hay más potenciadores en ECU."""
+        """
+        Verifica aumento extra en 'rendimiento'
+        si hay más potenciadores en ECU.
+        """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -624,7 +633,10 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que 'rendimiento' establece un mínimo si el setpoint es cero."""
+        """
+        Verifica que 'rendimiento' establece
+        un mínimo si el setpoint es cero.
+        """
         initial_vector = [0.0, 0.0]  # Setpoint inicial cero
         initial_norm = 0.0
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -654,7 +666,10 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que 'ahorro_energia' reduce magnitud si hay reductores."""
+        """
+        Verifica que 'ahorro_energia'
+        reduce magnitud si hay reductores.
+        """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
         self.agent.target_setpoint_vector = list(initial_vector)
