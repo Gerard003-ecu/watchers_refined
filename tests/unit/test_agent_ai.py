@@ -840,7 +840,7 @@ class TestAgentAI(unittest.TestCase):
             "nombre": "CentralTest",
             "url": "http://centraltest:5678/api/state",
             "url_salud": "http://centraltest:5678/api/health",
-            "tipo": "central",  # O integrador, convergente si se usa esa clasificación aquí
+            "tipo": "central",  # O integrador
             # No se proporcionan aporta_a ni naturaleza_auxiliar
         }
         result = self.agent.registrar_modulo(module_data)
@@ -974,7 +974,7 @@ class TestAgentAI(unittest.TestCase):
         mock_requests
     ):
         """
-        Prueba validación fallida 
+        Prueba validación fallida
         (no debe notificar).
         """
         module_name = "FailAux"
