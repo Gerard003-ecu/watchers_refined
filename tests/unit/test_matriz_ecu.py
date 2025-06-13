@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # --- Fixtures ---
 @pytest.fixture
 def campo_toroidal_test():
-    """Fixture: Campo toroidal aislado para tests unitarios de la clase."""
+    """Fixture: Campo toroidal aislado para tests unitarios."""
     return ToroidalField(
         num_capas=2, num_rows=3, num_cols=4, alphas=None, dampings=None
     )
@@ -43,7 +43,7 @@ def cliente_flask() -> FlaskClient:
 
 # --- Tests para ToroidalField (Usando instancia aislada 'campo_toroidal_test') ---
 def test_inicializacion_valida(campo_toroidal_test: ToroidalField):
-    """Test: Creación correcta con parámetros válidos (instancia aislada)."""
+    """Test: Creación OK, params válidos (instancia aislada)."""
     tf = campo_toroidal_test
     assert tf.num_capas == 2
     assert tf.num_rows == 3
@@ -58,7 +58,7 @@ def test_inicializacion_valida(campo_toroidal_test: ToroidalField):
 
 
 def test_inicializacion_con_params_capa():
-    """Test: Creación correcta pasando alphas y dampings."""
+    """Test: Creación con alphas y dampings específicos."""
     alphas_test = [0.1, 0.2]
     dampings_test = [0.01, 0.02]
     tf = ToroidalField(
@@ -78,7 +78,7 @@ def test_inicializacion_params_capa_longitud_incorrecta():
         ValueError, match="La lista 'alphas' debe tener longitud 2"
     ):
         ToroidalField(num_capas=2, num_rows=2, num_cols=2, alphas=[0.1])
-    
+
     with pytest.raises(
         ValueError, match="La lista 'dampings' debe tener longitud 3"
     ):
@@ -91,12 +91,12 @@ def test_inicializacion_invalida():
         ValueError, match="dimensiones .* deben ser positivas"
     ):
         ToroidalField(num_capas=0, num_rows=2, num_cols=2)
-    
+
     with pytest.raises(
         ValueError, match="dimensiones .* deben ser positivas"
     ):
         ToroidalField(num_capas=1, num_rows=-1, num_cols=2)
-    
+
     with pytest.raises(
         ValueError, match="dimensiones .* deben ser positivas"
     ):
@@ -162,7 +162,7 @@ def test_aplicar_influencia_vector_invalido(
     tf = campo_toroidal_test
     with tf.lock:
         valor_original = [np.copy(c) for c in tf.campo]
-    
+
     with caplog.at_level(logging.ERROR):
         success = tf.aplicar_influencia(
             0, 1, 1, np.array([1, 2, 3]), "watcher_vec_err"
@@ -182,15 +182,11 @@ def test_get_neighbors_conectividad_toroidal(
     tf = campo_toroidal_test
     vecinos_00 = tf.get_neighbors(0, 0)
     expected_00 = [(2, 0), (1, 0), (0, 3), (0, 1)]
-    assert set(vecinos_00) == set(expected_00), (
-        "Error en vecinos de (0,0)"
-    )
+    assert set(vecinos_00) == set(expected_00), "Error en vecinos de (0,0)"
 
     vecinos_23 = tf.get_neighbors(2, 3)
     expected_23 = [(1, 3), (0, 3), (2, 2), (2, 0)]
-    assert set(vecinos_23) == set(expected_23), (
-        "Error en vecinos de (2,3)"
-    )
+    assert set(vecinos_23) == set(expected_23), "Error en vecinos de (2,3)"
 
 
 def test_calcular_gradiente_adaptativo(
@@ -273,21 +269,23 @@ def test_apply_rotational_step(campo_toroidal_test: ToroidalField):
 
     for c in range(tf.num_capas):
         for r in range(tf.num_rows):
-            for col in range(tf.num_cols):
-                coords = (c, r, col)
+            for col_idx_loop in range(tf.num_cols):
+                coords = (c, r, col_idx_loop)
                 if coords in nodes_that_should_change:
                     assert not np.allclose(
-                        final_state_full[c][r, col], initial_state_full[c][r, col]
+                        final_state_full[c][r, col_idx_loop],
+                        initial_state_full[c][r, col_idx_loop]
                     )
                 else:
                     assert np.allclose(
-                        final_state_full[c][r, col], initial_state_full[c][r, col]
+                        final_state_full[c][r, col_idx_loop],
+                        initial_state_full[c][r, col_idx_loop]
                     )
 
 
 # --- Tests para la API REST (Usando instancia global y cliente_flask) ---
 def test_endpoint_health(cliente_flask: FlaskClient):
-    """Test: Endpoint /api/health (esperando simulación inactiva)."""
+    """Test: Endpoint /api/health (sim inactiva)."""
     respuesta = cliente_flask.get("/api/health")
     datos = respuesta.get_json()
     assert respuesta.status_code == 503
@@ -297,7 +295,7 @@ def test_endpoint_health(cliente_flask: FlaskClient):
 
 
 def test_endpoint_ecu_api(cliente_flask: FlaskClient):
-    """Test: Respuesta exitosa del endpoint /api/ecu."""
+    """Test: Respuesta OK del endpoint /api/ecu."""
     vector_influencia = np.array([1.1, -2.2])
     campo_toroidal_global_servicio.aplicar_influencia(
         0, 0, 0, vector_influencia, "test_api_ecu"
@@ -316,11 +314,13 @@ def test_endpoint_ecu_api(cliente_flask: FlaskClient):
     with campo_toroidal_global_servicio.lock:
         valor_nodo_000 = campo_toroidal_global_servicio.campo[0][0, 0]
     norma_esperada_000 = np.linalg.norm(valor_nodo_000)
+    # fmt: off
     pesos = (
-        np.linspace(1.0, 0.5, NUM_CAPAS) 
-        if NUM_CAPAS > 1 
+        np.linspace(1.0, 0.5, NUM_CAPAS)
+        if NUM_CAPAS > 1
         else np.array([1.0])
     )
+    # fmt: on
     peso_capa_0 = pesos[0]
     assert datos["estado_campo_unificado"][0][0] == pytest.approx(
         peso_capa_0 * norma_esperada_000
@@ -328,7 +328,7 @@ def test_endpoint_ecu_api(cliente_flask: FlaskClient):
 
 
 def test_endpoint_influence_valido(cliente_flask: FlaskClient):
-    """Test: Aplicar influencia válida vía /api/ecu/influence."""
+    """Test: Aplicar influencia válida vía API."""
     payload = {
         "capa": 1,
         "row": 2,
@@ -361,52 +361,48 @@ def test_endpoint_influence_valido(cliente_flask: FlaskClient):
 
 
 def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
-    """Test: Errores 400 por datos inválidos."""
+    """Test: Errores 400 por datos inválidos en API influence."""
     respuesta = cliente_flask.post("/api/ecu/influence", json={})
     assert respuesta.status_code == 400
-    assert "payload json vacío o ausente" in respuesta.get_json()["message"].lower()
+    assert "payload json vacío o ausente" in respuesta.get_json()[
+        "message"].lower()
 
     payload_faltan = {"capa": 0, "row": 1}
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_faltan)
     assert respuesta.status_code == 400
+    # fmt: off
     assert "faltan campos requeridos" in respuesta.get_json()["message"].lower()
+    # fmt: on
 
     payload_tipo_err = {
-        "capa": "cero",
-        "row": 1,
-        "col": 1,
-        "vector": [1, 1],
-        "nombre_watcher": "t"
-    }
+        "capa": "cero", "row": 1, "col": 1, "vector": [1, 1],
+        "nombre_watcher": "t"}
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_tipo_err)
     assert respuesta.status_code == 400
     assert "errores de tipo" in respuesta.get_json()["message"].lower()
 
     payload_vec_err_len = {
-        "capa": 0,
-        "row": 1,
-        "col": 1,
-        "vector": [1],
-        "nombre_watcher": "t"
+        "capa": 0, "row": 1, "col": 1, "vector": [1], "nombre_watcher": "t"
     }
-    respuesta = cliente_flask.post("/api/ecu/influence", json=payload_vec_err_len)
+    respuesta = cliente_flask.post(
+        "/api/ecu/influence", json=payload_vec_err_len
+    )
     assert respuesta.status_code == 400
     assert "lista de 2 números" in respuesta.get_json()["message"].lower()
 
     payload_vec_err_type = {
-        "capa": 0,
-        "row": 1,
-        "col": 1,
-        "vector": [1, "a"],
-        "nombre_watcher": "t"
-    }
-    respuesta = cliente_flask.post("/api/ecu/influence", json=payload_vec_err_type)
+        "capa": 0, "row": 1, "col": 1, "vector": [
+            1, "a"], "nombre_watcher": "t"}
+    respuesta = cliente_flask.post(
+        "/api/ecu/influence", json=payload_vec_err_type
+    )
     assert respuesta.status_code == 400
-    assert "campo 'vector' debe contener números" in respuesta.get_json()["message"].lower()
+    assert ("campo 'vector' debe contener números"
+            in respuesta.get_json()["message"].lower())
 
 
 def test_endpoint_influence_invalido_rango(cliente_flask: FlaskClient):
-    """Test: Error 400 por índices fuera de rango."""
+    """Test: Error 400 por API índic. fuera de rango."""
     payload_capa = {
         "capa": NUM_CAPAS,
         "row": 0,
@@ -440,8 +436,9 @@ def test_endpoint_influence_invalido_rango(cliente_flask: FlaskClient):
 
 
 def test_endpoint_get_field_vector(cliente_flask):
-    """Test: Endpoint /api/ecu/field_vector."""
-    from ecu.matriz_ecu import campo_toroidal_global_servicio, NUM_CAPAS, NUM_FILAS, NUM_COLUMNAS
+    """Test: Endpoint /api/ecu/field_vector (GET)."""
+    from ecu.matriz_ecu import (
+        campo_toroidal_global_servicio, NUM_CAPAS, NUM_FILAS, NUM_COLUMNAS)
 
     influence_vector_1 = np.array([1.1, -2.2])
     influence_vector_2 = np.array([5.0, 0.5])
@@ -453,10 +450,11 @@ def test_endpoint_get_field_vector(cliente_flask):
     campo_toroidal_global_servicio.aplicar_influencia(
         1, 2, 3, influence_vector_2, "test_vec_api_2"
     )
+    # fmt: off
     campo_toroidal_global_servicio.aplicar_influencia(
-        NUM_CAPAS - 1, NUM_FILAS - 1, NUM_COLUMNAS - 1, 
-        influence_vector_3, "test_vec_api_3"
-    )
+        NUM_CAPAS - 1, NUM_FILAS - 1, NUM_COLUMNAS - 1, influence_vector_3,
+        "test_vec_api_3")
+    # fmt: on
 
     response = cliente_flask.get("/api/ecu/field_vector")
     assert response.status_code == 200
@@ -483,21 +481,23 @@ def test_endpoint_get_field_vector(cliente_flask):
             assert isinstance(row_data, list)
             assert len(row_data) == NUM_COLUMNAS
 
-            for col_idx, vector_data in enumerate(row_data):
+            for col_idx_loop, vector_data in enumerate(row_data):
                 assert isinstance(vector_data, list)
                 assert len(vector_data) == 2
 
                 with campo_toroidal_global_servicio.lock:
-                    actual_vector = campo_toroidal_global_servicio.campo[capa_idx][row_idx, col_idx]
+                    actual_vector = (
+                        campo_toroidal_global_servicio.campo[capa_idx]
+                        [row_idx, col_idx_loop]
+                    )
                 assert np.allclose(np.array(vector_data), actual_vector)
 
 
 def test_endpoint_ecu_error_interno(cliente_flask: FlaskClient, mocker):
-    """Test: Manejo de errores internos en el endpoint /api/ecu."""
+    """Test: Manejo de errores internos en API /api/ecu (500)."""
     mocker.patch(
         'ecu.matriz_ecu.ToroidalField.obtener_campo_unificado',
-        side_effect=Exception("Mock error interno")
-    )
+        side_effect=Exception("Mock error interno"))
     respuesta = cliente_flask.get("/api/ecu")
     assert respuesta.status_code == 500
     datos = respuesta.get_json()
