@@ -96,6 +96,9 @@ class Cell:
             self.q_vector: np.ndarray = q_vector
         else:
             self.q_vector: np.ndarray = np.zeros(2, dtype=float)
+            
+        # Nuevo atributo para vecinos de Voronoi
+        self.voronoi_neighbors: List[Cell] = []
 
     def __repr__(self) -> str:
         q_vec_str = f"[{self.q_vector[0]:.2f}, {self.q_vector[1]:.2f}]"
@@ -544,8 +547,103 @@ class HexCylindricalMesh:
         """Retorna lista de todas las celdas en la malla."""
         return list(self.cells.values())
 
+
+def compute_voronoi_neighbors(self, periodic_theta: bool = True) -> None:
+        """
+        Calcula los vecinos de Voronoi para cada celda
+        considerando periodicidad circunferencial.
+        
+        Args:
+            periodic_theta (bool): 
+            Considerar periodicidad en dirección theta.
+        """
+        try:
+            from scipy.spatial import Voronoi
+        except ImportError:
+            logger.error(
+                "Scipy no instalado. Voronoi no disponible."
+            )
+            return
+
+        if not self.cells:
+            logger.warning(
+                "Malla vacía. No se calculan vecinos Voronoi."
+            )
+            return
+
+        # Recopilar puntos (theta, z) y crear lista de celdas indexadas
+        points: List[Tuple[float, float]] = []
+        original_cells: List[Cell] = []
+        for cell in self.cells.values():
+            points.append((cell.theta, cell.z))
+            original_cells.append(cell)
+        
+        n_original = len(points)
+        if n_original < 3:
+            logger.warning(
+                "Muy pocas celdas para Voronoi."
+            )
+            return
+
+        # Replicar puntos para periodicidad theta
+        extended_points = points.copy()
+        index_mapping = list(range(n_original))
+        
+        if periodic_theta:
+            # Réplicas izquierda y derecha
+            for i, (theta, z) in enumerate(points):
+                extended_points.append((theta - 2 * math.pi, z))
+                index_mapping.append(i)
+                extended_points.append((theta + 2 * math.pi, z))
+                index_mapping.append(i)
+
+        # Convertir a array numpy
+        points_array = np.array(extended_points)
+        
+        # Calcular diagrama de Voronoi
+        vor = Voronoi(points_array)
+        
+        # Construir diccionario de vecinos
+        neighbor_dict: Dict[int, Set[int]] = {i: set() for i in range(len(extended_points))}
+        for ridge in vor.ridge_points:
+            i, j = ridge
+            neighbor_dict[i].add(j)
+            neighbor_dict[j].add(i)
+        
+        # Procesar vecinos para cada celda original
+        for orig_idx in range(n_original):
+            cell = original_cells[orig_idx]
+            voronoi_neighbors = set()
+            
+            # Considerar todas las réplicas del punto actual
+            replica_indices = [orig_idx]
+            if periodic_theta:
+                replica_indices.append(orig_idx + n_original)  # Réplica izquierda
+                replica_indices.append(orig_idx + 2 * n_original)  # Réplica derecha
+            
+            # Recopilar vecinos de todas las réplicas
+            for rep_idx in replica_indices:
+                if rep_idx < len(neighbor_dict):
+                    for neighbor_ext_idx in neighbor_dict[rep_idx]:
+                        neighbor_orig_idx = index_mapping[neighbor_ext_idx]
+                        # Excluir auto-vecindad y vecinos duplicados
+                        if neighbor_orig_idx != orig_idx:
+                            voronoi_neighbors.add(neighbor_orig_idx)
+            
+            # Asignar vecinos como objetos Cell
+            cell.voronoi_neighbors = [
+                original_cells[i] for i in voronoi_neighbors
+            ]
+
+        logger.info(
+            f"Vecinos Voronoi calculados para {n_original} celdas."
+        )
+
+
     def to_dict(self) -> Dict[str, Any]:
-        """Retorna representación de la malla como diccionario."""
+        """
+        Retorna representación de la malla como diccionario.
+        """
         return {
             "metadata": {
                 "radius": self.radius,

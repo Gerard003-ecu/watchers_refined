@@ -60,6 +60,6 @@ def test_pid_reset(pid_controller):
     assert pid_controller.integral == 0.0, "El acumulador integral no se reinició correctamente."
     assert pid_controller.last_error is None, "El error previo no se reinició correctamente."
 
+
 if __name__ == "__main__":
     pytest.main()
-

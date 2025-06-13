@@ -131,7 +131,7 @@ def check_service_health(service_name, url):
 # a arrancar."""
 #     wait_time = int(os.environ.get("SERVICE_STARTUP_WAIT", 15))
 #     logger.info(
-#         f"Esperando {wait_time} segundos para que los servicios se inicien..."
+#         f"Esperando {wait_time} segundos para que servicios se inicien..."
 #     )
 #     time.sleep(wait_time)
 #     logger.info("Espera inicial finalizada. Iniciando health checks.")

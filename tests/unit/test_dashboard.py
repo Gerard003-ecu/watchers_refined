@@ -42,7 +42,6 @@ def test_obtener_datos_reales_success(mock_get):
     mock_resp.json.return_value = {"status": "success"}
     mock_resp.raise_for_status.return_value = None
     mock_get.return_value = mock_resp
-    
     result = obtener_datos_reales("http://fake.api/status")
     assert "status" in result
     assert result["status"] == "success"

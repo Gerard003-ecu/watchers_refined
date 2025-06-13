@@ -81,7 +81,7 @@ class TestLogger(unittest.TestCase):
         ]
         self.assertEqual(
             len(file_handlers), 1,
-            f"Se encontraron {len(file_handlers)} file handlers, se esperaba 1."
+            f"Se encontraron {len(file_handlers)} file handlers, se esperaba 1"
         )
         file_handler = file_handlers[0]
         self.assertEqual(file_handler.level, logging.DEBUG)
