@@ -41,7 +41,7 @@ def cliente_flask() -> FlaskClient:
         yield cliente
 
 
-# --- Tests para ToroidalField (Usando instancia aislada 'campo_toroidal_test') ---
+# --- Tests para ToroidalField (Usando instancia aislada 'campo_toroidal_test')
 def test_inicializacion_valida(campo_toroidal_test: ToroidalField):
     """Test: Creación OK, params válidos (instancia aislada)."""
     tf = campo_toroidal_test
