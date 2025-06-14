@@ -201,9 +201,6 @@ class HexCylindricalMesh:
             self.circumference,
             rel_tol=0.15
         ) and self.circumference_segments_actual > 3):
-            # Original Line 243 E501: No change requested for this specific line as per prompt.
-            # The prompt says: "If it is this exact line causing the E501, and it's part of the known problematic logger.warning, make no change to this line (it will be ignored)."
-            # This line from the original file content matches the description of the problematic logger warning.
             logger.warning(
                 f"La circunferencia teórica ({self.circumference:.2f}) y la "
                 f"cubierta por segmentos q "  # Line 200
@@ -236,7 +233,7 @@ class HexCylindricalMesh:
         self.min_z = min(z_values)
         self.max_z = max(z_values)
         logger.info(
-            f"Límites Z calculados: min={self.min_z:.2f}, max={self.max_z:.2f}. "
+            f"Límite Z calculado: min={self.min_z:.2f}, max={self.max_z:.2f}."
             f"Altura real: {self.max_z - self.min_z:.2f}. "
             f"Altura aprox.: {self.total_height_approx:.2f}"
         )
@@ -286,7 +283,6 @@ class HexCylindricalMesh:
         )
         max_bfs_iterations = max_bfs_iter_calc
         if self.height_segments == 0:
-            # Fix for original Line 578 E501 (now part of E502 fix for line 579)
             max_bfs_iterations = (
                 self.circumference_segments_actual * 20
             )
@@ -378,7 +374,7 @@ class HexCylindricalMesh:
         Verifica conectividad interna contando vecinos reales.
 
         Args:
-            expected_min_neighbors_internal: Mínimo esperado para celdas internas.
+        expected_min_neighbors_internal: Mínimo esperado para celdas internas.
 
         Returns:
             Dict[int, int]: Distribución de vecinos por celda.
@@ -483,7 +479,9 @@ class HexCylindricalMesh:
     ) -> List[
         Tuple[int, int]
     ]:
-        """Obtiene coordenadas axiales de los 6 vecinos hexagonales teóricos."""
+        """
+        Obtiene coordenadas axiales de los 6 vecinos hexagonales teóricos.
+        """
         axial_directions = [
             (q + 1, r + 0),
             (q + 1, r - 1),
@@ -573,9 +571,9 @@ class HexCylindricalMesh:
                 continue
 
             dz1 = abs(cell_candidate.z - target_z_theoretical)
-            dz2 = abs(cell_candidate.z - \
+            dz2 = abs(cell_candidate.z -
                       (target_z_theoretical + actual_mesh_height))
-            dz3 = abs(cell_candidate.z - \
+            dz3 = abs(cell_candidate.z -
                       (target_z_theoretical - actual_mesh_height))
 
             effective_dz = min(dz1, dz2, dz3)
@@ -641,7 +639,6 @@ class HexCylindricalMesh:
                 point_to_add_minus = (theta - math.tau, z)
                 extended_points.append(point_to_add_minus)
                 index_mapping.append(i)
-                # Assuming similar fix for the next line if it was also an issue
                 point_to_add_plus = (theta + math.tau, z)
                 extended_points.append(point_to_add_plus)
                 index_mapping.append(i)
