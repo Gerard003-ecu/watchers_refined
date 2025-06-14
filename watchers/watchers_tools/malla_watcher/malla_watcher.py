@@ -100,7 +100,9 @@ class PhosWave:
 
 
 class Electron:
-    """Representa el mecanismo de amortiguación local en cada celda (oscilador)."""
+    """
+    Representa el mecanismo de amortiguación local en cada celda (oscilador).
+    """
 
     # coef_interaccion ahora es coef_amortiguacion
     def __init__(self, coef_amortiguacion=BASE_DAMPING_E):
@@ -163,15 +165,17 @@ def apply_external_field_to_mesh(
         )
         return
 
-    # La instancia de malla (mesh_instance) no debe almacenar el campo completo.
-    # Si necesitas este campo para otros cálculos DENTRO de malla_watcher.py,
+    # La instancia de malla (mesh_instance)
+    # no debe almacenar el campo completo.
+    # Si necesitas este campo para otros cálculos
+    # DENTRO de malla_watcher.py,
     # guárdalo en una variable global o pásalo como argumento.
 
     # Usar los métodos/atributos de la instancia de malla proporcionada
     all_mesh_cells = mesh_instance.get_all_cells()
     if not all_mesh_cells:
         logger.warning(
-            "No hay celdas para aplicar campo externo (obtenido de get_all_cells)."
+            "No hay celdas para aplicar campo externo."
         )
         return
 
@@ -256,8 +260,10 @@ def apply_external_field_to_mesh(
                 "(%d,%d)", cell.q_axial, cell.r_axial, exc_info=True)
 
     logger.debug(
-        "Campo vectorial externo aplicado a %d/%d celdas mediante interpolación.",
-        update_count, len(mesh_instance.cells))
+        "Campo vectorial externo aplicado a %d/%d"
+        "celdas mediante interpolación.",
+        update_count, len(mesh_instance.cells)
+    )
 
 
 # --- Instancia Global de la Malla Cilíndrica ---
@@ -472,7 +478,9 @@ def calculate_flux(mesh: HexCylindricalMesh) -> float:
 
 
 def fetch_and_apply_torus_field():
-    """Obtiene el campo vectorial completo de matriz_ecu y lo aplica a la malla."""
+    """
+    Obtiene el campo vectorial completo de matriz_ecu y lo aplica a la malla.
+    """
     ecu_vector_field_url = f"{MATRIZ_ECU_BASE_URL}/api/ecu/field_vector"
     logger.debug(
         "Intentando obtener campo vectorial de ECU en %s",
@@ -684,7 +692,7 @@ def simulation_loop():
                 send_influence_to_torus(dphi_dt)
             else:
                 logger.debug(
-                    "Paso %d: |dPhi/dt|=%.3f no supera umbral para influenciar "
+                    "Paso %d: |dPhi/dt|=%.3f no supera umbral para influenciar"
                     "toroide.", step_count, abs(dphi_dt))
 
         except Exception:  # noqa: E722
@@ -854,7 +862,9 @@ def health_check():
 
 @app.route('/api/state', methods=['GET'])
 def get_malla_state():
-    """Devuelve el estado agregado actual de la malla y parámetros de control."""
+    """
+    Devuelve el estado agregado actual de la malla y parámetros de control.
+    """
     state_data = {}
     with aggregate_state_lock:
         state_data.update(aggregate_state)
@@ -943,7 +953,8 @@ def aplicar_influencia_toroide_push():
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
         logger.warning(
-            "Malla no inicializada o vacía. Saltando aplicación de influencia.")
+            "Malla no inicializada o vacía. Saltando aplicación de influencia."
+        )
         return jsonify({
             "status": "warning",
             "message": "Malla no inicializada o vacía. Influencia no aplicada."
@@ -966,7 +977,7 @@ def aplicar_influencia_toroide_push():
     try:
         apply_external_field_to_mesh(mesh, field_vector_data)
         logger.info(
-            "Influencia del campo vectorial toroidal (push) aplicada "
+            "Influencia del campo vectorial toroidal (push) aplicada"
             "correctamente.")
         return jsonify({
             "status": "success",
@@ -975,7 +986,9 @@ def aplicar_influencia_toroide_push():
 
     except ValueError as ve:
         logger.error(
-            "Error de valor al procesar campo vectorial externo (push): %s", ve)
+            "Error de valor al procesar campo vectorial externo (push): %s",
+            ve
+        )
         return jsonify({
             "status": "error",
             "message": f"Error en los datos recibidos (push): {ve}"
@@ -1243,10 +1256,12 @@ if __name__ == "__main__":
             debug=False, use_reloader=False)
 
     # Código de limpieza al detener el servidor
-    logger.info("Señal de detención recibida. Deteniendo hilo de simulación...")
+    logger.info(
+        "Señal de detención recibida. Deteniendo hilo de simulación."
+    )
     stop_simulation_event.set()
     if simulation_thread:
-        simulation_thread.join(timeout=SIMULATION_INTERVAL * 3 + 5)  # noqa: E261
+        simulation_thread.join(timeout=SIMULATION_INTERVAL * 3 + 5)
         if simulation_thread.is_alive():
             logger.warning("El hilo de simulación no terminó a tiempo.")
     logger.info("Servicio malla_watcher finalizado.")
