@@ -125,11 +125,17 @@ def test_malla_fetches_and_processes_ecu_field_vector(
         mock_num_cols,
     )
 
-    with patch_base_url, patch_malla_global, patch_capas, \
-            patch_filas, patch_columnas:
+    with (
+        patch_base_url,
+        patch_malla_global,
+        patch_capas,
+        patch_filas,
+        patch_columnas,
+    ):
         # Opcional: mockear apply_external_field_to_mesh
         # with patch('watchers.watchers_tools.malla_watcher'
-        #            '.malla_watcher.apply_external_field_to_mesh') as mock_apply:
+        #            '.malla_watcher.apply_external_field_to_mesh')
+        #            as mock_apply:
         fetch_and_apply_torus_field()
         # if mockeado:
         #     mock_apply.assert_called_once_with(
@@ -138,9 +144,7 @@ def test_malla_fetches_and_processes_ecu_field_vector(
         #     )
 
     assert len(mock_http_server.calls) == 1
-    expected_url = (
-        f"{ECU_MOCK_BASE_URL}/api/ecu/field_vector"
-    )
+    expected_url = f"{ECU_MOCK_BASE_URL}/api/ecu/field_vector"
     assert mock_http_server.calls[0].request.url == expected_url
 
     if len(malla_instance_for_test.cells) > 0:
@@ -327,7 +331,8 @@ def test_malla_handles_ecu_field_vector_api_error(
         malla_instance_for_test,
     )
     patch_apply = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.apply_external_field_to_mesh"
+        "watchers.watchers_tools.malla_watcher.malla_watcher"
+        ".apply_external_field_to_mesh"
     )
     with patch_matriz_url, patch_malla, patch_apply as mock_apply_func:
         fetch_and_apply_torus_field()
