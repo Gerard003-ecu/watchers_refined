@@ -9,9 +9,7 @@ import logging
 # No necesitas Draft7Validator o SchemaError aquí si los esquemas ya están
 # validados en ecu_schemas.py
 from jsonschema import validate, ValidationError
-from unittest.mock import (
-    patch
-)  # Necesario para mockear módulos/funciones globales
+from unittest.mock import patch  # Necesario para mockear módulos/funciones
 
 # --- Importar Esquemas Compartidos ---
 # ASUMIENDO que 'mi-proyecto' está en el PYTHONPATH o que pytest se ejecuta
@@ -87,7 +85,7 @@ def test_malla_fetches_and_processes_ecu_field_vector(
             "columnas": mock_num_cols,
             "vector_dim": 2,
         },
-        "field_vector": [[[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]]],
+        "field_vector": [[[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]],
     }
     validate(
         instance=mock_field_data_payload,
@@ -105,28 +103,33 @@ def test_malla_fetches_and_processes_ecu_field_vector(
     # HTTP, no el procesamiento interno completo de malla_watcher.
     # Si se prueba el procesamiento, no mockear apply_external_field_to_mesh.
     patch_base_url = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "MATRIZ_ECU_BASE_URL",
         ECU_MOCK_BASE_URL,
     )
     patch_malla_global = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "malla_cilindrica_global",
         malla_instance_for_test,
     )
     patch_capas = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_CAPAS",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "TORUS_NUM_CAPAS",
         mock_num_capas,
     )
     patch_filas = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "TORUS_NUM_FILAS",
         mock_num_filas,
     )
     patch_columnas = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "TORUS_NUM_COLUMNAS",
         mock_num_cols,
     )
 
-    with patch_base_url, patch_malla_global, patch_capas, \
-            patch_filas, patch_columnas:
+    with (patch_base_url, patch_malla_global, patch_capas,
+          patch_filas, patch_columnas):
         # Opcional: mockear apply_external_field_to_mesh
         # with patch('watchers.watchers_tools.malla_watcher'
         #            '.malla_watcher.apply_external_field_to_mesh') as mock_apply:
@@ -138,9 +141,7 @@ def test_malla_fetches_and_processes_ecu_field_vector(
         #     )
 
     assert len(mock_http_server.calls) == 1
-    expected_url = (
-        f"{ECU_MOCK_BASE_URL}/api/ecu/field_vector"
-    )
+    expected_url = f"{ECU_MOCK_BASE_URL}/api/ecu/field_vector"
     assert mock_http_server.calls[0].request.url == expected_url
 
     if len(malla_instance_for_test.cells) > 0:
@@ -149,13 +150,9 @@ def test_malla_fetches_and_processes_ecu_field_vector(
             for cell in malla_instance_for_test.get_all_cells()
             if not np.allclose(cell.q_vector, np.zeros(2))
         )
-        assertion_msg = (
-            "Ningún q_vector en la malla parece haber sido actualizado."
-        )
+        assertion_msg = "Ningún q_vector en la malla parece haber sido actualizado."
         assert q_vectors_updated > 0, assertion_msg
-        logger.info(
-            f"{q_vectors_updated} q_vectors actualizados en la malla."
-        )
+        logger.info(f"{q_vectors_updated} q_vectors actualizados en la malla.")
 
     assert not any(
         record.levelno >= logging.ERROR
@@ -198,24 +195,25 @@ def test_malla_sends_valid_influence_to_ecu(mock_http_server, caplog):
     test_torus_columnas = 6  # Para que target_col sea 3
     # Actualizar applied_to en mock_ecu_response_payload para que coincida
     mock_ecu_response_payload["applied_to"]["row"] = test_torus_filas // 2
-    # Expected row
     mock_ecu_response_payload["applied_to"]["col"] = test_torus_columnas // 2
-    # Expected col
 
     patch_base_url_inf = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "MATRIZ_ECU_BASE_URL",
         ECU_MOCK_BASE_URL,
     )
     patch_filas_inf = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "TORUS_NUM_FILAS",
         test_torus_filas,
     )
     patch_columnas_inf = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "TORUS_NUM_COLUMNAS",
         test_torus_columnas,
     )
 
-    with patch_base_url_inf, patch_filas_inf, patch_columnas_inf:
+    with (patch_base_url_inf, patch_filas_inf, patch_columnas_inf):
         send_influence_to_torus(dphi_dt_test_value)
 
     assert len(mock_http_server.calls) == 1
@@ -273,7 +271,8 @@ def test_ecu_accepts_valid_influence_payload(mock_http_server, caplog):
         "vector": [10.5, -3.3],
     }
     validate(
-        instance=expected_ecu_response, schema=ECU_INFLUENCE_RESPONSE_SCHEMA
+        instance=expected_ecu_response,
+        schema=ECU_INFLUENCE_RESPONSE_SCHEMA
     )
 
     mock_http_server.add(  # Usar la fixture general mock_http_server
@@ -293,7 +292,10 @@ def test_ecu_accepts_valid_influence_payload(mock_http_server, caplog):
 
     response_data = response.json()
     try:
-        validate(instance=response_data, schema=ECU_INFLUENCE_RESPONSE_SCHEMA)
+        validate(
+            instance=response_data,
+            schema=ECU_INFLUENCE_RESPONSE_SCHEMA
+        )
     except ValidationError as e:
         error_msg = (
             f"Respuesta del mock ECU NO cumple esquema: {e}\n"
@@ -319,22 +321,24 @@ def test_malla_handles_ecu_field_vector_api_error(
         status=500,
     )
     patch_matriz_url = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "MATRIZ_ECU_BASE_URL",
         ECU_MOCK_BASE_URL,
     )
     patch_malla = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global",
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "malla_cilindrica_global",
         malla_instance_for_test,
     )
     patch_apply = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.apply_external_field_to_mesh"
+        "watchers.watchers_tools.malla_watcher.malla_watcher"
+        ".apply_external_field_to_mesh"
     )
-    with patch_matriz_url, patch_malla, patch_apply as mock_apply_func:
+    with (patch_matriz_url, patch_malla, patch_apply as mock_apply_func):
         fetch_and_apply_torus_field()
         mock_apply_func.assert_not_called()
         log_message_found = any(
-            "error de red o http al obtener campo vectorial"
-            in rec.message.lower()  # CAMBIADO AQUÍ
+            "error de red o http al obtener campo vectorial" in rec.message.lower()
             for rec in caplog.records
             if "malla_watcher" in rec.name and rec.levelno >= logging.ERROR
         )
@@ -352,15 +356,21 @@ def test_malla_handles_ecu_influence_api_error(mock_http_server, caplog):
         json={"error": "Payload inválido según ECU"},
         status=400,
     )
-    with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
-        ECU_MOCK_BASE_URL,
-    ), patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS",
-        4,
-    ), patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS",
-        6,
+    with (
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher."
+            "MATRIZ_ECU_BASE_URL",
+            ECU_MOCK_BASE_URL,
+        ),
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS",
+            4,
+        ),
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher."
+            "TORUS_NUM_COLUMNAS",
+            6,
+        ),
     ):
         send_influence_to_torus(dphi_dt_test_value)
     assert any(
