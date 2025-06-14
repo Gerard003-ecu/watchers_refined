@@ -696,20 +696,25 @@ class HexCylindricalMesh:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Retorna una representación de la malla como diccionario."""
-        # SOLUCIÓN E501: Formateo del diccionario para legibilidad
-        metadata = {
-            "radius": self.radius,
-            "height_segments": self.height_segments,
-            "circ_segments_actual": getattr(self, 'circumference_segments_actual', 0),
-            "hex_size": self.hex_size,
-            "periodic_z": self.periodic_z,
-            "num_cells": len(self.cells),
-            "z_bounds": {"min": getattr(self, 'min_z', 0), "max": getattr(self, 'max_z', 0)},
-            "total_height_approx": self.total_height_approx,
-            "previous_flux": self.previous_flux,
-        }
+        """
+        Retorna representación de la malla como diccionario.
+        """
         return {
-            "metadata": metadata,
-            "cells": [cell.to_dict() for cell in self.cells.values()],
+            "metadata": {
+                "radius": self.radius,
+                "height_segments": self.height_segments,
+                "circ_segments_actual":
+                    self.circumference_segments_actual,
+                "hex_size": self.hex_size,
+                "periodic_z": self.periodic_z,
+                "num_cells": len(self.cells),
+                "z_bounds": {
+                    "min": self.min_z,
+                    "max": self.max_z
+                },
+                "total_height_approx": self.total_height_approx,
+                "previous_flux": self.previous_flux
+                # fluxo do passo anterior
+            },
+            "cells": [cell.to_dict() for cell in self.cells.values()]
         }
