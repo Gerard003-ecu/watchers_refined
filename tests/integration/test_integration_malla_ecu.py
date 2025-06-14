@@ -85,7 +85,7 @@ def test_malla_fetches_and_processes_ecu_field_vector(
             "columnas": mock_num_cols,
             "vector_dim": 2,
         },
-        "field_vector": [[[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]],
+        "field_vector": [[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]],
     }
     validate(
         instance=mock_field_data_payload,
