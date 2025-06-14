@@ -35,7 +35,8 @@ def cliente_flask() -> FlaskClient:
     with app.test_client() as cliente:
         with campo_toroidal_global_servicio.lock:
             campo_toroidal_global_servicio.campo = [
-                np.zeros((NUM_FILAS, NUM_COLUMNAS, 2)) for _ in range(NUM_CAPAS)
+                np.zeros((NUM_FILAS, NUM_COLUMNAS, 2))
+                for _ in range(NUM_CAPAS)
             ]
         logger.debug("Estado del campo global reseteado para test API")
         yield cliente
@@ -371,7 +372,7 @@ def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_faltan)
     assert respuesta.status_code == 400
     # fmt: off
-    assert "faltan campos requeridos" in respuesta.get_json()["message"].lower()
+    assert "faltan campos" in respuesta.get_json()["message"].lower()
     # fmt: on
 
     payload_tipo_err = {

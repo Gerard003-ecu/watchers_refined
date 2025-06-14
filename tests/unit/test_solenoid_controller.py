@@ -49,7 +49,6 @@ def test_edge_cases(mock_simulate, controller):
         np.array([[0, 0], [0, 0]])
     )
     _, _ = controller.update(I=0, n=0, R=0, dt=0)
-    
     # Verificar que el término derivativo sea cero
     assert controller.last_error == 0
 
@@ -75,4 +74,3 @@ def test_convergence(mock_simulate, controller):
     # El error debería ser cero
     assert np.isclose(control_signal, 0, atol=1e-6)
     assert measured_Bz == 1e-3
-    

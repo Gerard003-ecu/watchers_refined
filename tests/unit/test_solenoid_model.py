@@ -5,7 +5,7 @@ from agent_ai.model.solenoid_model import simulate_solenoid
 
 
 def test_simulate_field():
-    I = 0.5      # Corriente en amperios
+    Intensidad = 0.5      # Corriente en amperios
     n = 150      # Densidad de vueltas (vueltas por metro)
     R = 0.2      # Radio en metros (no usado en este modelo básico)
     t_end = 1.0  # Tiempo final de la simulación en segundos
@@ -21,5 +21,4 @@ def test_simulate_field():
 
 
 if __name__ == "__main__":
-    import pytest
     pytest.main()

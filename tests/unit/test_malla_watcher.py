@@ -1380,5 +1380,3 @@ def test_api_malla_influence_push_invalid_payload(client, reset_globals):
     assert data_empty["status"] == "error"
     assert "falta 'field_vector'" in data_empty["message"].lower()
 # -- END OF FILE test_malla_watcher.py (REFINADO para Osciladores Acoplados) --
-
-[end of tests/unit/test_malla_watcher.py]
