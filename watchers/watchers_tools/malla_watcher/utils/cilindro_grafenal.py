@@ -447,6 +447,7 @@ class HexCylindricalMesh:
         if self.cells:
             percentage_low_connectivity = (
                 cells_with_few_neighbors * 100 / len(self.cells)
+            )
             # Mensaje dividido para cumplir PEP8
             logger.info(
                 f"  Mínimo vecinos: {min_neighbors_found}, "
