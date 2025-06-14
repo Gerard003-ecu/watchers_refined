@@ -210,7 +210,7 @@ def set_wave_control():
 
     try:
         # La señal de control ajustará el amortiguamiento
-        # Señal positiva podría indicar 
+        # Señal positiva podría indicar
         # "reducir oscilación" -> aumentar amortiguamiento
         # Una señal negativa podría
         # indicar "aumentar oscilación" -> reducir

@@ -37,7 +37,7 @@ class LIATransformer:
 
     def transform(self, vector):
         """
-        Aplica transformación lineal 
+        Aplica transformación lineal
         manteniendo coherencia en subespacios
         """
         if len(vector) != self.dimensions:

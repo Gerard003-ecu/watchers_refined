@@ -11,7 +11,7 @@ Detección (T)    Linfocitos T                Monitorea 10 parámetros clave
                  (entropía, exergía, uso de recursos) usando matrices de
                  observación.
 Adaptación (B)   Linfocitos B             Transforma señales crudas usando
-                                          LIATransformer para generar 
+                                          LIATransformer para generar
                                           vectores de respuesta normalizados.
 
 Ejecución        Células efectoras           Ejecuta protocolos basados en

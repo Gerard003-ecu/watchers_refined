@@ -640,7 +640,7 @@ def compute_voronoi_neighbors(self, periodic_theta: bool = True) -> None:
         )
 
 
-    def to_dict(self) -> Dict[str, Any]:
+def to_dict(self) -> Dict[str, Any]:
         """
         Retorna representación de la malla como diccionario.
         """

@@ -29,13 +29,10 @@ def solenoid_model(state, time, current, turns_density, radius):
     """
     mu0 = 4 * np.pi * 1e-7  # Permeabilidad del vacío
     b_radial, b_axial = state
-    
     # Relajación rápida de la componente radial
     db_radial_dt = -b_radial / 0.1
-    
     # Relajación hacia el valor teórico
     db_axial_dt = (mu0 * turns_density * current - b_axial) / 0.1
-    
     return [db_radial_dt, db_axial_dt]
 
 
@@ -59,7 +56,6 @@ def simulate_solenoid(
     """
     if current < 0 or turns_density < 0 or radius <= 0:
         raise ValueError("Parámetros deben ser positivos")
-    
     time = np.linspace(0, t_end, num_points)
     solution = odeint(
         solenoid_model,
