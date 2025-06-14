@@ -444,6 +444,7 @@ class HexCylindricalMesh:
         if self.cells:
             percentage_low_connectivity = (
                 cells_with_few_neighbors * 100 / len(self.cells)
+            )
             logger.info(
                 f"  Mínimo vecinos: {min_neighbors_found}, "
                 f"Máximo: {max_neighbors_found}. "  # Line 359
