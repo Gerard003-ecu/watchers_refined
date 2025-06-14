@@ -99,7 +99,7 @@ class TestHarmonyControllerState(unittest.TestCase):
     def test_update_setpoint_with_vector(self):
         """Prueba actualizar setpoint con vector."""
         new_vec = [3.0, 4.0]
-        new_val = np.linalg.norm(new_val)
+        new_val = np.linalg.norm(new_vec)
         self.state.update_setpoint(new_val, new_vec)
         self.assertAlmostEqual(self.state.current_setpoint, 5.0)
         self.assertAlmostEqual(self.state.pid_controller.setpoint, 5.0)
@@ -280,7 +280,9 @@ class TestCommunicationFunctions(unittest.TestCase):
         mock_tool_name = "tool_x"
         mock_tool_url = "http://toolx:9999"
         expected_state_data = {"value": 42, "mode": "auto"}
-        mock_response_data = {"status": "success", "state": expected_state_data}
+        mock_response_data = {
+            "status": "success",
+            "state": expected_state_data}
         mock_requests.get.return_value = MockResponse(mock_response_data, 200)
 
         state = get_tool_state(mock_tool_name, mock_tool_url)
@@ -316,7 +318,8 @@ class TestCommunicationFunctions(unittest.TestCase):
 
     def test_send_tool_control_success(self):
         """Prueba enviar control a tool exitoso."""
-        mock_requests.post.return_value = MockResponse({"status": "success"}, 200)
+        mock_requests.post.return_value = MockResponse(
+            {"status": "success"}, 200)
         success = send_tool_control("tool_z", "http://toolz:7777", 0.75)
         self.assertTrue(success)
         mock_requests.post.assert_called_once_with(
