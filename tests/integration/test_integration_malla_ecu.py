@@ -121,7 +121,7 @@ def test_malla_fetches_and_processes_ecu_field_vector(
         mock_num_filas,
     )
     patch_columnas = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", # noqa E501
+        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS",
         mock_num_cols,
     )
 

@@ -611,7 +611,7 @@ def main():
     global simulation_thread
 
     logger.info(
-        f"Configuración ECU: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS}, "
+        f"Configuración ECU: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS},"
         f"SimInterval={SIMULATION_INTERVAL}s, Beta={BETA_COUPLING}"
     )
 
@@ -627,7 +627,7 @@ def main():
 
     puerto_servicio = int(os.environ.get("MATRIZ_ECU_PORT", 8000))
     logger.info(
-        f"Iniciando servicio Flask de matriz_ecu en puerto {puerto_servicio}..."
+        f"Iniciando servicio Flask de ecu en puerto {puerto_servicio}..."
     )
     app.run(
         host="0.0.0.0", port=puerto_servicio,
