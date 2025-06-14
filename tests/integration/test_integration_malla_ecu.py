@@ -128,11 +128,17 @@ def test_malla_fetches_and_processes_ecu_field_vector(
         mock_num_cols,
     )
 
-    with (patch_base_url, patch_malla_global, patch_capas,
-          patch_filas, patch_columnas):
+    with (
+        patch_base_url,
+        patch_malla_global,
+        patch_capas,
+        patch_filas,
+        patch_columnas,
+    ):
         # Opcional: mockear apply_external_field_to_mesh
         # with patch('watchers.watchers_tools.malla_watcher'
-        #            '.malla_watcher.apply_external_field_to_mesh') as mock_apply:
+        #            '.malla_watcher.apply_external_field_to_mesh')
+        #            as mock_apply:
         fetch_and_apply_torus_field()
         # if mockeado:
         #     mock_apply.assert_called_once_with(
