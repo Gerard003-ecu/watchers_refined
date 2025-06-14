@@ -3,7 +3,8 @@
 test_boson_phase.py
 
 Pruebas unitarias para el controlador PID adaptativo "BosonPhase".
-Se utiliza una importación directa para obtener la clase desde el módulo correspondiente.
+# Se utiliza una importación directa para obtener la clase desde el
+# módulo correspondiente.
 """
 
 import pytest
@@ -26,7 +27,8 @@ def test_pid_output_constant_setpoint(pid_controller):
     measurement = 10.0
     dt = 0.1
     output = pid_controller.compute(setpoint, measurement, dt)
-    assert abs(output) < 1e-3, f"Salida inesperada para error nulo: {output}"
+    error_message = f"Salida inesperada para error nulo: {output}"
+    assert abs(output) < 1e-3, error_message
 
 
 def test_pid_response_to_step(pid_controller):
@@ -57,8 +59,8 @@ def test_pid_reset(pid_controller):
     # Ejecutamos una actualización para modificar los acumuladores.
     pid_controller.compute(10.0, 5.0, 0.1)
     pid_controller.reset()
-    assert pid_controller.integral == 0.0, "El acumulador integral no se reinició correctamente."
-    assert pid_controller.last_error is None, "El error previo no se reinició correctamente."
+    assert pid_controller.integral == 0.0, "Integral not reset."
+    assert pid_controller.last_error is None, "Previous error not reset."
 
 
 if __name__ == "__main__":
