@@ -86,19 +86,15 @@ class Cell:
         self.z: float = cyl_z
         self.q_axial: int = q_axial
         self.r_axial: int = r_axial
-
         self.amplitude: float = amplitude
         self.velocity: float = velocity
+        # ATRIBUTO VORONOI CONSERVADO
+        self.voronoi_neighbors: List[Cell] = []
 
-        if (q_vector is not None and
-                isinstance(q_vector, np.ndarray) and
-                q_vector.shape == (2,)):
+        if q_vector is not None and isinstance(q_vector, np.ndarray):
             self.q_vector: np.ndarray = q_vector
         else:
             self.q_vector: np.ndarray = np.zeros(2, dtype=float)
-
-        # Nuevo atributo para vecinos de Voronoi
-        self.voronoi_neighbors: List[Cell] = []
 
     def __repr__(self) -> str:
         q_vec_str = f"[{self.q_vector[0]:.2f}, {self.q_vector[1]:.2f}]"
@@ -111,19 +107,15 @@ class Cell:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Retorna un diccionario de representation of cell.
+        Retorna una representación de la celda como diccionario.
         """
         return {
-            "cyl_radius": self.radius,
-            "cyl_theta": self.theta,
-            "cyl_z": self.z,
-            "q_axial": self.q_axial,
-            "r_axial": self.r_axial,
+            "axial_coords": {"q": self.q_axial, "r": self.r_axial},
+            "cylindrical_coords": {"r": self.r, "theta": self.theta, "z": self.z},
             "amplitude": self.amplitude,
             "velocity": self.velocity,
-            "q_vector": self.q_vector,
-            "cell_index": self.cell_index,
-            "voronoi_neighbors_indices": [n.cell_index for n in self.voronoi_neighbors]
+            "q_vector": self.q_vector.tolist(),
+            "voronoi_neighbors_count": len(self.voronoi_neighbors),
         }
 
 
@@ -704,25 +696,20 @@ class HexCylindricalMesh:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Retorna representación de la malla como diccionario.
-        """
+        """Retorna una representación de la malla como diccionario."""
+        # SOLUCIÓN E501: Formateo del diccionario para legibilidad
+        metadata = {
+            "radius": self.radius,
+            "height_segments": self.height_segments,
+            "circ_segments_actual": getattr(self, 'circumference_segments_actual', 0),
+            "hex_size": self.hex_size,
+            "periodic_z": self.periodic_z,
+            "num_cells": len(self.cells),
+            "z_bounds": {"min": getattr(self, 'min_z', 0), "max": getattr(self, 'max_z', 0)},
+            "total_height_approx": self.total_height_approx,
+            "previous_flux": self.previous_flux,
+        }
         return {
-            "metadata": {
-                "radius": self.radius,
-                "height_segments": self.height_segments,
-                "circ_segments_actual":
-                    self.circumference_segments_actual,
-                "hex_size": self.hex_size,
-                "periodic_z": self.periodic_z,
-                "num_cells": len(self.cells),
-                "z_bounds": {
-                    "min": self.min_z,
-                    "max": self.max_z
-                },
-                "total_height_approx": self.total_height_approx,
-                "previous_flux": self.previous_flux
-                # fluxo do passo anterior
-            },
-            "cells": [cell.to_dict() for cell in self.cells.values()]
+            "metadata": metadata,
+            "cells": [cell.to_dict() for cell in self.cells.values()],
         }
