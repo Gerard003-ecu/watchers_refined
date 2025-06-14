@@ -129,7 +129,7 @@ class HexCylindricalMesh:
             self,
             radius: float,
             height_segments: int,
-            circumference_segments_target: int,  # Line 116
+            circumference_segments_target: int,
             hex_size: float = 1.0,
             periodic_z: bool = False
     ):
@@ -469,8 +469,12 @@ class HexCylindricalMesh:
     ) -> List[Tuple[int, int]]:
         """Obtiene coordenadas axiales de los 6 vecinos hexagonales teóricos."""
         axial_directions = [
-            (q + 1, r + 0), (q + 1, r - 1), (q + 0, r - 1),
-            (q - 1, r + 0), (q - 1, r + 1), (q + 0, r + 1)
+            (q + 1, r + 0),
+            (q + 1, r - 1),
+            (q + 0, r - 1),
+            (q - 1, r + 0),
+            (q - 1, r + 1),
+            (q + 0, r + 1),
         ]
         return [(dq, dr) for dq, dr in axial_directions]
 
@@ -570,8 +574,7 @@ class HexCylindricalMesh:
         """Retorna lista de todas las celdas en la malla."""
         return list(self.cells.values())
 
-
-def compute_voronoi_neighbors(self, periodic_theta: bool = True) -> None:
+    def compute_voronoi_neighbors(self, periodic_theta: bool = True) -> None:
         """
         Calcula los vecinos de Voronoi para cada celda
         considerando periodicidad circunferencial.
@@ -616,10 +619,10 @@ def compute_voronoi_neighbors(self, periodic_theta: bool = True) -> None:
             # Réplicas izquierda y derecha
             for i, (theta, z) in enumerate(points):
                 # Line 478
-                extended_points.append((theta - 2 * math.pi, z))
+                extended_points.append((theta - math.tau, z))
                 index_mapping.append(i)
                 # Line 478 (similar, for right replica)
-                extended_points.append((theta + 2 * math.pi, z))
+                extended_points.append((theta + math.tau, z))
                 index_mapping.append(i)
 
         # Convertir a array numpy
@@ -670,7 +673,7 @@ def compute_voronoi_neighbors(self, periodic_theta: bool = True) -> None:
             f"Vecinos Voronoi calculados para {n_original} celdas."
         )
 
-def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Retorna representación de la malla como diccionario.
         """
