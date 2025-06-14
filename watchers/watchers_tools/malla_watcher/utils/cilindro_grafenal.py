@@ -110,13 +110,20 @@ class Cell:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Retorna representación serializable a JSON."""
+        """
+        Retorna un diccionario de representation of cell.
+        """
         return {
-            "axial_coords": {"q": self.q_axial, "r": self.r_axial},
-            "cylindrical_coords": {"r": self.r, "theta": self.theta, "z": self.z},
+            "cyl_radius": self.radius,
+            "cyl_theta": self.theta,
+            "cyl_z": self.z,
+            "q_axial": self.q_axial,
+            "r_axial": self.r_axial,
             "amplitude": self.amplitude,
             "velocity": self.velocity,
-            "q_vector": self.q_vector.tolist()
+            "q_vector": self.q_vector,
+            "cell_index": self.cell_index,
+            "voronoi_neighbors_indices": [n.cell_index for n in self.voronoi_neighbors]
         }
 
 
