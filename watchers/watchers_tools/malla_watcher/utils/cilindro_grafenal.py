@@ -335,7 +335,9 @@ class HexCylindricalMesh:
                         self.circumference_segments_actual *
                         q_exploration_limit_factor
                     )
-                    if abs(nq) > q_exp_limit:
+                    # Condición dividida para cumplir PEP8
+                    if (abs(nq) > 
+                            q_exp_limit):
                         continue
 
                     _, neighbor_y_flat_unwrapped = axial_to_cartesian_flat(
@@ -423,12 +425,13 @@ class HexCylindricalMesh:
                     )
                     cells_with_few_neighbors += 1
             elif actual_neighbor_count < expected_min_neighbors_internal:
-                logger.warning(  # Line 335
-                    f"  Celda interna ({cell.q_axial},{cell.r_axial}, "
-                    f"z={cell.z:.2f}) tiene {actual_neighbor_count} "
-                    f"vecinos (esperado >= {expected_min_neighbors_internal})."
-                )
-                cells_with_few_neighbors += 1
+                    logger.warning(  # Line 335
+                        f"  Celda interna ({cell.q_axial},{cell.r_axial}, "
+                        f"z={cell.z:.2f}) tiene {actual_neighbor_count} "
+                        "vecinos (esperado >= "
+                        f"{expected_min_neighbors_internal})."
+                    )
+                    cells_with_few_neighbors += 1
 
             if actual_neighbor_count > 6:
                 logger.error(
@@ -444,7 +447,7 @@ class HexCylindricalMesh:
         if self.cells:
             percentage_low_connectivity = (
                 cells_with_few_neighbors * 100 / len(self.cells)
-            )
+            # Mensaje dividido para cumplir PEP8
             logger.info(
                 f"  Mínimo vecinos: {min_neighbors_found}, "
                 f"Máximo: {max_neighbors_found}. "  # Line 359
@@ -627,7 +630,7 @@ class HexCylindricalMesh:
                     (theta - math.tau, z)
                 )
                 index_mapping.append(i)
-                # Line 478 (similar, for right replica)
+                # Réplica derecha (comentario acortado)
                 extended_points.append(
                     (theta + math.tau, z)
                 )
@@ -659,7 +662,7 @@ class HexCylindricalMesh:
                 replica_indices.append(
                     orig_idx + n_original
                 )
-                # Line 534 # Réplica derecha
+                # Réplica derecha
                 replica_indices.append(
                     orig_idx + 2 * n_original
                 )
@@ -690,14 +693,12 @@ class HexCylindricalMesh:
             "metadata": {
                 "radius": self.radius,
                 "height_segments": self.height_segments,
-                "circumference_segments_actual":
-                    self.circumference_segments_actual,
+                "circumference_segments_actual": self.circumference_segments_actual,
                 "hex_size": self.hex_size,
                 "periodic_z": self.periodic_z,
                 "num_cells": len(self.cells),
                 "z_bounds": {"min": self.min_z, "max": self.max_z},
-                "total_height_approx":
-                    self.total_height_approx,
+                "total_height_approx": self.total_height_approx,
                 "previous_flux": self.previous_flux
                 # fluxo do passo anterior
             },
