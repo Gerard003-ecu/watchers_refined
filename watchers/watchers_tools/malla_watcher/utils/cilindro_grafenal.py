@@ -4,7 +4,7 @@ import math
 import logging
 import numpy as np
 from collections import deque, Counter
-from typing import List, Optional, Dict, Tuple, Any, Set
+from typing import List, Optional, Dict, Tuple, Any
 
 # --- Configuración del Logging ---
 logger = logging.getLogger(__name__)  # Usar __name__ para logger
@@ -182,15 +182,16 @@ class HexCylindricalMesh:
         self.circumference_segments_actual = max(
             3, circumference_segments_target
         )
-        self.actual_circumference_covered_by_q_segments = (  # Line 142
-            self.circumference_segments_actual *
-            hex_width_circumferential
+        actual_circ_covered = (
+            self.circumference_segments_actual * hex_width_circumferential
         )
+        self.actual_circumference_covered_by_q_segments = actual_circ_covered
 
         logger.info(
             f"Malla Cilíndrica: Radio={self.radius:.2f}, "
             f"AlturaSeg={self.height_segments}, "
-            f"CircumSegTarget={circumference_segments_target} -> "  # Line 196
+            # Line 196
+            f"CircumSegTarget={circumference_segments_target} -> "
             f"Actual={self.circumference_segments_actual}, "
             f"HexSize={self.hex_size:.2f}, PeriodicZ={self.periodic_z}"
         )
@@ -274,10 +275,9 @@ class HexCylindricalMesh:
         logger.debug(f"Celda inicial ({start_q},{start_r}) añadida.")
 
         cells_added_count = 0
-        max_bfs_iterations = (  # Line 232
-            self.circumference_segments_actual *
+        max_bfs_iterations_calc = self.circumference_segments_actual * \
             (self.height_segments + 4) * 10
-        )
+        max_bfs_iterations = max_bfs_iterations_calc
         if self.height_segments == 0:
             max_bfs_iterations = (
                 self.circumference_segments_actual * 20
@@ -450,7 +450,8 @@ class HexCylindricalMesh:
                 f"({percentage_low_connectivity:.1f}%)."
             )
         else:
-            logger.info("  Mínimo vecinos: N/A, Máximo vecinos: N/A.")
+            log_message = "  Mínimo vecinos: N/A, Máximo vecinos: N/A."
+            logger.info(log_message)
 
         if max_neighbors_found > 6 and self.cells:
             logger.error(
@@ -563,8 +564,10 @@ class HexCylindricalMesh:
             z_match_tolerance = self.hex_size * 0.75
 
             # Line 452
-            if (effective_dz < min_dz_abs_effective and
-                    effective_dz < z_match_tolerance):
+            if (
+                effective_dz < min_dz_abs_effective and
+                effective_dz < z_match_tolerance
+            ):
                 min_dz_abs_effective = effective_dz
                 best_match = cell_candidate
 
@@ -603,7 +606,7 @@ class HexCylindricalMesh:
         for cell in self.cells.values():
             points.append((cell.theta, cell.z))
             original_cells.append(cell)
-        
+
         n_original = len(points)
         if n_original < 3:
             logger.warning(
@@ -632,28 +635,29 @@ class HexCylindricalMesh:
         vor = Voronoi(points_array)
 
         # Construir diccionario de vecinos
-        neighbor_dict: Dict[int, Set[int]] = {i: set() for i in range(len(extended_points))}
+        neighbor_dict = {i: set() for i in range(len(extended_points))}
         for ridge in vor.ridge_points:
             i, j = ridge
             neighbor_dict[i].add(j)
             neighbor_dict[j].add(i)
-        
+
         # Procesar vecinos para cada celda original
         for orig_idx in range(n_original):
             cell = original_cells[orig_idx]
             voronoi_neighbors = set()
-            
+
             # Considerar todas las réplicas del punto actual
             replica_indices = [orig_idx]
             if periodic_theta:
                 # Line 533
+                # Réplica izquierda
                 replica_indices.append(
                     orig_idx + n_original
-                )  # Réplica izquierda
-                # Line 534
+                )
+                # Line 534 # Réplica derecha
                 replica_indices.append(
                     orig_idx + 2 * n_original
-                )  # Réplica derecha
+                )
 
             # Recopilar vecinos de todas las réplicas
             for rep_idx in replica_indices:
@@ -663,7 +667,7 @@ class HexCylindricalMesh:
                         # Excluir auto-vecindad y vecinos duplicados
                         if neighbor_orig_idx != orig_idx:
                             voronoi_neighbors.add(neighbor_orig_idx)
-            
+
             # Asignar vecinos como objetos Cell
             cell.voronoi_neighbors = [
                 original_cells[i] for i in voronoi_neighbors
