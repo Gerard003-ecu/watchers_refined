@@ -129,7 +129,7 @@ class HexCylindricalMesh:
             self,
             radius: float,
             height_segments: int,
-            circumference_segments_target: int,
+            circ_segments_target: int,
             hex_size: float = 1.0,
             periodic_z: bool = False
     ):
@@ -139,7 +139,7 @@ class HexCylindricalMesh:
         Args:
             radius (float): Radio del cilindro.
             height_segments (int): Número de segmentos en altura.
-            circumference_segments_target (int): Número deseado para cerrar
+            circ_segments_target (int): Segmentos para cerrar la
                                                circunferencia.
             hex_size (float): Tamaño característico de los hexágonos.
             periodic_z (bool): Condiciones periódicas en dirección Z.
@@ -161,7 +161,7 @@ class HexCylindricalMesh:
             raise ValueError(
                 "El número de segmentos de altura no puede ser negativo."
             )
-        if circumference_segments_target < 3:
+        if circ_segments_target < 3:
             raise ValueError(
                 "Se requieren al menos 3 segmentos de circunferencia objetivo."
             )
@@ -181,7 +181,7 @@ class HexCylindricalMesh:
             )
 
         self.circumference_segments_actual = max(
-            3, circumference_segments_target
+            3, circ_segments_target
         )
         actual_circ_covered = (
             self.circumference_segments_actual * hex_width_circumferential
@@ -191,7 +191,7 @@ class HexCylindricalMesh:
         logger.info(
             f"Malla Cilíndrica: Radio={self.radius:.2f}, "
             f"AlturaSeg={self.height_segments}, "
-            f"CircumSegTarget={circumference_segments_target} -> "
+            f"CircumSegTarget={circ_segments_target} -> "
             f"Actual={self.circumference_segments_actual}, "
             f"HexSize={self.hex_size:.2f}, "
             f"PeriodicZ={self.periodic_z}"
@@ -276,9 +276,10 @@ class HexCylindricalMesh:
         logger.debug(f"Celda inicial ({start_q},{start_r}) añadida.")
 
         cells_added_count = 0
-        max_bfs_iterations_calc = self.circumference_segments_actual * \
+        max_bfs_iter_calc = \
+            self.circumference_segments_actual * \
             (self.height_segments + 4) * 10
-        max_bfs_iterations = max_bfs_iterations_calc
+        max_bfs_iterations = max_bfs_iter_calc
         if self.height_segments == 0:
             max_bfs_iterations = (
                 self.circumference_segments_actual * 20
@@ -425,13 +426,13 @@ class HexCylindricalMesh:
                     )
                     cells_with_few_neighbors += 1
             elif actual_neighbor_count < expected_min_neighbors_internal:
-                    logger.warning(  # Line 335
-                        f"  Celda interna ({cell.q_axial},{cell.r_axial}, "
-                        f"z={cell.z:.2f}) tiene {actual_neighbor_count} "
-                        "vecinos (esperado >= "
-                        f"{expected_min_neighbors_internal})."
-                    )
-                    cells_with_few_neighbors += 1
+                logger.warning(  # Line 335
+                    f"  Celda interna ({cell.q_axial},{cell.r_axial}, "
+                    f"z={cell.z:.2f}) tiene {actual_neighbor_count} "
+                    "vecinos (esperado >= "
+                    f"{expected_min_neighbors_internal})."
+                )
+                cells_with_few_neighbors += 1
 
             if actual_neighbor_count > 6:
                 logger.error(
@@ -473,7 +474,9 @@ class HexCylindricalMesh:
 
     def get_axial_neighbors_coords(
             self, q: int, r: int
-    ) -> List[Tuple[int, int]]:
+    ) -> List[
+        Tuple[int, int]
+    ]:
         """Obtiene coordenadas axiales de los 6 vecinos hexagonales teóricos."""
         axial_directions = [
             (q + 1, r + 0),
@@ -588,8 +591,8 @@ class HexCylindricalMesh:
         considerando periodicidad circunferencial.
 
         Args:
-            periodic_theta (bool):
-            Considerar periodicidad en dirección theta.
+            periodic_theta (bool): Si se debe considerar la periodicidad
+                en la dirección theta.
         """
         try:
             from scipy.spatial import Voronoi
@@ -694,11 +697,15 @@ class HexCylindricalMesh:
             "metadata": {
                 "radius": self.radius,
                 "height_segments": self.height_segments,
-                "circumference_segments_actual": self.circumference_segments_actual,
+                "circ_segments_actual":
+                    self.circumference_segments_actual,
                 "hex_size": self.hex_size,
                 "periodic_z": self.periodic_z,
                 "num_cells": len(self.cells),
-                "z_bounds": {"min": self.min_z, "max": self.max_z},
+                "z_bounds": {
+                    "min": self.min_z,
+                    "max": self.max_z
+                },
                 "total_height_approx": self.total_height_approx,
                 "previous_flux": self.previous_flux
                 # fluxo do passo anterior
