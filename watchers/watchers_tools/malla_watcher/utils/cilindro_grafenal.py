@@ -191,10 +191,10 @@ class HexCylindricalMesh:
         logger.info(
             f"Malla Cilíndrica: Radio={self.radius:.2f}, "
             f"AlturaSeg={self.height_segments}, "
-            # Line 196
             f"CircumSegTarget={circumference_segments_target} -> "
             f"Actual={self.circumference_segments_actual}, "
-            f"HexSize={self.hex_size:.2f}, PeriodicZ={self.periodic_z}"
+            f"HexSize={self.hex_size:.2f}, "
+            f"PeriodicZ={self.periodic_z}"
         )
         if (not math.isclose(
             self.actual_circumference_covered_by_q_segments,  # Line 197
@@ -418,7 +418,8 @@ class HexCylindricalMesh:
                 if actual_neighbor_count < 3:
                     logger.warning(
                         f"  Celda en borde Z ({cell.q_axial},{cell.r_axial}, "
-                        f"z={cell.z:.2f}) tiene solo {actual_neighbor_count} vecinos."
+                        f"z={cell.z:.2f}) tiene solo "
+                        f"{actual_neighbor_count} vecinos."
                     )
                     cells_with_few_neighbors += 1
             elif actual_neighbor_count < expected_min_neighbors_internal:
@@ -443,7 +444,6 @@ class HexCylindricalMesh:
         if self.cells:
             percentage_low_connectivity = (
                 cells_with_few_neighbors * 100 / len(self.cells)
-            )
             logger.info(
                 f"  Mínimo vecinos: {min_neighbors_found}, "
                 f"Máximo: {max_neighbors_found}. "  # Line 359
@@ -566,10 +566,8 @@ class HexCylindricalMesh:
             z_match_tolerance = self.hex_size * 0.75
 
             # Line 452
-            if (
-                effective_dz < min_dz_abs_effective and
-                effective_dz < z_match_tolerance
-            ):
+            if (effective_dz < min_dz_abs_effective and
+                    effective_dz < z_match_tolerance):
                 min_dz_abs_effective = effective_dz
                 best_match = cell_candidate
 
@@ -624,10 +622,14 @@ class HexCylindricalMesh:
             # Réplicas izquierda y derecha
             for i, (theta, z) in enumerate(points):
                 # Line 478
-                extended_points.append((theta - math.tau, z))
+                extended_points.append(
+                    (theta - math.tau, z)
+                )
                 index_mapping.append(i)
                 # Line 478 (similar, for right replica)
-                extended_points.append((theta + math.tau, z))
+                extended_points.append(
+                    (theta + math.tau, z)
+                )
                 index_mapping.append(i)
 
         # Convertir a array numpy
@@ -687,9 +689,8 @@ class HexCylindricalMesh:
             "metadata": {
                 "radius": self.radius,
                 "height_segments": self.height_segments,
-                # Line 651 in original problem, now ~587
                 "circumference_segments_actual":
-                    self.circumference_segments_actual, # This line was already like this
+                    self.circumference_segments_actual,
                 "hex_size": self.hex_size,
                 "periodic_z": self.periodic_z,
                 "num_cells": len(self.cells),
@@ -697,6 +698,7 @@ class HexCylindricalMesh:
                 "total_height_approx":
                     self.total_height_approx,
                 "previous_flux": self.previous_flux
+                # fluxo do passo anterior
             },
             "cells": [cell.to_dict() for cell in self.cells.values()]
         }
