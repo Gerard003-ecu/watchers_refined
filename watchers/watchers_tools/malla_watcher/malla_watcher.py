@@ -500,7 +500,7 @@ def fetch_and_apply_torus_field():
             if mesh:
                 if mesh.cells:
                     logger.debug(
-                        "Aplicando campo vectorial de ECU (primer elemento: %s)",
+                        "Aplicando campo vectorial ECU (primer elemento: %s)",
                         actual_field_vector_list[0] if actual_field_vector_list else 'vacío')
                     apply_external_field_to_mesh(
                         mesh, actual_field_vector_list)
@@ -981,7 +981,7 @@ def aplicar_influencia_toroide_push():
             "correctamente.")
         return jsonify({
             "status": "success",
-            "message": "Campo vectorial externo aplicado a q_vector de las celdas."
+            "message": "CV externo aplicado a q_vector de las celdas."
         }), 200
 
     except ValueError as ve:
