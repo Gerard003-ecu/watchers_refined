@@ -154,7 +154,8 @@ class HexCylindricalMesh:
         if radius < hex_size:
             logger.warning(
                 f"El radio ({radius}) es menor que el tamaño del hexágono "
-                f"({hex_size}). La malla podría ser degenerada."
+                f"({hex_size}). "
+                "La malla podría ser degenerada."
             )
         if height_segments < 0:
             raise ValueError(
@@ -204,7 +205,7 @@ class HexCylindricalMesh:
                 f"La circunferencia teórica ({self.circumference:.2f}) y la "
                 f"cubierta por segmentos q "  # Line 200
                 f"({self.actual_circumference_covered_by_q_segments:.2f}) "
-                f"difieren significativamente."
+                f"difieren mucho."
             )
 
         self.cells: Dict[Tuple[int, int], Cell] = {}
@@ -445,8 +446,8 @@ class HexCylindricalMesh:
             )
             logger.info(
                 f"  Mínimo vecinos: {min_neighbors_found}, "
-                f"Máximo: {max_neighbors_found}. Celdas con baja "  # Line 359
-                f"conectividad: {cells_with_few_neighbors} "
+                f"Máximo: {max_neighbors_found}. "  # Line 359
+                f"Celdas con baja conectividad: {cells_with_few_neighbors} "
                 f"({percentage_low_connectivity:.1f}%)."
             )
         else:
@@ -505,7 +506,8 @@ class HexCylindricalMesh:
                     )
                 # Line 395
                 _, _, z_theoretical = cartesian_flat_to_cylindrical(
-                    x_flat_theoretical, y_flat_theoretical,
+                    x_flat_theoretical,
+                    y_flat_theoretical,
                     self.radius
                 )
 
@@ -590,7 +592,7 @@ class HexCylindricalMesh:
             from scipy.spatial import Voronoi
         except ImportError:
             logger.error(
-                "Scipy no instalado. Voronoi no disponible."
+                "Scipy no instalado. Voronoi no disp."
             )
             return
 
@@ -687,12 +689,13 @@ class HexCylindricalMesh:
                 "height_segments": self.height_segments,
                 # Line 651 in original problem, now ~587
                 "circumference_segments_actual":
-                    self.circumference_segments_actual,
+                    self.circumference_segments_actual, # This line was already like this
                 "hex_size": self.hex_size,
                 "periodic_z": self.periodic_z,
                 "num_cells": len(self.cells),
                 "z_bounds": {"min": self.min_z, "max": self.max_z},
-                "total_height_approx": self.total_height_approx,
+                "total_height_approx":
+                    self.total_height_approx,
                 "previous_flux": self.previous_flux
             },
             "cells": [cell.to_dict() for cell in self.cells.values()]
