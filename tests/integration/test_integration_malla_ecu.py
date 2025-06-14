@@ -128,7 +128,8 @@ def test_malla_fetches_and_processes_ecu_field_vector(
     with patch_base_url, patch_malla_global, patch_capas, \
             patch_filas, patch_columnas:
         # Opcional: mockear apply_external_field_to_mesh
-        # with patch('watchers.watchers_tools.malla_watcher.malla_watcher.apply_external_field_to_mesh') as mock_apply:  # noqa: E501
+        # with patch('watchers.watchers_tools.malla_watcher'
+        #            '.malla_watcher.apply_external_field_to_mesh') as mock_apply:
         fetch_and_apply_torus_field()
         # if mockeado:
         #     mock_apply.assert_called_once_with(
@@ -137,10 +138,10 @@ def test_malla_fetches_and_processes_ecu_field_vector(
         #     )
 
     assert len(mock_http_server.calls) == 1
-    assert (
-        mock_http_server.calls[0].request.url
-        == f"{ECU_MOCK_BASE_URL}/api/ecu/field_vector"
+    expected_url = (
+        f"{ECU_MOCK_BASE_URL}/api/ecu/field_vector"
     )
+    assert mock_http_server.calls[0].request.url == expected_url
 
     if len(malla_instance_for_test.cells) > 0:
         q_vectors_updated = sum(
@@ -148,9 +149,10 @@ def test_malla_fetches_and_processes_ecu_field_vector(
             for cell in malla_instance_for_test.get_all_cells()
             if not np.allclose(cell.q_vector, np.zeros(2))
         )
-        assert q_vectors_updated > 0, (
+        assertion_msg = (
             "Ningún q_vector en la malla parece haber sido actualizado."
         )
+        assert q_vectors_updated > 0, assertion_msg
         logger.info(
             f"{q_vectors_updated} q_vectors actualizados en la malla."
         )
@@ -201,15 +203,15 @@ def test_malla_sends_valid_influence_to_ecu(mock_http_server, caplog):
     # Expected col
 
     patch_base_url_inf = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", # noqa E501
+        "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
         ECU_MOCK_BASE_URL,
     )
     patch_filas_inf = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS", # noqa E501
+        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS",
         test_torus_filas,
     )
     patch_columnas_inf = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", # noqa E501
+        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS",
         test_torus_columnas,
     )
 
@@ -317,25 +319,28 @@ def test_malla_handles_ecu_field_vector_api_error(
         status=500,
     )
     patch_matriz_url = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", # noqa E501
+        "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
         ECU_MOCK_BASE_URL,
     )
     patch_malla = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", # noqa E501
+        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global",
         malla_instance_for_test,
     )
     patch_apply = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.apply_external_field_to_mesh" # noqa E501
+        "watchers.watchers_tools.malla_watcher.malla_watcher.apply_external_field_to_mesh"
     )
     with patch_matriz_url, patch_malla, patch_apply as mock_apply_func:
         fetch_and_apply_torus_field()
         mock_apply_func.assert_not_called()
-        assert any(
+        log_message_found = any(
             "error de red o http al obtener campo vectorial"
             in rec.message.lower()  # CAMBIADO AQUÍ
             for rec in caplog.records
             if "malla_watcher" in rec.name and rec.levelno >= logging.ERROR
-        ), "Malla Watcher no logueó error apropiado tras fallo API ECU."
+        )
+        assert log_message_found, (
+            "Malla Watcher no logueó error apropiado tras fallo API ECU."
+        )
 
 
 def test_malla_handles_ecu_influence_api_error(mock_http_server, caplog):
