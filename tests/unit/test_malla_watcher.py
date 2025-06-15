@@ -283,7 +283,8 @@ def test_electron_ajustar_coeficientes():
 def test_apply_external_field_to_mesh_logic(malla_para_test_aplicar_campo):
     """Test: Aplicación de campo vectorial externo usando interpolación."""
     from watchers.watchers_tools.malla_watcher.malla_watcher import (
-        apply_external_field_to_mesh as apply_ext_field_func)
+        apply_external_field_to_mesh as apply_ext_field_func,
+    )
 
     mesh_instance = malla_para_test_aplicar_campo
     if not mesh_instance.cells:
@@ -314,11 +315,13 @@ def test_apply_external_field_to_mesh_logic(malla_para_test_aplicar_campo):
         assert changed_count > 0 or any(
             np.linalg.norm(c.q_vector) > 1e-9
             for c in mesh_instance.cells.values()
-        ), ("apply_external_field_to_mesh no modificó ningún "
-            "q_vector de forma no nula.")
+        ), (
+            "apply_external_field_to_mesh no modificó ningún q_vector de "
+            "forma no nula."
+        )
     logger.info(
-        f"{changed_count} de {len(mesh_instance.cells)} celdas "
-        "actualizaron su q_vector a no-cero."
+        f"{changed_count} de {len(mesh_instance.cells)} celdas actualizaron "
+        "su q_vector a no-cero."
     )
 
 
@@ -754,6 +757,7 @@ def test_update_aggregate_state(mock_malla_state):
         assert aggregate_state["avg_activity_magnitude"] == 0.0
         assert aggregate_state["max_activity_magnitude"] == 0.0
         assert aggregate_state["cells_over_threshold"] == 0
+
 
 # Tests para Mapeo a Toroide
 @pytest.fixture
@@ -1216,7 +1220,7 @@ def test_api_malla(client, reset_globals):
                   amplitude=1, velocity=0.1, q_vector=np.array([0.1, 0.1]))
     cell_b = Cell(mock_mesh.radius, 0.2, 1.5, 1, 0,
                   amplitude=2, velocity=0.2, q_vector=np.array([0.2, 0.2]))
-    mock_mesh.cells = {(0, 0): cell_a, (1,0): cell_b}
+    mock_mesh.cells = {(0, 0): cell_a, (1, 0): cell_b}
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
     mock_mesh.min_z = 0.5
     mock_mesh.max_z = 1.5
