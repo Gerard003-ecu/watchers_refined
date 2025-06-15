@@ -84,22 +84,18 @@ class BosonPhase:
 
         output = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
         logging.debug(
-            f"update() -> error: {error:.3f}, "
-            f"integral: {self.integral:.3f}, "
-            f"derivative: {derivative:.3f}, "
-            f"output: {output:.3f}"
+            f"upd -> err: {error:.3f}, "
+            f"int: {self.integral:.3f}, "
+            f"der: {derivative:.3f}, "
+            f"out: {output:.3f}"
         )
 
         # Ajuste adaptativo simple: aumentar Kp si el error es grande
         if abs(error) > 0.1 * self.setpoint:
             self.Kp += 0.01
-            # Re-applying the fix for E501 on the logging line.
-            # The original single line was 80/81 characters.
-            # This multi-line formatting ensures each part is short.
-            logging.info(
-                "Ajuste adaptativo: Kp incrementado a %s",
-                f"{self.Kp:.3f}"
-            )
+            kp_str = f"{self.Kp:.3f}"
+            log_message = "Ajuste adaptativo: Kp incrementado a %s"
+            logging.info(log_message, kp_str)
 
         return output
 
@@ -116,7 +112,7 @@ class BosonPhase:
             float: La salida del PID.
         """
         self.setpoint = setpoint
-        logging.debug(f"compute() -> Nuevo setpoint: {setpoint}")
+        logging.debug(f"compute -> new setpoint: {setpoint}")
         return self.update(measurement, dt)
 
     def reset(self):
