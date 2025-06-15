@@ -140,8 +140,9 @@ def test_register_module_fail(client_and_mock):
     """
     client, mock_instance = client_and_mock
     module_data = {"nombre": "BadTool", "url": ""}  # URL inválida
-    mock_response = {"status": "error",
-    "mensaje": "Faltan campos obligatorios"
+    mock_response = {
+        "status": "error",
+        "mensaje": "Faltan campos obligatorios",
     }
     # Configurar el método del mock principal
     mock_instance.registrar_modulo.return_value = mock_response

@@ -156,7 +156,9 @@ def test_malla_fetches_and_processes_ecu_field_vector(
             for cell in malla_instance_for_test.get_all_cells()
             if not np.allclose(cell.q_vector, np.zeros(2))
         )
-        assertion_msg = "Ningún q_vector en la malla parece haber sido actualizado."
+        assertion_msg = (
+            "Ningún q_vector en la malla parece haber sido actualizado."
+        )
         assert q_vectors_updated > 0, assertion_msg
         logger.info(f"{q_vectors_updated} q_vectors actualizados en la malla.")
 
@@ -344,7 +346,8 @@ def test_malla_handles_ecu_field_vector_api_error(
         fetch_and_apply_torus_field()
         mock_apply_func.assert_not_called()
         log_message_found = any(
-            "error de red o http al obtener campo vectorial" in rec.message.lower()
+            "error de red o http al obtener campo vectorial"
+            in rec.message.lower()
             for rec in caplog.records
             if "malla_watcher" in rec.name and rec.levelno >= logging.ERROR
         )
@@ -382,5 +385,8 @@ def test_malla_handles_ecu_influence_api_error(mock_http_server, caplog):
     assert any(
         "error de red al enviar influencia" in rec.message.lower()
         for rec in caplog.records
-        if "malla_watcher" in rec.name and rec.levelno >= logging.ERROR
-    )
+        if (
+            ("malla_watcher" in rec.name) and
+            (rec.levelno >= logging.ERROR)
+        )  # Closing parenthesis for 'if'
+    )  # Closing parenthesis for 'any'

@@ -556,22 +556,32 @@ def test_dphi_dt_calculation(mock_malla_sim):
         dt,
     ) = mock_malla_sim
 
-    with patch(
+    # Define patchers individually
+    patch_calculate_flux = patch(
         "watchers.watchers_tools.malla_watcher.malla_watcher.calculate_flux"
-    ) as mock_calculate_flux, patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".fetch_and_apply_torus_field"
-    ), patch(
+    )
+    patch_fetch_apply_field = patch(
+        "watchers.watchers_tools.malla_watcher.malla_watcher.fetch_and_apply_torus_field"
+    )
+    patch_simular_paso = patch(
         "watchers.watchers_tools.malla_watcher.malla_watcher.simular_paso_malla"
-    ), patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".update_aggregate_state"),
-    patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".send_influence_to_torus") as mock_send_influence,
-    patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".stop_simulation_event") as mock_stop_event:
+    )
+    patch_update_state = patch(
+        "watchers.watchers_tools.malla_watcher.malla_watcher.update_aggregate_state"
+    )
+    patch_send_influence = patch(
+        "watchers.watchers_tools.malla_watcher.malla_watcher.send_influence_to_torus"
+    )
+    patch_stop_event = patch(
+        "watchers.watchers_tools.malla_watcher.malla_watcher.stop_simulation_event"
+    )
+
+    with patch_calculate_flux as mock_calculate_flux, \
+         patch_fetch_apply_field, \
+         patch_simular_paso, \
+         patch_update_state, \
+         patch_send_influence as mock_send_influence, \
+         patch_stop_event as mock_stop_event:
 
         mock_mesh.previous_flux = 10.0
         mock_calculate_flux.return_value = 15.0
@@ -1302,7 +1312,7 @@ def test_api_config(client, reset_globals):
             f"{TORUS_NUM_CAPAS}x{TORUS_NUM_FILAS}x{TORUS_NUM_COLUMNAS}")
         assert comm_cfg["torus_dims"] == torus_dims_expected
         assert comm_cfg["influence_threshold"] == \
-            AMPLITUDE_INfluence_THRESHOLD
+            AMPLITUDE_INFLUENCE_THRESHOLD
         assert comm_cfg["max_activity_normalization"] == \
             MAX_AMPLITUDE_FOR_NORMALIZATION
 

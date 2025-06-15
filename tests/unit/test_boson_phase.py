@@ -48,7 +48,7 @@ def test_pid_response_to_step(pid_controller):
         measurement += 0.5
 
     # Se espera que al menos una de las salidas sea significativa.
-    assert any(abs(o) > 0.1 for o in outputs),"El PID no reaccionó al cambio."
+    assert any(abs(o) > 0.1 for o in outputs), "El PID no reaccionó al cambio."
 
 
 def test_pid_reset(pid_controller):
