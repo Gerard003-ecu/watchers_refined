@@ -352,7 +352,8 @@ def test_malla_handles_ecu_field_vector_api_error(
             if "malla_watcher" in rec.name and rec.levelno >= logging.ERROR
         )
         assert log_message_found, (
-            "Malla Watcher no logueó error apropiado tras fallo API ECU."
+            "Malla Watcher no logueó error apropiado "
+            "tras fallo API ECU."
         )
 
 
