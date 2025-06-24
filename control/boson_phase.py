@@ -82,7 +82,9 @@ class BosonPhase:
             derivative = (error - self.last_error) / dt
         self.last_error = error
 
-        output = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
+        output = (self.Kp * error +
+                  self.Ki * self.integral +
+                  self.Kd * derivative)
         logging.debug(
             f"upd -> err: {error:.3f}, "
             f"int: {self.integral:.3f}, "

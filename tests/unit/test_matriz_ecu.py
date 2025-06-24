@@ -453,8 +453,12 @@ def test_endpoint_get_field_vector(cliente_flask):
     )
     # fmt: off
     campo_toroidal_global_servicio.aplicar_influencia(
-        NUM_CAPAS - 1, NUM_FILAS - 1, NUM_COLUMNAS - 1, influence_vector_3,
-        "test_vec_api_3")
+        NUM_CAPAS - 1,
+        NUM_FILAS - 1,
+        NUM_COLUMNAS - 1,
+        influence_vector_3,
+        "test_vec_api_3"
+    )
     # fmt: on
 
     response = cliente_flask.get("/api/ecu/field_vector")

@@ -453,8 +453,11 @@ def update_aggregate_state():
     logger.debug(
         "Estado agregado actualizado: AvgAmp=%.3f, MaxAmp=%.3f, AvgVel=%.3f, "
         "MaxVel=%.3f, AvgKE=%.3f, MaxKE=%.3f, AvgActivity=%.3f, "
-        "MaxActivity=%.3f, OverThresh=%d", avg_amp, max_amp, avg_vel, max_vel,
-        avg_ke, max_ke, avg_activity, max_activity, over_thresh)
+        "MaxActivity=%.3f, OverThresh=%d",
+        avg_amp, max_amp, avg_vel, max_vel,
+        avg_ke, max_ke, avg_activity, max_activity,
+        over_thresh
+    )
 
 
 def calculate_flux(mesh: HexCylindricalMesh) -> float:
@@ -1153,10 +1156,12 @@ if __name__ == "__main__":
         MESH_CIRCUMFERENCE_SEGMENTS_REAL, MESH_HEX_SIZE_REAL,
         MESH_PERIODIC_Z_REAL)
     logger.info(
-        "Configuración Comms REAL: ECU_URL=%s, Torus=%dx%dx%d, InfThr=%.1f",
+        "Configuración Comms REAL: ECU_URL=%s, Torus=%dx%dx%d, "
+        "InfThr=%.1f",
         MATRIZ_ECU_BASE_URL_REAL, TORUS_NUM_CAPAS_REAL,
         TORUS_NUM_FILAS_REAL, TORUS_NUM_COLUMNAS_REAL,
-        AMPLITUDE_INFLUENCE_THRESHOLD_REAL)
+        AMPLITUDE_INFLUENCE_THRESHOLD_REAL
+    )
     logger.info(
         "Configuración Control REAL: BaseC=%.1f, BaseD=%.1f, GainC=%.1f, "
         "GainD=%.1f", BASE_COUPLING_T_REAL, BASE_DAMPING_E_REAL,

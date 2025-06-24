@@ -792,8 +792,8 @@ def mock_malla_map():
         patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher"
             ".MAX_AMPLITUDE_FOR_NORMALIZATION", 20.0):
-        yield mock_mesh, mock_torus_capas, mock_torus_filas, \
-            mock_torus_columnas
+        yield (mock_mesh, mock_torus_capas, mock_torus_filas,
+               mock_torus_columnas)
 
 
 def test_map_cylinder_to_torus_coords(mock_malla_map):
@@ -822,7 +822,7 @@ def test_map_cylinder_to_torus_coords(mock_malla_map):
     # fila_idx = floor(z_norm * (NUM_FILAS - 1) + 0.5)
     # z_norm = (0.0 - (-10.0)) / (10.0 - (-10.0)) = 10.0 / 20.0 = 0.5
     # fila_idx = floor(0.5 * (10 - 1) + 0.5) = floor(0.5 * 9 + 0.5) = floor(4.5 + 0.5) = floor(5.0) = 5 -> clamped to 4
-    expected_coords = (2, 4, 7) # Original: (2, 4, 7)
+    expected_coords = (2, 4, 7)  # Original: (2, 4, 7)
     actual_coords = map_cylinder_to_torus_coords(cell)
     assert actual_coords == expected_coords
 
@@ -893,7 +893,8 @@ def test_api_health(client, reset_globals):
 
     with patch(
         "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".simulation_thread") as mock_sim_thread:
+        ".simulation_thread"
+    ) as mock_sim_thread:
         mock_sim_thread.is_alive.return_value = True
         response = client.get("/api/health")
         assert response.status_code == 200
@@ -1294,10 +1295,12 @@ def test_api_malla_influence_push(client, reset_globals):
 
     with patch(
         "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".apply_external_field_to_mesh") as mock_apply_func:
+        ".apply_external_field_to_mesh"
+    ) as mock_apply_func:
         response = client.post(
             "/api/malla/influence",
-            json={"field_vector": test_field_vector_payload})
+            json={"field_vector": test_field_vector_payload}
+        )
         assert response.status_code == 200
         data = response.get_json()
         assert data["status"] == "success"

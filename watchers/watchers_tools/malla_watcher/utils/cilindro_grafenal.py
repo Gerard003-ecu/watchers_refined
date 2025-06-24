@@ -111,7 +111,8 @@ class Cell:
         """
         return {
             "axial_coords": {"q": self.q_axial, "r": self.r_axial},
-            "cylindrical_coords": {"r": self.r, "theta": self.theta, "z": self.z},
+            "cylindrical_coords":
+                {"r": self.r, "theta": self.theta, "z": self.z},
             "amplitude": self.amplitude,
             "velocity": self.velocity,
             "q_vector": self.q_vector.tolist(),

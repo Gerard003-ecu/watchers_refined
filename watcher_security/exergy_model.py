@@ -37,6 +37,7 @@ class ExergyModel:
     def optimize_energy_distribution(self, vector):
         """Maximiza exergía mediante optimización convexa"""
         from scipy.optimize import minimize
+
         def exergy_loss(x):
             return -np.dot(x, vector) + 0.5 * np.linalg.norm(x)**2
         constraints = {'type': 'ineq', 'fun': lambda x: np.sum(x) - 0.1}
