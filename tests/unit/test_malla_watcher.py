@@ -631,6 +631,7 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
         patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 3.0
         ):
+    )
         mock_mesh_global_instance.configure_mock(
             cells={(0, 0): "dummy_cell"})
         fetch_and_apply_torus_field()
