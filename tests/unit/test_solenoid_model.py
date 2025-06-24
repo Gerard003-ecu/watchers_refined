@@ -22,7 +22,7 @@ def test_simulate_field():
     )
     # El componente Bz es el segundo elemento de cada estado, tomamos el final
     final_Bz = sol[-1, 1]
-    expected_Bz = mu0 * n * I
+    expected_Bz = mu0 * n * Intensity
     # Se permite una pequeña tolerancia numérica
     assert np.isclose(final_Bz, expected_Bz, atol=1e-8)
 
