@@ -1102,11 +1102,16 @@ def get_config():
                     os.environ.get("MW_PERIODIC_Z", "True").lower() == "true"},
             "communication_config": {
                 "matriz_ecu_url": MATRIZ_ECU_BASE_URL,
-                "torus_dims":
-                    f"{TORUS_NUM_CAPAS}x{TORUS_NUM_FILAS}x{TORUS_NUM_COLUMNAS}",
+                # SOLUCIÓN E501: Se divide el f-string para que la línea
+                # sea más corta y legible.
+                "torus_dims": (
+                    f"{TORUS_NUM_CAPAS}x{TORUS_NUM_FILAS}x"
+                    f"{TORUS_NUM_COLUMNAS}"
+                ),
                 "influence_threshold": AMPLITUDE_INFLUENCE_THRESHOLD,
                 "max_activity_normalization":
-                    MAX_AMPLITUDE_FOR_NORMALIZATION},
+                    MAX_AMPLITUDE_FOR_NORMALIZATION
+            },
             "simulation_config": {
                 "interval": SIMULATION_INTERVAL,
                 "dphi_dt_influence_threshold": DPHI_DT_INFLUENCE_THRESHOLD},
@@ -1172,8 +1177,10 @@ if __name__ == "__main__":
         K_GAIN_COUPLING_REAL, K_GAIN_DAMPING_REAL)
     logger.info(
         "Configuración Simulación REAL: Interval=%.1fs, dPhi/dt "
-        "Threshold=%.1f", SIMULATION_INTERVAL_REAL,
-        DPHI_DT_INFLUENCE_THRESHOLD_REAL)
+        "Threshold=%.1f",
+        SIMULATION_INTERVAL_REAL,
+        DPHI_DT_INFLUENCE_THRESHOLD_REAL
+    )
     logger.info(
         "Configuración Normalización Influencia REAL: MaxActivityNorm=%.1f",
         MAX_AMPLITUDE_FOR_NORMALIZATION_REAL)

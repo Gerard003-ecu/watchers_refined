@@ -547,30 +547,17 @@ def test_dphi_dt_calculation(mock_malla_sim):
     ) = mock_malla_sim
 
     # Define patchers individually
-    patch_calculate_flux = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.calculate_flux")
-    patch_fetch_apply_field = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".fetch_and_apply_torus_field")
-    patch_simular_paso = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".simular_paso_malla")
-    patch_update_state = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".update_aggregate_state")
-    patch_send_influence = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".send_influence_to_torus")
-    patch_stop_event = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".stop_simulation_event")
-
-    with patch_calculate_flux as mock_calculate_flux, \
-            patch_fetch_apply_field, \
-            patch_simular_paso, \
-            patch_update_state, \
-            patch_send_influence as mock_send_influence, \
-            patch_stop_event as mock_stop_event:
+    with (
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.calculate_flux")
+        as mock_calculate_flux,
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.fetch_and_apply_torus_field"),
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.simular_paso_malla"),
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.update_aggregate_state"),
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.send_influence_to_torus")
+        as mock_send_influence,
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.stop_simulation_event")
+        as mock_stop_event
+    ):
 
         mock_mesh.previous_flux = 10.0
         mock_calculate_flux.return_value = 15.0
@@ -578,25 +565,28 @@ def test_dphi_dt_calculation(mock_malla_sim):
         mock_stop_event.wait.return_value = None
 
         with patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher."
-            "SIMULATION_INTERVAL", dt):
+            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", dt
+        ):
             simulation_loop()
 
         expected_dphi_dt_step1 = (15.0 - 10.0) / dt
         assert mock_mesh.previous_flux == pytest.approx(15.0)
         mock_calculate_flux.assert_called_once_with(mock_mesh)
-        mock_send_influence.assert_called_once_with(pytest.approx(
-            expected_dphi_dt_step1))
+        mock_send_influence.assert_called_once_with(
+            pytest.approx(expected_dphi_dt_step1)
+        )
 
 
 def test_send_influence_to_torus(mock_requests_post):
     """Test: send_influence_to_torus envía POST a ECU con dPhi/dt."""
     mock_post = mock_requests_post
     dphi_dt_value = 7.5
-    with patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS", 10), \
-         patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", 15), \
-         patch("watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000") as mock_base_url, \
-         patch("watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 2.0):  # noqa: E501
+    with (
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS", 10),
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", 15),
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000") as mock_base_url,
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 2.0)
+    ):
         expected_target_capa = 0
         expected_target_row = 10 // 2
         expected_target_col = 15 // 2
@@ -628,18 +618,19 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
     mock_get.return_value.json.return_value = mock_ecu_field_data
     mock_get.return_value.raise_for_status.return_value = None
 
-    with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".malla_cilindrica_global") as mock_mesh_global_instance, \
+    with (
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".apply_external_field_to_mesh") as mock_apply_func, \
+        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global"
+        ) as mock_mesh_global_instance,
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000") as mock_base_url, \
+            "watchers.watchers_tools.malla_watcher.malla_watcher.apply_external_field_to_mesh"
+        ) as mock_apply_func,
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".REQUESTS_TIMEOUT", 3.0):
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000"
+        ) as mock_base_url,
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 3.0
+        ):
         mock_mesh_global_instance.configure_mock(
             cells={(0, 0): "dummy_cell"})
         fetch_and_apply_torus_field()
@@ -677,20 +668,20 @@ def mock_malla_state():
     mock_mesh.previous_flux = 0.0
 
     with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".malla_cilindrica_global", mock_mesh), \
+        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", mock_mesh
+        ),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".AMPLITUDE_INFLUENCE_THRESHOLD", 5.0), \
+            "watchers.watchers_tools.malla_watcher.malla_watcher.AMPLITUDE_INFLUENCE_THRESHOLD", 5.0
+        ),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".DPHI_DT_INFLUENCE_THRESHOLD", 1.0), \
+            "watchers.watchers_tools.malla_watcher.malla_watcher.DPHI_DT_INFLUENCE_THRESHOLD", 1.0
+        ),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".SIMULATION_INTERVAL", 0.5), \
+            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", 0.5
+        ),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".aggregate_state_lock"):
+            "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock"
+        ):
         yield mock_mesh, [
             cell1,
             cell2,
@@ -879,8 +870,7 @@ def test_api_health(client, reset_globals):
         lambda: {6: len(mock_mesh.cells)})
 
     with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".simulation_thread"
+        "watchers.watchers_tools.malla_watcher.malla_watcher.simulation_thread"
     ) as mock_sim_thread:
         mock_sim_thread.is_alive.return_value = True
         response = client.get("/api/health")
