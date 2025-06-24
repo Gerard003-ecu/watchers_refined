@@ -578,8 +578,8 @@ def test_dphi_dt_calculation(mock_malla_sim):
         mock_stop_event.wait.return_value = None
 
         with patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".SIMULATION_INTERVAL", dt):
+            "watchers.watchers_tools.malla_watcher.malla_watcher."
+            "SIMULATION_INTERVAL", dt):
             simulation_loop()
 
         expected_dphi_dt_step1 = (15.0 - 10.0) / dt
@@ -806,22 +806,6 @@ def test_map_cylinder_to_torus_coords(mock_malla_map):
     mock_mesh.cells[(-99, -99)] = Cell(
         cyl_radius=0.0, cyl_theta=0.0, cyl_z=0.0, q_axial=-99, r_axial=-99)
 
-    # Capa (activity_magnitude based)
-    # activity_magnitude = math.sqrt(10.0**2 + 1.0**2)  # sqrt(100 + 1) = sqrt(101) approx 10.05
-    # Normalized activity for capa index (assuming MAX_AMPLITUDE_FOR_NORMALIZATION = 20.0)
-    # capa_norm = min(activity_magnitude, MAX_AMP_NORM) / MAX_AMP_NORM
-    # capa_idx = floor((1 - capa_norm) * (NUM_CAPAS - 1))
-    # capa_norm = min(10.05, 20.0) / 20.0 = 10.05 / 20.0 = 0.5025
-    # capa_idx = floor((1 - 0.5025) * (5 - 1)) = floor(0.4975 * 4) = floor(1.99) = 1
-    # This was an error in my manual calculation. It should be:
-    # capa_idx = floor((1 - min(activity_magnitude, MAX_AMP_NORM) / MAX_AMP_NORM) * (NUM_CAPAS - 1) + 0.5)
-    # capa_idx = floor((1 - 0.5025) * 4 + 0.5) = floor(0.4975 * 4 + 0.5) = floor(1.99 + 0.5) = floor(2.49) = 2
-
-    # Fila (z_coordinate based)
-    # z_norm = (cell.cyl_z - mesh.min_z) / (mesh.max_z - mesh.min_z)
-    # fila_idx = floor(z_norm * (NUM_FILAS - 1) + 0.5)
-    # z_norm = (0.0 - (-10.0)) / (10.0 - (-10.0)) = 10.0 / 20.0 = 0.5
-    # fila_idx = floor(0.5 * (10 - 1) + 0.5) = floor(0.5 * 9 + 0.5) = floor(4.5 + 0.5) = floor(5.0) = 5 -> clamped to 4
     expected_coords = (2, 4, 7)  # Original: (2, 4, 7)
     actual_coords = map_cylinder_to_torus_coords(cell)
     assert actual_coords == expected_coords
@@ -829,7 +813,8 @@ def test_map_cylinder_to_torus_coords(mock_malla_map):
     cell_zero_act = Cell(
         cyl_radius=5.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=10, r_axial=20,
         amplitude=0.0, velocity=0.0, q_vector=np.array([0.0, 0.0]))
-    # activity_magnitude = 0. capa_norm = 0. capa_idx = floor((1-0)*4 + 0.5) = floor(4.5) = 4
+    # activity_magnitude = 0. capa_norm = 0.
+    # capa_idx = floor((1-0)*4 + 0.5) = floor(4.5) = 4
     expected_coords_zero = (4, 4, 7)
     actual_coords_zero = map_cylinder_to_torus_coords(cell_zero_act)
     assert actual_coords_zero == expected_coords_zero
@@ -837,7 +822,8 @@ def test_map_cylinder_to_torus_coords(mock_malla_map):
     cell_max_act = Cell(
         cyl_radius=5.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=10, r_axial=20,
         amplitude=20.0, velocity=0.0, q_vector=np.array([0.0, 0.0]))
-    # activity_magnitude = 20. capa_norm = 1. capa_idx = floor((1-1)*4 + 0.5) = floor(0.5) = 0
+    # activity_magnitude = 20. capa_norm = 1.
+    # capa_idx = floor((1-1)*4 + 0.5) = floor(0.5) = 0
     expected_coords_max = (0, 4, 7)
     actual_coords_max = map_cylinder_to_torus_coords(cell_max_act)
     assert actual_coords_max == expected_coords_max
@@ -845,7 +831,8 @@ def test_map_cylinder_to_torus_coords(mock_malla_map):
     cell_high_act = Cell(
         cyl_radius=5.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=10, r_axial=20,
         amplitude=15.0, velocity=15.0, q_vector=np.array([0.0, 0.0]))
-    # activity_magnitude = sqrt(15^2+15^2) = sqrt(225+225)=sqrt(450) approx 21.2
+    # activity_magnitude = sqrt(15^2+15^2) =
+    # sqrt(225+225)=sqrt(450) approx 21.2
     # capa_norm = min(21.2, 20.0) / 20.0 = 1.0
     # capa_idx = floor((1-1)*4 + 0.5) = 0
     expected_coords_high = (0, 4, 7)
@@ -919,8 +906,8 @@ def test_api_health_no_simulation_thread(client, reset_globals):
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
 
     with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".simulation_thread") as mock_sim_thread:
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "simulation_thread") as mock_sim_thread:
         mock_sim_thread.is_alive.return_value = False
         response = client.get("/api/health")
         assert response.status_code == 500
@@ -937,8 +924,8 @@ def test_api_health_empty_mesh(client, reset_globals):
     mock_mesh.get_all_cells.return_value = []
 
     with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".simulation_thread") as mock_sim_thread:
+        "watchers.watchers_tools.malla_watcher.malla_watcher."
+        "simulation_thread") as mock_sim_thread:
         mock_sim_thread.is_alive.return_value = True
         response = client.get("/api/health")
         assert response.status_code == 500
@@ -1153,7 +1140,7 @@ def test_api_event_pulse_cell_not_found_in_populated_mesh(
             return mock_mesh.cells.get((q, r))
         elif (q, r) == (coords_to_find_q, coords_to_find_r):
             return None
-        return mock_mesh.cells.get((q, r)) # pragma: no cover
+        return mock_mesh.cells.get((q, r))  # pragma: no cover
 
     mock_mesh.get_cell.side_effect = get_cell_side_effect
 
@@ -1284,7 +1271,7 @@ def test_api_malla_influence_push(client, reset_globals):
     aplica campo vectorial externo.
     """
     mock_mesh, _, _, _, _ = reset_globals
-    if not mock_mesh.cells: # pragma: no cover
+    if not mock_mesh.cells:
         mock_mesh.cells[(0, 0)] = Cell(
             cyl_radius=1.0, cyl_theta=0.0, cyl_z=0.0, q_axial=0, r_axial=0)
 

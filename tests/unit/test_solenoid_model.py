@@ -5,7 +5,7 @@ from agent_ai.model.solenoid_model import simulate_solenoid
 
 
 def test_simulate_field():
-    I = 0.5      # Corriente en amperios
+    Intensity = 0.5      # Corriente en amperios
     n = 150      # Densidad de vueltas (vueltas por metro)
     R = 0.2      # Radio en metros (no usado en este modelo básico)
     t_end = 1.0  # Tiempo final de la simulación en segundos
@@ -13,7 +13,7 @@ def test_simulate_field():
     mu0 = 4 * np.pi * 1e-7  # Permeabilidad del vacío
     # Se simula la evolución del campo magnético
     t, sol = simulate_solenoid(
-        I,
+        Intensity,
         n,
         R,
         initial_state=[0, 0],

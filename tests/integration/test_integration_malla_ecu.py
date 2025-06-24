@@ -373,7 +373,8 @@ def test_malla_handles_ecu_influence_api_error(mock_http_server, caplog):
             ECU_MOCK_BASE_URL,
         ),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS",
+            "watchers.watchers_tools.malla_watcher.malla_watcher."
+            "TORUS_NUM_FILAS",
             4,
         ),
         patch(
