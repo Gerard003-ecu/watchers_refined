@@ -454,9 +454,8 @@ def update_aggregate_state():
         "Estado agregado actualizado: AvgAmp=%.3f, MaxAmp=%.3f, AvgVel=%.3f, "
         "MaxVel=%.3f, AvgKE=%.3f, MaxKE=%.3f, AvgActivity=%.3f, "
         "MaxActivity=%.3f, OverThresh=%d",
-        avg_amp, max_amp, avg_vel, max_vel,
-        avg_ke, max_ke, avg_activity, max_activity,
-        over_thresh
+        avg_amp, max_amp, avg_vel, max_vel, avg_ke, max_ke,
+        avg_activity, max_activity, over_thresh
     )
 
 
@@ -1235,9 +1234,9 @@ if __name__ == "__main__":
     HEALTH_URL = f"{MODULE_URL}/api/health"
     APORTA_A = "matriz_ecu"
     NATURALEZA = "modulador"
-    DESCRIPTION = (
-        "Simulador de malla hexagonal cilíndrica (osciladores acoplados) "
-        "acoplado a ECU, influye basado en inducción electromagnética.")
+    DESCRIPTION = ("Simulador de malla hexagonal cilíndrica (osciladores "
+                   "acoplados) acoplado a ECU, influye basado en inducción "
+                   "electromagnética.")
 
     registration_successful = register_with_agent_ai(
         MODULE_NAME, MODULE_URL, HEALTH_URL, "auxiliar", APORTA_A,

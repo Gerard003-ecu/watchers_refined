@@ -357,7 +357,9 @@ def test_endpoint_influence_valido(cliente_flask: FlaskClient):
     assert datos["vector"] == payload["vector"]
 
     with campo_toroidal_global_servicio.lock:
-        valor_final = campo_toroidal_global_servicio.campo[capa_idx][row_idx, col_idx]
+        valor_final = campo_toroidal_global_servicio.campo[capa_idx][
+            row_idx, col_idx
+        ]
     assert np.array_equal(valor_final, valor_inicial + vector_np)
 
 
