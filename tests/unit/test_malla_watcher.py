@@ -629,8 +629,7 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
             "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000"
         ) as mock_base_url,
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 3.0
-        ):
+            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 3.0):
     )
         mock_mesh_global_instance.configure_mock(
             cells={(0, 0): "dummy_cell"})
