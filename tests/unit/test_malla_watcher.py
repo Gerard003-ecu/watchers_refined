@@ -806,9 +806,8 @@ def test_map_cylinder_to_torus_coords(mock_malla_map):
     mock_mesh.cells[(-99, -99)] = Cell(
         cyl_radius=0.0, cyl_theta=0.0, cyl_z=0.0, q_axial=-99, r_axial=-99)
 
-    # Recalculate expected_coords based on the logic in map_cylinder_to_torus_coords
     # Capa (activity_magnitude based)
-    activity_magnitude = math.sqrt(10.0**2 + 1.0**2)  # sqrt(100 + 1) = sqrt(101) approx 10.05
+    # activity_magnitude = math.sqrt(10.0**2 + 1.0**2)  # sqrt(100 + 1) = sqrt(101) approx 10.05
     # Normalized activity for capa index (assuming MAX_AMPLITUDE_FOR_NORMALIZATION = 20.0)
     # capa_norm = min(activity_magnitude, MAX_AMP_NORM) / MAX_AMP_NORM
     # capa_idx = floor((1 - capa_norm) * (NUM_CAPAS - 1))
@@ -1312,7 +1311,7 @@ def test_api_malla_influence_push_invalid_payload(client, reset_globals):
     Test: /api/malla/influence (push)
     maneja payloads inválidos.
     """
-    reset_globals # Ensure mocks are active
+    reset_globals
     response_missing_key = client.post(
         "/api/malla/influence", json={"otro_dato": "valor"})
     assert response_missing_key.status_code == 400
