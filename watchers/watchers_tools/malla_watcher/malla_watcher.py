@@ -614,8 +614,7 @@ def send_influence_to_torus(dphi_dt: float):
             ecu_influence_url, json=payload, timeout=REQUESTS_TIMEOUT)
         response.raise_for_status()
         logger.info(
-            "Influencia (dPhi/dt) enviada a %s en (%d, %d, %d). Payload: %s. "
-            "Respuesta: %d",
+            "Influencia dPhi/dt a %s (%d,%d,%d). Payload: %s. Status: %d",
             ecu_influence_url,
             target_capa,
             target_row,
@@ -1242,9 +1241,11 @@ if __name__ == "__main__":
     HEALTH_URL = f"{MODULE_URL}/api/health"
     APORTA_A = "matriz_ecu"
     NATURALEZA = "modulador"
-    DESCRIPTION = ("Simulador de malla hexagonal cilíndrica (osciladores "
-                   "acoplados) acoplado a ECU, influye basado en inducción "
-                   "electromagnética.")
+    DESCRIPTION = (
+        "Simulador de malla hexagonal cilíndrica (osciladores "
+        "acoplados) acoplado a ECU, influye basado en inducción "
+        "electromagnética."
+    )
 
     registration_successful = register_with_agent_ai(
         MODULE_NAME, MODULE_URL, HEALTH_URL, "auxiliar", APORTA_A,
