@@ -615,8 +615,14 @@ def send_influence_to_torus(dphi_dt: float):
         response.raise_for_status()
         logger.info(
             "Influencia (dPhi/dt) enviada a %s en (%d, %d, %d). Payload: %s. "
-            "Respuesta: %d", ecu_influence_url, target_capa, target_row,
-            target_col, payload, response.status_code)
+            "Respuesta: %d",
+            ecu_influence_url,
+            target_capa,
+            target_row,
+            target_col,
+            payload,
+            response.status_code
+        )
     except requests.exceptions.Timeout:
         logger.error(
             "Timeout al enviar influencia (dPhi/dt) a %s",
@@ -1225,7 +1231,9 @@ if __name__ == "__main__":
         control_params["electron_D"] = electron_global.D
     logger.info(
         "Parámetros de control iniciales REALES: C=%.3f, D=%.3f",
-        control_params['phoswave_C'], control_params['electron_D'])
+        control_params['phoswave_C'],
+        control_params['electron_D']
+    )
 
     # 4. Registro con AgentAI
     MODULE_NAME = "malla_watcher"
