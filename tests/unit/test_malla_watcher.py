@@ -734,6 +734,7 @@ def test_update_aggregate_state(mock_malla_state):
     assert aggregate_state["avg_velocity"] == pytest.approx(expected_avg_vel)
     assert aggregate_state["max_velocity"] == pytest.approx(expected_max_vel)
     assert aggregate_state["avg_kinetic_energy"] == pytest.approx(expected_avg_ke)  # noqa: E501
+
     assert aggregate_state["max_kinetic_energy"] == pytest.approx(expected_max_ke)  # noqa: E501
     assert aggregate_state["avg_activity_magnitude"] == pytest.approx(expected_avg_activity)  # noqa: E501
     assert aggregate_state["max_activity_magnitude"] == pytest.approx(expected_max_activity)  # noqa: E501
@@ -1238,10 +1239,12 @@ def test_api_config(client, reset_globals):
         config_data = data["config"]
         m_cfg = config_data["malla_config"]
         assert m_cfg["radius"] == float(expected_malla_config_values["MW_RADIUS"])  # noqa: E501
+
         assert m_cfg["height_segments"] == int(expected_malla_config_values["MW_HEIGHT_SEG"])  # noqa: E501
         assert m_cfg["circumference_segments_target"] == int(expected_malla_config_values["MW_CIRCUM_SEG"])  # noqa: E501
         assert m_cfg["circumference_segments_actual"] == mock_mesh.circumference_segments_actual  # noqa: E501
         assert m_cfg["hex_size"] == float(expected_malla_config_values["MW_HEX_SIZE"])  # noqa: E501
+
         assert m_cfg["periodic_z"] == (expected_malla_config_values["MW_PERIODIC_Z"].lower() == "true")  # noqa: E501
 
         comm_cfg = config_data["communication_config"]
