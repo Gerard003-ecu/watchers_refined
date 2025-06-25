@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
-"""Punto central de coordinación para el ecosistema de Watchers.
+"""
+Punto central de coordinación para el ecosistema de Watchers.
 
-Este módulo define la clase `AgentAI`, responsable de la orquestación de alto
-nivel del sistema. Sus responsabilidades incluyen:
+Este módulo define la clase `AgentAI`, responsable de la orquestación
+de alto nivel del sistema. Sus responsabilidades incluyen:
 
-    - Registrar y monitorizar la salud de los módulos componentes (denominados "watchers" o "tools").
-    - Capturar y procesar la afinidad ('aporta_a') y naturaleza ('naturaleza_auxiliar') de estos módulos.
-    - Notificar al `HarmonyController` sobre los módulos auxiliares que se encuentren saludables,
-      junto con su afinidad y naturaleza.
-    - Monitorizar el estado general del sistema a través del `HarmonyController`.
-    - Determinar el estado operativo deseado (conocido como "setpoint de armonía").
-    - Comunicar este setpoint al `HarmonyController`.
-    - Procesar entradas y comandos provenientes de fuentes externas, como `cogniboard` o `config_agent`,
-      para ajustar la estrategia operativa.
+- Registrar y monitorizar la salud de los módulos componentes
+  (denominados "watchers tools").
+- Capturar y procesar la afinidad ('aporta_a') y naturaleza
+  ('naturaleza_auxiliar') de estos módulos.
+- Notificar al `HarmonyController` sobre los módulos auxiliares
+  que se encuentren saludables, junto con su afinidad y naturaleza.
+- Monitorizar el estado general del sistema a través del `HarmonyController`.
+- Determinar el estado operativo deseado (conocido como "setpoint de armonía").
+- Comunicar este setpoint al `HarmonyController`.
+- Procesar entradas y comandos provenientes de fuentes externas,
+  como `cogniboard` o `config_agent`, para ajustar la estrategia operativa.
 
 El módulo también configura y expone una API Flask para la interacción externa,
-permitiendo el registro de módulos, la consulta del estado y la recepción de comandos.
+permitiendo el registro de módulos, la consulta del estado y
+la recepción de comandos.
 """
 
 # Standard library imports
@@ -550,23 +554,28 @@ class AgentAI:
         )
 
     def registrar_modulo(self, modulo_info: Dict[str, Any]) -> Dict[str, str]:
-        """Registra un nuevo módulo watcher o tool en AgentAI.
+        """
+        Registra un nuevo módulo watcher o tool en AgentAI.
 
-        Valida la información proporcionada del módulo, verifica las
-        dependencias si se especifica un archivo `requirements.txt`, y
-        almacena los detalles del módulo. Inicia una validación de salud
-        asíncrona para el módulo recién registrado.
+        Valida la información proporcionada del módulo, verifica
+        las dependencias si se especifica un archivo
+        `requirements.txt`, y almacena los detalles del módulo.
+        Inicia una validación de salud asíncrona para el módulo
+        recién registrado.
 
         Args:
-            modulo_info: Un diccionario que contiene la información del módulo
-                a registrar. Se esperan claves como 'nombre', 'url', 'url_salud',
-                'tipo' ('auxiliar', 'core', etc.), 'aporta_a' (para auxiliares),
-                'naturaleza_auxiliar' (para auxiliares), y opcionalmente
-                'requirements_path'.
+            modulo_info: Un diccionario que contiene la información
+            del módulo a registrar. Se esperan claves como
+            'nombre', 'url', 'url_salud',
+            'tipo' ('auxiliar', 'core', etc.),
+            'aporta_a' (para auxiliares),
+            'naturaleza_auxiliar' (para auxiliares), y opcionalmente
+            'requirements_path'.
 
         Returns:
-            Un diccionario con el resultado de la operación, conteniendo
-            una clave 'status' ('success' o 'error') y un 'mensaje'.
+            Un diccionario con el resultado de la operación,
+            conteniendo una clave 'status' ('success' o 'error')
+            y un 'mensaje'.
         """
         req_path = modulo_info.get("requirements_path")
         nombre = modulo_info.get("nombre")
@@ -852,11 +861,12 @@ class AgentAI:
                     )
 
     def actualizar_comando_estrategico(self, comando: str, valor: Any) -> Dict[str, str]:
-        """Procesa y aplica comandos estratégicos de alto nivel.
+        """
+        Procesa y aplica comandos estratégicos de alto nivel.
 
-        Este método permite modificar el comportamiento de AgentAI, como cambiar
-        la estrategia actual o establecer directamente el vector de setpoint
-        objetivo.
+        Este método permite modificar el comportamiento de AgentAI,
+        como cambiar la estrategia actual o establecer directamente
+        el vector de setpoint objetivo.
 
         Args:
             comando: El nombre del comando a ejecutar (ej: "set_strategy",
@@ -934,14 +944,16 @@ class AgentAI:
             control_signal)
 
     def recibir_config_status(self, config_status: Any):
-        """Actualiza el estado de configuración recibido de Config Agent.
+        """
+        Actualiza el estado de configuración recibido de Config Agent.
 
-        Almacena el estado de configuración para que pueda ser utilizado en la
-        lógica de determinación del setpoint o en otras decisiones estratégicas.
+        Almacena el estado de configuración para que pueda ser utilizado
+        en la lógica de determinación del setpoint o en otras decisiones
+        estratégicas.
 
         Args:
-            config_status: El estado de configuración recibido. El tipo de dato
-                puede variar.
+            config_status: El estado de configuración recibido.
+            El tipo de dato puede variar.
         """
         with self.lock:
             self.external_inputs["config_status"] = config_status
@@ -949,7 +961,8 @@ class AgentAI:
             "Estado de configuración actualizado: %s", config_status)
 
     def obtener_estado_completo(self) -> Dict[str, Any]:
-        """Retorna una vista completa del estado interno actual de AgentAI.
+        """
+        Retorna una vista completa del estado interno actual de AgentAI.
 
         Este método es útil para la monitorización, depuración o para que
         otros componentes del sistema consulten el estado general de AgentAI.
