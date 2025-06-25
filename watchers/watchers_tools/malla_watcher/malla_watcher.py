@@ -3,10 +3,11 @@
 
 Este módulo modela una malla hexagonal cilíndrica, inspirada en la estructura
 del grafeno, como un sistema de osciladores acoplados. La malla interactúa
-con un campo vectorial externo (proveniente de la experiencia de campo unificada,
-ECU) que modula el acoplamiento entre los osciladores. Además, la malla genera
-influencias sobre dicho campo, basadas en la tasa de cambio del flujo del
-campo a través de ella, en una analogía con la inducción electromagnética.
+con un campo vectorial externo (proveniente de la experiencia de campo
+unificada, ECU) que modula el acoplamiento entre los osciladores.
+Además, la malla genera influencias sobre dicho campo, basadas en
+la tasa de cambio del flujo del campo a través de ella, en una analogía
+con la inducción electromagnética.
 
 Componentes Principales:
     Cell (importada): Representa un oscilador individual en la malla,
@@ -27,12 +28,12 @@ Interacciones Fundamentales:
        campo de la ECU a través de la malla (dΦ/dt).
 
 Dependencias Clave:
-    - `cilindro_grafenal.HexCylindricalMesh`: Clase central para la generación
-      y validación de la estructura digital del cilindro de grafeno simulado.
-    - `numpy`: Para operaciones numéricas eficientes, especialmente en el manejo
-      de vectores y campos.
-    - `requests`: Para la comunicación HTTP con otros servicios (ECU, AgentAI).
-    - `Flask`: Para exponer una API que permite el control y monitoreo de la malla.
+    `cilindro_grafenal.HexCylindricalMesh`: Clase central para la generación
+    y validación de la estructura digital del cilindro de grafeno simulado.
+    `numpy`: Para operaciones numéricas eficientes, especialmente en el manejo
+    de vectores y campos.
+    `requests`: Para la comunicación HTTP con otros servicios (ECU, AgentAI).
+    `Flask`: Para exponer una API que permite el control y monitoreo de la malla.
 """
 
 import math
@@ -127,7 +128,8 @@ class PhosWave:
 
 
 class Electron:
-    """Representa el mecanismo de amortiguación local en cada celda (oscilador).
+    """
+    Representa el mecanismo de amortiguación local en cada celda (oscilador).
 
     Esta clase encapsula el coeficiente de amortiguación (D) que determina
     cómo la velocidad de un oscilador se disipa con el tiempo.
@@ -637,7 +639,8 @@ def fetch_and_apply_torus_field() -> None:
 
 
 def map_cylinder_to_torus_coords(cell: Cell) -> Optional[Tuple[int, int, int]]:
-    """Mapea las coordenadas de una celda del cilindro a coordenadas del toroide.
+    """
+    Mapea las coordenadas de una celda del cilindro a coordenadas del toroide.
 
     Transforma la posición (`theta`, `z`) y el estado de actividad de una celda
     de la malla cilíndrica (`malla_cilindrica_global`) a un sistema de
@@ -771,15 +774,14 @@ def simulation_loop() -> None:
     Este bucle se ejecuta en un hilo separado y realiza las siguientes
     operaciones en cada paso, repetidamente hasta que `stop_simulation_event`
     es activado:
-    1. Obtiene el campo vectorial externo de la ECU (`fetch_and_apply_torus_field`).
-    2. Calcula el flujo actual a través de la malla (`calculate_flux`).
-    3. Calcula la tasa de cambio del flujo (`dphi_dt`) respecto al paso anterior.
+    1. Obtiene el campo vectorial externo de la ECU.
+    2. Calcula el flujo actual a través de la malla.
+    3. Calcula la tasa de cambio del flujo respecto al paso anterior.
     4. Actualiza el valor de `previous_flux` en la malla.
-    5. Simula la dinámica interna de la malla (`simular_paso_malla`).
-    6. Actualiza el estado agregado de la malla (`update_aggregate_state`).
-    7. Si `|dphi_dt|` supera un umbral (`DPHI_DT_INFLUENCE_THRESHOLD`),
-       envía una influencia a la ECU (`send_influence_to_torus`).
-    8. Espera un tiempo para mantener el intervalo de simulación (`SIMULATION_INTERVAL`).
+    5. Simula la dinámica interna de la malla.
+    6. Actualiza el estado agregado de la malla.
+    7. Si `|dphi_dt|` supera un umbral, envía una influencia a la ECU.
+    8. Espera un tiempo para mantener el intervalo de simulación.
 
     Maneja excepciones que puedan ocurrir durante un paso de simulación para
     evitar que el bucle se detenga inesperadamente.
@@ -898,8 +900,9 @@ def register_with_agent_ai(
             Defaults to "".
 
     Returns:
-        bool: True si el registro fue exitoso (HTTP 200), False en caso contrario
-            después de todos los reintentos.
+        bool:
+        True si el registro fue exitoso (HTTP 200), False en caso contrario
+        después de todos los reintentos.
     """
     payload = {
         "nombre": module_name,
@@ -1053,10 +1056,11 @@ def health_check() -> Tuple[str, int]:
 
 @app.route('/api/state', methods=['GET'])
 def get_malla_state() -> Tuple[str, int]:
-    """Devuelve el estado agregado actual de la malla y parámetros de control.
+    """
+    Devuelve el estado agregado actual de la malla y parámetros de control.
 
     Retorna un JSON que incluye:
-    - Las métricas de estado agregado de la malla (ver `update_aggregate_state`).
+    - Las métricas de estado agregado de la malla.
     - Los parámetros de control actuales (coeficientes C de PhosWave y D de
       Electron).
     - El número total de celdas en la malla.
@@ -1084,7 +1088,8 @@ def get_malla_state() -> Tuple[str, int]:
 
 @app.route('/api/control', methods=['POST'])
 def set_malla_control() -> Tuple[str, int]:
-    """Ajusta los parámetros de control de la malla (acoplamiento y amortiguación).
+    """
+    Ajusta los parámetros de control de la malla (acoplamiento y amortiguación).
 
     Espera un payload JSON con una clave "control_signal" (numérica).
     Esta señal se utiliza para modular los coeficientes base de acoplamiento
@@ -1098,9 +1103,10 @@ def set_malla_control() -> Tuple[str, int]:
     nuevos parámetros de control.
 
     Returns:
-        Tuple[str, int]: Una tupla conteniendo la respuesta JSON como string
-                         y el código de estado HTTP (200 si éxito, 400 si
-                         error en la solicitud).
+        Tuple[str, int]:
+        Una tupla conteniendo la respuesta JSON como string
+        y el código de estado HTTP (200 si éxito, 400 si
+        error en la solicitud).
     """
     data = request.get_json(silent=True)
     if data is None or "control_signal" not in data:
@@ -1138,7 +1144,8 @@ def set_malla_control() -> Tuple[str, int]:
 
 @app.route('/api/malla', methods=['GET'])
 def get_malla() -> Tuple[str, int]:
-    """Devuelve la estructura y estado detallado de todas las celdas de la malla.
+    """
+    Devuelve la estructura y estado detallado de todas las celdas de la malla.
 
     Retorna un JSON que contiene:
     - Metadatos de la malla: radio, número de celdas, periodicidad en Z,
@@ -1149,9 +1156,10 @@ def get_malla() -> Tuple[str, int]:
     Si la malla no está inicializada o está vacía, retorna un error 503.
 
     Returns:
-        Tuple[str, int]: Una tupla conteniendo la respuesta JSON como string
-                         y el código de estado HTTP (200 si éxito, 503 si
-                         la malla no está disponible).
+        Tuple[str, int]:
+        Una tupla conteniendo la respuesta JSON como string
+        y el código de estado HTTP (200 si éxito, 503 si
+        la malla no está disponible).
     """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
@@ -1247,7 +1255,8 @@ def aplicar_influencia_toroide_push() -> Tuple[str, int]:
 
 @app.route('/api/event', methods=['POST'])
 def receive_event() -> Tuple[str, int]:
-    """Procesa un evento externo para aplicarlo a una celda específica de la malla.
+    """
+    Procesa un evento externo para aplicarlo a una celda específica de la malla.
 
     Actualmente, solo soporta eventos de tipo "pulse".
     Espera un payload JSON con:
@@ -1262,11 +1271,12 @@ def receive_event() -> Tuple[str, int]:
     Retorna un JSON indicando el resultado de la operación.
 
     Returns:
-        Tuple[str, int]: Una tupla conteniendo la respuesta JSON como string
-                         y el código de estado HTTP (200 si éxito, 400 si
-                         el payload es inválido o datos incompletos, 404 si
-                         la celda no se encuentra, 503 si la malla no está
-                         disponible).
+        Tuple[str, int]: 
+        Una tupla conteniendo la respuesta JSON como string
+        y el código de estado HTTP (200 si éxito, 400 si
+        el payload es inválido o datos incompletos, 404 si
+        la celda no se encuentra, 503 si la malla no está
+        disponible).
     """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
@@ -1342,9 +1352,10 @@ def receive_error() -> Tuple[str, int]:
         cuerpo de la solicitud POST.
 
     Returns:
-        Tuple[str, int]: Una tupla conteniendo una respuesta JSON de confirmación
-                         y el código de estado HTTP (200 si el payload es
-                         procesado, 400 si el payload JSON es inválido o vacío).
+        Tuple[str, int]:
+        Una tupla conteniendo una respuesta JSON de confirmación
+        y el código de estado HTTP (200 si el payload es
+        procesado, 400 si el payload JSON es inválido o vacío).
     """
     data = request.get_json(silent=True)
     if data is None:
