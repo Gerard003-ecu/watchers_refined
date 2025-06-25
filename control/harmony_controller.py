@@ -83,17 +83,22 @@ class HarmonyControllerState:
 
     Attributes:
         pid_controller (BosonPhase): Instancia del controlador PID.
-        current_setpoint (float): El valor objetivo actual para el controlador PID.
+        current_setpoint (float):
+        El valor objetivo actual para el controlador PID.
         setpoint_vector (List[float]): El vector de setpoint, que puede tener
-            múltiples dimensiones representando diferentes aspectos del objetivo.
-        last_ecu_state (List[List[float]]): El último estado recibido de la ECU.
+        múltiples dimensiones representando diferentes aspectos del objetivo.
+        last_ecu_state (List[List[float]]):
+        El último estado recibido de la ECU.
         managed_tools_details (Dict[str, Dict[str, Any]]): Un diccionario que
-            almacena los detalles de cada watcher_tool gestionado, incluyendo su
-            URL, a qué aspecto del control aporta, su naturaleza, y su último
-            estado conocido y señal de control enviada.
-        last_measurement (float): La última medición procesada del estado de la ECU
+            almacena los detalles de cada watcher_tool gestionado,
+            incluyendo su URL, a qué aspecto del control aporta,
+            su naturaleza, su último estado conocido y
+            señal de control enviada.
+        last_measurement (float):
+        La última medición procesada del estado de la ECU
             (normalmente la norma del vector de estado).
-        last_pid_output (float): La última salida calculada por el controlador PID.
+        last_pid_output (float):
+        La última salida calculada por el controlador PID.
         lock (threading.Lock): Un cerrojo para proteger el acceso concurrente
             a los atributos de la instancia.
     """
@@ -115,10 +120,12 @@ class HarmonyControllerState:
                 Por defecto es KI_INIT.
             kd (float, optional): Ganancia Derivativa inicial para el PID.
                 Por defecto es KD_INIT.
-            initial_setpoint (float, optional): Valor de setpoint inicial (norma).
+            initial_setpoint (float, optional):
+            Valor de setpoint inicial (norma).
                 Por defecto es setpoint_init.
             initial_setpoint_vector (Union[np.ndarray, List[float]], optional):
-                Vector de setpoint inicial. Por defecto es setpoint_vector_init.
+                Vector de setpoint inicial. 
+                Por defecto es setpoint_vector_init.
         """
         self.pid_controller = BosonPhase(
             kp, ki, kd, setpoint=initial_setpoint
@@ -141,17 +148,19 @@ class HarmonyControllerState:
     ):
         """Actualiza el setpoint del controlador PID y el vector de setpoint.
 
-        Este método modifica el valor objetivo (setpoint) que el controlador PID
-        intentará alcanzar. Opcionalmente, también puede actualizar el vector de
-        setpoint que puede usarse para una lógica de control más detallada.
+        Este método modifica el valor objetivo (setpoint) que el controlador
+        PID intentará alcanzar. Opcionalmente, también puede actualizar el
+        vector de setpoint que puede usarse para una lógica de control
+        más detallada.
 
         Args:
-            new_setpoint_value (float): El nuevo valor de setpoint (norma) para el
-                controlador PID.
-            new_setpoint_vector (Optional[List[float]], optional): Una lista de
-                números que representa el nuevo vector de setpoint. Si es None,
-                el vector de setpoint no se modifica explícitamente por este
-                argumento, aunque el `current_setpoint` (norma) sí se actualiza.
+            new_setpoint_value (float):
+            El nuevo valor de setpoint (norma) para el controlador PID.
+            new_setpoint_vector (Optional[List[float]], optional):
+            Una lista de números que representa el nuevo vector de setpoint.
+            Si es None, el vector de setpoint no se modifica explícitamente
+            por este argumento, aunque el `current_setpoint`
+            (norma) sí se actualiza.
         """
         with self.lock:
             self.current_setpoint = new_setpoint_value
@@ -174,14 +183,16 @@ class HarmonyControllerState:
 
         Args:
             nombre (str): El nombre identificador único del watcher_tool.
-            url (str): La URL base para comunicarse con la API del watcher_tool.
+            url (str): La URL base para comunicarse con
+            la API del watcher_tool.
             aporta_a (str): Un identificador que describe a qué aspecto o
                 componente del sistema contribuye o afecta este tool (ej.
                 "malla_watcher", "matriz_ecu"). Usado para mapear la señal de
                 control.
-            naturaleza (str): Describe la naturaleza del tool en relación con el
-                control (ej. "actuador", "sensor", "reductor", "convertidor").
-                Esto puede influir en cómo se aplica la señal de control.
+            naturaleza (str): Describe la naturaleza del tool
+            en relación con el control
+            (ej. "actuador", "sensor", "reductor", "convertidor").
+            Esto puede influir en cómo se aplica la señal de control.
         """
         with self.lock:
             if nombre not in self.managed_tools_details:
@@ -210,7 +221,8 @@ class HarmonyControllerState:
         un mensaje de advertencia.
 
         Args:
-            nombre (str): El nombre identificador único del watcher_tool a eliminar.
+            nombre (str): El nombre identificador único
+            del watcher_tool a eliminar.
         """
         with self.lock:
             if nombre in self.managed_tools_details:
@@ -275,15 +287,18 @@ def get_ecu_state() -> Optional[List[List[float]]]:
     representado como una lista de listas de floats (matriz). Implementa una
     lógica de reintentos en caso de fallo de comunicación.
 
-    La URL de la API de la ECU se obtiene de la variable de entorno ECU_API_URL.
+    La URL de la API de la ECU se obtiene
+    de la variable de entorno ECU_API_URL.
     El número máximo de reintentos y los tiempos de espera también son
     configurables mediante variables de entorno.
 
     Returns:
-        Optional[List[List[float]]]: Una lista de listas de floats que representa
-        el estado del campo unificado si la solicitud es exitosa y los datos son
-        válidos. Devuelve None si no se puede obtener el estado después de todos
-        los reintentos o si la respuesta no tiene el formato esperado.
+        Optional[List[List[float]]]: Una lista de listas de floats
+        que representa el estado del campo unificado si
+        la solicitud es exitosa y los datos son válidos.
+        Devuelve None si no se puede obtener el estado
+        después de todos los reintentos o
+        si la respuesta no tiene el formato esperado.
     """
     for attempt in range(MAX_RETRIES):
         try:
@@ -324,7 +339,8 @@ def get_ecu_state() -> Optional[List[List[float]]]:
 def get_tool_state(tool_name: str, base_url: str) -> Dict[str, Any]:
     """Obtiene el estado actual de un watcher_tool específico.
 
-    Realiza una solicitud GET al endpoint '/api/state' del watcher_tool indicado
+    Realiza una solicitud GET al endpoint '/api/state'
+    del watcher_tool indicado
     por su `base_url`. Implementa una lógica de reintentos.
 
     Args:
@@ -371,7 +387,11 @@ def get_tool_state(tool_name: str, base_url: str) -> Dict[str, Any]:
     }
 
 
-def send_tool_control(tool_name: str, base_url: str, control_signal: float) -> bool:
+def send_tool_control(
+    tool_name: str,
+    base_url: str,
+    control_signal: float
+    ) -> bool:
     """Envía una señal de control a un watcher_tool específico.
 
     Realiza una solicitud POST al endpoint '/api/control' del watcher_tool
@@ -381,7 +401,8 @@ def send_tool_control(tool_name: str, base_url: str, control_signal: float) -> b
     Args:
         tool_name (str): El nombre del watcher_tool, usado para logging.
         base_url (str): La URL base del API del watcher_tool.
-        control_signal (float): El valor numérico de la señal de control a enviar.
+        control_signal (float): El valor numérico de la señal
+        de control a enviar.
 
     Returns:
         bool: True si la señal de control fue enviada y confirmada
@@ -419,7 +440,7 @@ def send_tool_control(tool_name: str, base_url: str, control_signal: float) -> b
 def harmony_control_loop():
     """Ejecuta el bucle principal de control táctico del Harmony Controller.
 
-    Este es el corazón operativo del controlador. Se ejecuta en un hilo de fondo
+    Es el corazón operativo del controlador. Se ejecuta en un hilo de fondo
     dedicado y realiza las siguientes acciones en cada iteración:
     1. Obtiene el estado actual de la ECU (Matriz de Estado Unificado).
     2. Procesa el estado de la ECU para obtener una medición escalar (norma).
@@ -430,11 +451,11 @@ def harmony_control_loop():
        multidimensional y la afinidad de cada tool a los componentes de
        este vector.
     5. Envía las señales de control calculadas a cada watcher_tool.
-    6. Actualiza el estado interno del controlador (última medición, salida PID,
-       etc.).
+    6. Actualiza el estado interno del controlador (última medición,
+    salida PID, etc.).
     7. Espera hasta el próximo intervalo de control.
 
-    El bucle se ejecuta indefinidamente hasta que el programa principal termina.
+    El bucle se ejecuta indefinidamente hasta que el programa principal acaba.
     Toda la comunicación con los componentes externos (ECU, watcher_tools)
     utiliza las funciones de utilidad que implementan reintentos.
     """
@@ -636,8 +657,8 @@ def set_harmony_setpoint():
 
     Returns:
         Response: Una respuesta JSON indicando el resultado de la operación.
-            - Si es exitoso (HTTP 200): `{"status": "success", "message": "...",
-              "new_setpoint_value": <norma>, "new_setpoint_vector": <vector>}`.
+            - Si es exitoso (HTTP 200): {"status": "success", "message": "...",
+              "new_setpoint_value": <norma>, "new_setpoint_vector": <vector>}.
             - Si el payload es incorrecto (HTTP 400): `{"status": "error",
               "message": "..."}`.
             - Si hay un error de procesamiento (HTTP 400): `{"status": "error",
@@ -751,7 +772,7 @@ def reset_pid():
             - Si es exitoso (HTTP 200): `{"status": "success",
               "message": "PID reiniciado."}`.
             - Si el controlador PID no se encuentra (HTTP 500):
-              `{"status": "error", "message": "Controlador PID no encontrado."}`.
+              {"status": "error", "message": "Controlador PID no encontrado."}
             - Si ocurre un error interno (HTTP 500): `{"status": "error",
               "message": "Error interno del servidor."}`.
     """
