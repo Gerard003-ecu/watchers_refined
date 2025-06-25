@@ -4,14 +4,6 @@ Pruebas integrales para el dashboard de Watchers.
 
 import pytest
 from unittest.mock import patch, MagicMock
-from dashboard.dashboard import (
-    obtener_datos_reales,
-    obtener_estado_malla_sim,
-    crear_grafico_barras,
-    crear_control,
-    app,
-    api_error_handler
-)
 
 
 # Fixture para cliente de prueba

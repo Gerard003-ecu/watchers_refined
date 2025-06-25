@@ -58,10 +58,10 @@ class TestAgentAI(unittest.TestCase):
         Este método se invoca automáticamente por `unittest` antes de cada
         método de prueba. Se encarga de limpiar variables de entorno relevantes
         que podrían afectar la inicialización de `AgentAI` y crea una nueva
-        instancia de `AgentAI`. También se asegura de que si un hilo estratégico
-        de una prueba anterior sigue vivo, este sea detenido. Además, inicializa
-        un mock para `time.sleep` que se usa para controlar los reintentos en
-        las comunicaciones.
+        instancia de `AgentAI`. También se asegura de que si un hilo 
+        estratégico de una prueba anterior sigue vivo, este sea detenido.
+        Además, inicializa un mock para `time.sleep` que se usa para
+        controlar los reintentos en las comunicaciones.
         """
         os.environ.pop(HARMONY_CONTROLLER_URL_ENV, None)
         os.environ.pop(HARMONY_CONTROLLER_REGISTER_URL_ENV, None)
@@ -404,7 +404,8 @@ class TestAgentAI(unittest.TestCase):
             - Con más módulos potenciadores (ECU) que reductores: se aplica
             un aumento adicional.
         - Estrategia 'ahorro_energia':
-            - Con módulos reductores activos: la magnitud del setpoint se reduce.
+            - Con módulos reductores activos:
+            la magnitud del setpoint se reduce.
 
         Args:
             mock_thread, Mock para la creación de hilos.
@@ -1137,7 +1138,7 @@ class TestAgentAI(unittest.TestCase):
         Prueba el registro exitoso de un módulo central.
 
         Verifica que `registrar_modulo` puede registrar un
-        módulo de tipo 'central' (o 'integrador', etc.), que 
+        módulo de tipo 'central' (o 'integrador', etc.), que
         no requiere los campos `aporta_a` ni `naturaleza_auxiliar`.
         Asegura que el módulo se añade correctamente a `agent.modules`
         y que se inicia el hilo de validación. No se espera que se llame
@@ -1390,10 +1391,11 @@ class TestAgentAI(unittest.TestCase):
         """
         Prueba el mecanismo de reintentos al notificar a Harmony Controller.
 
-        Verifica que la función intenta realizar la notificación (una solicitud POST)
-        a Harmony Controller si la solicitud falla persistentemente (ej. por
-        `requests.exceptions.RequestException`). También asegura que se realizan
-        pausas (`mock_sleep`) entre los intentos.
+        Verifica que la función intenta realizar la notificación
+        (una solicitud POST) a Harmony Controller si la solicitud falla
+        persistentemente (ej. por `requests.exceptions.RequestException`).
+        También asegura que se realizan pausas (`mock_sleep`) entre
+        los intentos.
 
         Args:
             mock_thread, Mock para la creación de hilos.

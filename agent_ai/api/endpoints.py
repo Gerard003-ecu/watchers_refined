@@ -57,18 +57,20 @@ def get_status():
 def post_command():
     """Procesa un comando estratégico enviado a AgentAI.
 
-    Este endpoint recibe comandos para influir en el comportamiento de AgentAI.
-    Los comandos pueden variar desde establecer una nueva estrategia hasta
-    modificar parámetros operativos específicos.
+    Este endpoint recibe comandos para influir en el comportamiento de
+    AgentAI. Los comandos pueden variar desde establecer una nueva
+    estrategia hasta modificar parámetros operativos específicos.
 
-    El cuerpo de la solicitud debe ser un JSON con la siguiente estructura:
+    El cuerpo de la solicitud debe ser un JSON con la siguiente
+    estructura:
     {
         "comando": "nombre_del_comando",
-        "valor": "valor_asociado_al_comando"  // Opcional dependiendo del comando
+        "valor": "valor_asociado_al_comando"
     }
 
     Args:
-        None explícito en la firma, pero espera un JSON en el cuerpo de la solicitud.
+        None explícito en la firma, pero espera un JSON
+        en el cuerpo de la solicitud.
 
     Returns:
         flask.Response: Un objeto JSON que contiene:
@@ -115,14 +117,16 @@ def post_command():
 
 @app.route("/api/register", methods=["POST"])
 def register_module():
-    """Registra un nuevo módulo watcher_tool en AgentAI.
+    """
+    Registra un nuevo módulo watcher_tool en AgentAI.
 
-    Este endpoint permite a los módulos `watcher_tool` darse de alta en AgentAI,
-    proporcionando la información necesaria para que AgentAI pueda interactuar
-    con ellos. La URL proporcionada debe apuntar al endpoint de salud/estado
-    del módulo que se registra.
+    Este endpoint permite a los módulos `watcher_tool` darse de alta en
+    AgentAI, proporcionando la información necesaria para que AgentAI pueda
+    interactuar con ellos. La URL proporcionada debe apuntar al endpoint de
+    salud/estado del módulo que se registra.
 
-    El cuerpo de la solicitud debe ser un JSON con la siguiente estructura (ejemplo):
+    El cuerpo de la solicitud debe ser un JSON con
+    la siguiente estructura (ejemplo):
     {
         "nombre": "NombreDelWatcher",
         "url": "http://host.docker.internal:puerto/api/health",
@@ -131,7 +135,8 @@ def register_module():
     }
 
     Args:
-        None explícito en la firma, pero espera un JSON en el cuerpo de la solicitud.
+        None explícito en la firma, pero espera un JSON
+        en el cuerpo de la solicitud.
 
     Returns:
         flask.Response: Un objeto JSON que contiene:
@@ -165,20 +170,20 @@ def register_module():
 def health():
     """Verifica el estado de salud básico de AgentAI.
 
-    Este endpoint proporciona una comprobación rápida para determinar si AgentAI
-    está operativo. Verifica principalmente si el bucle estratégico principal
-    de AgentAI se está ejecutando.
+    Este endpoint proporciona una comprobación rápida para
+    determinar si AgentAI está operativo. Verifica principalmente
+    si el bucle estratégico principal de AgentAI se está ejecutando.
 
     Returns:
         flask.Response: Un objeto JSON que contiene:
-            - status (str): "success" si AgentAI está saludable, "error" en
-              caso contrario.
-            - module (str): Siempre "AgentAI".
-            - message (str): Un mensaje descriptivo del estado de salud.
-            - strategic_loop_active (bool): True si el bucle estratégico está
-              activo, False en caso contrario.
-            - mensaje (str): (En caso de error interno) Un mensaje descriptivo
-              del error.
+        - status (str): "success" si AgentAI está saludable, "error" en
+          caso contrario.
+        - module (str): Siempre "AgentAI".
+        - message (str): Un mensaje descriptivo del estado de salud.
+        - strategic_loop_active (bool): True si el bucle estratégico está
+          activo, False en caso contrario.
+        - mensaje (str): (En caso de error interno) Un mensaje descriptivo
+          del error.
     """
     try:
         # Verificar si la instancia y el hilo existen y están vivos
@@ -235,7 +240,8 @@ def control_input():
     El tipo de `<valor_de_la_senal_de_control>` puede variar según la señal.
 
     Args:
-        None explícito en la firma, pero espera un JSON en el cuerpo de la solicitud.
+        None explícito en la firma, pero espera un JSON
+        en el cuerpo de la solicitud.
 
     Returns:
         flask.Response: Un objeto JSON que contiene:
@@ -294,7 +300,8 @@ def config_input():
     El tipo de `<estado_de_la_configuracion>` puede variar.
 
     Args:
-        None explícito en la firma, pero espera un JSON en el cuerpo de la solicitud.
+        None explícito en la firma, pero espera un JSON
+        en el cuerpo de la solicitud.
 
     Returns:
         flask.Response: Un objeto JSON que contiene:

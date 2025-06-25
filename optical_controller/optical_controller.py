@@ -69,7 +69,8 @@ def capturar_imagen(matriz_estado: List[List[float]]) -> np.ndarray:
 
 
 def procesar_imagen(imagen: np.ndarray) -> np.ndarray:
-    """Aplica un procesamiento de reflejo horizontal a una imagen.
+    """
+    Aplica un procesamiento de reflejo horizontal a una imagen.
 
     Utiliza la función `flip` de OpenCV para invertir la imagen a lo largo
     del eje vertical (reflejo horizontal).
@@ -95,15 +96,17 @@ def procesar_imagen(imagen: np.ndarray) -> np.ndarray:
 
 
 def generar_retroalimentacion(imagen_procesada: np.ndarray) -> float:
-    """Calcula una señal de retroalimentación normalizada desde una imagen.
+    """
+    Calcula una señal de retroalimentación normalizada desde una imagen.
 
     La señal se obtiene calculando el valor promedio de los píxeles de la
-    imagen y normalizándolo al rango [0.0, 1.0] dividiendo por 255 (el valor
-    máximo posible para un píxel en una imagen de 8 bits en escala de grises).
+    imagen y normalizándolo al rango [0.0, 1.0] dividiendo por 255
+    (el valor máximo posible para un píxel en una imagen de 8 bits en
+    escala de grises).
 
     Args:
         imagen_procesada: Un array de NumPy (np.ndarray) que representa la
-            imagen procesada (por ejemplo, reflejada) en escala de grises.
+        imagen procesada (por ejemplo, reflejada) en escala de grises.
 
     Returns:
         Un valor flotante que representa la señal de retroalimentación
@@ -122,10 +125,12 @@ def generar_retroalimentacion(imagen_procesada: np.ndarray) -> float:
 
 
 def retroalimentacion_optica(matriz_estado: List[List[float]]) -> float:
-    """Procesa una matriz de estado para generar una señal de retroalimentación óptica.
+    """
+    Procesa una matriz de estado para generar una señal de retroalimentación
+    óptica.
 
-    Este es el flujo principal que integra la captura de la imagen desde la
-    matriz de estado, el procesamiento de dicha imagen (reflejo), y la
+    Este es el flujo principal que integra la captura de la imagen desde
+    la matriz de estado, el procesamiento de dicha imagen (reflejo), y la
     generación final de una señal de retroalimentación normalizada.
 
     Args:
@@ -151,15 +156,17 @@ def retroalimentacion_optica(matriz_estado: List[List[float]]) -> float:
 
 @app.route("/api/optical-feedback", methods=["POST"])
 def obtener_retroalimentacion() -> jsonify:
-    """Endpoint REST para obtener la señal de retroalimentación óptica.
+    """
+    Endpoint REST para obtener la señal de retroalimentación óptica.
 
-    Este endpoint recibe una matriz de estado del sistema en formato JSON,
-    la procesa utilizando el flujo de `retroalimentacion_optica`, y devuelve
-    la señal de retroalimentación resultante.
+    Este endpoint recibe una matriz de estado del sistema en formato
+    JSON, la procesa utilizando el flujo de `retroalimentacion_optica`,
+    y devuelve la señal de retroalimentación resultante.
 
     JSON Request Body:
-        estado (List[List[float]]): Matriz bidimensional de números flotantes
-            que representa el estado actual del sistema.
+        estado (List[List[float]]):
+        Matriz bidimensional de números flotantes
+        que representa el estado actual del sistema.
 
     Returns:
         Una respuesta JSON (jsonify) que contiene:
@@ -168,7 +175,8 @@ def obtener_retroalimentacion() -> jsonify:
                 "status": "success",
                 "optical_feedback": <float>
             }
-        - En caso de error de validación (ej. 'estado' no presente o mal formado):
+        - En caso de error de validación
+        (ej. 'estado' no presente o mal formado):
             {
                 "status": "error",
                 "message": "<descripción del error>"
