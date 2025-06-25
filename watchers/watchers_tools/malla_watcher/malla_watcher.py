@@ -501,9 +501,13 @@ def fetch_and_apply_torus_field():
             mesh = malla_cilindrica_global
             if mesh:
                 if mesh.cells:
+                    preview_del_primer_elemento = (
+                        actual_field_vector_list[0] if actual_field_vector_list else "vacío"
+                    )
                     logger.debug(
                         "Aplicando campo vectorial ECU (primer elemento: %s)",
-                        actual_field_vector_list[0] if actual_field_vector_list else 'vacío')
+                        preview_del_primer_elemento,
+                    )
                     apply_external_field_to_mesh(
                         mesh, actual_field_vector_list)
                     logger.info(
