@@ -9,7 +9,8 @@ integración con otros componentes del sistema Watchers.
 Funcionalidades principales:
   - Captura de imagen: Convierte una matriz de estado numérico en una imagen
     en escala de grises.
-  - Procesamiento de imagen: Aplica un reflejo horizontal a la imagen capturada.
+  - Procesamiento de imagen: Aplica un reflejo horizontal a la imagen
+    capturada.
   - Generación de retroalimentación: Calcula una señal normalizada a partir
     de la imagen procesada.
   - Servicio REST: Ofrece endpoints para obtener la retroalimentación óptica

@@ -58,7 +58,7 @@ class TestAgentAI(unittest.TestCase):
         Este método se invoca automáticamente por `unittest` antes de cada
         método de prueba. Se encarga de limpiar variables de entorno relevantes
         que podrían afectar la inicialización de `AgentAI` y crea una nueva
-        instancia de `AgentAI`. También se asegura de que si un hilo 
+        instancia de `AgentAI`. También se asegura de que si un hilo
         estratégico de una prueba anterior sigue vivo, este sea detenido.
         Además, inicializa un mock para `time.sleep` que se usa para
         controlar los reintentos en las comunicaciones.
