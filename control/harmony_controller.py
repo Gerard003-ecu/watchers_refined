@@ -21,7 +21,7 @@ import json
 from flask import Flask, jsonify, request
 from typing import Dict, List, Any, Optional
 
-from boson_phase import BosonPhase
+from .boson_phase import BosonPhase
 
 ECU_API_URL = os.environ.get("ECU_API_URL", "http://ecu:8000/api/ecu")
 
