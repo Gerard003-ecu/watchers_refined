@@ -124,7 +124,7 @@ class HarmonyControllerState:
             Valor de setpoint inicial (norma).
                 Por defecto es setpoint_init.
             initial_setpoint_vector (Union[np.ndarray, List[float]], optional):
-                Vector de setpoint inicial. 
+                Vector de setpoint inicial.
                 Por defecto es setpoint_vector_init.
         """
         self.pid_controller = BosonPhase(
