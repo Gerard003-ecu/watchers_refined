@@ -1,4 +1,15 @@
 # mi-proyecto/tests/unit/test_cilindro_grafenal.py
+"""Pruebas unitarias para el módulo `cilindro_grafenal`.
+
+Este módulo contiene pruebas para las clases `Cell` y `HexCylindricalMesh`,
+así como funciones auxiliares relacionadas con mallas hexagonales cilíndricas
+utilizadas en el contexto de simulaciones o modelado
+(posiblemente con grafeno).
+
+Las pruebas verifican la correcta inicialización de objetos, la funcionalidad
+de los métodos principales (como obtención de celdas, vecinos, conversiones de
+coordenadas) y la integridad estructural de las mallas generadas.
+"""
 import pytest
 import numpy as np
 import math
@@ -27,6 +38,15 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def sample_cell_cg():  # cg para cilindro_grafenal
+    """Proporciona una instancia de `Cell` para pruebas.
+
+    Esta celda de ejemplo está configurada con valores específicos
+    para radio cilíndrico, theta, z, coordenadas axiales (q, r),
+    amplitud, velocidad y vector q.
+
+    Returns:
+        Cell: Una instancia de `Cell` preconfigurada.
+    """
     return Cell(
         cyl_radius=5.0, cyl_theta=np.pi/2, cyl_z=1.0, q_axial=1, r_axial=-1,
         amplitude=10.0, velocity=0.5, q_vector=np.array([0.2, -0.1])
@@ -35,6 +55,16 @@ def sample_cell_cg():  # cg para cilindro_grafenal
 
 @pytest.fixture
 def sample_mesh_cg():
+    """Proporciona una instancia de `HexCylindricalMesh` para pruebas.
+
+    Esta malla de ejemplo se inicializa con un radio, número de segmentos
+    en altura, objetivo de segmentos en la circunferencia, tamaño de hexágono
+    y periodicidad en Z definidos.
+
+    Returns:
+        HexCylindricalMesh:
+        Una instancia de `HexCylindricalMesh` preconfigurada.
+    """
     return HexCylindricalMesh(
         radius=3.0, height_segments=3,
         circumference_segments_target=6, hex_size=1.0, periodic_z=False
@@ -43,7 +73,11 @@ def sample_mesh_cg():
 
 # --- Tests para la Clase Cell ---
 def test_cell_initialization(sample_cell_cg: Cell):
-    """Test: Inicialización correcta de atributos de Cell."""
+    """Verifica la inicialización correcta de los atributos de una `Cell`.
+
+    Args:
+        sample_cell_cg (Cell): Fixture que proporciona una instancia de `Cell`.
+    """
     assert sample_cell_cg.r == 5.0
     assert sample_cell_cg.theta == np.pi/2
     assert sample_cell_cg.z == 1.0
@@ -59,7 +93,14 @@ def test_cell_initialization(sample_cell_cg: Cell):
 
 
 def test_cell_repr(sample_cell_cg: Cell):
-    """Test: Representación en string de Cell."""
+    """Prueba la representación en cadena de una instancia de `Cell`.
+
+    Verifica que la salida de `repr(cell)` contenga la información esperada
+    sobre las coordenadas axiales, cilíndricas, amplitud, velocidad y q_vector.
+
+    Args:
+        sample_cell_cg (Cell): Fixture que proporciona una instancia de `Cell`.
+    """
     repr_str = repr(sample_cell_cg)
     assert "Cell(ax=(1,-1)" in repr_str
     assert "cyl=(r=5.00, θ=1.57, z=1.00)" in repr_str
@@ -71,7 +112,15 @@ def test_cell_repr(sample_cell_cg: Cell):
 
 
 def test_cell_to_dict(sample_cell_cg: Cell):
-    """Test: Conversión de Cell a diccionario."""
+    """Prueba la conversión de una instancia de `Cell` a un diccionario.
+
+    Verifica que el método `to_dict()` retorna un diccionario con las claves
+    y valores correctos, incluyendo coordenadas axiales, cilíndricas,
+    amplitud, velocidad y q_vector (como lista).
+
+    Args:
+        sample_cell_cg (Cell): Fixture que proporciona una instancia de `Cell`.
+    """
     cell_dict = sample_cell_cg.to_dict()
     assert cell_dict["axial_coords"] == {"q": 1, "r": -1}
     assert cell_dict["cylindrical_coords"]["r"] == 5.0
@@ -90,7 +139,17 @@ def test_cell_to_dict(sample_cell_cg: Cell):
 
 
 def test_mesh_initialization(sample_mesh_cg: HexCylindricalMesh):
-    """Test: Inicialización básica de la malla cilíndrica."""
+    """Verifica la inicialización básica de una `HexCylindricalMesh`.
+
+    Comprueba que los atributos principales como radio, segmentos de altura,
+    tamaño de hexágono y periodicidad se establecen correctamente.
+    También asegura que se generen celdas durante la inicialización y que
+    la celda central (si existe) tenga las propiedades esperadas.
+
+    Args:
+        sample_mesh_cg (HexCylindricalMesh): Fixture que proporciona una
+            instancia de `HexCylindricalMesh`.
+    """
     assert sample_mesh_cg.radius == 3.0
     assert sample_mesh_cg.height_segments == 3
     assert sample_mesh_cg.hex_size == 1.0
@@ -122,7 +181,16 @@ def test_mesh_initialization(sample_mesh_cg: HexCylindricalMesh):
 
 
 def test_mesh_get_cell(sample_mesh_cg: HexCylindricalMesh):
-    """Test: Obtener celdas existentes y no existentes."""
+    """Prueba la obtención de celdas de la malla por coordenadas axiales.
+
+    Verifica que `get_cell(q, r)` retorna una instancia de `Cell` para
+    coordenadas existentes y `None` para coordenadas no existentes.
+    El test puede omitirse si la celda (0,0) no existe en la malla de prueba.
+
+    Args:
+        sample_mesh_cg (HexCylindricalMesh): Fixture que proporciona una
+            instancia de `HexCylindricalMesh`.
+    """
     # Este test depende de que sample_mesh_cg genere celdas.
     # Si sample_mesh_cg falla en su setup (como en el log), este test no se
     # ejecuta.
@@ -144,7 +212,17 @@ def test_mesh_get_cell(sample_mesh_cg: HexCylindricalMesh):
 def test_get_axial_neighbors_coords(
     sample_mesh_cg: HexCylindricalMesh
 ):  # Usar malla_watcher.HexCylindricalMesh
-    """Test: Cálculo correcto de las 6 coordenadas axiales vecinas."""
+    """Verifica el cálculo de las coordenadas axiales de los vecinos.
+
+    Prueba el método `get_axial_neighbors_coords(q, r)` para asegurar que
+    retorna las 6 coordenadas axiales esperadas para una celda dada,
+    independientemente de si las celdas vecinas existen realmente en la malla.
+
+    Args:
+        sample_mesh_cg (HexCylindricalMesh): Fixture que proporciona una
+        instancia de `HexCylindricalMesh` (usada aquí principalmente
+        para invocar el método, la lógica es independiente de la instancia).
+    """
     # Este test no depende de las celdas reales, solo de la lógica de
     # get_axial_neighbors
     q, r = 2, 3
@@ -161,7 +239,17 @@ def test_get_axial_neighbors_coords(
 
 
 def test_mesh_get_neighbor_cells(sample_mesh_cg: HexCylindricalMesh):
-    """Test: Obtener los objetos Cell vecinos existentes."""
+    """Prueba la obtención de las celdas vecinas existentes.
+
+    Verifica que `get_neighbor_cells(q, r)` retorna una lista de instancias
+    de `Cell` que son vecinas válidas de la celda en (q,r).
+    El número de vecinos encontrados debe estar entre 0 y 6.
+    El test puede omitirse si la celda (0,0) no existe en la malla de prueba.
+
+    Args:
+        sample_mesh_cg (HexCylindricalMesh): Fixture que proporciona una
+            instancia de `HexCylindricalMesh`.
+    """
     # Este test depende de que sample_mesh genere celdas y que
     # get_neighbor_cells funcione.
     # Si sample_mesh falla en su setup (como en el log), este test no se
@@ -186,7 +274,17 @@ def test_mesh_get_neighbor_cells(sample_mesh_cg: HexCylindricalMesh):
 
 
 def test_mesh_verify_connectivity(sample_mesh_cg: HexCylindricalMesh):
-    """Verifica la conectividad de la malla hexagonal cilíndrica generada."""
+    """Analiza la conectividad de la malla `HexCylindricalMesh` generada.
+
+    Utiliza `verify_connectivity()` para obtener un reporte del número
+    de vecinos por celda y verifica que este reporte cumpla con ciertas
+    expectativas (e.g., no celdas aisladas, no más de 6 vecinos,
+    proporciones razonables de celdas con diferente número de vecinos).
+
+    Args:
+        sample_mesh_cg (HexCylindricalMesh): Fixture que proporciona una
+            instancia de `HexCylindricalMesh`.
+    """
     # Este test depende de que sample_mesh_cg genere celdas y que
     # verify_connectivity funcione.
     # Si sample_mesh_cg falla en su setup (como en el log), este test no se
@@ -229,6 +327,12 @@ def test_mesh_verify_connectivity(sample_mesh_cg: HexCylindricalMesh):
 
 
 def test_axial_to_cartesian_flat():
+    """Prueba la conversión de coordenadas axiales a cartesianas planas.
+
+    Verifica que la función `axial_to_cartesian_flat(q, r, hex_size)`
+    retorna las coordenadas (x, y) correctas para diferentes entradas
+    de coordenadas axiales (q, r) y tamaño de hexágono.
+    """
     assert axial_to_cartesian_flat(0, 0, 1.0) == (0.0, 0.0)
     # Añadir más casos de prueba con diferentes q, r y hex_size
     # Por ejemplo, q=1, r=0; q=0, r=1; q=1, r=1, etc.
@@ -239,6 +343,13 @@ def test_axial_to_cartesian_flat():
 
 
 def test_cartesian_flat_to_cylindrical():
+    """Prueba la conversión de coordenadas cartesianas planas a cilíndricas.
+
+    Verifica que `cartesian_flat_to_cylindrical(x_flat, z_coord, radius)`
+    retorna las coordenadas cilíndricas (r, theta, z) correctas.
+    `x_flat` representa la coordenada 'x' desenrollada en el plano,
+    `z_coord` es la altura 'z', y `radius` es el radio del cilindro.
+    """
     radius = 5.0
     assert cartesian_flat_to_cylindrical(
         0.0, 0.0, radius

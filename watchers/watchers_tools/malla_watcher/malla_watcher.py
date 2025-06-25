@@ -1,30 +1,39 @@
 #!/usr/bin/env python3
-"""
-malla_watcher.py
+"""Define una malla hexagonal cilíndrica y su interacción con un campo externo.
 
-Define una malla hexagonal cilíndrica inspirada en la estructura del
-grafeno, modelada como un sistema de osciladores acoplados. La malla
-interactúa con un campo vectorial externo (proveniente de ECU) que modula
-el acoplamiento entre osciladores, y genera influencias sobre dicho campo
-basadas en la tasa de cambio del flujo del campo a través de la malla
-(analogía de inducción electromagnética).
+Este módulo modela una malla hexagonal cilíndrica, inspirada en la estructura
+del grafeno, como un sistema de osciladores acoplados. La malla interactúa
+con un campo vectorial externo (proveniente de la experiencia de campo
+unificada, ECU) que modula el acoplamiento entre los osciladores.
+Además, la malla genera influencias sobre dicho campo, basadas en
+la tasa de cambio del flujo del campo a través de ella, en una analogía
+con la inducción electromagnética.
 
-Componentes clave:
-- **Cell**: Representa un oscilador en la malla con estado (amplitud,
-  velocidad) y campo externo local (q_vector).
-- **HexCylindricalMesh** (importado desde `cilindro_grafenal`): Gestiona la
-  malla hexagonal cilíndrica con validación de conectividad y condiciones
-  de contorno periódicas.
+Componentes Principales:
+    Cell (importada): Representa un oscilador individual en la malla,
+        caracterizado por su estado (amplitud, velocidad) y el campo externo
+        local (q_vector) que experimenta.
+    HexCylindricalMesh (importada): Gestiona la estructura de la malla
+        hexagonal cilíndrica, incluyendo la validación de la conectividad
+        entre celdas y la implementación de condiciones de contorno periódicas.
+    PhosWave: Modela el mecanismo de acoplamiento entre celdas (osciladores).
+    Electron: Modela el mecanismo de amortiguación local en cada celda.
 
-Interacciones:
-1. **ECU → Malla**: Obtiene periódicamente el campo vectorial de ECU y lo
-   aplica a las celdas mediante interpolación.
-2. **Malla → ECU**: Envía influencias al toroide basadas en la tasa de
-   cambio del flujo del campo de ECU a través de la malla (dPhi/dt).
+Interacciones Fundamentales:
+    1. ECU → Malla: El sistema obtiene periódicamente el campo vectorial
+       desde la ECU y lo aplica a las celdas de la malla mediante un proceso
+       de interpolación.
+    2. Malla → ECU: El sistema envía influencias a la ECU (específicamente
+       al componente toroide), basadas en la tasa de cambio del flujo del
+       campo de la ECU a través de la malla (dΦ/dt).
 
-Dependencias:
-- `cilindro_grafenal.HexCylindricalMesh`: Clase central para la generación
-  y validación de la estructura digital del cilindro.
+Dependencias Clave:
+    `cilindro_grafenal.HexCylindricalMesh`: Clase central para la generación
+    y validación de la estructura digital del cilindro de grafeno simulado.
+    `numpy`: Para operaciones numéricas eficientes, especialmente en el manejo
+    de vectores y campos.
+    `requests`: Para la comunicación HTTP con otros servicios (ECU, AgentAI).
+    `Flask`: Expone una API que permite el control y monitoreo de la malla.
 """
 
 import math
@@ -85,14 +94,33 @@ DPHI_DT_INFLUENCE_THRESHOLD = float(
 
 # --- Clases PhosWave y Electron ---
 class PhosWave:
-    """Representa el mecanismo de acoplamiento entre celdas (osciladores)."""
+    """Representa el mecanismo de acoplamiento entre celdas (osciladores).
+
+    Esta clase encapsula el coeficiente de acoplamiento (C) que determina
+    la fuerza de la interacción entre osciladores vecinos en la malla.
+
+    Attributes:
+        C (float): El coeficiente de acoplamiento. Debe ser no negativo.
+    """
 
     # coef_transmision ahora es coef_acoplamiento
-    def __init__(self, coef_acoplamiento=BASE_COUPLING_T):
+    def __init__(self, coef_acoplamiento: float = BASE_COUPLING_T):
+        """Inicializa una instancia de PhosWave.
+
+        Args:
+            coef_acoplamiento (float, optional): El valor inicial para el
+                coeficiente de acoplamiento. Defaults to BASE_COUPLING_T.
+        """
         self.C = max(0.0, coef_acoplamiento)
 
-    def ajustar_coeficientes(self, nuevos_C):
-        """Ajusta el coeficiente de acoplamiento."""
+    def ajustar_coeficientes(self, nuevos_C: float):
+        """Ajusta el coeficiente de acoplamiento.
+
+        Args:
+            nuevos_C (float): El nuevo valor para el coeficiente de
+                acoplamiento. Se asegura que el valor almacenado no sea
+                negativo.
+        """
         self.C = max(0.0, nuevos_C)
         logger.debug(
             "PhosWave coeficiente de acoplamiento ajustado a C=%.3f", self.C
@@ -102,14 +130,32 @@ class PhosWave:
 class Electron:
     """
     Representa el mecanismo de amortiguación local en cada celda (oscilador).
+
+    Esta clase encapsula el coeficiente de amortiguación (D) que determina
+    cómo la velocidad de un oscilador se disipa con el tiempo.
+
+    Attributes:
+        D (float): El coeficiente de amortiguación. Debe ser no negativo.
     """
 
     # coef_interaccion ahora es coef_amortiguacion
-    def __init__(self, coef_amortiguacion=BASE_DAMPING_E):
+    def __init__(self, coef_amortiguacion: float = BASE_DAMPING_E):
+        """Inicializa una instancia de Electron.
+
+        Args:
+            coef_amortiguacion (float, optional): El valor inicial para el
+                coeficiente de amortiguación. Defaults to BASE_DAMPING_E.
+        """
         self.D = max(0.0, coef_amortiguacion)  # Coeficiente de amortiguación
 
-    def ajustar_coeficientes(self, nuevos_D):
-        """Ajusta el coeficiente de amortiguación."""
+    def ajustar_coeficientes(self, nuevos_D: float):
+        """Ajusta el coeficiente de amortiguación.
+
+        Args:
+            nuevos_D (float): El nuevo valor para el coeficiente de
+                amortiguación. Se asegura que el valor almacenado no sea
+                negativo.
+        """
         self.D = max(0.0, nuevos_D)
         logger.debug(
             "Electron coeficiente de amortiguación ajustado a D=%.3f", self.D
@@ -118,17 +164,22 @@ class Electron:
 
 def apply_external_field_to_mesh(
     mesh_instance: HexCylindricalMesh,
-    field_vector_map: List[List[List[float]]]
-):
-    """
-    Aplica un campo vectorial externo (ej. campo V de ECU) a las celdas de la
-    instancia de malla proporcionada, actualizando su q_vector usando
-    interpolación bilineal.
+    field_vector_map: List[List[List[List[float]]]]
+) -> None:
+    """Aplica un campo vectorial externo a las celdas de la malla.
+
+    Este campo, típicamente proveniente de la ECU, se interpola bilinealmente
+    para actualizar el atributo `q_vector` de cada celda en la instancia de
+    malla proporcionada. El `q_vector` representa el campo local que
+    experimenta la celda.
 
     Args:
-        mesh_instance (HexCylindricalMesh): La instancia de la malla a la que
-            se aplicará el campo.
-        field_vector_map (List[List[List[float]]]): Datos del campo vectorial.
+        mesh_instance (HexCylindricalMesh): La instancia de la malla cuyas
+            celdas serán actualizadas.
+        field_vector_map (List[List[List[List[float]]]]): Una estructura de
+            datos anidada (se espera que sea de 4 dimensiones:
+            [capas, filas, columnas, 2]) que representa el campo vectorial
+            externo. El último eje contiene las dos componentes del vector.
     """
     if not mesh_instance or not mesh_instance.cells:
         logger.warning(
@@ -325,8 +376,20 @@ control_params: Dict[str, float] = {
 
 
 # --- Lógica de Simulación (Propagación y Estabilización) ---
-def simular_paso_malla():
-    """Simula un paso de la dinámica de osciladores acoplados en la malla."""
+def simular_paso_malla() -> None:
+    """Simula un paso de la dinámica de osciladores acoplados en la malla.
+
+    Actualiza la amplitud y velocidad de cada celda en la malla global
+    (`malla_cilindrica_global`) basándose en las interacciones con sus
+    vecinos (acoplamiento) y en su propia amortiguación local.
+
+    El coeficiente de acoplamiento se modula por la magnitud del campo
+    vectorial local (`q_vector`) de la celda. Se utiliza un método de
+    integración de Euler simple.
+
+    No recibe argumentos ni retorna valores directamente, pero modifica
+    el estado de las celdas en `malla_cilindrica_global`.
+    """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
         logger.error(
@@ -379,8 +442,20 @@ def simular_paso_malla():
     logger.debug("Paso de simulación completado para %d celdas.", num_cells)
 
 
-def update_aggregate_state():
-    """Calcula y actualiza el estado agregado de la malla."""
+def update_aggregate_state() -> None:
+    """Calcula y actualiza el estado agregado de la malla.
+
+    Esta función calcula diversas métricas promedio y máximas sobre todas las
+    celdas de la malla global (`malla_cilindrica_global`), como amplitud,
+    velocidad, energía cinética y magnitud de actividad. También cuenta
+    cuántas celdas superan un umbral de actividad predefinido.
+
+    Los resultados se almacenan en el diccionario global `aggregate_state`
+    bajo la protección de `aggregate_state_lock`.
+
+    No recibe argumentos ni retorna valores directamente, pero modifica
+    el diccionario `aggregate_state`.
+    """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
         with aggregate_state_lock:
@@ -460,10 +535,19 @@ def update_aggregate_state():
 
 
 def calculate_flux(mesh: HexCylindricalMesh) -> float:
-    """
-    Calcula una representación simplificada del flujo magnético a través de
-    la malla. Suma una componente del campo vectorial externo (q_vector)
-    sobre todas las celdas.
+    """Calcula una representación simplificada del flujo a través de la malla.
+
+    Este "flujo" se define como la suma de la segunda componente (índice 1)
+    del atributo `q_vector` de cada celda en la malla proporcionada.
+    Se utiliza como una analogía simplificada del flujo magnético.
+
+    Args:
+        mesh (HexCylindricalMesh): La instancia de la malla sobre la cual
+            calcular el flujo.
+
+    Returns:
+        float: El valor total del flujo calculado. Retorna 0.0 si la malla
+            no está inicializada o no tiene celdas.
     """
     if not mesh or not mesh.cells:
         return 0.0
@@ -479,9 +563,18 @@ def calculate_flux(mesh: HexCylindricalMesh) -> float:
     return total_flux
 
 
-def fetch_and_apply_torus_field():
-    """
-    Obtiene el campo vectorial completo de matriz_ecu y lo aplica a la malla.
+def fetch_and_apply_torus_field() -> None:
+    """Obtiene el campo vectorial de la ECU y lo aplica a la malla global.
+
+    Realiza una solicitud HTTP GET al endpoint `/api/ecu/field_vector` de
+    `MATRIZ_ECU_BASE_URL` para obtener el campo vectorial actual. Si la
+    solicitud es exitosa y los datos son válidos, llama a
+    `apply_external_field_to_mesh` para aplicar este campo a la instancia
+    global `malla_cilindrica_global`.
+
+    Maneja errores de red, timeouts y respuestas inválidas. No recibe
+    argumentos ni retorna valores directamente, pero puede modificar
+    `malla_cilindrica_global` a través de `apply_external_field_to_mesh`.
     """
     ecu_vector_field_url = f"{MATRIZ_ECU_BASE_URL}/api/ecu/field_vector"
     logger.debug(
@@ -497,15 +590,19 @@ def fetch_and_apply_torus_field():
             response_data_dict.get("status") == "success" and
             "field_vector" in response_data_dict
         ):
-            actual_field_vector_list = response_data_dict["field_vector"]
+            field_vector = response_data_dict["field_vector"]
             mesh = malla_cilindrica_global
             if mesh:
                 if mesh.cells:
+                    preview_del_primer_elemento = (
+                        field_vector[0] if field_vector else "vacío"
+                    )
                     logger.debug(
                         "Aplicando campo vectorial ECU (primer elemento: %s)",
-                        actual_field_vector_list[0] if actual_field_vector_list else 'vacío')
+                        preview_del_primer_elemento,
+                    )
                     apply_external_field_to_mesh(
-                        mesh, actual_field_vector_list)
+                        mesh, field_vector)
                     logger.info(
                         "Campo vectorial toroidal (V) obtenido y aplicado "
                         "exitosamente.")
@@ -543,9 +640,29 @@ def fetch_and_apply_torus_field():
 
 def map_cylinder_to_torus_coords(cell: Cell) -> Optional[Tuple[int, int, int]]:
     """
-    Mapea coordenadas y estado de una celda del cilindro a coordenadas
-    del toroide. Retorna None si el mapeo no es posible o dimensiones
-    inválidas.
+    Mapea las coordenadas de una celda del cilindro a coordenadas del toroide.
+
+    Transforma la posición (`theta`, `z`) y el estado de actividad de una celda
+    de la malla cilíndrica (`malla_cilindrica_global`) a un sistema de
+    coordenadas tridimensional (capa, fila, columna) correspondiente a una
+    estructura toroidal definida por `TORUS_NUM_CAPAS`, `TORUS_NUM_FILAS` y
+    `TORUS_NUM_COLUMNAS`.
+
+    La coordenada `theta` de la celda se mapea a la columna del toroide.
+    La coordenada `z` de la celda se mapea a la fila del toroide.
+    La magnitud de la actividad de la celda (combinación de amplitud y
+    velocidad) se normaliza y se mapea a la capa del toroide, donde
+    mayor actividad corresponde a capas con menor índice (más internas).
+
+    Args:
+        cell (Cell): La celda de la malla cilíndrica cuyas coordenadas y estado
+            se van a mapear.
+
+    Returns:
+        Optional[Tuple[int, int, int]]: Una tupla `(capa, fila, columna)` con
+            las coordenadas mapeadas en el toroide. Retorna `None` si la malla
+            global no está inicializada, no tiene celdas, o si las dimensiones
+            del toroide configuradas son inválidas (ej. <= 0).
     """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
@@ -587,10 +704,20 @@ def map_cylinder_to_torus_coords(cell: Cell) -> Optional[Tuple[int, int, int]]:
     return capa, row, col
 
 
-def send_influence_to_torus(dphi_dt: float):
-    """
-    Envía una influencia a matriz_ecu basada en la tasa de cambio del flujo
-    magnético (dPhi/dt).
+def send_influence_to_torus(dphi_dt: float) -> None:
+    """Envía una influencia a la ECU basada en la tasa de cambio del flujo.
+
+    Construye un vector de influencia donde la primera componente es `dphi_dt`
+    y la segunda es cero. Este vector se envía mediante una solicitud HTTP POST
+    al endpoint `/api/ecu/influence` de `MATRIZ_ECU_BASE_URL`. La influencia
+    se aplica a una ubicación predefinida en el toroide (capa más interna,
+    fila y columna centrales).
+
+    Args:
+        dphi_dt (float): La tasa de cambio del flujo calculado, que se
+            utilizará como magnitud principal de la influencia.
+
+    Maneja errores de red y timeouts. No retorna valores.
     """
     # Definir una ubicación fija o representativa en el toroide
     target_capa = 0  # Capa más interna/crítica
@@ -614,8 +741,7 @@ def send_influence_to_torus(dphi_dt: float):
             ecu_influence_url, json=payload, timeout=REQUESTS_TIMEOUT)
         response.raise_for_status()
         logger.info(
-            "Influencia (dPhi/dt) enviada a %s en (%d, %d, %d). Payload: %s. "
-            "Respuesta: %d",
+            "Influencia dPhi/dt a %s (%d,%d,%d). Payload: %s. Status: %d",
             ecu_influence_url,
             target_capa,
             target_row,
@@ -642,7 +768,25 @@ simulation_thread = None
 stop_simulation_event = threading.Event()
 
 
-def simulation_loop():
+def simulation_loop() -> None:
+    """Ejecuta el bucle principal de simulación de la malla.
+
+    Este bucle se ejecuta en un hilo separado y realiza las siguientes
+    operaciones en cada paso, repetidamente hasta que `stop_simulation_event`
+    es activado:
+    1. Obtiene el campo vectorial externo de la ECU.
+    2. Calcula el flujo actual a través de la malla.
+    3. Calcula la tasa de cambio del flujo respecto al paso anterior.
+    4. Actualiza el valor de `previous_flux` en la malla.
+    5. Simula la dinámica interna de la malla.
+    6. Actualiza el estado agregado de la malla.
+    7. Si `|dphi_dt|` supera un umbral, envía una influencia a la ECU.
+    8. Espera un tiempo para mantener el intervalo de simulación.
+
+    Maneja excepciones que puedan ocurrir durante un paso de simulación para
+    evitar que el bucle se detenga inesperadamente.
+    No recibe argumentos ni retorna valores.
+    """
     logger.info("Iniciando bucle de simulación de malla...")
     step_count = 0
     dt = SIMULATION_INTERVAL
@@ -732,8 +876,34 @@ def register_with_agent_ai(
     aporta_a: str,
     naturaleza: str,
     description: str = ""
-):
-    """Intenta registrar este módulo con AgentAI, con reintentos."""
+) -> bool:
+    """Intenta registrar este módulo con el servicio AgentAI.
+
+    Realiza una solicitud HTTP POST al endpoint `/api/register` de
+    `AGENT_AI_REGISTER_URL` para registrar este módulo (malla_watcher).
+    El payload incluye el nombre, URL del módulo, URL de salud, tipo,
+    a qué componente principal aporta y su naturaleza.
+
+    Realiza hasta `MAX_REGISTRATION_RETRIES` intentos en caso de fallo,
+    con un retraso de `RETRY_DELAY` segundos entre intentos.
+
+    Args:
+        module_name (str): El nombre del módulo a registrar.
+        module_url (str): La URL base del módulo.
+        health_url (str): La URL del endpoint de salud del módulo.
+        module_type (str): El tipo de módulo (ej. "auxiliar").
+        aporta_a (str): El nombre del componente principal al que este
+            módulo aporta (ej. "matriz_ecu").
+        naturaleza (str): La naturaleza de la contribución del módulo
+            (ej. "modulador").
+        description (str, optional): Una descripción breve del módulo.
+            Defaults to "".
+
+    Returns:
+        bool:
+        True si el registro fue exitoso (HTTP 200), False en caso contrario
+        después de todos los reintentos.
+    """
     payload = {
         "nombre": module_name,
         "url": module_url,
@@ -787,7 +957,23 @@ app = Flask(__name__)
 
 # --- Endpoints de Flask ---
 @app.route('/api/health', methods=['GET'])
-def health_check():
+def health_check() -> Tuple[str, int]:
+    """Verifica el estado de salud del servicio Malla Watcher.
+
+    Comprueba varios aspectos:
+    - Si la instancia de `HexCylindricalMesh` global está inicializada.
+    - Si la malla contiene celdas.
+    - Si el hilo de simulación del resonador está activo.
+    - La conectividad estructural de la malla (número de vecinos por celda).
+
+    Retorna un JSON con el estado general ("success", "warning", "error"),
+    un mensaje descriptivo y detalles específicos sobre cada componente
+    verificado. El código de estado HTTP refleja el estado general.
+
+    Returns:
+        Tuple[str, int]: Una tupla conteniendo la respuesta JSON como string
+                         y el código de estado HTTP.
+    """
     sim_alive = simulation_thread.is_alive() if simulation_thread else False
     mesh = malla_cilindrica_global
     num_cells = len(mesh.cells) if mesh and mesh.cells else 0
@@ -869,9 +1055,19 @@ def health_check():
 
 
 @app.route('/api/state', methods=['GET'])
-def get_malla_state():
+def get_malla_state() -> Tuple[str, int]:
     """
     Devuelve el estado agregado actual de la malla y parámetros de control.
+
+    Retorna un JSON que incluye:
+    - Las métricas de estado agregado de la malla.
+    - Los parámetros de control actuales (coeficientes C de PhosWave y D de
+      Electron).
+    - El número total de celdas en la malla.
+
+    Returns:
+        Tuple[str, int]: Una tupla conteniendo la respuesta JSON como string
+                         con el estado y el código de estado HTTP 200.
     """
     state_data = {}
     with aggregate_state_lock:
@@ -891,7 +1087,27 @@ def get_malla_state():
 
 
 @app.route('/api/control', methods=['POST'])
-def set_malla_control():
+def set_malla_control() -> Tuple[str, int]:
+    """
+    Ajusta parámetros de control de la malla (acoplamiento y amortiguación).
+
+    Espera un payload JSON con una clave "control_signal" (numérica).
+    Esta señal se utiliza para modular los coeficientes base de acoplamiento
+    (`BASE_COUPLING_T`) y amortiguación (`BASE_DAMPING_E`) mediante ganancias
+    (`K_GAIN_COUPLING`, `K_GAIN_DAMPING`).
+
+    Los nuevos coeficientes calculados se aplican a las instancias globales
+    `resonador_global` (PhosWave) y `electron_global` (Electron).
+
+    Retorna un JSON indicando el éxito o fracaso de la operación y los
+    nuevos parámetros de control.
+
+    Returns:
+        Tuple[str, int]:
+        Una tupla conteniendo la respuesta JSON como string
+        y el código de estado HTTP (200 si éxito, 400 si
+        error en la solicitud).
+    """
     data = request.get_json(silent=True)
     if data is None or "control_signal" not in data:
         logger.error("Solicitud a /api/control sin payload JSON válido o "
@@ -927,7 +1143,24 @@ def set_malla_control():
 
 
 @app.route('/api/malla', methods=['GET'])
-def get_malla():
+def get_malla() -> Tuple[str, int]:
+    """
+    Devuelve la estructura y estado detallado de todas las celdas de la malla.
+
+    Retorna un JSON que contiene:
+    - Metadatos de la malla: radio, número de celdas, periodicidad en Z,
+      límites en Z.
+    - Una lista de todas las celdas, donde cada celda es un diccionario
+      obtenido a través de su método `to_dict()`.
+
+    Si la malla no está inicializada o está vacía, retorna un error 503.
+
+    Returns:
+        Tuple[str, int]:
+        Una tupla conteniendo la respuesta JSON como string
+        y el código de estado HTTP (200 si éxito, 503 si
+        la malla no está disponible).
+    """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
         return jsonify({
@@ -948,15 +1181,26 @@ def get_malla():
 
 
 @app.route("/api/malla/influence", methods=["POST"])
-def aplicar_influencia_toroide_push():
-    """
-    Recibe el CAMPO VECTORIAL completo del toroide (matriz_ecu) y lo aplica
-    a la malla cilíndrica actualizando los q_vector de las celdas usando
-    interpolación bilineal. (Alternativa pasiva a
-    fetch_and_apply_torus_field)
+def aplicar_influencia_toroide_push() -> Tuple[str, int]:
+    """Aplica un campo vectorial externo (push) a la malla.
 
-    Espera JSON: {"field_vector": List[List[List[float]]]}
-    (Shape: [capas, filas, columnas, 2])
+    Este endpoint es una alternativa pasiva a `fetch_and_apply_torus_field`.
+    Recibe un campo vectorial completo, típicamente de la ECU, a través de
+    una solicitud HTTP POST. El payload JSON esperado debe contener la clave
+    `"field_vector"` con el campo (estructura anidada de listas que se
+    convierte a un array NumPy de shape [capas, filas, columnas, 2]).
+
+    El campo recibido se aplica a la instancia global `malla_cilindrica_global`
+    llamando a `apply_external_field_to_mesh`, que actualiza los `q_vector`
+    de las celdas mediante interpolación bilineal.
+
+    Retorna un JSON indicando el resultado de la operación.
+
+    Returns:
+        Tuple[str, int]: Una tupla conteniendo la respuesta JSON como string
+                         y el código de estado HTTP (200 si éxito, 400 si
+                         el payload es inválido, 500 si hay error interno,
+                         503 si la malla no está disponible).
     """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
@@ -1010,7 +1254,30 @@ def aplicar_influencia_toroide_push():
 
 
 @app.route('/api/event', methods=['POST'])
-def receive_event():
+def receive_event() -> Tuple[str, int]:
+    """
+    Procesa un evento externo y  lo aplica a una celda específica de la malla.
+
+    Actualmente, solo soporta eventos de tipo "pulse".
+    Espera un payload JSON con:
+    - `"type"`: "pulse"
+    - `"coords"`: {"q": int, "r": int} (coordenadas axiales de la celda)
+    - `"magnitude"`: float (magnitud del pulso a aplicar a la velocidad
+      de la celda)
+
+    Si la celda especificada existe, su velocidad se incrementa por la
+    magnitud del pulso.
+
+    Retorna un JSON indicando el resultado de la operación.
+
+    Returns:
+        Tuple[str, int]:
+        Una tupla conteniendo la respuesta JSON como string
+        y el código de estado HTTP (200 si éxito, 400 si
+        el payload es inválido o datos incompletos, 404 si
+        la celda no se encuentra, 503 si la malla no está
+        disponible).
+    """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
         logger.warning(
@@ -1073,7 +1340,23 @@ def receive_event():
 
 
 @app.route("/api/error", methods=["POST"])
-def receive_error():
+def receive_error() -> Tuple[str, int]:
+    """Recibe y registra un mensaje de error reportado por otro servicio.
+
+    Espera un payload JSON que contenga los detalles del error.
+    Este endpoint simplemente registra la información recibida como un error
+    en los logs del Malla Watcher.
+
+    Args:
+        No toma argumentos directos de la función, pero espera un JSON en el
+        cuerpo de la solicitud POST.
+
+    Returns:
+        Tuple[str, int]:
+        Una tupla conteniendo una respuesta JSON de confirmación
+        y el código de estado HTTP (200 si el payload es
+        procesado, 400 si el payload JSON es inválido o vacío).
+    """
     data = request.get_json(silent=True)
     if data is None:
         return jsonify({
@@ -1086,7 +1369,21 @@ def receive_error():
 
 
 @app.route('/api/config', methods=['GET'])
-def get_config():
+def get_config() -> Tuple[str, int]:
+    """Devuelve la configuración actual del Malla Watcher.
+
+    Retorna un JSON que incluye detalles sobre:
+    - Configuración de la malla (radio, segmentos, tamaño de hexágono, etc.).
+    - Configuración de comunicación (URL de ECU, dimensiones del toroide,
+      umbrales).
+    - Configuración de simulación (intervalo, umbral dPhi/dt).
+    - Configuración de control (parámetros base y actuales de acoplamiento
+      y amortiguación).
+
+    Returns:
+        Tuple[str, int]: Una tupla conteniendo la respuesta JSON con la
+                         configuración y el código de estado HTTP 200.
+    """
     mesh = malla_cilindrica_global
     return jsonify({
         "status": "success",
@@ -1103,11 +1400,16 @@ def get_config():
                     os.environ.get("MW_PERIODIC_Z", "True").lower() == "true"},
             "communication_config": {
                 "matriz_ecu_url": MATRIZ_ECU_BASE_URL,
-                "torus_dims":
-                    f"{TORUS_NUM_CAPAS}x{TORUS_NUM_FILAS}x{TORUS_NUM_COLUMNAS}",
+                # SOLUCIÓN E501: Se divide el f-string para que la línea
+                # sea más corta y legible.
+                "torus_dims": (
+                    f"{TORUS_NUM_CAPAS}x{TORUS_NUM_FILAS}x"
+                    f"{TORUS_NUM_COLUMNAS}"
+                ),
                 "influence_threshold": AMPLITUDE_INFLUENCE_THRESHOLD,
                 "max_activity_normalization":
-                    MAX_AMPLITUDE_FOR_NORMALIZATION},
+                    MAX_AMPLITUDE_FOR_NORMALIZATION
+            },
             "simulation_config": {
                 "interval": SIMULATION_INTERVAL,
                 "dphi_dt_influence_threshold": DPHI_DT_INFLUENCE_THRESHOLD},
@@ -1173,8 +1475,10 @@ if __name__ == "__main__":
         K_GAIN_COUPLING_REAL, K_GAIN_DAMPING_REAL)
     logger.info(
         "Configuración Simulación REAL: Interval=%.1fs, dPhi/dt "
-        "Threshold=%.1f", SIMULATION_INTERVAL_REAL,
-        DPHI_DT_INFLUENCE_THRESHOLD_REAL)
+        "Threshold=%.1f",
+        SIMULATION_INTERVAL_REAL,
+        DPHI_DT_INFLUENCE_THRESHOLD_REAL
+    )
     logger.info(
         "Configuración Normalización Influencia REAL: MaxActivityNorm=%.1f",
         MAX_AMPLITUDE_FOR_NORMALIZATION_REAL)
@@ -1242,9 +1546,11 @@ if __name__ == "__main__":
     HEALTH_URL = f"{MODULE_URL}/api/health"
     APORTA_A = "matriz_ecu"
     NATURALEZA = "modulador"
-    DESCRIPTION = ("Simulador de malla hexagonal cilíndrica (osciladores "
-                   "acoplados) acoplado a ECU, influye basado en inducción "
-                   "electromagnética.")
+    DESCRIPTION = (
+        "Simulador de malla hexagonal cilíndrica (osciladores "
+        "acoplados) acoplado a ECU, influye basado en inducción "
+        "electromagnética."
+    )
 
     registration_successful = register_with_agent_ai(
         MODULE_NAME, MODULE_URL, HEALTH_URL, "auxiliar", APORTA_A,

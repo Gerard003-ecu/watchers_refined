@@ -9,8 +9,8 @@ Suite de pruebas unitarias para los módulos:
 import pytest
 import math
 
-from watchers_modules.watchers_wave.malla_watcher import Cell, PhosWave
-from watchers_modules.watcher_focus.watcher_focus import update_indicators
+from .watchers_modules.watchers_wave.malla_watcher import Cell, PhosWave
+from .watchers_modules.watcher_focus.watcher_focus import update_indicators
 
 
 ##############################
