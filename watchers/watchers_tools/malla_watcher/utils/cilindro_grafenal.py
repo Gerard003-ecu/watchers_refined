@@ -223,7 +223,14 @@ class HexCylindricalMesh:
             logger.error("¡La inicialización de la malla no generó celdas!")
 
     def _calculate_z_bounds(self):
-        """Calcula límites Z mínimo y máximo reales."""
+        """Calcula y actualiza los límites Z (mínimo y máximo) de la malla.
+
+        Este método itera sobre todas las celdas existentes en la malla para
+        encontrar los valores mínimo y máximo de sus coordenadas 'z'. Los
+        resultados se almacenan en los atributos `self.min_z` y `self.max_z`.
+        Se llama típicamente después de que la malla ha sido inicializada.
+        Si la malla está vacía, `min_z` y `max_z` se establecen en 0.0.
+        """
         if not self.cells:
             self.min_z = 0.0
             self.max_z = 0.0
@@ -367,18 +374,173 @@ class HexCylindricalMesh:
             f"({current_bfs_iteration} iteraciones BFS)"
         )
 
+    def _initialize_mesh(self):
+        """Construye las celdas de la malla utilizando un enfoque BFS.
+
+        Este es el método principal para generar la geometría de la malla.
+        Comienza desde una celda de origen (0,0) en coordenadas axiales y
+        explora hacia afuera utilizando una búsqueda en amplitud (BFS) para
+        agregar nuevas celdas.
+
+        Las celdas se generan en un plano 2D usando coordenadas axiales y luego
+        se mapean a la superficie cilíndrica. Se aplican filtros basados en la
+        altura (coordenada Z) para asegurar que la malla se ajuste a las
+        dimensiones deseadas (`height_segments`). La expansión circunferencial
+        está limitada por `circumference_segments_actual`.
+
+        El proceso BFS tiene un límite de iteraciones para prevenir bucles
+        infinitos en configuraciones problemáticas. Las celdas creadas se
+        almacenan en el diccionario `self.cells`.
+        """
+        logger.info(
+            f"Inicializando malla hexagonal cilíndrica "
+            f"(periodic_z={self.periodic_z})..."
+        )
+        self.cells.clear()
+
+        single_row_height_contribution = math.sqrt(3.0) * self.hex_size
+
+        if self.height_segments > 0:
+            self.total_height_approx = (
+                self.height_segments * single_row_height_contribution
+            )
+        else:
+            self.total_height_approx = single_row_height_contribution * 1.5
+
+        strict_min_z = -self.total_height_approx / 2.0
+        strict_max_z = self.total_height_approx / 2.0
+        height_margin = single_row_height_contribution * 1.5
+
+        logger.info(
+            f"Dims Calculadas: CircumActualSegs="
+            f"{self.circumference_segments_actual}, "
+            f"TotalAlturaAprox={self.total_height_approx:.2f}, "
+            f"RangoZEstricto=[{strict_min_z:.2f}, {strict_max_z:.2f}], "
+            f"MargenAltura={height_margin:.2f}"
+        )
+
+        queue = deque()
+        processed_coords = set()
+
+        start_q, start_r = 0, 0
+        queue.append((start_q, start_r))
+        processed_coords.add((start_q, start_r))
+        logger.debug(f"Celda inicial ({start_q},{start_r}) añadida.")
+
+        cells_added_count = 0
+        # Fix for original Line 577 E502 (and E501)
+        max_bfs_iter_calc = (
+            self.circumference_segments_actual *
+            (self.height_segments + 4) * 10
+        )
+        max_bfs_iterations = max_bfs_iter_calc
+        if self.height_segments == 0:
+            max_bfs_iterations = (
+                self.circumference_segments_actual * 20
+            )
+
+        current_bfs_iteration = 0
+
+        while queue and current_bfs_iteration < max_bfs_iterations:
+            current_bfs_iteration += 1
+            q, r = queue.popleft()
+            axial_key = (q, r)
+
+            q_for_x_flat = q % self.circumference_segments_actual
+            if q_for_x_flat < 0:
+                q_for_x_flat += self.circumference_segments_actual
+
+            x_flat_unwrapped, y_flat_unwrapped = axial_to_cartesian_flat(
+                q, r, self.hex_size
+            )
+            _, cyl_theta_calc, cyl_z_calc = cartesian_flat_to_cylindrical(
+                x_flat_unwrapped, y_flat_unwrapped, self.radius
+            )
+
+            is_within_strict_z = (
+                strict_min_z - EPSILON <= cyl_z_calc <= strict_max_z + EPSILON
+            )
+            is_within_explore_margin_z = (
+                (strict_min_z - height_margin - EPSILON <= cyl_z_calc) and
+                (cyl_z_calc <= strict_max_z + height_margin + EPSILON)
+            )
+
+            if not is_within_explore_margin_z:
+                continue
+
+            if is_within_strict_z:
+                if axial_key not in self.cells:
+                    self.cells[axial_key] = Cell(
+                        self.radius, cyl_theta_calc, cyl_z_calc,
+                        q, r
+                    )
+                    cells_added_count += 1
+                    if cells_added_count % 100 == 0:
+                        logger.debug(
+                            f"--> Celda añadida #{cells_added_count}: "
+                            f"{axial_key} (z={cyl_z_calc:.2f})"
+                        )
+
+            theoretical_neighbors = self.get_axial_neighbors_coords(q, r)
+            for nq, nr in theoretical_neighbors:
+                neighbor_key = (nq, nr)
+                if neighbor_key not in processed_coords:
+                    q_exploration_limit_factor = 2
+                    q_exp_limit = (
+                        self.circumference_segments_actual *
+                        q_exploration_limit_factor
+                    )
+                    # Condición dividida para cumplir PEP8
+                    if (abs(nq) >
+                            q_exp_limit):
+                        continue
+
+                    _, neighbor_y_flat_unwrapped = axial_to_cartesian_flat(
+                        nq, nr, self.hex_size
+                    )
+
+                    # Line 276
+                    z_lower_bound = strict_min_z - height_margin - EPSILON
+                    z_upper_bound = strict_max_z + height_margin + EPSILON
+                    if (z_lower_bound <= neighbor_y_flat_unwrapped <=
+                            z_upper_bound):
+                        processed_coords.add(neighbor_key)
+                        queue.append(neighbor_key)
+
+        if current_bfs_iteration >= max_bfs_iterations:
+            logger.warning(
+                f"BFS detenido por límite ({max_bfs_iterations}). "
+                f"Celdas añadidas: {cells_added_count}."
+            )
+
+        logger.info(
+            f"Malla inicializada con {len(self.cells)} celdas. "
+            f"({current_bfs_iteration} iteraciones BFS)"
+        )
+
     def verify_connectivity(
             self,
             expected_min_neighbors_internal: int = 6
     ) -> Dict[int, int]:
-        """
-        Verifica conectividad interna contando vecinos reales.
+        """Verifica la conectividad de las celdas en la malla.
+
+        Este método itera sobre todas las celdas de la malla y cuenta cuántos
+        vecinos reales tiene cada una (utilizando `get_neighbor_cells`).
+        Compara este número con un mínimo esperado, especialmente para celdas
+        internas. Registra advertencias para celdas con conectividad
+        inesperadamente baja y errores si alguna celda tiene más de 6 vecinos
+        (lo cual indicaría un problema en la lógica de la malla hexagonal).
 
         Args:
-        expected_min_neighbors_internal: Mínimo esperado para celdas internas.
+            expected_min_neighbors_internal: El número mínimo de vecinos que
+                se espera para una celda interna (no en el borde Z, si la malla
+                no es periódica en Z). Por defecto es 6.
 
         Returns:
-            Dict[int, int]: Distribución de vecinos por celda.
+            Un diccionario que representa la distribución del número de vecinos.
+            Las claves son el número de vecinos contados, y los valores son
+            cuántas celdas tienen ese número de vecinos. Retorna un diccionario
+            vacío si la malla no tiene celdas.
         """
         if not self.cells:
             logger.warning("Intento de verificar conectividad en malla vacía.")
@@ -472,7 +634,16 @@ class HexCylindricalMesh:
         return result_dict
 
     def get_cell(self, q: int, r: int) -> Optional[Cell]:
-        """Obtiene celda por coordenadas axiales (q, r)."""
+        """Recupera una celda de la malla por sus coordenadas axiales.
+
+        Args:
+            q: La coordenada axial 'q' de la celda a buscar.
+            r: La coordenada axial 'r' de la celda a buscar.
+
+        Returns:
+            La instancia de `Cell` correspondiente a las coordenadas (q, r)
+            si existe en la malla; de lo contrario, retorna `None`.
+        """
         return self.cells.get((q, r))
 
     def get_axial_neighbors_coords(
@@ -480,25 +651,50 @@ class HexCylindricalMesh:
     ) -> List[
         Tuple[int, int]
     ]:
-        """
-        Obtiene coordenadas axiales de los 6 vecinos hexagonales teóricos.
+        """Calcula las coordenadas axiales de los 6 vecinos teóricos de una celda.
+
+        Dada una celda central definida por sus coordenadas axiales (q, r),
+        esta función retorna una lista de las coordenadas axiales (q, r) de
+        sus seis celdas vecinas directas en una malla hexagonal ideal e infinita.
+        No verifica si estas celdas vecinas existen realmente en la malla actual.
+
+        Args:
+            q: La coordenada axial 'q' de la celda central.
+            r: La coordenada axial 'r' de la celda central.
+
+        Returns:
+            Una lista de tuplas, donde cada tupla contiene las coordenadas
+            (q, r) de un vecino teórico.
         """
         axial_directions = [
-            (q + 1, r + 0),
-            (q + 1, r - 1),
-            (q + 0, r - 1),
-            (q - 1, r + 0),
-            (q - 1, r + 1),
-            (q + 0, r + 1),
+            (q + 1, r + 0),  # Derecha
+            (q + 1, r - 1),  # Arriba-derecha
+            (q + 0, r - 1),  # Arriba-izquierda
+            (q - 1, r + 0),  # Izquierda
+            (q - 1, r + 1),  # Abajo-izquierda
+            (q + 0, r + 1),  # Abajo-derecha
         ]
         return [(dq, dr) for dq, dr in axial_directions]
 
     def get_neighbor_cells(
             self, q_center: int, r_center: int
     ) -> List[Cell]:
-        """
-        Obtiene objetos Cell de vecinos existentes.
-        Maneja periodicidad circunferencial y opcionalmente en Z.
+        """Obtiene las celdas vecinas existentes de una celda central.
+
+        Calcula los vecinos teóricos de la celda en (q_center, r_center) y
+        luego verifica cuáles de estos vecinos existen realmente en la malla.
+        Maneja la periodicidad circunferencial (alrededor del eje del cilindro)
+        automáticamente. Si `self.periodic_z` es True, también intenta
+        encontrar vecinos envueltos en la dirección Z (altura).
+
+        Args:
+            q_center: La coordenada axial 'q' de la celda central.
+            r_center: La coordenada axial 'r' de la celda central.
+
+        Returns:
+            Una lista de instancias de `Cell` que son vecinas directas y
+            existentes de la celda central. La lista puede estar vacía si
+            no se encuentran vecinos o si la celda central no existe.
         """
         neighbor_cells: List[Cell] = []
         theoretical_neighbor_coords = self.get_axial_neighbors_coords(
@@ -537,15 +733,28 @@ class HexCylindricalMesh:
             target_q_original: int,
             target_z_theoretical: float
     ) -> Optional[Cell]:
-        """
-        Encuentra celda existente que sea "versión envuelta en Z".
+        """Busca una celda existente que corresponda a un vecino envuelto en Z.
+
+        Este método se utiliza cuando `periodic_z` es True. Dada una coordenada
+        'q' axial original de un vecino teórico y su coordenada 'z' teórica
+        (que podría estar fuera de los límites `min_z`, `max_z` de la malla),
+        intenta encontrar una celda existente en la malla que tenga la misma
+        coordenada 'q' (o su equivalente envuelto circunferencialmente) y una
+        coordenada 'z' que, al considerar la periodicidad en altura, sea la más
+        cercana a `target_z_theoretical`.
 
         Args:
-            target_q_original: q_axial del vecino teórico.
-            target_z_theoretical: Z teórica del vecino.
+            target_q_original: La coordenada axial 'q' original del vecino
+                teórico que se está buscando.
+            target_z_theoretical: La coordenada 'z' teórica (altura) del
+                vecino que se está buscando. Esta 'z' podría estar fuera de los
+                límites actuales de la malla si el vecino es una envoltura
+                periódica.
 
         Returns:
-            Optional[Cell]: Celda encontrada o None.
+            La instancia de `Cell` que mejor coincide como un vecino envuelto
+            en Z, o `None` si no se encuentra ninguna coincidencia adecuada
+            dentro de una tolerancia.
         """
         best_match: Optional[Cell] = None
         min_dz_abs_effective = float('inf')
@@ -589,17 +798,36 @@ class HexCylindricalMesh:
         return best_match
 
     def get_all_cells(self) -> List[Cell]:
-        """Retorna lista de todas las celdas en la malla."""
+        """Retorna una lista con todas las instancias de `Cell` en la malla.
+
+        Returns:
+            Una lista de objetos `Cell`. Si la malla está vacía, retorna una
+            lista vacía.
+        """
         return list(self.cells.values())
 
     def compute_voronoi_neighbors(self, periodic_theta: bool = True) -> None:
-        """
-        Calcula los vecinos de Voronoi para cada celda
-        considerando periodicidad circunferencial.
+        """Calcula los vecinos de Voronoi para cada celda de la malla.
+
+        Utiliza `scipy.spatial.Voronoi` para calcular la teselación de Voronoi
+        basada en las coordenadas (theta, z) de las celdas. Luego, para cada
+        celda, identifica sus celdas vecinas en el diagrama de Voronoi.
+        Este método actualiza el atributo `voronoi_neighbors` de cada `Cell`
+        en la malla.
+
+        La periodicidad en la dirección theta (circunferencial) se maneja
+        replicando los puntos en theta - 2*pi y theta + 2*pi antes de calcular
+        el diagrama, y luego mapeando los vecinos encontrados de vuelta a las
+        celdas originales.
+
+        Requiere que `scipy` esté instalado. Si `scipy.spatial.Voronoi` no
+        puede ser importado, se registra un error y el método no hace nada.
 
         Args:
-            periodic_theta (bool): Si se debe considerar la periodicidad
-                en la dirección theta.
+            periodic_theta: Si es True (por defecto), se considera la
+                periodicidad en la dirección theta al calcular los vecinos.
+                Si es False, el cálculo se realiza como si la malla fuera una
+                franja plana desenrollada.
         """
         try:
             from scipy.spatial import Voronoi
@@ -694,8 +922,18 @@ class HexCylindricalMesh:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Retorna representación de la malla como diccionario.
+        """Convierte la malla completa a una representación de diccionario.
+
+        Este método serializa los metadatos de la malla (como radio, número de
+        segmentos, etc.) y una lista de todas las celdas convertidas también
+        a diccionarios (usando `Cell.to_dict()`).
+
+        Returns:
+            Un diccionario que contiene:
+            - 'metadata': Un diccionario con los parámetros de configuración y
+                          propiedades calculadas de la malla.
+            - 'cells': Una lista de diccionarios, donde cada diccionario es la
+                       representación de una celda en la malla.
         """
         return {
             "metadata": {
