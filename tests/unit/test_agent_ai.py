@@ -27,7 +27,7 @@ from agent_ai.agent_ai import (
 @mock.patch("agent_ai.agent_ai.requests", new_callable=mock.MagicMock)
 @mock.patch("agent_ai.agent_ai.check_missing_dependencies")
 @mock.patch("agent_ai.agent_ai.validate_module_registration")
-@mock.patch("agent_ai.agent_ai.get_logger")
+@mock.patch("agent_ai.agent_ai.logger")
 class TestAgentAI(unittest.TestCase):
     """Suite de pruebas para la clase AgentAI."""
 
