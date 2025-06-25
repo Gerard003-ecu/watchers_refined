@@ -548,14 +548,14 @@ def test_dphi_dt_calculation(mock_malla_sim):
 
     # Define patchers individually
     with (
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.calculate_flux")
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.calculate_flux")  # noqa: E501
         as mock_calculate_flux,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.fetch_and_apply_torus_field"),
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.simular_paso_malla"),
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.update_aggregate_state"),
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.send_influence_to_torus")
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.fetch_and_apply_torus_field"),  # noqa: E501
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.simular_paso_malla"),  # noqa: E501
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.update_aggregate_state"),  # noqa: E501
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.send_influence_to_torus")  # noqa: E501
         as mock_send_influence,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.stop_simulation_event")
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.stop_simulation_event")  # noqa: E501
         as mock_stop_event
     ):
 
@@ -565,7 +565,7 @@ def test_dphi_dt_calculation(mock_malla_sim):
         mock_stop_event.wait.return_value = None
 
         with patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", dt
+            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", dt  # noqa: E501
         ):
             simulation_loop()
 
@@ -582,10 +582,10 @@ def test_send_influence_to_torus(mock_requests_post):
     mock_post = mock_requests_post
     dphi_dt_value = 7.5
     with (
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS", 10),
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", 15),
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000") as mock_base_url,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 2.0)
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS", 10),  # noqa: E501
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", 15),  # noqa: E501
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000") as mock_base_url,  # noqa: E501
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 2.0)  # noqa: E501
     ):
         expected_target_capa = 0
         expected_target_row = 10 // 2
@@ -620,16 +620,16 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
 
     with (
         patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global"
+            "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global"  # noqa: E501
         ) as mock_mesh_global_instance,
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.apply_external_field_to_mesh"
+            "watchers.watchers_tools.malla_watcher.malla_watcher.apply_external_field_to_mesh"  # noqa: E501
         ) as mock_apply_func,
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000"
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000"  # noqa: E501
         ) as mock_base_url,
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 3.0)
+            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 3.0)  # noqa: E501
     ):
         mock_mesh_global_instance.configure_mock(
             cells={(0, 0): "dummy_cell"})
@@ -669,15 +669,15 @@ def mock_malla_state():
 
     with (
         patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", mock_mesh),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", mock_mesh),  # noqa: E501
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.AMPLITUDE_INFLUENCE_THRESHOLD", 5.0),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.AMPLITUDE_INFLUENCE_THRESHOLD", 5.0),  # noqa: E501
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.DPHI_DT_INFLUENCE_THRESHOLD", 1.0),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.DPHI_DT_INFLUENCE_THRESHOLD", 1.0),  # noqa: E501
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", 0.5),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", 0.5),  # noqa: E501
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock")
+            "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock")  # noqa: E501
     ):
         yield mock_mesh, [
             cell1,
@@ -978,7 +978,9 @@ def test_api_state(client, reset_globals):
     assert (
         state_data["control_params"]["phoswave_C"] == pytest.approx(expected_C)
     )
-    assert state_data["control_params"]["electron_D"] == pytest.approx(expected_D)  # noqa: E501
+    assert state_data["control_params"]["electron_D"] == pytest.approx(
+        expected_D                                      # noqa: E129
+    )
 
 
 def test_api_control_success(client, reset_globals):
@@ -1012,8 +1014,12 @@ def test_api_control_success(client, reset_globals):
         pytest.approx(max(0.0, expected_D_pos)))
     assert mock_resonador.C == pytest.approx(max(0.0, expected_C_pos))
     assert mock_electron.D == pytest.approx(max(0.0, expected_D_pos))
-    assert mock_ctrl_params["phoswave_C"] == pytest.approx(max(0.0, expected_C_pos))  # noqa: E501
-    assert mock_ctrl_params["electron_D"] == pytest.approx(max(0.0, expected_D_pos))  # noqa: E501
+    assert mock_ctrl_params["phoswave_C"] == pytest.approx(
+        max(0.0, expected_C_pos)
+    )
+    assert mock_ctrl_params["electron_D"] == pytest.approx(
+        max(0.0, expected_D_pos)
+    )
 
     mock_resonador.ajustar_coeficientes.reset_mock()
     mock_electron.ajustar_coeficientes.reset_mock()
@@ -1037,8 +1043,12 @@ def test_api_control_success(client, reset_globals):
         pytest.approx(max(0.0, expected_D_neg)))
     assert mock_resonador.C == pytest.approx(max(0.0, expected_C_neg))
     assert mock_electron.D == pytest.approx(max(0.0, expected_D_neg))
-    assert mock_ctrl_params["phoswave_C"] == pytest.approx(max(0.0, expected_C_neg))  # noqa: E501
-    assert mock_ctrl_params["electron_D"] == pytest.approx(max(0.0, expected_D_neg))  # noqa: E501
+    assert mock_ctrl_params["phoswave_C"] == pytest.approx(
+        max(0.0, expected_C_neg)
+    )
+    assert mock_ctrl_params["electron_D"] == pytest.approx(
+        max(0.0, expected_D_neg)                                # noqa: E129
+    )
 
 
 def test_api_control_invalid_input(client):
@@ -1054,12 +1064,14 @@ def test_api_control_invalid_input(client):
     response_missing_field = client.post(
         "/api/control", json={"otro_campo": 123})
     assert response_missing_field.status_code == 400
-    assert "falta 'control_signal'" in response_missing_field.get_json()["message"]  # noqa: E501
+    assert "falta 'control_signal'" in \
+        response_missing_field.get_json()["message"]
 
     response_wrong_type = client.post(
         "/api/control", json={"control_signal": "no_numero"})
     assert response_wrong_type.status_code == 400
-    assert "El campo 'control_signal' debe ser un número" in response_wrong_type.get_json()["message"]  # noqa: E501
+    assert "El campo 'control_signal' debe ser un número" in \
+        response_wrong_type.get_json()["message"]
 
 
 def test_api_event_pulse(client, reset_globals):
@@ -1224,24 +1236,33 @@ def test_api_config(client, reset_globals):
         assert data["status"] == "success"
         config_data = data["config"]
         m_cfg = config_data["malla_config"]
-        assert m_cfg["radius"] == float(expected_malla_config_values["MW_RADIUS"])  # noqa: E501
-        assert m_cfg["height_segments"] == int(expected_malla_config_values["MW_HEIGHT_SEG"])  # noqa: E501
-        assert m_cfg["circumference_segments_target"] == int(expected_malla_config_values["MW_CIRCUM_SEG"])  # noqa: E501
-        assert m_cfg["circumference_segments_actual"] == mock_mesh.circumference_segments_actual  # noqa: E501
-        assert m_cfg["hex_size"] == float(expected_malla_config_values["MW_HEX_SIZE"])  # noqa: E501
-        assert m_cfg["periodic_z"] == (expected_malla_config_values["MW_PERIODIC_Z"].lower() == "true")  # noqa: E501
+        assert m_cfg["radius"] == \
+            float(expected_malla_config_values["MW_RADIUS"])
+        assert m_cfg["height_segments"] == \
+            int(expected_malla_config_values["MW_HEIGHT_SEG"])
+        assert m_cfg["circumference_segments_target"] == \
+            int(expected_malla_config_values["MW_CIRCUM_SEG"])
+        assert m_cfg["circumference_segments_actual"] == \
+            mock_mesh.circumference_segments_actual
+        assert m_cfg["hex_size"] == \
+            float(expected_malla_config_values["MW_HEX_SIZE"])
+        assert m_cfg["periodic_z"] == \
+            (expected_malla_config_values["MW_PERIODIC_Z"].lower() == "true")
 
         comm_cfg = config_data["communication_config"]
         assert comm_cfg["matriz_ecu_url"] == MATRIZ_ECU_BASE_URL
         torus_dims_expected = (
             f"{TORUS_NUM_CAPAS}x{TORUS_NUM_FILAS}x{TORUS_NUM_COLUMNAS}")
         assert comm_cfg["torus_dims"] == torus_dims_expected
-        assert comm_cfg["influence_threshold"] == AMPLITUDE_INFLUENCE_THRESHOLD  # noqa: E501
-        assert comm_cfg["max_activity_normalization"] == MAX_AMPLITUDE_FOR_NORMALIZATION  # noqa: E501
+        assert comm_cfg["influence_threshold"] == \
+            AMPLITUDE_INFLUENCE_THRESHOLD
+        assert comm_cfg["max_activity_normalization"] == \
+            MAX_AMPLITUDE_FOR_NORMALIZATION
 
         sim_cfg = config_data["simulation_config"]
         assert sim_cfg["interval"] == SIMULATION_INTERVAL
-        assert sim_cfg["dphi_dt_influence_threshold"] == DPHI_DT_INFLUENCE_THRESHOLD  # noqa: E501
+        assert sim_cfg["dphi_dt_influence_threshold"] == \
+            DPHI_DT_INFLUENCE_THRESHOLD
 
         ctrl_cfg = config_data["control_config"]
         assert ctrl_cfg["base_coupling_t"] == BASE_COUPLING_T
