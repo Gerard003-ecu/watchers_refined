@@ -678,13 +678,13 @@ def mock_malla_state():
             "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", 0.5),
         patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock")
+    ):
         yield mock_mesh, [
             cell1,
             cell2,
             cell3,
             cell4,
         ]
-    ):
 
 
 def test_update_aggregate_state(mock_malla_state):
