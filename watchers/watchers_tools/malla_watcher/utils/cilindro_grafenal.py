@@ -528,7 +528,7 @@ class HexCylindricalMesh:
 
         Dada una celda central definida por sus coordenadas axiales (q, r),
         esta función retorna una lista de las coordenadas axiales (q, r) de
-        sus seis celdas vecinas directas en la malla hexagonal ideal e infinita.
+        sus seis celdas vecinas directas en la malla hexagonal ideal.
         No verifica si las celdas vecinas existen realmente en la malla actual.
 
         Args:
