@@ -387,7 +387,11 @@ def get_tool_state(tool_name: str, base_url: str) -> Dict[str, Any]:
     }
 
 
-def send_tool_control(tool_name: str, base_url: str, control_signal: float) -> bool:
+def send_tool_control(
+    tool_name: str,
+    base_url: str,
+    control_signal: float
+) -> bool:
     """Envía una señal de control a un watcher_tool específico.
 
     Realiza una solicitud POST al endpoint '/api/control' del watcher_tool

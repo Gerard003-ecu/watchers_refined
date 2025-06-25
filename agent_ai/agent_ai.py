@@ -859,7 +859,11 @@ class AgentAI:
                         MAX_RETRIES,
                     )
 
-    def actualizar_comando_estrategico(self, comando: str, valor: Any) -> Dict[str, str]:
+    def actualizar_comando_estrategico(
+        self,
+        comando: str,
+        valor: Any
+    ) -> Dict[str, str]:
         """
         Procesa y aplica comandos estratégicos de alto nivel.
 

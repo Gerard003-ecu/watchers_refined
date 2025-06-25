@@ -10,7 +10,6 @@ from dashboard import (
     crear_grafico_barras,
     crear_control,
     app,
-    api_error_handler
 )
 
 
