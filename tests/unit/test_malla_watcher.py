@@ -667,7 +667,8 @@ def mock_malla_state():
     mock_mesh.get_all_cells.return_value = [cell1, cell2, cell3, cell4]
     mock_mesh.previous_flux = 0.0
 
-    with patch(
+    with (
+        patch(
         "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", mock_mesh),
         patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher.AMPLITUDE_INFLUENCE_THRESHOLD", 5.0),
@@ -683,6 +684,7 @@ def mock_malla_state():
             cell3,
             cell4,
         ]
+    )
 
 
 def test_update_aggregate_state(mock_malla_state):
