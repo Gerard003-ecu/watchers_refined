@@ -854,8 +854,7 @@ class AgentAI:
                     time.sleep(delay)
                 else:
                     logger.error(
-                        "No se pudo notificar a HC sobre '%s' tras %d "
-                        "intentos.",
+                        "Fallo al notificar a HC sobre '%s' tras %d intentos.",
                         nombre,
                         MAX_RETRIES,
                     )

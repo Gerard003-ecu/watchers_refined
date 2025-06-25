@@ -512,7 +512,7 @@ def harmony_control_loop():
             if sum_abs_comps > 1e-9:
                 control_weights = abs_comps / sum_abs_comps
                 logger.debug(
-                    "[CtrlLoop] RelSPComps: %s, Wgts: %s",
+                    "[CtrlLoop] SPComps: %s, Wgts: %s",
                     rel_sp_comps, control_weights.tolist()
                 )
             else:
