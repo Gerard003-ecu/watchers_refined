@@ -31,8 +31,10 @@ def get_status():
 
     Returns:
         flask.Response: Un objeto JSON que contiene:
-            - status (str): "success" si la operación fue exitosa, "error" en caso contrario.
-            - data (dict): Un diccionario con el estado completo de AgentAI si la operación fue exitosa.
+            - status (str): "success" si la operación fue exitosa, "error" en
+              caso contrario.
+            - data (dict): Un diccionario con el estado completo de AgentAI si
+              la operación fue exitosa.
             - mensaje (str): Un mensaje descriptivo en caso de error.
     """
     try:
@@ -70,11 +72,12 @@ def post_command():
 
     Returns:
         flask.Response: Un objeto JSON que contiene:
-            - status (str): "success" si el comando fue procesado exitosamente,
-                            "error" en caso contrario.
-            - mensaje (str): Un mensaje descriptivo sobre el resultado de la operación.
-            - (otros campos): Puede incluir campos adicionales dependiendo del resultado
-                              del comando específico.
+            - status (str): "success" si el comando fue procesado
+              exitosamente, "error" en caso contrario.
+            - mensaje (str): Un mensaje descriptivo sobre el resultado de la
+              operación.
+            - (otros campos): Puede incluir campos adicionales dependiendo del
+              resultado del comando específico.
     """
     data = request.get_json() or {}
     comando = data.get("comando")
@@ -132,10 +135,12 @@ def register_module():
 
     Returns:
         flask.Response: Un objeto JSON que contiene:
-            - status (str): "success" si el módulo fue registrado exitosamente,
-                            "error" en caso contrario.
-            - mensaje (str): Un mensaje descriptivo sobre el resultado del registro.
-            - module_id (str): El ID asignado al módulo si el registro fue exitoso.
+            - status (str): "success" si el módulo fue registrado
+              exitosamente, "error" en caso contrario.
+            - mensaje (str): Un mensaje descriptivo sobre el resultado del
+              registro.
+            - module_id (str): El ID asignado al módulo si el registro fue
+              exitoso.
     """
     data = request.get_json() or {}
     try:
@@ -166,12 +171,14 @@ def health():
 
     Returns:
         flask.Response: Un objeto JSON que contiene:
-            - status (str): "success" si AgentAI está saludable, "error" en caso contrario.
+            - status (str): "success" si AgentAI está saludable, "error" en
+              caso contrario.
             - module (str): Siempre "AgentAI".
             - message (str): Un mensaje descriptivo del estado de salud.
-            - strategic_loop_active (bool): True si el bucle estratégico está activo,
-                                            False en caso contrario.
-            - mensaje (str): (En caso de error interno) Un mensaje descriptivo del error.
+            - strategic_loop_active (bool): True si el bucle estratégico está
+              activo, False en caso contrario.
+            - mensaje (str): (En caso de error interno) Un mensaje descriptivo
+              del error.
     """
     try:
         # Verificar si la instancia y el hilo existen y están vivos
@@ -233,8 +240,9 @@ def control_input():
     Returns:
         flask.Response: Un objeto JSON que contiene:
             - status (str): "success" si la señal fue recibida y procesada
-                            exitosamente, "error" en caso contrario.
-            - mensaje (str): Un mensaje descriptivo sobre el resultado de la operación.
+              exitosamente, "error" en caso contrario.
+            - mensaje (str): Un mensaje descriptivo sobre el resultado de la
+              operación.
     """
     data = request.get_json() or {}
     control_signal = data.get("control_signal")
@@ -290,9 +298,10 @@ def config_input():
 
     Returns:
         flask.Response: Un objeto JSON que contiene:
-            - status (str): "success" si el estado de configuración fue recibido
-                            y procesado exitosamente, "error" en caso contrario.
-            - mensaje (str): Un mensaje descriptivo sobre el resultado de la operación.
+            - status (str): "success" si el estado de configuración fue
+              recibido y procesado exitosamente, "error" en caso contrario.
+            - mensaje (str): Un mensaje descriptivo sobre el resultado de la
+              operación.
     """
     data = request.get_json() or {}
     config_status = data.get("config_status")
