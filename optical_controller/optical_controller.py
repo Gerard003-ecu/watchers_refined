@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""
-optical_controller.py
+"""Simulador de procesamiento óptico para el sistema Watchers.
 
-Módulo que simula el procesamiento óptico para el sistema Watchers.
-Captura una "imagen" del estado global, la procesa (reflejo) y genera una
-señal de retroalimentación. Proporciona un servicio REST para integrarse con
-otros componentes del sistema.
+Este módulo captura una representación visual del estado global del sistema,
+aplica un procesamiento de imagen (reflejo horizontal) y genera una señal
+de retroalimentación. Se expone como un servicio REST para facilitar la
+integración con otros componentes del sistema Watchers.
 
-Funcionalidades:
-- Captura de imagen a partir de una matriz de estado.
-- Procesamiento de imagen (reflejo horizontal).
-- Generación de señal de retroalimentación normalizada.
-- Endpoint REST para obtener retroalimentación óptica.
-- Endpoint de salud para monitoreo.
+Funcionalidades principales:
+  - Captura de imagen: Convierte una matriz de estado numérico en una imagen
+    en escala de grises.
+  - Procesamiento de imagen: Aplica un reflejo horizontal a la imagen capturada.
+  - Generación de retroalimentación: Calcula una señal normalizada a partir
+    de la imagen procesada.
+  - Servicio REST: Ofrece endpoints para obtener la retroalimentación óptica
+    y verificar el estado de salud del módulo.
 """
 
 import numpy as np
@@ -36,14 +37,23 @@ app = Flask(__name__)
 
 
 def capturar_imagen(matriz_estado: List[List[float]]) -> np.ndarray:
-    """
-    Captura una imagen simulada a partir de una matriz de estado.
+    """Convierte una matriz de estado en una imagen en escala de grises.
+
+    La matriz de estado se normaliza para que sus valores se encuentren
+    en el rango de 0 a 255 y luego se convierte a un tipo de dato de 8 bits
+    sin signo, adecuado para representaciones de imagen.
 
     Args:
-        matriz_estado (List[List[float]]): Matriz de estado del sistema.
+        matriz_estado: Una lista de listas de flotantes representando
+            el estado del sistema. Se espera que sea una matriz 2D.
 
     Returns:
-        np.ndarray: Imagen en escala de grises (0-255).
+        Un array de NumPy (np.ndarray) que representa la imagen generada
+        en escala de grises (valores de 0 a 255).
+
+    Raises:
+        ValueError: Si ocurre un error durante el procesamiento de la
+            matriz de estado (por ejemplo, si no es una matriz válida).
     """
     try:
         imagen = np.array(matriz_estado, dtype=np.float32)
@@ -59,14 +69,21 @@ def capturar_imagen(matriz_estado: List[List[float]]) -> np.ndarray:
 
 
 def procesar_imagen(imagen: np.ndarray) -> np.ndarray:
-    """
-    Aplica un reflejo horizontal a la imagen capturada.
+    """Aplica un procesamiento de reflejo horizontal a una imagen.
+
+    Utiliza la función `flip` de OpenCV para invertir la imagen a lo largo
+    del eje vertical (reflejo horizontal).
 
     Args:
-        imagen (np.ndarray): Imagen en escala de grises.
+        imagen: Un array de NumPy (np.ndarray) que representa la imagen
+            de entrada en escala de grises.
 
     Returns:
-        np.ndarray: Imagen reflejada.
+        Un array de NumPy (np.ndarray) que representa la imagen con el
+        reflejo horizontal aplicado.
+
+    Raises:
+        ValueError: Si ocurre un error durante la transformación de la imagen.
     """
     try:
         imagen_reflejada = cv2.flip(imagen, 1)
@@ -78,15 +95,22 @@ def procesar_imagen(imagen: np.ndarray) -> np.ndarray:
 
 
 def generar_retroalimentacion(imagen_procesada: np.ndarray) -> float:
-    """
-    Genera una señal de retroalimentacion normalizada a partir de la imagen
-    procesada.
+    """Calcula una señal de retroalimentación normalizada desde una imagen.
+
+    La señal se obtiene calculando el valor promedio de los píxeles de la
+    imagen y normalizándolo al rango [0.0, 1.0] dividiendo por 255 (el valor
+    máximo posible para un píxel en una imagen de 8 bits en escala de grises).
 
     Args:
-        imagen_procesada (np.ndarray): Imagen reflejada.
+        imagen_procesada: Un array de NumPy (np.ndarray) que representa la
+            imagen procesada (por ejemplo, reflejada) en escala de grises.
 
     Returns:
-        float: Señal de retroalimentación en el rango [0.0, 1.0].
+        Un valor flotante que representa la señal de retroalimentación
+        normalizada, en el rango de 0.0 a 1.0.
+
+    Raises:
+        ValueError: Si ocurre un error al calcular la retroalimentación.
     """
     try:
         retroalimentacion = float(np.mean(imagen_procesada)) / 255.0
@@ -98,14 +122,23 @@ def generar_retroalimentacion(imagen_procesada: np.ndarray) -> float:
 
 
 def retroalimentacion_optica(matriz_estado: List[List[float]]) -> float:
-    """
-    Integra la captura, procesamiento y generación de retroalimentación.
+    """Procesa una matriz de estado para generar una señal de retroalimentación óptica.
+
+    Este es el flujo principal que integra la captura de la imagen desde la
+    matriz de estado, el procesamiento de dicha imagen (reflejo), y la
+    generación final de una señal de retroalimentación normalizada.
 
     Args:
-        matriz_estado (List[List[float]]): Matriz de estado del sistema.
+        matriz_estado: Una lista de listas de flotantes que representa el
+            estado actual del sistema.
 
     Returns:
-        float: Señal de retroalimentación óptica.
+        Un valor flotante que es la señal de retroalimentación óptica
+        resultante, normalizada entre 0.0 y 1.0.
+
+    Raises:
+        ValueError: Si ocurre algún error en cualquiera de los pasos
+            (captura, procesamiento o generación de retroalimentación).
     """
     try:
         imagen = capturar_imagen(matriz_estado)
@@ -118,14 +151,35 @@ def retroalimentacion_optica(matriz_estado: List[List[float]]) -> float:
 
 @app.route("/api/optical-feedback", methods=["POST"])
 def obtener_retroalimentacion() -> jsonify:
-    """
-    Endpoint REST para obtener retroalimentación óptica.
+    """Endpoint REST para obtener la señal de retroalimentación óptica.
 
-    Expects:
-        JSON con clave 'estado' (matriz de estado).
+    Este endpoint recibe una matriz de estado del sistema en formato JSON,
+    la procesa utilizando el flujo de `retroalimentacion_optica`, y devuelve
+    la señal de retroalimentación resultante.
+
+    JSON Request Body:
+        estado (List[List[float]]): Matriz bidimensional de números flotantes
+            que representa el estado actual del sistema.
 
     Returns:
-        jsonify: Respuesta JSON con retroalimentación o mensaje de error.
+        Una respuesta JSON (jsonify) que contiene:
+        - En caso de éxito:
+            {
+                "status": "success",
+                "optical_feedback": <float>
+            }
+        - En caso de error de validación (ej. 'estado' no presente o mal formado):
+            {
+                "status": "error",
+                "message": "<descripción del error>"
+            }
+            (HTTP 400)
+        - En caso de error interno del servidor:
+            {
+                "status": "error",
+                "message": "Error interno del servidor."
+            }
+            (HTTP 500)
     """
     try:
         datos = request.get_json()
@@ -158,11 +212,19 @@ def obtener_retroalimentacion() -> jsonify:
 
 @app.route("/api/health", methods=["GET"])
 def salud() -> jsonify:
-    """
-    Endpoint de salud para monitoreo del módulo.
+    """Endpoint de chequeo de salud para el módulo Optical Controller.
+
+    Proporciona una respuesta simple para indicar que el servicio está
+    funcionando correctamente. Útil para sistemas de monitoreo.
 
     Returns:
-        jsonify: Respuesta JSON con estado del módulo.
+        Una respuesta JSON (jsonify) con el estado del módulo:
+        {
+            "status": "success",
+            "module": "Optical_controller",
+            "mensaje": "Módulo operativo"
+        }
+        (HTTP 200)
     """
     return jsonify({
         "status": "success",
@@ -172,12 +234,17 @@ def salud() -> jsonify:
 
 
 def iniciar_servicio(host: str = "0.0.0.0", port: int = 8001) -> None:
-    """
-    Inicia el servidor Flask para el controlador óptico.
+    """Inicia el servidor Flask para el servicio del controlador óptico.
+
+    Este servidor expone los endpoints REST definidos en la aplicación Flask,
+    permitiendo la interacción con el controlador óptico.
 
     Args:
-        host (str): Dirección IP del host.
-        port (int): Puerto de escucha.
+        host: La dirección IP en la que el servidor escuchará.
+            Por defecto es "0.0.0.0", lo que significa que escuchará en todas
+            las interfaces de red disponibles.
+        port: El número de puerto en el que el servidor escuchará.
+            Por defecto es 8001.
     """
     logger.info(f"Iniciando servicio en {host}:{port}")
     app.run(host=host, port=port, debug=False)
