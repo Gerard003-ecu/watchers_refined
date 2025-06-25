@@ -668,20 +668,15 @@ def mock_malla_state():
     mock_mesh.previous_flux = 0.0
 
     with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", mock_mesh
-        ),
+        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", mock_mesh),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.AMPLITUDE_INFLUENCE_THRESHOLD", 5.0
-        ),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.AMPLITUDE_INFLUENCE_THRESHOLD", 5.0),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.DPHI_DT_INFLUENCE_THRESHOLD", 1.0
-        ),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.DPHI_DT_INFLUENCE_THRESHOLD", 1.0),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", 0.5
-        ),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", 0.5),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock"
-        ):
+            "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock"):
         yield mock_mesh, [
             cell1,
             cell2,
