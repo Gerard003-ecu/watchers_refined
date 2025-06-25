@@ -7,8 +7,8 @@ Permite interactuar con la capa estratégica del ecosistema Watchers.
 """
 
 from flask import Flask, request, jsonify
-from utils.logger import get_logger
-from agent_ai import agent_ai_instance_app
+from .utils.logger import get_logger
+from .agent_ai import agent_ai_instance_app
 
 # import logging # No se usa directamente si usamos get_logger
 import os

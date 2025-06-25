@@ -27,8 +27,8 @@ import numpy as np
 import requests
 
 # Local application imports
-from utils.logger import get_logger
-from validation.validator import (
+from .utils.logger import get_logger
+from .validation.validator import (
     check_missing_dependencies,
     validate_module_registration,
 )
