@@ -3,7 +3,8 @@
 
 Este módulo contiene pruebas para las clases `Cell` y `HexCylindricalMesh`,
 así como funciones auxiliares relacionadas con mallas hexagonales cilíndricas
-utilizadas en el contexto de simulaciones o modelado (posiblemente con grafeno).
+utilizadas en el contexto de simulaciones o modelado
+(posiblemente con grafeno).
 
 Las pruebas verifican la correcta inicialización de objetos, la funcionalidad
 de los métodos principales (como obtención de celdas, vecinos, conversiones de
@@ -61,7 +62,8 @@ def sample_mesh_cg():
     y periodicidad en Z definidos.
 
     Returns:
-        HexCylindricalMesh: Una instancia de `HexCylindricalMesh` preconfigurada.
+        HexCylindricalMesh:
+        Una instancia de `HexCylindricalMesh` preconfigurada.
     """
     return HexCylindricalMesh(
         radius=3.0, height_segments=3,
@@ -218,8 +220,8 @@ def test_get_axial_neighbors_coords(
 
     Args:
         sample_mesh_cg (HexCylindricalMesh): Fixture que proporciona una
-            instancia de `HexCylindricalMesh` (usada aquí principalmente
-            para invocar el método, la lógica es independiente de la instancia).
+        instancia de `HexCylindricalMesh` (usada aquí principalmente
+        para invocar el método, la lógica es independiente de la instancia).
     """
     # Este test no depende de las celdas reales, solo de la lógica de
     # get_axial_neighbors
@@ -274,10 +276,10 @@ def test_mesh_get_neighbor_cells(sample_mesh_cg: HexCylindricalMesh):
 def test_mesh_verify_connectivity(sample_mesh_cg: HexCylindricalMesh):
     """Analiza la conectividad de la malla `HexCylindricalMesh` generada.
 
-    Utiliza `verify_connectivity()` para obtener un reporte del número de vecinos
-    por celda y verifica que este reporte cumpla con ciertas expectativas
-    (e.g., no celdas aisladas, no más de 6 vecinos, proporciones razonables
-    de celdas con diferente número de vecinos).
+    Utiliza `verify_connectivity()` para obtener un reporte del número
+    de vecinos por celda y verifica que este reporte cumpla con ciertas
+    expectativas (e.g., no celdas aisladas, no más de 6 vecinos,
+    proporciones razonables de celdas con diferente número de vecinos).
 
     Args:
         sample_mesh_cg (HexCylindricalMesh): Fixture que proporciona una

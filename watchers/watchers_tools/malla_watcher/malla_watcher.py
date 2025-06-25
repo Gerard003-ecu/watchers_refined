@@ -33,7 +33,7 @@ Dependencias Clave:
     `numpy`: Para operaciones numéricas eficientes, especialmente en el manejo
     de vectores y campos.
     `requests`: Para la comunicación HTTP con otros servicios (ECU, AgentAI).
-    `Flask`: Para exponer una API que permite el control y monitoreo de la malla.
+    `Flask`: Expone una API que permite el control y monitoreo de la malla.
 """
 
 import math
@@ -1089,7 +1089,7 @@ def get_malla_state() -> Tuple[str, int]:
 @app.route('/api/control', methods=['POST'])
 def set_malla_control() -> Tuple[str, int]:
     """
-    Ajusta los parámetros de control de la malla (acoplamiento y amortiguación).
+    Ajusta parámetros de control de la malla (acoplamiento y amortiguación).
 
     Espera un payload JSON con una clave "control_signal" (numérica).
     Esta señal se utiliza para modular los coeficientes base de acoplamiento
@@ -1256,7 +1256,7 @@ def aplicar_influencia_toroide_push() -> Tuple[str, int]:
 @app.route('/api/event', methods=['POST'])
 def receive_event() -> Tuple[str, int]:
     """
-    Procesa un evento externo para aplicarlo a una celda específica de la malla.
+    Procesa un evento externo y  lo aplica a una celda específica de la malla.
 
     Actualmente, solo soporta eventos de tipo "pulse".
     Espera un payload JSON con:
@@ -1271,7 +1271,7 @@ def receive_event() -> Tuple[str, int]:
     Retorna un JSON indicando el resultado de la operación.
 
     Returns:
-        Tuple[str, int]: 
+        Tuple[str, int]:
         Una tupla conteniendo la respuesta JSON como string
         y el código de estado HTTP (200 si éxito, 400 si
         el payload es inválido o datos incompletos, 404 si

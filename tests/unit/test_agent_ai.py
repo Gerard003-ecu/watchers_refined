@@ -34,23 +34,26 @@ from agent_ai.agent_ai import (
 @mock.patch("agent_ai.agent_ai.validate_module_registration")
 @mock.patch("agent_ai.agent_ai.logger")
 class TestAgentAI(unittest.TestCase):
-    """Conjunto de pruebas unitarias para la clase `AgentAI`.
+    """
+    Conjunto de pruebas unitarias para la clase `AgentAI`.
 
-    Esta clase de pruebas verifica el comportamiento de `AgentAI`, incluyendo
-    la inicialización con valores por defecto y variables de entorno,
-    la comunicación con Harmony Controller (obtención de estado y envío de
-    setpoints), la lógica interna para determinar el setpoint de Harmony
-    basado en diferentes estrategias y señales externas, el registro y
-    validación de módulos auxiliares y centrales, y la gestión de comandos
-    estratégicos y la obtención del estado completo del agente.
+    Esta clase de pruebas verifica el comportamiento de `AgentAI`,
+    incluyendo la inicialización con valores por defecto y variables
+    de entorno, la comunicación con Harmony Controller (obtención de
+    estado y envío de setpoints), la lógica interna para determinar
+    el setpoint de Harmony basado en diferentes estrategias y señales
+    externas, el registro y validación de módulos auxiliares y centrales,
+    y la gestión de comandos estratégicos y la obtención del estado
+    completo del agente.
 
     Attributes:
         agent (AgentAI): Instancia de `AgentAI` creada para cada prueba.
-        mock_sleep (unittest.mock.MagicMock): Mock para `time.sleep` usado en reintentos.
+        mock_sleep Mock para `time.sleep` usado en reintentos.
     """
 
     def setUp(self):
-        """Configura el entorno necesario antes de la ejecución de cada prueba.
+        """
+        Configura el entorno necesario antes de la ejecución de cada prueba.
 
         Este método se invoca automáticamente por `unittest` antes de cada
         método de prueba. Se encarga de limpiar variables de entorno relevantes
@@ -72,13 +75,14 @@ class TestAgentAI(unittest.TestCase):
             self.agent.shutdown()
 
     def tearDown(self):
-        """Limpia el entorno después de la ejecución de cada prueba.
+        """
+        Limpia el entorno después de la ejecución de cada prueba.
 
-        Este método se invoca automáticamente por `unittest` después de cada
-        método de prueba. Su principal responsabilidad es asegurar que el hilo
-        estratégico (`_strategic_thread`) del agente `AgentAI` sea detenido
-        correctamente si aún está en ejecución, para evitar interferencias
-        entre pruebas.
+        Este método se invoca automáticamente por `unittest` después de
+        cada método de prueba. Su principal responsabilidad es asegurar
+        que el hilo estratégico (`_strategic_thread`) del agente `AgentAI`
+        sea detenido correctamente si aún está en ejecución, para evitar
+        interferencias entre pruebas.
         """
         if self.agent._strategic_thread.is_alive():
             self.agent.shutdown()
@@ -86,20 +90,21 @@ class TestAgentAI(unittest.TestCase):
     def test_initialization_defaults(
         self, mock_get_logger, mock_validate, mock_check_deps, mock_requests
     ):
-        """Verifica la inicialización de AgentAI con valores por defecto.
+        """
+        Verifica la inicialización de AgentAI con valores por defecto.
 
-        Esta prueba asegura que cuando `AgentAI` se instancia sin variables de
-        entorno específicas que modifiquen su configuración inicial, se
-        establecen correctamente los valores predeterminados para sus atributos,
-        tales como la lista de módulos (vacía), la estrategia actual
-        ('default'), el vector de setpoint objetivo, y las URLs para los
-        servicios centrales (Harmony Controller, ECU, Malla Watcher).
+        Esta prueba asegura que cuando `AgentAI` se instancia sin variables
+        de entorno específicas que modifiquen su configuración inicial,
+        se establecen correctamente los valores predeterminados para sus
+        atributos, tales como la lista de módulos (vacía), la estrategia
+        actual ('default'), el vector de setpoint objetivo, y las URLs
+        para los servicios centrales (Harmony Controller, ECU, Malla Watcher).
 
         Args:
-            mock_get_logger (unittest.mock.MagicMock): Mock del logger.
-            mock_validate (unittest.mock.MagicMock): Mock de la función de validación de registro.
-            mock_check_deps (unittest.mock.MagicMock): Mock de la función de chequeo de dependencias.
-            mock_requests (unittest.mock.MagicMock): Mock del módulo `requests`.
+            mock_get_logger, Mock del logger.
+            mock_validate, Mock de la función de validación de registro.
+            mock_check_deps, Mock de la función de chequeo de dependencias.
+            mock_requests, Mock del módulo `requests`.
         """
         self.assertEqual(len(self.agent.modules), 0)
         self.assertEqual(self.agent.current_strategy, "default")
@@ -117,19 +122,22 @@ class TestAgentAI(unittest.TestCase):
     def test_init_central_urls_defaults(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Verifica que AgentAI usa URLs por defecto si no hay variables de entorno.
+        """
+        Verifica que AgentAI usa URLs por defecto si no hay variables
+        de entorno.
 
-        Esta prueba comprueba que, en ausencia de variables de entorno que
-        especifiquen las URLs para Harmony Controller, ECU y Malla Watcher,
-        `AgentAI` utiliza correctamente las URLs predeterminadas definidas
-        internamente. También verifica que la URL de registro en Harmony
-        Controller se construya a partir de la URL base por defecto de HC.
+        Esta prueba comprueba que, en ausencia de variables de entorno
+        que especifiquen las URLs para Harmony Controller, ECU y
+        Malla Watcher, `AgentAI` utiliza correctamente las URLs
+        predeterminadas definidas internamente. También verifica que la
+        URL de registro en Harmony Controller se construya a partir de la
+        URL base por defecto de HC.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         # Asegurar un entorno limpio para este test, sin las variables
         # relevantes
@@ -167,18 +175,21 @@ class TestAgentAI(unittest.TestCase):
     def test_init_central_urls_from_env(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Verifica que AgentAI usa URLs de variables de entorno cuando están definidas.
+        """
+        Verifica que AgentAI usa URLs de variables de entorno
+        cuando están definidas.
 
-        Esta prueba asegura que si las variables de entorno para las URLs de
-        Harmony Controller, ECU, Malla Watcher y el endpoint de registro de HC
-        están definidas, `AgentAI` prioriza estos valores sobre los
-        predeterminados durante su inicialización.
+        Esta prueba asegura que si las variables de entorno para
+        las URLs de Harmony Controller, ECU, Malla Watcher y el
+        endpoint de registro de HC están definidas, `AgentAI`
+        prioriza estos valores sobre los predeterminados durante
+        su inicialización.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         # Definir URLs de prueba para el entorno
         test_hc_url = "http://test-hc:111"
@@ -213,18 +224,20 @@ class TestAgentAI(unittest.TestCase):
     def test_get_harmony_state_success(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Prueba la obtención exitosa del estado de Harmony Controller.
+        """
+        Prueba la obtención exitosa del estado de Harmony Controller.
 
         Verifica que el método `_get_harmony_state` puede procesar
-        correctamente una respuesta exitosa (código 200) del endpoint de estado
-        de Harmony Controller. Asegura que la URL correcta es llamada y que los
-        datos del estado son extraídos y devueltos adecuadamente.
+        correctamente una respuesta exitosa (código 200) del endpoint
+        de estado de Harmony Controller. Asegura que la URL correcta es
+        llamada y que los datos del estado son
+        extraídos y devueltos adecuadamente.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         mock_response = mock.MagicMock()
         mock_response.status_code = 200
@@ -251,19 +264,20 @@ class TestAgentAI(unittest.TestCase):
     def test_get_harmony_state_network_error(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Prueba el manejo de errores de red al obtener el estado de Harmony.
+        """
+        Prueba el manejo de errores de red al obtener el estado de Harmony.
 
-        Verifica que `_get_harmony_state` maneja adecuadamente los errores de
-        red (simulados por `requests.exceptions.RequestException`). Se espera
-        que el método intente la comunicación `MAX_RETRIES` veces, con pausas
-        entre intentos (verificadas por `mock_sleep`), y que finalmente
-        devuelva `None` si el error persiste.
+        Verifica que `_get_harmony_state` maneja adecuadamente los errores
+        de red (simulados por `requests.exceptions.RequestException`).
+        Se espera que el método intente la comunicación `MAX_RETRIES`
+        veces, con pausas entre intentos (verificadas por `mock_sleep`),
+        y que finalmente devuelva `None` si el error persiste.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         mock_requests.get.side_effect = requests.exceptions.RequestException(
             "Connection failed"
@@ -280,18 +294,20 @@ class TestAgentAI(unittest.TestCase):
     def test_get_harmony_state_bad_response(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Prueba el manejo de respuestas no exitosas de Harmony Controller.
+        """
+        Prueba el manejo de respuestas no exitosas de Harmony Controller.
 
         Verifica que `_get_harmony_state` devuelve `None` cuando Harmony
-        Controller responde con un JSON que indica un error (ej. status 'error'),
-        incluso si el código de estado HTTP es 200. La prueba se configura
-        para un solo intento (MAX_RETRIES = 1) para aislar este comportamiento.
+        Controller responde con un JSON que indica un error
+        (ej. status 'error'), incluso si el código de estado HTTP es 200.
+        La prueba se configura para un solo intento (MAX_RETRIES = 1)
+        para aislar este comportamiento.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         mock_response = mock.MagicMock()
         mock_response.status_code = 200
@@ -307,18 +323,19 @@ class TestAgentAI(unittest.TestCase):
     def test_send_setpoint_to_harmony_success(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Prueba el envío exitoso de un setpoint a Harmony Controller.
+        """
+        Prueba el envío exitoso de un setpoint a Harmony Controller.
 
         Verifica que el método `_send_setpoint_to_harmony` construye
-        correctamente la solicitud POST (URL y payload JSON) para enviar un
-        nuevo vector de setpoint a Harmony Controller y que maneja
-        adecuadamente una respuesta exitosa (código 200).
+        correctamente la solicitud POST (URL y payload JSON) para
+        enviar un nuevo vector de setpoint a Harmony Controller y que
+        maneja adecuadamente una respuesta exitosa (código 200).
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         mock_response = mock.MagicMock()
         mock_response.status_code = 200
@@ -339,19 +356,21 @@ class TestAgentAI(unittest.TestCase):
     def test_send_setpoint_to_harmony_error(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Prueba el manejo de errores de red al enviar setpoint a Harmony.
+        """
+        Prueba el manejo de errores de red al enviar setpoint a Harmony.
 
         Verifica que `_send_setpoint_to_harmony` maneja errores de red
-        (simulados por `requests.exceptions.RequestException`) durante el envío
-        de un setpoint. Se espera que el método reintente la operación
-        `MAX_RETRIES` veces, con pausas intermedias, y que no levante una
-        excepción si el error persiste (la gestión de errores es interna).
+        (simulados por `requests.exceptions.RequestException`) durante
+        el envío de un setpoint. Se espera que el método reintente la
+        operación `MAX_RETRIES` veces, con pausas intermedias, y que no
+        levante una excepción si el error persiste
+        (la gestión de errores es interna).
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         mock_requests.post.side_effect = requests.exceptions.RequestException(
             "Connection failed"
@@ -365,7 +384,9 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_harmony_setpoint_simple(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Prueba la lógica de determinación del setpoint de Harmony en varios escenarios.
+        """
+        Prueba la lógica de determinación del setpoint de Harmony
+        en varios escenarios.
 
         Este método de prueba cubre múltiples casos para la función
         `_determine_harmony_setpoint`:
@@ -373,19 +394,23 @@ class TestAgentAI(unittest.TestCase):
         - Señal de Cogniboard alta: el setpoint se reduce proporcionalmente.
         - Señal de Cogniboard inválida: el setpoint no cambia.
         - Estrategia 'estabilidad':
-            - Con error bajo o esfuerzo PID alto: la magnitud del setpoint se reduce.
-            - Con más módulos reductores que potenciadores: se aplica una reducción adicional.
+            - Con error bajo o esfuerzo PID alto: la magnitud del setpoint
+            se reduce.
+            - Con más módulos reductores que potenciadores: se aplica una
+            reducción adicional.
         - Estrategia 'rendimiento':
-            - Con error bajo y esfuerzo PID bajo: la magnitud del setpoint aumenta.
-            - Con más módulos potenciadores (ECU) que reductores: se aplica un aumento adicional.
+            - Con error bajo y esfuerzo PID bajo: la magnitud del setpoint
+            aumenta.
+            - Con más módulos potenciadores (ECU) que reductores: se aplica
+            un aumento adicional.
         - Estrategia 'ahorro_energia':
             - Con módulos reductores activos: la magnitud del setpoint se reduce.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
 
         # Caso default: sin cambios
@@ -545,18 +570,19 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_default_sin_cambio_base(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Verifica que la estrategia 'default' no altera el setpoint base.
+        """
+        Verifica que la estrategia 'default' no altera el setpoint base.
 
         Cuando la estrategia es 'default' y no hay otras influencias
-        (como señales de Cogniboard o módulos auxiliares específicos que modifiquen
-        el comportamiento base), el setpoint determinado debe ser igual al
-        setpoint objetivo actual del agente.
+        (como señales de Cogniboard o módulos auxiliares específicos
+        que modifiquen el comportamiento base), el setpoint determinado
+        debe ser igual al setpoint objetivo actual del agente.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [1.5, -0.5]
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -582,18 +608,20 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_estabilidad_reduce_por_error_bajo(
         self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
     ):
-        """Verifica que la estrategia 'estabilidad' reduce la magnitud del setpoint si el error es bajo.
+        """
+        Verifica que la estrategia 'estabilidad' reduce la magnitud del
+        setpoint si el error es bajo.
 
-        Si la estrategia activa es 'estabilidad' y la medición actual está muy
-        cerca del setpoint objetivo (error bajo), y el esfuerzo del PID es bajo,
-        se espera que la magnitud del nuevo setpoint se reduzca en un factor
-        predeterminado (0.98).
+        Si la estrategia activa es 'estabilidad' y la medición actual
+        está muy cerca del setpoint objetivo (error bajo), y el esfuerzo
+        del PID es bajo, se espera que la magnitud del nuevo setpoint se
+        reduzca en un factor predeterminado (0.98).
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -626,18 +654,20 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que 'estabilidad' reduce magnitud del setpoint si el esfuerzo PID es alto.
+        """
+        Verifica que 'estabilidad' reduce magnitud del setpoint si
+        el esfuerzo PID es alto.
 
-        Con la estrategia 'estabilidad', si el último esfuerzo registrado del
-        controlador PID es alto (indicando dificultad para alcanzar el setpoint),
-        la magnitud del nuevo setpoint debe reducirse en un factor
-        predeterminado (0.98), independientemente del error actual.
+        Con la estrategia 'estabilidad', si el último esfuerzo registrado
+        del controlador PID es alto (indicando dificultad para alcanzar
+        el setpoint), la magnitud del nuevo setpoint debe reducirse en
+        un factor predeterminado (0.98), independientemente del error actual.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -669,19 +699,21 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica reducción extra en 'estabilidad' si hay más reductores que potenciadores en malla.
+        """
+        Verifica reducción extra en 'estabilidad' si hay más reductores
+        que potenciadores en malla.
 
-        Si la estrategia es 'estabilidad', y además de una condición de reducción
-        base (como error bajo), hay más módulos auxiliares de tipo 'reductor'
-        que 'potenciador' afectando a 'malla_watcher', se debe aplicar una
-        reducción adicional a la magnitud del setpoint (factor 0.97 sobre la
-        reducción anterior).
+        Si la estrategia es 'estabilidad', y además de una condición de
+        reducción base (como error bajo), hay más módulos auxiliares de
+        tipo 'reductor' que 'potenciador' afectando a 'malla_watcher', se
+        debe aplicar una reducción adicional a la magnitud del setpoint
+        (factor 0.97 sobre la reducción anterior).
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -732,18 +764,20 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que la estrategia 'rendimiento' aumenta la magnitud del setpoint si el sistema está estable.
+        """
+        Verifica que la estrategia 'rendimiento' aumenta la magnitud
+        del setpoint si el sistema está estable.
 
-        Cuando la estrategia es 'rendimiento', el error es bajo y el esfuerzo
-        del PID es bajo (indicando estabilidad y capacidad de respuesta),
-        se espera que la magnitud del setpoint aumente en un factor
-        predeterminado (1.02).
+        Cuando la estrategia es 'rendimiento', el error es bajo y el
+        esfuerzo del PID es bajo (indicando estabilidad y capacidad
+        de respuesta), se espera que la magnitud del setpoint aumente
+        en un factor predeterminado (1.02).
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -773,18 +807,21 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica aumento extra en 'rendimiento' si hay más potenciadores que reductores en ECU.
+        """
+        Verifica aumento extra en 'rendimiento' si hay más
+        potenciadores que reductores en ECU.
 
-        Si la estrategia es 'rendimiento', el sistema está estable, y además
-        hay más módulos auxiliares de tipo 'potenciador' que 'reductor'
-        afectando a 'matriz_ecu', se debe aplicar un aumento adicional a la
-        magnitud del setpoint (factor 1.01 sobre el aumento anterior).
+        Si la estrategia es 'rendimiento', el sistema está estable,
+        y además hay más módulos auxiliares de tipo 'potenciador'
+        que 'reductor' afectando a 'matriz_ecu', se debe aplicar
+        un aumento adicional a la magnitud del setpoint
+        (factor 1.01 sobre el aumento anterior).
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -839,19 +876,21 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que 'rendimiento' establece un valor mínimo si el setpoint actual es cero.
+        """
+        Verifica que 'rendimiento' establece un valor mínimo si el
+        setpoint actual es cero.
 
-        Si la estrategia es 'rendimiento' y el setpoint objetivo actual es cero
-        (o un vector nulo), y el sistema está estable, el nuevo setpoint no debe
-        permanecer en cero. En su lugar, se debe establecer un valor mínimo
-        predeterminado (ej. [0.1, 0.1] para un vector 2D) para iniciar
-        la actividad.
+        Si la estrategia es 'rendimiento' y el setpoint objetivo
+        actual es cero (o un vector nulo), y el sistema está estable,
+        el nuevo setpoint no debe permanecer en cero. En su lugar, se
+        debe establecer un valor mínimo predeterminado
+        (ej. [0.1, 0.1] para un vector 2D) para iniciar la actividad.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [0.0, 0.0]  # Setpoint inicial cero
         initial_norm = 0.0
@@ -882,18 +921,20 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que 'ahorro_energia' reduce magnitud si hay módulos reductores activos.
+        """
+        Verifica que 'ahorro_energia' reduce magnitud si hay
+        módulos reductores activos.
 
-        Con la estrategia 'ahorro_energia', si existen módulos auxiliares
-        activos de tipo 'reductor' (independientemente de a qué componente
-        afecten), la magnitud del setpoint debe reducirse en un factor
-        predeterminado (0.95).
+        Con la estrategia 'ahorro_energia', si existen módulos
+        auxiliares activos de tipo 'reductor' (independientemente
+        de a qué componente afecten), la magnitud del setpoint
+        debe reducirse en un factor predeterminado (0.95).
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -930,18 +971,20 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que 'ahorro_energia' no cambia el setpoint si no hay reductores.
+        """
+        Verifica que 'ahorro_energia' no cambia el setpoint
+        si no hay reductores.
 
-        Si la estrategia es 'ahorro_energia' pero no hay módulos auxiliares
-        de tipo 'reductor' activos (aunque haya otros tipos como 'potenciador'),
-        el setpoint determinado no debe cambiar respecto al setpoint objetivo
-        actual del agente.
+        Si la estrategia es 'ahorro_energia' pero no hay módulos
+        auxiliares de tipo 'reductor' activos (aunque haya otros
+        tipos como 'potenciador'), el setpoint determinado no debe
+        cambiar respecto al setpoint objetivo actual del agente.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -977,18 +1020,21 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que una señal alta de Cogniboard reduce la magnitud del setpoint.
+        """
+        Verifica que una señal alta de Cogniboard reduce la
+        magnitud del setpoint.
 
-        Independientemente de la estrategia, si se recibe una señal numérica
-        válida de Cogniboard (entre 0 y 1), esta actúa como un factor de escala
-        directo sobre la magnitud del setpoint calculado por la estrategia.
-        Una señal de 0.9 debería reducir la magnitud a un 90% de la original.
+        Independientemente de la estrategia, si se recibe una
+        señal numérica válida de Cogniboard (entre 0 y 1), esta
+        actúa como un factor de escala directo sobre la magnitud
+        del setpoint calculado por la estrategia. Una señal de 0.9
+        debería reducir la magnitud a un 90% de la original.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [5.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -1023,21 +1069,24 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Prueba el registro exitoso de un módulo auxiliar con todos sus atributos.
+        """
+        Prueba el registro exitoso de un módulo auxiliar con
+        todos sus atributos.
 
-        Verifica que el método `registrar_modulo` procesa correctamente los datos
-        de un módulo de tipo 'auxiliar', incluyendo su nombre, URLs, tipo,
-        a qué componente aporta (`aporta_a`), su naturaleza (`naturaleza_auxiliar`),
-        y la ruta a sus requisitos. Asegura que el módulo se añade al diccionario
-        interno `agent.modules` con el estado 'pendiente', y que se intenta
-        iniciar un hilo para su validación de salud. También comprueba que
-        `check_missing_dependencies` es llamado.
+        Verifica que el método `registrar_modulo` procesa
+        correctamente los datos de un módulo de tipo 'auxiliar',
+        incluyendo su nombre, URLs, tipo, a qué componente aporta
+        (`aporta_a`), su naturaleza (`naturaleza_auxiliar`),
+        y la ruta a sus requisitos. Asegura que el módulo se añade
+        al diccionario interno `agent.modules` con el estado 'pendiente',
+        y que se intenta iniciar un hilo para su validación de salud.
+        También comprueba que `check_missing_dependencies` es llamado.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
         mock_os_exists.return_value = True  # Asumir que archivos existen
@@ -1084,20 +1133,22 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Prueba el registro exitoso de un módulo central.
+        """
+        Prueba el registro exitoso de un módulo central.
 
-        Verifica que `registrar_modulo` puede registrar un módulo de tipo
-        'central' (o 'integrador', etc.), que no requiere los campos
-        `aporta_a` ni `naturaleza_auxiliar`. Asegura que el módulo se añade
-        correctamente a `agent.modules` y que se inicia el hilo de validación.
-        No se espera que se llame a `check_missing_dependencies` si no se
-        proporciona `requirements_path`.
+        Verifica que `registrar_modulo` puede registrar un
+        módulo de tipo 'central' (o 'integrador', etc.), que 
+        no requiere los campos `aporta_a` ni `naturaleza_auxiliar`.
+        Asegura que el módulo se añade correctamente a `agent.modules`
+        y que se inicia el hilo de validación. No se espera que se llame
+        a `check_missing_dependencies` si no se proporciona
+        `requirements_path`.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
         mock_os_exists.return_value = True
@@ -1107,7 +1158,6 @@ class TestAgentAI(unittest.TestCase):
             "url": "http://centraltest:5678/api/state",
             "url_salud": "http://centraltest:5678/api/health",
             "tipo": "central",  # O integrador
-            # No se proporcionan aporta_a ni naturaleza_auxiliar
         }
         result = self.agent.registrar_modulo(module_data)
 
@@ -1126,18 +1176,21 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Prueba el intento de registro de un módulo con datos inválidos o faltantes.
+        """
+        Prueba el intento de registro de un módulo con datos
+        inválidos o faltantes.
 
-        Verifica que `registrar_modulo` devuelve un error si los datos
-        proporcionados para el registro del módulo son insuficientes o inválidos,
-        según la validación realizada por `validate_module_registration`.
+        Verifica que `registrar_modulo` devuelve un error si
+        los datos proporcionados para el registro del módulo
+        son insuficientes o inválidos, según la validación
+        realizada por `validate_module_registration`.
         El módulo no debe ser añadido a `agent.modules` en este caso.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         # Asumiendo que validator.validate_module_registration verifica campos
         # requeridos
@@ -1159,18 +1212,21 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Prueba el intento de registro de un módulo cuando falla la verificación de dependencias.
+        """
+        Prueba el intento de registro de un módulo cuando falla la
+        verificación de dependencias.
 
-        Verifica que si `check_missing_dependencies` (llamado durante el
-        registro de un módulo que especifica un `requirements_path`) devuelve
-        que faltan dependencias, el método `registrar_modulo` devuelve un error
-        y el módulo no se añade a `agent.modules`.
+        Verifica que si `check_missing_dependencies`
+        (llamado durante el registro de un módulo que especifica un
+        `requirements_path`) devuelve que faltan dependencias, el
+        método `registrar_modulo` devuelve un error y el módulo no
+        se añade a `agent.modules`.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (False, "Falta 'superlib'")
         mock_os_exists.return_value = True
@@ -1192,18 +1248,21 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Prueba la validación de salud exitosa de un módulo auxiliar sin naturaleza definida.
+        """
+        Prueba la validación de salud exitosa de un módulo auxiliar
+        sin naturaleza definida.
 
-        Verifica que `_validar_salud_modulo` actualiza el estado de salud de un
-        módulo a 'ok' si la petición a su `url_salud` es exitosa (código 200).
-        Si el módulo es de tipo 'auxiliar' pero no tiene `naturaleza_auxiliar`
-        definida, no se debe intentar notificar a Harmony Controller.
+        Verifica que `_validar_salud_modulo` actualiza el estado de
+        salud de un módulo a 'ok' si la petición a su `url_salud` es
+        exitosa (código 200). Si el módulo es de tipo 'auxiliar' pero
+        no tiene `naturaleza_auxiliar` definida, no se debe intentar
+        notificar a Harmony Controller.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         module_name = "NoNatureAux"
         module_url = "http://nonature/api"
@@ -1236,19 +1295,21 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Prueba la validación de salud exitosa de un módulo de tipo no-auxiliar (ej. 'central').
+        """
+        Prueba la validación de salud exitosa de un módulo de tipo
+        no-auxiliar (ej. 'central').
 
-        Verifica que `_validar_salud_modulo` actualiza el estado de salud
-        a 'ok' para módulos que no son 'auxiliar' (ej. 'central', 'integrador')
-        si la respuesta de su `url_salud` es exitosa. En estos casos,
-        no se debe intentar notificar a Harmony Controller, independientemente
-        de otros atributos.
+        Verifica que `_validar_salud_modulo` actualiza el estado de
+        salud a 'ok' para módulos que no son 'auxiliar'
+        (ej. 'central', 'integrador') si la respuesta de su `url_salud`
+        es exitosa. En estos casos, no se debe intentar notificar a
+        Harmony Controller, independientemente de otros atributos.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         module_name = "HealthyCentral"
         module_url = "http://healthycentral/api"
@@ -1281,17 +1342,18 @@ class TestAgentAI(unittest.TestCase):
         """Prueba la validación de salud fallida de un módulo.
 
         Verifica que si la petición a la `url_salud` de un módulo falla
-        (ej. por `requests.exceptions.ConnectionError`) después de los reintentos
-        configurados, el estado de salud del módulo se actualiza a
-        'error_inesperado'. Crucialmente, en caso de fallo de validación de salud,
-        no se debe intentar notificar a Harmony Controller, incluso si el módulo
-        es auxiliar y tiene naturaleza definida.
+        (ej. por `requests.exceptions.ConnectionError`) después de los
+        reintentos configurados, el estado de salud del módulo se
+        actualiza a 'error_inesperado'. Crucialmente, en caso de fallo
+        de validación de salud, no se debe intentar notificar a
+        Harmony Controller, incluso si el módulo es auxiliar
+        y tiene naturaleza definida.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         module_name = "FailAux"
         module_url = "http://failaux/api"
@@ -1325,19 +1387,19 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Prueba el mecanismo de reintentos al notificar a Harmony Controller.
+        """
+        Prueba el mecanismo de reintentos al notificar a Harmony Controller.
 
-        Verifica que la función `_notify_harmony_controller_of_tool` intenta
-        realizar la notificación (una solicitud POST) a Harmony Controller
-        `MAX_RETRIES` veces si la solicitud falla persistentemente (ej. por
+        Verifica que la función intenta realizar la notificación (una solicitud POST)
+        a Harmony Controller si la solicitud falla persistentemente (ej. por
         `requests.exceptions.RequestException`). También asegura que se realizan
         pausas (`mock_sleep`) entre los intentos.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         # Mockear la notificación para que siempre falle
         mock_requests.post.side_effect = requests.exceptions.RequestException(
@@ -1365,7 +1427,8 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Prueba la funcionalidad de actualizar comandos estratégicos del agente.
+        """
+        Prueba la funcionalidad de actualizar comandos estratégicos del agente.
 
         Verifica la correcta gestión de diferentes comandos a través de
         `actualizar_comando_estrategico`:
@@ -1375,10 +1438,10 @@ class TestAgentAI(unittest.TestCase):
         - Comando inválido: Devuelve un error apropiado.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         # Set strategy
         result = self.agent.actualizar_comando_estrategico(
@@ -1431,10 +1494,10 @@ class TestAgentAI(unittest.TestCase):
         `external_inputs` del agente con las señales y datos recibidos.
 
         Args:
-            mock_thread (unittest.mock.MagicMock): Mock para la creación de hilos.
-            mock_os_exists (unittest.mock.MagicMock): Mock para `os.path.exists`.
-            mock_check_deps (unittest.mock.MagicMock): Mock para `check_missing_dependencies`.
-            mock_requests (unittest.mock.MagicMock): Mock para el módulo `requests`.
+            mock_thread, Mock para la creación de hilos.
+            mock_os_exists, Mock para `os.path.exists`.
+            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_requests, Mock para el módulo `requests`.
         """
         self.agent.recibir_control_cogniboard(0.77)
         self.assertEqual(self.agent.external_inputs["cogniboard_signal"], 0.77)
@@ -1452,21 +1515,24 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Verifica que `obtener_estado_completo` retorna una instantánea precisa del estado del agente.
+        """
+        Verifica que `obtener_estado_completo` retorna una instantánea
+        precisa del estado del agente.
 
-        Esta prueba configura diversos aspectos del estado interno del agente `AgentAI`
-        (setpoint objetivo, estrategia actual, inputs externos, estado de Harmony,
-        módulos registrados con diferentes características) y luego llama a
+        Esta prueba configura diversos aspectos del estado interno del
+        agente `AgentAI` (setpoint objetivo, estrategia actual,
+        inputs externos, estado de Harmony, módulos registrados
+        con diferentes características) y luego llama a
         `obtener_estado_completo`. Comprueba que el diccionario devuelto
-        refleja fielmente todos estos aspectos, incluyendo los detalles de
-        los módulos como tipo, `aporta_a` y `naturaleza_auxiliar` cuando
-        corresponda.
+        refleja fielmente todos estos aspectos, incluyendo los detalles
+        de los módulos como tipo, `aporta_a` y `naturaleza_auxiliar`
+        cuando corresponda.
 
         Args:
-            mock_get_logger (unittest.mock.MagicMock): Mock del logger.
-            mock_validate (unittest.mock.MagicMock): Mock de la función de validación de registro.
-            mock_check_deps (unittest.mock.MagicMock): Mock de la función de chequeo de dependencias.
-            mock_requests (unittest.mock.MagicMock): Mock del módulo `requests`.
+            mock_get_logger, Mock del logger.
+            mock_validate, Mock de la función de validación de registro.
+            mock_check_deps, Mock de la función de chequeo de dependencias.
+            mock_requests, Mock del módulo `requests`.
         """
         with self.agent.lock:
             self.agent.target_setpoint_vector = [0.5, -0.5]

@@ -10,7 +10,7 @@ from dashboard.dashboard import (
     crear_grafico_barras,
     crear_control,
     app,
-    api_error_handler # Added as it's used implicitly by obtener_datos_reales
+    api_error_handler
 )
 
 
@@ -65,9 +65,6 @@ def test_dash_layout(dash_client):
 
 
 def test_dash_interaction(dash_client):
-    # This test is very basic and only checks if the endpoint responds
-    # by providing a payload that targets a known output and its expected inputs.
-    # It doesn't validate the content of the response, just that the endpoint works.
     payload = {
         "output": "control-signal-panel.children",
         "outputs": {"id": "control-signal-panel", "property": "children"},
