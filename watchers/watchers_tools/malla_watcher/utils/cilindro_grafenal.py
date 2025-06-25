@@ -246,7 +246,6 @@ class HexCylindricalMesh:
             f"Altura aprox.: {self.total_height_approx:.2f}"
         )
 
-
     def _initialize_mesh(self):
         """Construye las celdas de la malla utilizando un enfoque BFS.
 
