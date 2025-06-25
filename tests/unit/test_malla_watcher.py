@@ -894,7 +894,8 @@ def test_api_health_no_simulation_thread(client, reset_globals):
 
     with patch(
         "watchers.watchers_tools.malla_watcher.malla_watcher."
-        "simulation_thread") as mock_sim_thread:
+        "simulation_thread"
+    ) as mock_sim_thread:
         mock_sim_thread.is_alive.return_value = False
         response = client.get("/api/health")
         assert response.status_code == 500
@@ -912,7 +913,8 @@ def test_api_health_empty_mesh(client, reset_globals):
 
     with patch(
         "watchers.watchers_tools.malla_watcher.malla_watcher."
-        "simulation_thread") as mock_sim_thread:
+        "simulation_thread"
+    ) as mock_sim_thread:
         mock_sim_thread.is_alive.return_value = True
         response = client.get("/api/health")
         assert response.status_code == 500
