@@ -497,19 +497,19 @@ def fetch_and_apply_torus_field():
             response_data_dict.get("status") == "success" and
             "field_vector" in response_data_dict
         ):
-            actual_field_vector_list = response_data_dict["field_vector"]
+            field_vector = response_data_dict["field_vector"]
             mesh = malla_cilindrica_global
             if mesh:
                 if mesh.cells:
                     preview_del_primer_elemento = (
-                        actual_field_vector_list[0] if actual_field_vector_list else "vacío"
+                        field_vector[0] if field_vector else "vacío"
                     )
                     logger.debug(
                         "Aplicando campo vectorial ECU (primer elemento: %s)",
                         preview_del_primer_elemento,
                     )
                     apply_external_field_to_mesh(
-                        mesh, actual_field_vector_list)
+                        mesh, field_vector)
                     logger.info(
                         "Campo vectorial toroidal (V) obtenido y aplicado "
                         "exitosamente.")
