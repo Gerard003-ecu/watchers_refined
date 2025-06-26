@@ -120,7 +120,7 @@ class TestAgentAI(unittest.TestCase):
     # --- NUEVOS TESTS para verificar __init__ y lectura de ENV ---
 
     def test_init_central_urls_defaults(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Verifica que AgentAI usa URLs por defecto si no hay variables
@@ -173,7 +173,7 @@ class TestAgentAI(unittest.TestCase):
             )
 
     def test_init_central_urls_from_env(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Verifica que AgentAI usa URLs de variables de entorno
@@ -222,7 +222,7 @@ class TestAgentAI(unittest.TestCase):
     # --- FIN NUEVOS TESTS ---
     # --- Tests de Comunicación con HC (sin cambios funcionales) ---
     def test_get_harmony_state_success(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba la obtención exitosa del estado de Harmony Controller.
@@ -262,7 +262,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(state, mock_harmony_data)
 
     def test_get_harmony_state_network_error(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba el manejo de errores de red al obtener el estado de Harmony.
@@ -292,7 +292,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(self.mock_sleep.call_count, MAX_RETRIES - 1)
 
     def test_get_harmony_state_bad_response(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba el manejo de respuestas no exitosas de Harmony Controller.
@@ -321,7 +321,7 @@ class TestAgentAI(unittest.TestCase):
             self.assertIsNone(state)
 
     def test_send_setpoint_to_harmony_success(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba el envío exitoso de un setpoint a Harmony Controller.
@@ -354,7 +354,7 @@ class TestAgentAI(unittest.TestCase):
         )
 
     def test_send_setpoint_to_harmony_error(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba el manejo de errores de red al enviar setpoint a Harmony.
@@ -382,7 +382,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(self.mock_sleep.call_count, MAX_RETRIES - 1)
 
     def test_determine_harmony_setpoint_simple(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba la lógica de determinación del setpoint de Harmony
@@ -569,7 +569,7 @@ class TestAgentAI(unittest.TestCase):
         # --- NUEVOS TESTS DETALLADOS --- #
 
     def test_determine_estrategia_default_sin_cambio_base(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Verifica que la estrategia 'default' no altera el setpoint base.
@@ -607,7 +607,7 @@ class TestAgentAI(unittest.TestCase):
         )
 
     def test_determine_estrategia_estabilidad_reduce_por_error_bajo(
-        self, mock_thread, mock_os_exists, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Verifica que la estrategia 'estabilidad' reduce la magnitud del
@@ -651,7 +651,7 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_estabilidad_reduce_por_pid_alto(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -696,7 +696,7 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_estabilidad_reduce_extra_por_reductores(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -761,7 +761,7 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_rendimiento_aumenta(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -804,7 +804,7 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_rendimiento_aumenta_extra_por_potenciadores(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -873,7 +873,7 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_rendimiento_establece_minimo_si_cero(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -918,7 +918,7 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_ahorro_reduce_con_reductores(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -968,7 +968,7 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_estrategia_ahorro_sin_cambio_sin_reductores(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1017,7 +1017,7 @@ class TestAgentAI(unittest.TestCase):
     def test_determine_cogniboard_alto_reduce(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1066,7 +1066,7 @@ class TestAgentAI(unittest.TestCase):
     def test_registrar_modulo_auxiliar_success(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1090,9 +1090,9 @@ class TestAgentAI(unittest.TestCase):
             mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
-        # mock_os_exists.return_value = True  # Asumir que archivos existen
+        # mock_validate_registration.return_value = True  # Asumir que archivos existen
         # mock_validate.return_value = (True, "Mock validation successful")
-        mock_os_exists.return_value = (True, "Mock validation successful")
+        mock_validate_registration.return_value = (True, "Mock validation successful")
 
         module_data = {
             "nombre": "AuxTest",
@@ -1132,7 +1132,7 @@ class TestAgentAI(unittest.TestCase):
     def test_registrar_modulo_central_success(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1154,7 +1154,7 @@ class TestAgentAI(unittest.TestCase):
             mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
-        mock_os_exists.return_value = (True, "Mock validation successful")
+        mock_validate_registration.return_value = (True, "Mock validation successful")
         module_data = {
             "nombre": "CentralTest",
             "url": "http://centraltest:5678/api/state",
@@ -1174,7 +1174,7 @@ class TestAgentAI(unittest.TestCase):
     def test_registrar_modulo_invalid_data(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1198,7 +1198,7 @@ class TestAgentAI(unittest.TestCase):
         # requeridos
         module_data = {"nombre": "TestReg"}  # Falta url, tipo, etc.
         # Mockear el validador para simular fallo
-        mock_os_exists.return_value = (False, "Faltan campos requeridos: url, tipo")
+        mock_validate_registration.return_value = (False, "Faltan campos requeridos: url, tipo")
         result = self.agent.registrar_modulo(module_data)
         self.assertEqual(result["status"], "error")
         self.assertIn("Faltan campos requeridos", result["mensaje"])
@@ -1207,7 +1207,7 @@ class TestAgentAI(unittest.TestCase):
     def test_registrar_modulo_dep_fail(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1228,10 +1228,10 @@ class TestAgentAI(unittest.TestCase):
             mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (False, "Falta 'superlib'")
-        mock_os_exists.return_value = True
+        mock_validate_registration.return_value = True
         # For this test, we want validate_module_registration to succeed,
         # so the dependency check is the point of failure.
-        mock_os_exists.return_value = (True, "Mock validation successful")
+        mock_validate_registration.return_value = (True, "Mock validation successful")
         module_data = {
             "nombre": "TestDepFail",
             "url": "http://testdep/health",
@@ -1248,7 +1248,7 @@ class TestAgentAI(unittest.TestCase):
     def test_validar_salud_modulo_ok_auxiliar_sin_naturaleza(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1295,7 +1295,7 @@ class TestAgentAI(unittest.TestCase):
     def test_validar_salud_modulo_ok_central(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1339,7 +1339,7 @@ class TestAgentAI(unittest.TestCase):
     def test_validar_salud_modulo_fail_y_no_notifica(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1387,7 +1387,7 @@ class TestAgentAI(unittest.TestCase):
     def test_notify_hc_retry_and_fail(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1428,7 +1428,7 @@ class TestAgentAI(unittest.TestCase):
     def test_actualizar_comando_estrategico(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
@@ -1488,7 +1488,7 @@ class TestAgentAI(unittest.TestCase):
     def test_recibir_inputs_externos(
         self,
         mock_thread,
-        mock_os_exists,
+        mock_validate_registration,
         mock_check_deps,
         mock_requests
     ):
