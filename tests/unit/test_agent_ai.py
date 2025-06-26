@@ -1092,7 +1092,7 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps.return_value = (True, "Dependencias OK")
         # mock_os_exists.return_value = True  # Asumir que archivos existen
         # mock_validate.return_value = (True, "Mock validation successful")
-        mock_os_exists.return_value = (True, "Mock validation successful") # Corrected line
+        mock_os_exists.return_value = (True, "Mock validation successful")
 
         module_data = {
             "nombre": "AuxTest",
@@ -1154,9 +1154,7 @@ class TestAgentAI(unittest.TestCase):
             mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
-        # mock_os_exists.return_value = True  # This line was incorrect as mock_os_exists here is for validate_module_registration
-        mock_os_exists.return_value = (True, "Mock validation successful") # Corrected: mock_validate -> mock_os_exists
-
+        mock_os_exists.return_value = (True, "Mock validation successful")
         module_data = {
             "nombre": "CentralTest",
             "url": "http://centraltest:5678/api/state",
@@ -1200,7 +1198,7 @@ class TestAgentAI(unittest.TestCase):
         # requeridos
         module_data = {"nombre": "TestReg"}  # Falta url, tipo, etc.
         # Mockear el validador para simular fallo
-        mock_validate.return_value = (False, "Faltan campos requeridos: url, tipo")
+        mock_os_exists.return_value = (False, "Faltan campos requeridos: url, tipo")
         result = self.agent.registrar_modulo(module_data)
         self.assertEqual(result["status"], "error")
         self.assertIn("Faltan campos requeridos", result["mensaje"])
@@ -1233,7 +1231,7 @@ class TestAgentAI(unittest.TestCase):
         mock_os_exists.return_value = True
         # For this test, we want validate_module_registration to succeed,
         # so the dependency check is the point of failure.
-        mock_validate.return_value = (True, "Mock validation successful")
+        mock_os_exists.return_value = (True, "Mock validation successful")
         module_data = {
             "nombre": "TestDepFail",
             "url": "http://testdep/health",
