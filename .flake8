@@ -1,0 +1,5 @@
+# mi-proyecto/.flake8
+[flake8]
+max-line-length = 88
+# El número 88 es el estándar que usa `black`. Es una opción muy popular.
+# Puedes elegir 99 o lo que consideres razonable para tu equipo.
