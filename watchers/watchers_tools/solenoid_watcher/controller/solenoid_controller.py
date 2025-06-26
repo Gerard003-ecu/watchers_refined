@@ -6,7 +6,9 @@ Este módulo implementa un controlador PID para ajustar la señal de control
 del solenoide, utilizando el modelo físico implementado en solenoid_model.
 """
 
-from watchers.watchers_tools.solenoid_watcher.model.solenoid_model import simulate_solenoid
+from watchers.watchers_tools.solenoid_watcher.model.solenoid_model import (
+    simulate_solenoid
+)
 
 
 class SolenoidController:
