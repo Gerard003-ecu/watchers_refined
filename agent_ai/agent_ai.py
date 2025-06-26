@@ -645,10 +645,10 @@ class AgentAI:
             #    logger.warning(
             #        "No se encontró GLOBAL_REQUIREMENTS_PATH en %s, "
             #        "omitiendo chequeo de dependencias para '%s'",
-                    GLOBAL_REQUIREMENTS_PATH,
-                    nombre,
-                )
-                deps_msg = "Validación omitida (archivo global no encontrado)."
+            #       GLOBAL_REQUIREMENTS_PATH,
+            #        nombre,
+            #   )
+            #    deps_msg = "Validación omitida (archivo global no encontrado)."
 
         with self.lock:
             if nombre in self.modules:
