@@ -9,7 +9,6 @@ from unittest.mock import patch
 # Import current_state directly as it's used elsewhere and seems fine
 from watchers.watchers_tools.watcher_focus.watcher_focus import (
     current_state
-    simulate_watcher_focus_infinite
 )
 import threading
 import time
