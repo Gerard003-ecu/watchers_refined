@@ -5,6 +5,9 @@ numpy
 opencv-python
 scikit-learn
 scipy
+dash
+dash-bootstrap-components
+plotly
 
 # Dependencias de benzwatcher
 fastapi
