@@ -13,8 +13,6 @@ from watchers.watchers_tools.watcher_focus.watcher_focus import (
 import threading
 import time
 import os
-# Import only the top-level package
-import watchers_modules
 
 # Parametrizar la URL base para el módulo watcher_focus.
 FOCUS_URL = os.environ.get("WATCHER_FOCUS_URL", "http://localhost:6000")
