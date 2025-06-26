@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 from watchers.watchers_tools.solenoid_watcher.controller.solenoid_controller import (
-    SolenoidController,
     capturar_imagen,
     procesar_imagen,
     generar_retroalimentacion,
