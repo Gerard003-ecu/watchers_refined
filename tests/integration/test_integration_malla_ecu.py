@@ -113,8 +113,10 @@ def test_malla_fetches_and_processes_ecu_field_vector(
         else True
         )
     ):
-        mock_field_data_payload["field_vector"] = 
-    [mock_field_data_payload["field_vector"]]
+        # Extrae el valor reasignado a una variable temporal con un nombre claro.
+        original_field_vector = mock_field_data_payload["field_vector"]
+        # Ahora la línea de asignación es mucho más corta y legible.
+        mock_field_data_payload["field_vector"] = [original_field_vector]
 
     validate(
         instance=mock_field_data_payload,
