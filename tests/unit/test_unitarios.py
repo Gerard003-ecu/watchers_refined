@@ -44,7 +44,7 @@ def test_phoswave_transmision():
         velocity=0.0
     )
     resonador = PhosWave(
-        coef_transmision=0.6,
+        coef_acoplamiento=0.6,
         coef_reflexion=0.4,
         tipo_onda=PhosWave.__dict__.get("tipo_onda", None) or "FOTON_A",
         lambda_foton=600

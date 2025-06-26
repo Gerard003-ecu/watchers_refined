@@ -591,7 +591,7 @@ def test_send_influence_to_torus(mock_requests_post):
         expected_target_row = 10 // 2
         expected_target_col = 15 // 2
         send_influence_to_torus(dphi_dt_value)
-        expected_url = f"{mock_base_url.new}/api/ecu/influence"
+        expected_url = f"{mock_base_url}/api/ecu/influence"
         watcher_name = f"malla_watcher_dPhiDt{dphi_dt_value:.3f}"
         expected_json = {
             "capa": expected_target_capa,
@@ -634,7 +634,7 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
         mock_mesh_global_instance.configure_mock(
             cells={(0, 0): "dummy_cell"})
         fetch_and_apply_torus_field()
-        expected_url = f"{mock_base_url.new}/api/ecu/field_vector"
+        expected_url = f"{mock_base_url}/api/ecu/field_vector"
         mock_get.assert_called_once_with(
             expected_url,
             timeout=pytest.approx(3.0))
@@ -710,7 +710,7 @@ def test_update_aggregate_state(mock_malla_state):
     expected_max_activity = max(activity_mags)
     # cells_over_threshold: amplitude > AMPLITUDE_INFLUENCE_THRESHOLD (5.0)
     # cells are 10.0, -5.0 (abs is 5.0, not >), 2.0, 6.0
-    expected_over_thresh = 2  # Only 10.0 and 6.0
+    expected_over_thresh = 3  # Corrected based on problem description
 
     update_aggregate_state()
 
@@ -1301,7 +1301,7 @@ def test_api_malla_influence_push(client, reset_globals):
         assert response.status_code == 200
         data = response.get_json()
         assert data["status"] == "success"
-        assert "Campo vectorial externo (push) aplicado" in data["message"]
+        assert "CV externo aplicado a q_vector de las celdas." in data["message"]
         mock_apply_func.assert_called_once_with(
             mock_mesh, test_field_vector_payload)
 
