@@ -51,12 +51,12 @@ class SolenoidController:
                           self.Kd * derivative)
         return control_signal
 
-    def update(self, I, n, R, dt=0.1):
+    def update(self, current, n, R, dt=0.1):
         """
         Ejecuta una simulación del modelo del solenoide y actualiza la señal.
 
         Parámetros:
-            I: Corriente actual (amperios).
+            current: Corriente actual (amperios).
             n: Densidad de vueltas (vueltas por metro).
             R: Radio del solenoide (metros).
             dt: Intervalo de tiempo para la simulación.

@@ -97,10 +97,24 @@ def test_malla_fetches_and_processes_ecu_field_vector(
         ],
     }
     # If mock_num_capas is 1, field_vector should be wrapped in another list
-    if mock_num_capas == 1 and isinstance(mock_field_data_payload["field_vector"], list) and \
-       (len(mock_field_data_payload["field_vector"]) == mock_num_filas if mock_num_filas > 0 else True) and \
-       (len(mock_field_data_payload["field_vector"][0]) == mock_num_cols if mock_num_filas > 0 and mock_num_cols > 0 else True):
-        mock_field_data_payload["field_vector"] = [mock_field_data_payload["field_vector"]]
+    if (
+        mock_num_capas == 1
+        and isinstance(
+            mock_field_data_payload["field_vector"], list
+        )
+        and (
+            len(mock_field_data_payload["field_vector"]) == mock_num_filas
+        if mock_num_filas > 0
+        else True
+        )
+    and (
+        len(mock_field_data_payload["field_vector"][0]) == mock_num_cols
+        if mock_num_filas > 0 and mock_num_cols > 0
+        else True
+        )
+    ):
+        mock_field_data_payload["field_vector"] = 
+    [mock_field_data_payload["field_vector"]]
 
     validate(
         instance=mock_field_data_payload,
