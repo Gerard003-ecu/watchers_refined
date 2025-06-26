@@ -23,7 +23,7 @@ def watcher_focus_thread():
     """Inicia y detiene el hilo de simulación para pruebas."""
     # Access simulate_watcher_focus_infinite function
     # from the watcher_focus module.
-    module_obj = watchers_modules.watcher_focus.watcher_focus
+    module_obj = watchers.watchers_tools.watcher_focus.watcher_focus
     func_path = module_obj.simulate_watcher_focus_infinite
     thread = threading.Thread(
         target=func_path,
