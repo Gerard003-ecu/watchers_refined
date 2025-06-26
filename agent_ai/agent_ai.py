@@ -606,8 +606,16 @@ class AgentAI:
                     "No se pudo encontrar el archivo de dependencias: "
                     f"{req_path}")
                 logger.error(deps_msg)
-                deps_ok = False
-            elif os.path.exists(GLOBAL_REQUIREMENTS_PATH):
+                # deps_ok = False # No longer just set, return error
+                return {"status": "error", "mensaje": deps_msg}
+            elif not os.path.exists(GLOBAL_REQUIREMENTS_PATH): # If local req exists, but global doesn't
+                deps_msg = (
+                    f"No se encontró el archivo GLOBAL_REQUIREMENTS_PATH ({GLOBAL_REQUIREMENTS_PATH}) "
+                    "para validar dependencias de '%s'." % nombre
+                )
+                logger.error(deps_msg)
+                return {"status": "error", "mensaje": deps_msg}
+            else: # Both local and global req files exist
                 try:
                     deps_ok, deps_msg = check_missing_dependencies(
                         req_path, GLOBAL_REQUIREMENTS_PATH)
@@ -622,19 +630,21 @@ class AgentAI:
                             "mensaje": deps_msg
                         }
                 except Exception as e:
-                    deps_ok = False
+                    # deps_ok = False # Not needed, already returning
                     deps_msg = (
                         f"Error inesperado al verificar dependencias: {e}"
                     )
-                logger.exception(deps_msg)
-                return {
-                    "status": "error",
-                    "mensaje": deps_msg
-                }
-            else:
-                logger.warning(
-                    "No se encontró GLOBAL_REQUIREMENTS_PATH en %s, "
-                    "omitiendo chequeo de dependencias para '%s'",
+                    logger.exception(deps_msg) # Log con stacktrace
+                    return { # Retornar error si la verificación misma falla
+                        "status": "error",
+                        "mensaje": deps_msg
+                    }
+            # This elif is no longer reachable due to the checks above, can be removed or will be dead code.
+            # For safety, let's assume the logic above covers all cases for req_path.
+            # elif req_path and not os.path.exists(GLOBAL_REQUIREMENTS_PATH):
+            #    logger.warning(
+            #        "No se encontró GLOBAL_REQUIREMENTS_PATH en %s, "
+            #        "omitiendo chequeo de dependencias para '%s'",
                     GLOBAL_REQUIREMENTS_PATH,
                     nombre,
                 )

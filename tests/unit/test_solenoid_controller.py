@@ -11,7 +11,7 @@ def controller():
     return SolenoidController(desired_Bz=1e-3, Kp=1000, Ki=50, Kd=10)
 
 
-@patch('solenoid_controller.simulate_solenoid')
+@patch('watchers.watchers_tools.solenoid_watcher.controller.solenoid_controller.simulate_solenoid')
 def test_pid_control(mock_simulate, controller):
     # Configuración de mock para la simulación
     mock_simulate.return_value = (
@@ -43,7 +43,7 @@ def test_pid_parameters(controller):
     assert controller.desired_Bz == 1e-3
 
 
-@patch('solenoid_controller.simulate_solenoid')
+@patch('watchers.watchers_tools.solenoid_watcher.controller.solenoid_controller.simulate_solenoid')
 def test_edge_cases(mock_simulate, controller):
     # Caso dt=0 (debe evitar división por cero)
     mock_simulate.return_value = (
@@ -60,10 +60,11 @@ def test_integral_windup(controller):
     for _ in range(10):
         controller.pid_control(measured_Bz=0, dt=0.1)
     # Verificar que la integral no crece indefinidamente
-    assert controller.integral_error == (1e-3 * 0.1) * 10
+    # Usar pytest.approx para comparaciones de punto flotante
+    assert controller.integral_error == pytest.approx((1e-3 * 0.1) * 10)
 
 
-@patch('solenoid_controller.simulate_solenoid')
+@patch('watchers.watchers_tools.solenoid_watcher.controller.solenoid_controller.simulate_solenoid')
 def test_convergence(mock_simulate, controller):
     # Simular convergencia al valor deseado
     mock_simulate.return_value = (

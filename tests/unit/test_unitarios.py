@@ -24,8 +24,9 @@ from watchers.watchers_tools.watcher_focus.watcher_focus import (
 # Pruebas Unitarias: MÓDULO "watchers_wave"
 ##############################
 def test_phoswave_transmision():
-    celda_A = Cell(0, 0, amplitude=1.0, phase=0.0)
-    celda_B = Cell(0, 0, amplitude=0.0, phase=0.0)
+    # Cell constructor is: cyl_radius, cyl_theta, cyl_z, q_axial, r_axial, amplitude, velocity
+    celda_A = Cell(cyl_radius=1.0, cyl_theta=0.0, cyl_z=0.0, q_axial=0, r_axial=0, amplitude=1.0, velocity=0.0)
+    celda_B = Cell(cyl_radius=1.0, cyl_theta=0.0, cyl_z=0.0, q_axial=0, r_axial=1, amplitude=0.0, velocity=0.0)
     resonador = PhosWave(
         coef_transmision=0.6,
         coef_reflexion=0.4,

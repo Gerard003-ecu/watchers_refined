@@ -39,7 +39,7 @@ def watcher_focus_thread_manager():
     # El hilo daemon se detendrá al finalizar el test
 
 
-def test_simulate_watcher_focus(watcher_focus_thread):
+def test_simulate_watcher_focus(watcher_focus_thread_manager):
     """Verifica que el estado se actualice después de iniciar la simulación."""
     state = current_state
     assert state["x"] is not None and \
