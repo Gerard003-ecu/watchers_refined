@@ -9,6 +9,7 @@ from unittest.mock import patch
 # Import current_state directly as it's used elsewhere and seems fine
 from watchers.watchers_tools.watcher_focus.watcher_focus import (
     current_state
+    simulate_watcher_focus_infinite
 )
 import threading
 import time
@@ -25,18 +26,16 @@ def watcher_focus_thread_manager():
     # from the watcher_focus module.
     # Ahora puedes usar la función importada directamente
     thread = threading.Thread(
-        target=simulate_watcher_focus_infinite, # Usar la función directamente
+        target=simulate_watcher_focus_infinite,  # Usar la función directamente
         args=(0.001,),
         daemon=True
     )
     thread.start()
-    
     # Dar tiempo al hilo para que se inicie y posiblemente ejecute un ciclo
-    time.sleep(0.01) 
-    
+    time.sleep(0.01)
     # 'yield' pasa el control al test que usa esta fixture.
     # El código después de yield se ejecutará cuando el test termine.
-    yield 
+    yield
     # El hilo daemon se detendrá al finalizar el test
 
 
