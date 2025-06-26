@@ -1073,8 +1073,8 @@ class TestAgentAI(unittest.TestCase):
     @mock.patch("agent_ai.agent_ai.threading.Thread")
     def test_registrar_modulo_auxiliar_success(
         self,
-        mock_threading_thread, # Patched threading.Thread
-        mock_logger, # Original mock_thread, now correctly named
+        mock_threading_thread,
+        mock_logger,
         mock_validate_registration,
         mock_check_deps,
         mock_requests
@@ -1140,8 +1140,8 @@ class TestAgentAI(unittest.TestCase):
     @mock.patch("agent_ai.agent_ai.threading.Thread")
     def test_registrar_modulo_central_success(
         self,
-        mock_threading_thread, # Patched threading.Thread
-        mock_logger, # Original mock_thread, now correctly named
+        mock_threading_thread,
+        mock_logger,
         mock_validate_registration,
         mock_check_deps,
         mock_requests
@@ -1180,11 +1180,11 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(module_entry["tipo"], "central")
         self.assertNotIn("aporta_a", module_entry)
         self.assertNotIn("naturaleza_auxiliar", module_entry)
-        mock_threading_thread.assert_called_once()  # Hilo de validación se inicia igual
+        mock_threading_thread.assert_called_once()
 
     def test_registrar_modulo_invalid_data(
         self,
-        mock_logger, # Original mock_thread, now correctly named
+        mock_logger,
         mock_validate_registration,
         mock_check_deps,
         mock_requests
