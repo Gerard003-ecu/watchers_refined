@@ -1198,7 +1198,10 @@ class TestAgentAI(unittest.TestCase):
         # requeridos
         module_data = {"nombre": "TestReg"}  # Falta url, tipo, etc.
         # Mockear el validador para simular fallo
-        mock_validate_registration.return_value = (False, "Faltan campos requeridos: url, tipo")
+        mock_validate_registration.return_value = (
+            False,
+            "Faltan campos requeridos: url, tipo"
+        )
         result = self.agent.registrar_modulo(module_data)
         self.assertEqual(result["status"], "error")
         self.assertIn("Faltan campos requeridos", result["mensaje"])
