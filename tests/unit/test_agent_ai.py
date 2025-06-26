@@ -74,6 +74,10 @@ class TestAgentAI(unittest.TestCase):
         if self.agent._strategic_thread.is_alive():
             self.agent.shutdown()
 
+        # Mock time.sleep
+        self.patcher_sleep = mock.patch("agent_ai.agent_ai.time.sleep")
+        self.mock_sleep = self.patcher_sleep.start()
+
     def tearDown(self):
         """
         Limpia el entorno después de la ejecución de cada prueba.
@@ -86,6 +90,9 @@ class TestAgentAI(unittest.TestCase):
         """
         if self.agent._strategic_thread.is_alive():
             self.agent.shutdown()
+
+        # Stop mock_sleep patcher
+        self.patcher_sleep.stop()
 
     def test_initialization_defaults(
         self, mock_get_logger, mock_validate, mock_check_deps, mock_requests
@@ -1063,9 +1070,11 @@ class TestAgentAI(unittest.TestCase):
     # --- Tests de Registro de Módulos (AJUSTADOS) ---
 
     # --- MODIFICADO: Incluir tipo, aporta_a, naturaleza_auxiliar ---
+    @mock.patch("agent_ai.agent_ai.threading.Thread")
     def test_registrar_modulo_auxiliar_success(
         self,
-        mock_thread,
+        mock_threading_thread, # Patched threading.Thread
+        mock_logger, # Original mock_thread, now correctly named
         mock_validate_registration,
         mock_check_deps,
         mock_requests
@@ -1084,14 +1093,13 @@ class TestAgentAI(unittest.TestCase):
         También comprueba que `check_missing_dependencies` es llamado.
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
+            mock_threading_thread, Mock para threading.Thread.
+            mock_logger, Mock para el logger.
+            mock_validate_registration, Mock para `validate_module_registration`.
             mock_check_deps, Mock para `check_missing_dependencies`.
             mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
-        # mock_validate_registration.return_value = True  # Asumir que archivos existen
-        # mock_validate.return_value = (True, "Mock validation successful")
         mock_validate_registration.return_value = (True, "Mock validation successful")
 
         module_data = {
@@ -1123,15 +1131,17 @@ class TestAgentAI(unittest.TestCase):
         )
 
         # Verificar que se intentó iniciar el hilo de validación
-        mock_thread.assert_called_once()
+        mock_threading_thread.assert_called_once()
         # Verificar que check_missing_dependencies fue llamado
         mock_check_deps.assert_called_once_with(
             "dummy_req.txt", GLOBAL_REQUIREMENTS_PATH
         )
 
+    @mock.patch("agent_ai.agent_ai.threading.Thread")
     def test_registrar_modulo_central_success(
         self,
-        mock_thread,
+        mock_threading_thread, # Patched threading.Thread
+        mock_logger, # Original mock_thread, now correctly named
         mock_validate_registration,
         mock_check_deps,
         mock_requests
@@ -1148,8 +1158,9 @@ class TestAgentAI(unittest.TestCase):
         `requirements_path`.
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
+            mock_threading_thread, Mock para threading.Thread.
+            mock_logger, Mock para el logger.
+            mock_validate_registration, Mock para `validate_module_registration`.
             mock_check_deps, Mock para `check_missing_dependencies`.
             mock_requests, Mock para el módulo `requests`.
         """
@@ -1169,11 +1180,11 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(module_entry["tipo"], "central")
         self.assertNotIn("aporta_a", module_entry)
         self.assertNotIn("naturaleza_auxiliar", module_entry)
-        mock_thread.assert_called_once()  # Hilo de validación se inicia igual
+        mock_threading_thread.assert_called_once()  # Hilo de validación se inicia igual
 
     def test_registrar_modulo_invalid_data(
         self,
-        mock_thread,
+        mock_logger, # Original mock_thread, now correctly named
         mock_validate_registration,
         mock_check_deps,
         mock_requests
@@ -1189,8 +1200,8 @@ class TestAgentAI(unittest.TestCase):
         El módulo no debe ser añadido a `agent.modules` en este caso.
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
+            mock_logger, Mock para el logger.
+            mock_validate_registration, Mock para `validate_module_registration`.
             mock_check_deps, Mock para `check_missing_dependencies`.
             mock_requests, Mock para el módulo `requests`.
         """

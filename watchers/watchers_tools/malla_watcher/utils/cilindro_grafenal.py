@@ -129,7 +129,7 @@ class HexCylindricalMesh:
             self,
             radius: float,
             height_segments: int,
-            circ_segments_target: int,
+            circumference_segments_target: int,
             hex_size: float = 1.0,
             periodic_z: bool = False
     ):
@@ -139,7 +139,7 @@ class HexCylindricalMesh:
         Args:
             radius (float): Radio del cilindro.
             height_segments (int): Número de segmentos en altura.
-            circ_segments_target (int): Segmentos para cerrar la
+            circumference_segments_target (int): Segmentos para cerrar la
                                                circunferencia.
             hex_size (float): Tamaño característico de los hexágonos.
             periodic_z (bool): Condiciones periódicas en dirección Z.
@@ -161,7 +161,7 @@ class HexCylindricalMesh:
             raise ValueError(
                 "El número de segmentos de altura no puede ser negativo."
             )
-        if circ_segments_target < 3:
+        if circumference_segments_target < 3:
             raise ValueError(
                 "Se requieren al menos 3 segmentos de circunferencia objetivo."
             )
@@ -181,7 +181,7 @@ class HexCylindricalMesh:
             )
 
         self.circumference_segments_actual = max(
-            3, circ_segments_target
+            3, circumference_segments_target
         )
         # Fix for original Line 126 E501
         actual_circ_covered = (
@@ -192,7 +192,7 @@ class HexCylindricalMesh:
         logger.info(
             f"Malla Cilíndrica: Radio={self.radius:.2f}, "
             f"AlturaSeg={self.height_segments}, "
-            f"CircumSegTarget={circ_segments_target} -> "
+            f"CircumSegTarget={circumference_segments_target} -> "
             f"Actual={self.circumference_segments_actual}, "
             f"HexSize={self.hex_size:.2f}, "
             f"PeriodicZ={self.periodic_z}"
