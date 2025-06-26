@@ -1,0 +1,27 @@
+# Dependencias de agent_ai
+flask
+requests
+numpy
+opencv-python
+scikit-learn
+scipy
+
+# Dependencias de benzwatcher
+fastapi
+uvicorn
+prometheus-client
+python-dotenv
+
+# Herramientas de Testing
+pytest
+pytest-mock
+pytest-cov
+responses
+jsonschema
+
+# Herramientas de Calidad de Código
+flake8
+black  # <-- Recomendado para autoformatear
+
+# Herramientas para compilar este archivo
+pip-tools

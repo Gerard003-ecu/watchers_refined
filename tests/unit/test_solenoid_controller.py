@@ -1,7 +1,9 @@
 import pytest
 import numpy as np
 from unittest.mock import patch
-from solenoid_controller import SolenoidController
+from watchers.watchers_tools.solenoid_watcher.controller.solenoid_controller import (
+    SolenoidController
+)
 
 
 @pytest.fixture

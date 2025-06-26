@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
 """
-agent_ai.py - Núcleo Estratégico del Ecosistema Watchers
+Punto central de coordinación para el ecosistema de Watchers.
 
-Orquesta el sistema a alto nivel:
-- Gestiona el registro y salud de módulos (watchers_tools), capturando
-  afinidad ('aporta_a') y naturaleza ('naturaleza_auxiliar').
-- Notifica a Harmony Controller sobre módulos auxiliares saludables, su
-  afinidad y naturaleza.
-- Monitoriza el estado general a través de harmony_controller.
-- Determina el estado deseado (setpoint de armonía).
-- Comunica el setpoint a harmony_controller.
-- Procesa entradas externas (cogniboard, config_agent) y comandos
-  estratégicos.
+Este módulo define la clase `AgentAI`, responsable de la orquestación
+de alto nivel del sistema. Sus responsabilidades incluyen:
+
+- Registrar y monitorizar la salud de los módulos componentes
+  (denominados "watchers tools").
+- Capturar y procesar la afinidad ('aporta_a') y naturaleza
+  ('naturaleza_auxiliar') de estos módulos.
+- Notificar al `HarmonyController` sobre los módulos auxiliares
+  que se encuentren saludables, junto con su afinidad y naturaleza.
+- Monitorizar el estado general del sistema a través del `HarmonyController`.
+- Determinar el estado operativo deseado (conocido como "setpoint de armonía").
+- Comunicar este setpoint al `HarmonyController`.
+- Procesar entradas y comandos provenientes de fuentes externas,
+  como `cogniboard` o `config_agent`, para ajustar la estrategia operativa.
+
+El módulo también configura y expone una API Flask para la interacción externa,
+permitiendo el registro de módulos, la consulta del estado y
+la recepción de comandos.
 """
 
 # Standard library imports
@@ -27,8 +35,8 @@ import numpy as np
 import requests
 
 # Local application imports
-from utils.logger import get_logger
-from validation.validator import (
+from agent_ai.utils.logger import get_logger
+from agent_ai.validation.validator import (
     check_missing_dependencies,
     validate_module_registration,
 )
@@ -69,8 +77,41 @@ BASE_RETRY_DELAY = float(
 
 
 class AgentAI:
+    """Orquesta los módulos del sistema y gestiona la estrategia global.
+
+    Esta clase es el núcleo central de AgentAI. Se encarga de mantener un
+    registro de los módulos activos, monitorizar su estado de salud,
+    interactuar con el Harmony Controller para obtener el estado del sistema y
+    enviar nuevos setpoints de armonía. También procesa información de
+    fuentes externas para adaptar su comportamiento estratégico.
+
+    Attributes:
+        modules (Dict[str, Dict]): Un diccionario que almacena la información
+            de los módulos registrados, usando el nombre del módulo como clave.
+        harmony_state (Dict[str, Any]): El último estado conocido recibido del
+            Harmony Controller.
+        target_setpoint_vector (List[float]): El vector de setpoint de armonía
+            que AgentAI intenta alcanzar.
+        current_strategy (str): La estrategia operativa actual (por ejemplo,
+            'default', 'estabilidad', 'rendimiento').
+        external_inputs (Dict[str, Any]): Almacena señales o datos recibidos
+            de sistemas externos como Cogniboard o Config Agent.
+        lock (threading.Lock): Un cerrojo para sincronizar el acceso a los
+            datos compartidos entre hilos.
+        central_urls (Dict[str, str]): URLs de los servicios centrales como
+            Harmony Controller, ECU y Malla Watcher.
+        hc_register_url (str): URL específica para registrar herramientas
+            auxiliares en el Harmony Controller.
+    """
 
     def __init__(self):
+        """Inicializa una instancia de AgentAI.
+
+        Configura el estado inicial, incluyendo el vector de setpoint objetivo,
+        la estrategia actual, las entradas externas, y las URLs de los
+        servicios centrales. También prepara el hilo para el bucle estratégico
+        principal.
+        """
         self.modules: Dict[str, Dict] = {}
         self.harmony_state: Dict[str, Any] = {}
         try:
@@ -146,7 +187,13 @@ class AgentAI:
         logger.info("AgentAI inicializado.")
 
     def start_loop(self):
-        """Inicia el bucle estratégico si no está corriendo."""
+        """Inicia el bucle estratégico principal de AgentAI.
+
+        Este bucle se ejecuta en un hilo separado y es responsable de
+        monitorizar continuamente el estado del sistema, determinar y enviar
+        setpoints al Harmony Controller, y reaccionar a cambios y comandos.
+        Si el bucle ya está en ejecución, esta función no hace nada.
+        """
         if not self._strategic_thread.is_alive():
             self._stop_event.clear()
             self._strategic_thread = threading.Thread(
@@ -506,8 +553,30 @@ class AgentAI:
             MAX_RETRIES,
         )
 
-    def registrar_modulo(self, modulo_info):
-        """Registra un nuevo módulo, valida y almacena sus detalles."""
+    def registrar_modulo(self, modulo_info: Dict[str, Any]) -> Dict[str, str]:
+        """
+        Registra un nuevo módulo watcher o tool en AgentAI.
+
+        Valida la información proporcionada del módulo, verifica
+        las dependencias si se especifica un archivo
+        `requirements.txt`, y almacena los detalles del módulo.
+        Inicia una validación de salud asíncrona para el módulo
+        recién registrado.
+
+        Args:
+            modulo_info: Un diccionario que contiene la información
+            del módulo a registrar. Se esperan claves como
+            'nombre', 'url', 'url_salud',
+            'tipo' ('auxiliar', 'core', etc.),
+            'aporta_a' (para auxiliares),
+            'naturaleza_auxiliar' (para auxiliares), y opcionalmente
+            'requirements_path'.
+
+        Returns:
+            Un diccionario con el resultado de la operación,
+            conteniendo una clave 'status' ('success' o 'error')
+            y un 'mensaje'.
+        """
         req_path = modulo_info.get("requirements_path")
         nombre = modulo_info.get("nombre")
         tipo_modulo = modulo_info.get("tipo", "desconocido")
@@ -785,14 +854,33 @@ class AgentAI:
                     time.sleep(delay)
                 else:
                     logger.error(
-                        "No se pudo notificar a HC sobre '%s' tras %d "
-                        "intentos.",
+                        "Fallo al notificar a HC sobre '%s' tras %d intentos.",
                         nombre,
                         MAX_RETRIES,
                     )
 
-    def actualizar_comando_estrategico(self, comando, valor):
-        """Procesa comandos de alto nivel."""
+    def actualizar_comando_estrategico(
+        self,
+        comando: str,
+        valor: Any
+    ) -> Dict[str, str]:
+        """
+        Procesa y aplica comandos estratégicos de alto nivel.
+
+        Este método permite modificar el comportamiento de AgentAI,
+        como cambiar la estrategia actual o establecer directamente
+        el vector de setpoint objetivo.
+
+        Args:
+            comando: El nombre del comando a ejecutar (ej: "set_strategy",
+                "set_target_setpoint_vector").
+            valor: El valor asociado al comando. El tipo esperado depende
+                del comando específico.
+
+        Returns:
+            Un diccionario indicando el resultado de la operación, con claves
+            'status' ('success' o 'error') y 'mensaje'.
+        """
         with self.lock:
             if comando == "set_strategy":
                 if isinstance(valor, str):
@@ -842,23 +930,51 @@ class AgentAI:
                     "mensaje": f"Comando '{comando}' no reconocido",
                 }
 
-    def recibir_control_cogniboard(self, control_signal):
-        """Actualiza la señal de control de Cogniboard."""
+    def recibir_control_cogniboard(self, control_signal: Any):
+        """Actualiza la señal de control recibida de Cogniboard.
+
+        Almacena la señal para que pueda ser utilizada en la lógica de
+        determinación del setpoint o en otras decisiones estratégicas.
+
+        Args:
+            control_signal: La señal recibida de Cogniboard. El tipo de dato
+                puede variar según la naturaleza de la señal.
+        """
         with self.lock:
             self.external_inputs["cogniboard_signal"] = control_signal
         logger.debug(
             "Señal de control de Cogniboard actualizada: %s",
             control_signal)
 
-    def recibir_config_status(self, config_status):
-        """Actualiza el estado de configuración de Config Agent."""
+    def recibir_config_status(self, config_status: Any):
+        """
+        Actualiza el estado de configuración recibido de Config Agent.
+
+        Almacena el estado de configuración para que pueda ser utilizado
+        en la lógica de determinación del setpoint o en otras decisiones
+        estratégicas.
+
+        Args:
+            config_status: El estado de configuración recibido.
+            El tipo de dato puede variar.
+        """
         with self.lock:
             self.external_inputs["config_status"] = config_status
         logger.debug(
             "Estado de configuración actualizado: %s", config_status)
 
-    def obtener_estado_completo(self):
-        """Retorna una vista completa del estado interno de AgentAI."""
+    def obtener_estado_completo(self) -> Dict[str, Any]:
+        """
+        Retorna una vista completa del estado interno actual de AgentAI.
+
+        Este método es útil para la monitorización, depuración o para que
+        otros componentes del sistema consulten el estado general de AgentAI.
+
+        Returns:
+            Un diccionario que contiene el estado actual, incluyendo el
+            setpoint objetivo, la estrategia, entradas externas, el último
+            estado de Harmony Controller y la lista de módulos registrados.
+        """
         with self.lock:
             modules_list = [
                 dict(info) for info in self.modules.values()
@@ -877,7 +993,11 @@ class AgentAI:
         }
 
     def shutdown(self):
-        """Detiene el bucle estratégico."""
+        """Detiene el bucle estratégico principal de AgentAI de forma segura.
+
+        Señala al hilo del bucle estratégico que debe detenerse y espera a que
+        finalice.
+        """
         logger.info("Solicitando detención del bucle estratégico...")
         self._stop_event.set()
         if self._strategic_thread.is_alive():
@@ -897,6 +1017,14 @@ agent_api = Flask(__name__)
 
 @agent_api.route("/api/register", methods=["POST"])
 def handle_register():
+    """Punto de entrada de API para registrar un nuevo módulo.
+
+    Recibe datos JSON con la información del módulo, los pasa a la instancia
+    de AgentAI para su procesamiento y retorna el resultado.
+
+    Returns:
+        Una respuesta JSON con el estado del registro y un código HTTP.
+    """
     data = request.get_json()
     if not data:
         return (
@@ -912,11 +1040,27 @@ def handle_register():
 
 @agent_api.route("/api/state", methods=["GET"])
 def handle_get_state():
+    """Punto de entrada de API para obtener el estado completo de AgentAI.
+
+    Retorna una representación JSON del estado interno actual de la instancia
+    de AgentAI.
+
+    Returns:
+        Una respuesta JSON con el estado completo y código HTTP 200.
+    """
     return jsonify(agent_ai_instance_app.obtener_estado_completo()), 200
 
 
 @agent_api.route("/api/command", methods=["POST"])
 def handle_command():
+    """Punto de entrada de API para enviar comandos estratégicos a AgentAI.
+
+    Recibe un comando y su valor en formato JSON, los procesa a través de
+    la instancia de AgentAI y retorna el resultado.
+
+    Returns:
+        Una respuesta JSON con el estado del comando y un código HTTP.
+    """
     data = request.get_json()
     if not data or "comando" not in data or "valor" not in data:
         return jsonify({"status": "error", "message": "Comando inválido"}), 400
@@ -928,6 +1072,11 @@ def handle_command():
 
 
 def run_agent_ai_service():
+    """Ejecuta el servicio Flask de AgentAI.
+
+    Inicializa el bucle estratégico de AgentAI y luego inicia el servidor
+    Flask para atender las peticiones API.
+    """
     port = int(os.environ.get("AGENT_AI_PORT", 9000))
     logger.info("Iniciando servicio Flask para AgentAI en puerto %d...", port)
     agent_ai_instance_app.start_loop()

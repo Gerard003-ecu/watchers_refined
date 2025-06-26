@@ -1,0 +1,7 @@
+dash
+dash-bootstrap-components
+plotly
+requests
+numpy
+Flask
+pytest

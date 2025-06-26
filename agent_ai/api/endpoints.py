@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # --- START OF FILE agent_ai/api/endpoints.py ---
-"""
-endpoints.py - API REST para AgentAI (Núcleo Estratégico)
+"""API REST para el Núcleo Estratégico AgentAI.
 
-Permite interactuar con la capa estratégica del ecosistema Watchers.
+Este módulo define los endpoints de la API Flask para interactuar con AgentAI,
+el componente central de la capa estratégica del ecosistema Watchers.
+Proporciona interfaces para obtener el estado, enviar comandos, registrar
+módulos y recibir señales de control y configuración.
 """
 
 from flask import Flask, request, jsonify
-from utils.logger import get_logger
-from agent_ai import agent_ai_instance_app
+from agent_ai.utils.logger import get_logger
+from agent_ai.agent_ai import agent_ai_instance_app
 
 # import logging # No se usa directamente si usamos get_logger
 import os
@@ -21,7 +23,20 @@ logger.info("API Endpoints de AgentAI cargados.")
 
 @app.route("/api/status", methods=["GET"])
 def get_status():
-    """Retorna la vista completa del estado estratégico de AgentAI."""
+    """Obtiene el estado estratégico completo de AgentAI.
+
+    Este endpoint permite a los clientes consultar una vista detallada del
+    estado actual de AgentAI, incluyendo información de módulos registrados,
+    estrategias activas y otros datos relevantes para la operación.
+
+    Returns:
+        flask.Response: Un objeto JSON que contiene:
+            - status (str): "success" si la operación fue exitosa, "error" en
+              caso contrario.
+            - data (dict): Un diccionario con el estado completo de AgentAI si
+              la operación fue exitosa.
+            - mensaje (str): Un mensaje descriptivo en caso de error.
+    """
     try:
         estado = agent_ai_instance_app.obtener_estado_completo()
         return jsonify({"status": "success", "data": estado}), 200
@@ -40,10 +55,31 @@ def get_status():
 
 @app.route("/api/command", methods=["POST"])
 def post_command():
-    """
-    Recibe un COMANDO ESTRATÉGICO para AgentAI.
-    Ejemplos: set_strategy, set_target_setpoint_vector, enable_tool, etc.
-    JSON esperado: {"comando": "nombre_comando", "valor": valor_comando}
+    """Procesa un comando estratégico enviado a AgentAI.
+
+    Este endpoint recibe comandos para influir en el comportamiento de
+    AgentAI. Los comandos pueden variar desde establecer una nueva
+    estrategia hasta modificar parámetros operativos específicos.
+
+    El cuerpo de la solicitud debe ser un JSON con la siguiente
+    estructura:
+    {
+        "comando": "nombre_del_comando",
+        "valor": "valor_asociado_al_comando"
+    }
+
+    Args:
+        None explícito en la firma, pero espera un JSON
+        en el cuerpo de la solicitud.
+
+    Returns:
+        flask.Response: Un objeto JSON que contiene:
+            - status (str): "success" si el comando fue procesado
+              exitosamente, "error" en caso contrario.
+            - mensaje (str): Un mensaje descriptivo sobre el resultado de la
+              operación.
+            - (otros campos): Puede incluir campos adicionales dependiendo del
+              resultado del comando específico.
     """
     data = request.get_json() or {}
     comando = data.get("comando")
@@ -82,9 +118,34 @@ def post_command():
 @app.route("/api/register", methods=["POST"])
 def register_module():
     """
-    Registra un nuevo watcher_tool.
-    JSON esperado: {"nombre": str, "url": str, "tipo": str (opc), ...}
-    La URL debe apuntar al endpoint de salud/estado del módulo.
+    Registra un nuevo módulo watcher_tool en AgentAI.
+
+    Este endpoint permite a los módulos `watcher_tool` darse de alta en
+    AgentAI, proporcionando la información necesaria para que AgentAI pueda
+    interactuar con ellos. La URL proporcionada debe apuntar al endpoint de
+    salud/estado del módulo que se registra.
+
+    El cuerpo de la solicitud debe ser un JSON con
+    la siguiente estructura (ejemplo):
+    {
+        "nombre": "NombreDelWatcher",
+        "url": "http://host.docker.internal:puerto/api/health",
+        "tipo": "TipoDeWatcher", // Opcional
+        // ... otros campos relevantes para el módulo
+    }
+
+    Args:
+        None explícito en la firma, pero espera un JSON
+        en el cuerpo de la solicitud.
+
+    Returns:
+        flask.Response: Un objeto JSON que contiene:
+            - status (str): "success" si el módulo fue registrado
+              exitosamente, "error" en caso contrario.
+            - mensaje (str): Un mensaje descriptivo sobre el resultado del
+              registro.
+            - module_id (str): El ID asignado al módulo si el registro fue
+              exitoso.
     """
     data = request.get_json() or {}
     try:
@@ -107,7 +168,23 @@ def register_module():
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    """Retorna el estado de salud básico de AgentAI."""
+    """Verifica el estado de salud básico de AgentAI.
+
+    Este endpoint proporciona una comprobación rápida para
+    determinar si AgentAI está operativo. Verifica principalmente
+    si el bucle estratégico principal de AgentAI se está ejecutando.
+
+    Returns:
+        flask.Response: Un objeto JSON que contiene:
+        - status (str): "success" si AgentAI está saludable, "error" en
+          caso contrario.
+        - module (str): Siempre "AgentAI".
+        - message (str): Un mensaje descriptivo del estado de salud.
+        - strategic_loop_active (bool): True si el bucle estratégico está
+          activo, False en caso contrario.
+        - mensaje (str): (En caso de error interno) Un mensaje descriptivo
+          del error.
+    """
     try:
         # Verificar si la instancia y el hilo existen y están vivos
         is_loop_alive = (
@@ -150,9 +227,28 @@ def health():
 
 @app.route("/api/control", methods=["POST"])
 def control_input():
-    """
-    Recibe la señal de control externa (ej. desde cogniboard).
-    JSON esperado: {"control_signal": any}
+    """Recibe y procesa una señal de control externa para AgentAI.
+
+    Este endpoint está diseñado para que sistemas externos, como Cogniboard,
+    puedan enviar señales de control que influyan en las decisiones o
+    el comportamiento de AgentAI.
+
+    El cuerpo de la solicitud debe ser un JSON con la siguiente estructura:
+    {
+        "control_signal": <valor_de_la_senal_de_control>
+    }
+    El tipo de `<valor_de_la_senal_de_control>` puede variar según la señal.
+
+    Args:
+        None explícito en la firma, pero espera un JSON
+        en el cuerpo de la solicitud.
+
+    Returns:
+        flask.Response: Un objeto JSON que contiene:
+            - status (str): "success" si la señal fue recibida y procesada
+              exitosamente, "error" en caso contrario.
+            - mensaje (str): Un mensaje descriptivo sobre el resultado de la
+              operación.
     """
     data = request.get_json() or {}
     control_signal = data.get("control_signal")
@@ -190,9 +286,29 @@ def control_input():
 
 @app.route("/api/config", methods=["POST"])
 def config_input():
-    """
-    Recibe el estado de configuración externa (ej. desde config_agent).
-    JSON esperado: {"config_status": any}
+    """Recibe y procesa un estado de configuración externa para AgentAI.
+
+    Este endpoint permite que sistemas externos, como ConfigAgent, envíen
+    actualizaciones sobre el estado de la configuración del sistema global,
+    lo cual puede ser utilizado por AgentAI para ajustar sus estrategias o
+    parámetros operativos.
+
+    El cuerpo de la solicitud debe ser un JSON con la siguiente estructura:
+    {
+        "config_status": <estado_de_la_configuracion>
+    }
+    El tipo de `<estado_de_la_configuracion>` puede variar.
+
+    Args:
+        None explícito en la firma, pero espera un JSON
+        en el cuerpo de la solicitud.
+
+    Returns:
+        flask.Response: Un objeto JSON que contiene:
+            - status (str): "success" si el estado de configuración fue
+              recibido y procesado exitosamente, "error" en caso contrario.
+            - mensaje (str): Un mensaje descriptivo sobre el resultado de la
+              operación.
     """
     data = request.get_json() or {}
     config_status = data.get("config_status")
