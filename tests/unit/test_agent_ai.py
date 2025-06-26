@@ -1237,8 +1237,8 @@ class TestAgentAI(unittest.TestCase):
             "nombre": "TestDepFail",
             "url": "http://testdep/health",
             "tipo": "auxiliar",
-            "aporta_a": "malla_watcher", # Added to pass validation
-            "naturaleza_auxiliar": "reductor", # Added to pass validation
+            "aporta_a": "malla_watcher",  # Added to pass validation
+            "naturaleza_auxiliar": "reductor",  # Added to pass validation
             "requirements_path": "req.txt",
         }
         result = self.agent.registrar_modulo(module_data)
