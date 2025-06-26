@@ -1091,6 +1091,7 @@ class TestAgentAI(unittest.TestCase):
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
         mock_os_exists.return_value = True  # Asumir que archivos existen
+        mock_validate.return_value = (True, "Mock validation successful")
 
         module_data = {
             "nombre": "AuxTest",
@@ -1153,6 +1154,7 @@ class TestAgentAI(unittest.TestCase):
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
         mock_os_exists.return_value = True
+        mock_validate.return_value = (True, "Mock validation successful")
 
         module_data = {
             "nombre": "CentralTest",
@@ -1197,11 +1199,8 @@ class TestAgentAI(unittest.TestCase):
         # requeridos
         module_data = {"nombre": "TestReg"}  # Falta url, tipo, etc.
         # Mockear el validador para simular fallo
-        with mock.patch(
-            "agent_ai.agent_ai.validate_module_registration",
-            return_value=(False, "Faltan campos requeridos: url, tipo"),
-        ):
-            result = self.agent.registrar_modulo(module_data)
+        mock_validate.return_value = (False, "Faltan campos requeridos: url, tipo")
+        result = self.agent.registrar_modulo(module_data)
         self.assertEqual(result["status"], "error")
         self.assertIn("Faltan campos requeridos", result["mensaje"])
         self.assertNotIn("TestReg", self.agent.modules)
@@ -1231,10 +1230,15 @@ class TestAgentAI(unittest.TestCase):
         """
         mock_check_deps.return_value = (False, "Falta 'superlib'")
         mock_os_exists.return_value = True
+        # For this test, we want validate_module_registration to succeed,
+        # so the dependency check is the point of failure.
+        mock_validate.return_value = (True, "Mock validation successful")
         module_data = {
             "nombre": "TestDepFail",
             "url": "http://testdep/health",
             "tipo": "auxiliar",
+            "aporta_a": "malla_watcher", # Added to pass validation
+            "naturaleza_auxiliar": "reductor", # Added to pass validation
             "requirements_path": "req.txt",
         }
         result = self.agent.registrar_modulo(module_data)
