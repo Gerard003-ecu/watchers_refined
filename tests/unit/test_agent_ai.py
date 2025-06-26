@@ -1090,8 +1090,9 @@ class TestAgentAI(unittest.TestCase):
             mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
-        mock_os_exists.return_value = True  # Asumir que archivos existen
-        mock_validate.return_value = (True, "Mock validation successful")
+        # mock_os_exists.return_value = True  # Asumir que archivos existen
+        # mock_validate.return_value = (True, "Mock validation successful")
+        mock_os_exists.return_value = (True, "Mock validation successful") # Corrected line
 
         module_data = {
             "nombre": "AuxTest",
@@ -1153,8 +1154,8 @@ class TestAgentAI(unittest.TestCase):
             mock_requests, Mock para el módulo `requests`.
         """
         mock_check_deps.return_value = (True, "Dependencias OK")
-        mock_os_exists.return_value = True
-        mock_validate.return_value = (True, "Mock validation successful")
+        # mock_os_exists.return_value = True  # This line was incorrect as mock_os_exists here is for validate_module_registration
+        mock_os_exists.return_value = (True, "Mock validation successful") # Corrected: mock_validate -> mock_os_exists
 
         module_data = {
             "nombre": "CentralTest",
