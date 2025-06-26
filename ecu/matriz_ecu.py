@@ -112,20 +112,17 @@ class ToroidalField:
         ]
         self.lock = threading.Lock()
 
-        self.alphas = (
-            alphas
-            if alphas and len(alphas) == num_capas
-            else [DEFAULT_ALPHA_VALUE] * num_capas
-        )
-        self.dampings = (
-            dampings
-            if dampings and len(dampings) == num_capas
-            else [DEFAULT_DAMPING_VALUE] * num_capas
-        )
+        if alphas and len(alphas) != num_capas:
+            raise ValueError(f"La lista 'alphas' debe tener longitud {num_capas}")
+        self.alphas = alphas if alphas else [DEFAULT_ALPHA_VALUE] * num_capas
 
-        if not alphas or len(alphas) != num_capas:
+        if dampings and len(dampings) != num_capas:
+            raise ValueError(f"La lista 'dampings' debe tener longitud {num_capas}")
+        self.dampings = dampings if dampings else [DEFAULT_DAMPING_VALUE] * num_capas
+
+        if not alphas:
             logger.info("Usando alpha por defecto para todas las capas.")
-        if not dampings or len(dampings) != num_capas:
+        if not dampings:
             logger.info("Usando damping por defecto para todas las capas.")
 
         logger.info(
@@ -157,12 +154,28 @@ class ToroidalField:
         """
         """Aplica una influencia externa a un punto específico del campo."""
         if not (0 <= capa < self.num_capas):
+            logger.error(
+                "Error al aplicar influencia de '%s': índice de capa fuera de rango (%d). Rango válido: 0-%d.", # noqa E501
+                nombre_watcher, capa, self.num_capas - 1
+            )
             return False
         if not (0 <= row < self.num_rows):
+            logger.error(
+                "Error al aplicar influencia de '%s': índice de fila fuera de rango (%d). Rango válido: 0-%d.", # noqa E501
+                nombre_watcher, row, self.num_rows - 1
+            )
             return False
         if not (0 <= col < self.num_cols):
+            logger.error(
+                "Error al aplicar influencia de '%s': índice de columna fuera de rango (%d). Rango válido: 0-%d.", # noqa E501
+                nombre_watcher, col, self.num_cols - 1
+            )
             return False
         if not isinstance(vector, np.ndarray) or vector.shape != (2,):
+            logger.error(
+                "Error al aplicar influencia de '%s': vector de influencia inválido. Debe ser np.ndarray de shape (2,). Recibido: %s", # noqa E501
+                nombre_watcher, vector
+            )
             return False
 
         try:

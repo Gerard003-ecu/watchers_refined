@@ -85,8 +85,23 @@ def test_malla_fetches_and_processes_ecu_field_vector(
             "columnas": mock_num_cols,
             "vector_dim": 2,
         },
-        "field_vector": [[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]],
+        "field_vector": [  # Capa 0
+            [  # Fila 0
+                [0.1, 0.2],  # Col 0
+                [0.3, 0.4],  # Col 1
+            ],
+            [  # Fila 1
+                [0.5, 0.6],  # Col 0
+                [0.7, 0.8],  # Col 1
+            ],
+        ],
     }
+    # If mock_num_capas is 1, field_vector should be wrapped in another list
+    if mock_num_capas == 1 and isinstance(mock_field_data_payload["field_vector"], list) and \
+       (len(mock_field_data_payload["field_vector"]) == mock_num_filas if mock_num_filas > 0 else True) and \
+       (len(mock_field_data_payload["field_vector"][0]) == mock_num_cols if mock_num_filas > 0 and mock_num_cols > 0 else True):
+        mock_field_data_payload["field_vector"] = [mock_field_data_payload["field_vector"]]
+
     validate(
         instance=mock_field_data_payload,
         schema=ECU_FIELD_VECTOR_RESPONSE_SCHEMA,
