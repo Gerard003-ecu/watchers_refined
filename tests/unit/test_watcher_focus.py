@@ -7,7 +7,9 @@ import pytest
 import requests
 from unittest.mock import patch
 # Import current_state directly as it's used elsewhere and seems fine
-from watchers_modules.watcher_focus.watcher_focus import current_state
+from watchers.watchers_tools.watcher_focus.watcher_focus import (
+    current_state
+)
 import threading
 import time
 import os

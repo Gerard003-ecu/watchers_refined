@@ -1,7 +1,9 @@
 # tests/test_solenoid_model.py
 import numpy as np
 import pytest
-from agent_ai.model.solenoid_model import simulate_solenoid
+from watchers.watchers_tools.solenoid_watcher.model.solenoid_model import (
+    simulate_solenoid
+)
 
 
 def test_simulate_field():
