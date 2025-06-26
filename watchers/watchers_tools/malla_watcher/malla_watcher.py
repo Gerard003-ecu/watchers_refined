@@ -46,7 +46,7 @@ import json
 from flask import Flask, request, jsonify
 import numpy as np
 from typing import List, Optional, Dict, Tuple, Any
-from .utils.cilindro_grafenal import HexCylindricalMesh, Cell
+from watchers.watchers_tools.malla_watcher.utils.cilindro_grafenal import HexCylindricalMesh, Cell
 
 # --- Configuración del Logging ---
 log_dir = "logs"

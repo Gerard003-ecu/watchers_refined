@@ -9,8 +9,8 @@ módulos y recibir señales de control y configuración.
 """
 
 from flask import Flask, request, jsonify
-from utils.logger import get_logger
-from agent_ai import agent_ai_instance_app
+from agent_ai.utils.logger import get_logger
+from agent_ai.agent_ai import agent_ai_instance_app
 
 # import logging # No se usa directamente si usamos get_logger
 import os
