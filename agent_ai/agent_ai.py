@@ -342,6 +342,7 @@ class AgentAI:
         self,
         measurement,
         cogniboard_signal,
+        config_status,
         strategy,
         modules,
     ) -> List[float]:
