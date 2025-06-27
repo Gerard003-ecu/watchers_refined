@@ -1074,7 +1074,7 @@ class TestAgentAI(unittest.TestCase):
     @mock.patch('os.path.exists', return_value=True)
     def test_registrar_modulo_auxiliar_success(
         self,
-        mock_os_path_exists, # This mock is now passed due to the decorator
+        mock_os_path_exists,
         mock_threading_thread,
         mock_logger,
         mock_validate_registration,

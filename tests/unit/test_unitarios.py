@@ -46,7 +46,7 @@ def test_phoswave_transmision():
     resonador = PhosWave(
         coef_acoplamiento=0.6
     )
-    # resonador.transmitir(celda_A, celda_B) # PhosWave does not have a transmitir method.
+    # resonador.transmitir(celda_A, celda_B)
     # # The following assertions likely tested the behavior of the transmitir method.
     # # Since the method is not present, these assertions are commented out.
     # assert celda_B.amplitude > 0, (

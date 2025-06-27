@@ -686,8 +686,8 @@ def set_harmony_setpoint():
                 "new_setpoint_vector": vec.tolist(),
             }), 200
         elif new_value is not None and isinstance(new_value, (int, float)):
-            # Si se proporciona setpoint_value, el vector no se actualiza explícitamente aquí,
-            # se mantiene el existente o el default si no hay.
+            # Si se proporciona setpoint_value, el vector no se actualiza
+            # explícitamente aquí, se mantiene el existente o el default si no hay.
             # La norma es directamente el valor proporcionado.
             controller_state.update_setpoint(float(new_value))
             return jsonify({
@@ -700,7 +700,7 @@ def set_harmony_setpoint():
         else:
             return jsonify({
                 "status": "error",
-                "message": "Se requiere 'setpoint_vector' (lista de números) o 'setpoint_value' (número) en el JSON."
+                "message": "Se requiere 'setpoint_vector' o 'setpoint_value' en JSON."
             }), 400
     except (ValueError, TypeError) as e:
         logger.error("Error al procesar nuevo setpoint: %s", e)

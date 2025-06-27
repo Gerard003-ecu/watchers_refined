@@ -458,7 +458,12 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
         return jsonify(response_data), 200
     except Exception as e:
         logger.exception("Error en endpoint /api/ecu: %s", e)
-        return jsonify({"status": "error", "message": "Error interno del servidor al obtener estado unificado."}), 500
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Error interno del servidor al obtener estado unificado."
+            }
+        ), 500
 
 
 @app.route("/api/ecu/influence", methods=["POST"])

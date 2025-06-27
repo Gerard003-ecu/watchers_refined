@@ -302,7 +302,7 @@ class TestCommunicationFunctions(unittest.TestCase):
             expected_error = {
                 "status": "error",
                 "message": (
-                    f"No se pudo obtener estado tras " # Corrected to "tras"
+                    f"No se pudo obtener estado tras "
                     f"{harmony_controller.MAX_RETRIES} intentos"
                 )
             }
@@ -448,7 +448,9 @@ class TestHarmonyControllerAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
-        self.assertIn("Campo 'url' debe ser una cadena de texto (string).", data['message'])
+        self.assertIn(
+            "Campo 'url' debe ser una cadena de texto (string).", data['message']
+        )
 
     # --- Tests para otros endpoints ---
     def test_set_harmony_setpoint_value_api(self):
@@ -493,7 +495,7 @@ class TestHarmonyControllerAPI(unittest.TestCase):
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
         self.assertIn(
-            "Se requiere 'setpoint_vector' (lista de números) o 'setpoint_value' (número) en el JSON.",
+            "Se requiere 'setpoint_vector' o 'setpoint_value' en el JSON.",
             data['message']
         )
 
