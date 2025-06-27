@@ -297,34 +297,47 @@ def test_endpoint_health(cliente_flask: FlaskClient):
 
 def test_endpoint_ecu_api(cliente_flask: FlaskClient):
     """Test: Respuesta OK del endpoint /api/ecu."""
-    vector_influencia = np.array([1.1, -2.2])
-    campo_toroidal_global_servicio.aplicar_influencia(
-        0, 0, 0, vector_influencia, "test_api_ecu"
-    )
+    # Paso 1: Definir el payload de influencia
+    influence_payload = {
+        "capa": 0,
+        "row": 0,
+        "col": 0,
+        "vector": [1.1, -2.2],
+        "nombre_watcher": "test_api_ecu_via_post"
+    }
+    vector_influencia_np = np.array(influence_payload["vector"])
 
-    respuesta = cliente_flask.get("/api/ecu")
-    assert respuesta.status_code == 200
-    datos = respuesta.get_json()
-    assert datos["status"] == "success"
-    assert "estado_campo_unificado" in datos
-    assert isinstance(datos["estado_campo_unificado"], list)
-    assert datos["metadata"]["capas"] == NUM_CAPAS
-    assert datos["metadata"]["filas"] == NUM_FILAS
-    assert datos["metadata"]["columnas"] == NUM_COLUMNAS
+    # Paso 2: Usar cliente_flask.post para aplicar la influencia
+    post_response = cliente_flask.post("/api/ecu/influence", json=influence_payload)
+    assert post_response.status_code == 200
+    post_data = post_response.get_json()
+    assert post_data["status"] == "success"
 
-    with campo_toroidal_global_servicio.lock:
-        valor_nodo_000 = campo_toroidal_global_servicio.campo[0][0, 0]
-    norma_esperada_000 = np.linalg.norm(valor_nodo_000)
-    # fmt: off
+    # Paso 3: Usar cliente_flask.get para obtener el estado del ECU
+    get_response = cliente_flask.get("/api/ecu")
+    assert get_response.status_code == 200
+    get_data = get_response.get_json()
+    assert get_data["status"] == "success"
+    assert "estado_campo_unificado" in get_data
+    assert isinstance(get_data["estado_campo_unificado"], list)
+    assert get_data["metadata"]["capas"] == NUM_CAPAS
+    assert get_data["metadata"]["filas"] == NUM_FILAS
+    assert get_data["metadata"]["columnas"] == NUM_COLUMNAS
+
+    # Paso 4: Realizar la aserción sobre la respuesta del GET
+    # El valor esperado es la norma del vector de influencia,
+    # ponderado por el peso de la capa 0.
+    norma_influencia = np.linalg.norm(vector_influencia_np)
     pesos = (
         np.linspace(1.0, 0.5, NUM_CAPAS)
         if NUM_CAPAS > 1
         else np.array([1.0])
     )
-    # fmt: on
     peso_capa_0 = pesos[0]
-    assert datos["estado_campo_unificado"][0][0] == pytest.approx(
-        peso_capa_0 * norma_esperada_000
+    valor_esperado_nodo_00 = peso_capa_0 * norma_influencia
+
+    assert get_data["estado_campo_unificado"][0][0] == pytest.approx(
+        valor_esperado_nodo_00
     )
 
 

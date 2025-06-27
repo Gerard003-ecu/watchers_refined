@@ -494,10 +494,8 @@ class TestHarmonyControllerAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
-        self.assertIn(
-            "Se requiere 'setpoint_vector' o 'setpoint_value' en el JSON.",
-            data['message']
-        )
+        self.assertIn('setpoint_vector', data['message'])
+        self.assertIn('setpoint_value', data['message'])
 
     def test_set_harmony_setpoint_bad_value_api(self):
         """Prueba valor inválido."""

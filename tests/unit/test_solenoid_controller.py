@@ -23,7 +23,7 @@ def test_pid_control(mock_simulate, controller):
     )
     # Caso base
     control_signal, measured_Bz = controller.update(
-        I=5, n=1000, R=0.05, dt=0.1
+        i_amps=5, n=1000, R=0.05, dt=0.1
     )
     # Verificaciones PID
     error = 1e-3 - 5e-4
@@ -56,7 +56,7 @@ def test_edge_cases(mock_simulate, controller):
         np.array([0, 0]),
         np.array([[0, 0], [0, 0]])
     )
-    _, _ = controller.update(I=0, n=0, R=0, dt=0)
+    _, _ = controller.update(i_amps=0, n=0, R=0, dt=0)
     # Verificar que el término derivativo sea cero
     # last_error will be the current error (desired_Bz - measured_Bz).
     # If measured_Bz is 0 (as from the mock_simulate setup), error is desired_Bz.
@@ -83,7 +83,7 @@ def test_convergence(mock_simulate, controller):
         np.array([[0, 0], [0.1, 1e-3]])
     )
     control_signal, measured_Bz = controller.update(
-        I=5, n=1000, R=0.05, dt=0.1
+        i_amps=5, n=1000, R=0.05, dt=0.1
     )
     # El error debería ser cero
     assert np.isclose(control_signal, 0, atol=1e-6)
