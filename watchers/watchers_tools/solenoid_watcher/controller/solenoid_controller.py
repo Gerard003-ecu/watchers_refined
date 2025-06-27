@@ -82,7 +82,7 @@ if __name__ == "__main__":
     n = 1000   # Vueltas por metro
     R = 0.05   # Radio en metros
     dt = 0.1
-    control_signal, measured_Bz = controller.update(I, n, R, dt)
+    control_signal, measured_Bz = controller.update(i_amps, n, R, dt)
     message = (f"Señal de control: {control_signal:.3f}, "
                f"Bz medido: {measured_Bz:.6f} T")
     print(message)
