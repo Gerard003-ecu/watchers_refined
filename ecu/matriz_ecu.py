@@ -442,7 +442,7 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
     agregada del campo vectorial en cada punto, ponderada por capa.
     """
     try:
-        campo_unificado = campo_toroidal_global.obtener_campo_unificado()
+        campo_unificado = campo_toroidal_global_servicio.obtener_campo_unificado()
         # SOLUCIÓN E501: Se formatea el diccionario para mayor legibilidad.
         response_data = {
             "status": "success",
@@ -450,9 +450,9 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
             "metadata": {
                 "descripcion":
                     "Mapa de intensidad del campo toroidal ponderado por capa",
-                "capas": campo_toroidal_global.num_capas,
-                "filas": campo_toroidal_global.num_rows,
-                "columnas": campo_toroidal_global.num_cols,
+                "capas": campo_toroidal_global_servicio.num_capas,
+                "filas": campo_toroidal_global_servicio.num_rows,
+                "columnas": campo_toroidal_global_servicio.num_cols,
             },
         }
         return jsonify(response_data), 200
