@@ -614,9 +614,15 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
         [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]],
         [[[9.0, 10.0], [11.0, 12.0]], [[13.0, 14.0], [15.0, 16.0]]],
     ]
-    mock_get.return_value.status_code = 200
-    mock_get.return_value.json.return_value = mock_ecu_field_data
-    mock_get.return_value.raise_for_status.return_value = None
+    # Corrected mock setup
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "status": "success",
+        "field_vector": mock_ecu_field_data
+    }
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
 
     with (
         patch(

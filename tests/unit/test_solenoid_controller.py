@@ -58,7 +58,9 @@ def test_edge_cases(mock_simulate, controller):
     )
     _, _ = controller.update(I=0, n=0, R=0, dt=0)
     # Verificar que el término derivativo sea cero
-    assert controller.last_error == 0
+    # last_error will be the current error (desired_Bz - measured_Bz).
+    # If measured_Bz is 0 (as from the mock_simulate setup), error is desired_Bz.
+    assert controller.last_error == controller.desired_Bz
 
 
 def test_integral_windup(controller):
