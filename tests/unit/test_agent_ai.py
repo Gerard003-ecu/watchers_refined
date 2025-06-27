@@ -1071,8 +1071,10 @@ class TestAgentAI(unittest.TestCase):
 
     # --- MODIFICADO: Incluir tipo, aporta_a, naturaleza_auxiliar ---
     @mock.patch("agent_ai.agent_ai.threading.Thread")
+    @mock.patch('os.path.exists', return_value=True)
     def test_registrar_modulo_auxiliar_success(
         self,
+        mock_os_path_exists, # This mock is now passed due to the decorator
         mock_threading_thread,
         mock_logger,
         mock_validate_registration,
@@ -1218,8 +1220,10 @@ class TestAgentAI(unittest.TestCase):
         self.assertIn("Faltan campos requeridos", result["mensaje"])
         self.assertNotIn("TestReg", self.agent.modules)
 
+    @mock.patch('os.path.exists', return_value=True)
     def test_registrar_modulo_dep_fail(
         self,
+        mock_os_path_exists,
         mock_thread,
         mock_validate_registration,
         mock_check_deps,

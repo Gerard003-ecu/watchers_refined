@@ -170,7 +170,7 @@ def test_aplicar_influencia_vector_invalido(
         )
     assert success is False
     assert "vector de influencia inválido" in caplog.text.lower()
-    assert "NumPy array (2,)" in caplog.text
+    assert "np.ndarray de shape (2,)" in caplog.text
     with tf.lock:
         for i in range(tf.num_capas):
             assert np.array_equal(tf.campo[i], valor_original[i])

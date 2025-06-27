@@ -37,6 +37,6 @@ jobs:
           # pytest ya está instalado
           # Ejecuta pytest. La fixture check_all_services_health se saltará
           # porque los servicios reales no están corriendo.
-          pytest --skip-health-checks tests/unit/ tests/integration/
+          pytest --skip-health-checks -m "not real_integration" tests/unit/ tests/integration/
           # O si quieres ser más específico:
-          # pytest --skip-health-checks tests/unit/test_cilindro_grafenal.py tests/unit/test_malla_watcher.py tests/unit/test_matriz_ecu.py tests/integration/test_integration_malla_ecu.py
+          # pytest --skip-health-checks -m "not real_integration" tests/unit/test_cilindro_grafenal.py tests/unit/test_malla_watcher.py tests/unit/test_matriz_ecu.py tests/integration/test_integration_malla_ecu.py

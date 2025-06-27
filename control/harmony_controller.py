@@ -670,7 +670,10 @@ def set_harmony_setpoint():
             "status": "error",
             "message": "Payload JSON vacío o ausente."
         }), 400
+
     new_vector = data.get("setpoint_vector")
+    new_value = data.get("setpoint_value")
+
     try:
         if new_vector is not None and isinstance(new_vector, list):
             vec = np.array(new_vector, dtype=float)
@@ -682,10 +685,22 @@ def set_harmony_setpoint():
                 "new_setpoint_value": val,
                 "new_setpoint_vector": vec.tolist(),
             }), 200
+        elif new_value is not None and isinstance(new_value, (int, float)):
+            # Si se proporciona setpoint_value, el vector no se actualiza explícitamente aquí,
+            # se mantiene el existente o el default si no hay.
+            # La norma es directamente el valor proporcionado.
+            controller_state.update_setpoint(float(new_value))
+            return jsonify({
+                "status": "success",
+                "message": f"Setpoint actualizado a valor: {float(new_value):.3f}.",
+                "new_setpoint_value": float(new_value),
+                # Devuelve el vector actual del estado para consistencia
+                "new_setpoint_vector": controller_state.setpoint_vector,
+            }), 200
         else:
             return jsonify({
                 "status": "error",
-                "message": "Se requiere 'setpoint_vector' en el JSON."
+                "message": "Se requiere 'setpoint_vector' (lista de números) o 'setpoint_value' (número) en el JSON."
             }), 400
     except (ValueError, TypeError) as e:
         logger.error("Error al procesar nuevo setpoint: %s", e)
@@ -738,6 +753,12 @@ def register_tool_from_ai():
         return jsonify({
             "status": "error",
             "message": f"Faltan campos requeridos: {', '.join(missing)}"
+        }), 400
+
+    if not isinstance(data.get("url"), str):
+        return jsonify({
+            "status": "error",
+            "message": "Campo 'url' debe ser una cadena de texto (string)."
         }), 400
 
     try:

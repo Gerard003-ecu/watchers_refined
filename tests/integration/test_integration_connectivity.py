@@ -1,5 +1,6 @@
 # --- START OF FILE tests/integration/test_integration_connectivity.py ---
 
+import pytest
 import requests
 import os
 import time  # Necesario para time.sleep
@@ -137,6 +138,7 @@ def check_service_health(service_name, url):
 #     logger.info("Espera inicial finalizada. Iniciando health checks.")
 
 
+@pytest.mark.real_integration
 def test_ecu_is_accessible_and_healthy():
     """
     Verificar que Matriz ECU es accesible, reporta salud y su estado
@@ -233,6 +235,7 @@ def test_ecu_is_accessible_and_healthy():
     )
 
 
+@pytest.mark.real_integration
 def test_malla_watcher_is_accessible_and_healthy():
     """Verificar que Malla Watcher es accesible y reporta salud."""
     is_healthy, data = check_service_health("Malla Watcher", MALLA_URL)
@@ -248,6 +251,7 @@ def test_malla_watcher_is_accessible_and_healthy():
     # .get("num_cells", 0) > 0, "La malla está vacía"
 
 
+@pytest.mark.real_integration
 def test_harmony_controller_is_accessible_and_healthy():
     """Verificar que Harmony Controller es accesible y reporta salud."""
     is_healthy, data = check_service_health(
@@ -261,6 +265,7 @@ def test_harmony_controller_is_accessible_and_healthy():
     # "Bucle de control de HC no corre"
 
 
+@pytest.mark.real_integration
 def test_agent_ai_is_accessible_and_healthy():
     """Verificar que Agent AI es accesible y reporta salud."""
     is_healthy, data = check_service_health("Agent AI", AGENT_AI_URL)

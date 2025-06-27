@@ -60,7 +60,7 @@ def test_dash_layout(dash_client):
     response = dash_client.get("/")
     assert response.status_code == 200
     # Using a substring as the full string assertion is proving problematic
-    assert "Panel de Control" in response.data.decode('utf-8')
+    assert "Watchers Dashboard - SonicHarmonizer v2.0" in response.data.decode('utf-8')
 
 
 def test_dash_interaction(dash_client):

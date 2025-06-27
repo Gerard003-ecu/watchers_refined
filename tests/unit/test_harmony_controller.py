@@ -302,7 +302,7 @@ class TestCommunicationFunctions(unittest.TestCase):
             expected_error = {
                 "status": "error",
                 "message": (
-                    f"No se pudo obtener estado después de "
+                    f"No se pudo obtener estado tras " # Corrected to "tras"
                     f"{harmony_controller.MAX_RETRIES} intentos"
                 )
             }
@@ -432,7 +432,7 @@ class TestHarmonyControllerAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
-        self.assertIn("ausente o inválido", data['message'])
+        self.assertIn("Faltan campos requeridos", data['message'])
 
     def test_register_tool_api_invalid_type(self):
         """Prueba tipo inválido."""
@@ -448,7 +448,7 @@ class TestHarmonyControllerAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
-        self.assertIn("ausente o inválido", data['message'])
+        self.assertIn("Campo 'url' debe ser una cadena de texto (string).", data['message'])
 
     # --- Tests para otros endpoints ---
     def test_set_harmony_setpoint_value_api(self):
@@ -493,8 +493,8 @@ class TestHarmonyControllerAPI(unittest.TestCase):
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'error')
         self.assertIn(
-            "se requiere 'setpoint_value' o 'setpoint_vector'",
-            data['message'].lower()
+            "Se requiere 'setpoint_vector' (lista de números) o 'setpoint_value' (número) en el JSON.",
+            data['message']
         )
 
     def test_set_harmony_setpoint_bad_value_api(self):
