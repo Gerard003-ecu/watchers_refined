@@ -51,12 +51,12 @@ class SolenoidController:
                           self.Kd * derivative)
         return control_signal
 
-    def update(self, I, n, R, dt=0.1):
+    def update(self, i_amps, n, R, dt=0.1):
         """
         Ejecuta una simulación del modelo del solenoide y actualiza la señal.
 
         Parámetros:
-            I: Corriente actual (amperios).
+            i_amps: Corriente actual (amperios).
             n: Densidad de vueltas (vueltas por metro).
             R: Radio del solenoide (metros).
             dt: Intervalo de tiempo para la simulación.
@@ -67,7 +67,7 @@ class SolenoidController:
                    medido del campo axial (Tesla).
         """
         t, sol = simulate_solenoid(
-            I, n, R, initial_state=[0, 0], t_end=dt, num_points=2
+            i_amps, n, R, initial_state=[0, 0], t_end=dt, num_points=2
         )
         # Tomamos el último valor de B_z
         measured_Bz = sol[-1, 1]
@@ -78,7 +78,7 @@ class SolenoidController:
 if __name__ == "__main__":
     desired_Bz = 1e-3  # Tesla
     controller = SolenoidController(desired_Bz, Kp=1000, Ki=50, Kd=10)
-    I = 5.0    # Corriente en amperios
+    i_amps = 5.0    # Corriente en amperios
     n = 1000   # Vueltas por metro
     R = 0.05   # Radio en metros
     dt = 0.1
