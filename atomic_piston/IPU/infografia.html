@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infografía: La Unidad de Potencia Inteligente (IPU)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Brilliant Blues -->
+    <!-- Application Structure Plan: The infographic follows a narrative structure in four main sections. 1) Introduction: Hooks the user with the problem (solar variability) and introduces the IPU concept via the "Atomic Piston" analogy. 2) Core Components: A deep-dive into the three pillars of the IPU (Power Electronics, Control, Storage) using comparative charts. 3) Architecture: A visual flowchart showing how all components work together. 4) Future: A balanced view of challenges vs. opportunities. This structure guides the user from the "what" and "why" to the "how" and "what's next," making complex information digestible. -->
+    <!-- Visualization & Content Choices: 
+    - Report Info: Table 1 Data (Component Efficiency). Goal: Compare. Viz/Method: Horizontal Bar Chart (Chart.js/Canvas). Justification: Ideal for comparing a single metric across categories with long labels, providing clear ranking.
+    - Report Info: Table 2 Data (ESP32 Features). Goal: Inform/Organize. Viz/Method: HTML/CSS Icon Grid. Justification: A visually scannable way to present key features without a chart, using icons for quick recognition.
+    - Report Info: Table 3 Data (Battery Metrics). Goal: Compare/Relationships. Viz/Method: Radar Chart (Chart.js/Canvas). Justification: Perfect for comparing multiple different units (Wh/kg, cycles, %) for several items simultaneously, showing the overall strengths of LiFePO4.
+    - Report Info: Section 5.4 (IPU Architecture). Goal: Organize/Process Flow. Viz/Method: Flowchart using structured HTML/CSS with Tailwind. Justification: Clearly shows the energy flow and component interaction as described, without using forbidden SVG/Mermaid.
+    - Report Info: Atomic Piston Analogy. Goal: Inform. Viz/Method: Simple two-part HTML/CSS diagram. Justification: Breaks down the core conceptual analogy into its two key electrical components for easy understanding.
+    - All visualizations use Chart.js/Canvas or HTML/CSS, adhering to the NO SVG constraint. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F0F4F8;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+        .flow-arrow::after {
+            content: '▼';
+            font-size: 2rem;
+            color: #94A3B8;
+        }
+        .flow-arrow-right::after {
+            content: '▶';
+            font-size: 2rem;
+            color: #94A3B8;
+        }
+    </style>
+</head>
+<body class="text-slate-700">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-16">
+            <h1 class="text-4xl md:text-6xl font-extrabold text-[#0A2647] mb-4">La Revolución de la Energía: La Unidad de Potencia Inteligente (IPU)</h1>
+            <p class="text-lg md:text-xl text-slate-600 max-w-4xl mx-auto">Un análisis visual de la tecnología que redefine la gestión de energía en sistemas fotovoltaicos, desde sus componentes hasta su impacto futuro.</p>
+        </header>
+
+        <section id="intro" class="mb-20">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div class="bg-white p-8 rounded-2xl shadow-lg">
+                    <h2 class="text-3xl font-bold text-[#144272] mb-4">El Desafío Solar y la Solución del "Pistón Atómico"</h2>
+                    <p class="mb-6 text-slate-600">La energía solar es intermitente. La IPU resuelve este problema actuando como un "pistón atómico": almacena energía de manera eficiente y la libera en ráfagas instantáneas y potentes cuando es necesario. Esto se logra combinando dos principios eléctricos clave:</p>
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl text-[#205295]">⚡</div>
+                            <div>
+                                <h3 class="font-semibold text-lg">Descarga del Capacitor</h3>
+                                <p class="text-sm">Almacena energía en un campo eléctrico y la libera de golpe, proporcionando un pulso de potencia masivo e instantáneo.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="text-3xl text-[#2C74B3]">💥</div>
+                            <div>
+                                <h3 class="font-semibold text-lg">Retroceso del Inductor</h3>
+                                <p class="text-sm">Se opone a los cambios de corriente. Al interrumpir el flujo, genera un pico de voltaje extremo, multiplicando la potencia del pulso.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-center justify-center p-8 bg-[#0A2647] rounded-2xl shadow-xl h-full">
+                     <div class="text-center text-white">
+                        <p class="text-2xl font-medium mb-2">Eficiencia del Inversor</p>
+                        <p class="text-8xl font-extrabold text-[#27B5B9]">98%</p>
+                        <p class="mt-4 max-w-xs text-slate-300">Los inversores modernos son la base, pero la IPU optimiza todo el sistema para minimizar las pérdidas durante las operaciones dinámicas y pulsadas.</p>
+                     </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="components" class="mb-20">
+            <h2 class="text-4xl font-bold text-center text-[#144272] mb-12">Los Tres Pilares de la IPU: Potencia, Control y Almacenamiento</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="bg-white p-8 rounded-2xl shadow-lg flex flex-col">
+                    <h3 class="text-2xl font-bold text-[#144272] mb-4 text-center">1. Electrónica de Potencia</h3>
+                    <p class="text-center text-slate-600 mb-6 flex-grow">Los "músculos" que manejan el flujo de energía. La eficiencia es clave para el rendimiento de la IPU.</p>
+                    <div class="chart-container h-80">
+                        <canvas id="efficiencyChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-8 rounded-2xl shadow-lg flex flex-col">
+                    <h3 class="text-2xl font-bold text-[#144272] mb-4 text-center">2. Control Inteligente (ESP32)</h3>
+                     <p class="text-center text-slate-600 mb-6 flex-grow">El "cerebro" que ejecuta algoritmos complejos para optimizar el rendimiento, la seguridad y la comunicación.</p>
+                     <div class="grid grid-cols-2 gap-6 text-center">
+                        <div class="bg-slate-100 p-4 rounded-lg">
+                            <div class="text-4xl mb-2">⚙️</div>
+                            <h4 class="font-semibold text-sm">CPU Dual-Core</h4>
+                        </div>
+                        <div class="bg-slate-100 p-4 rounded-lg">
+                            <div class="text-4xl mb-2">📶</div>
+                            <h4 class="font-semibold text-sm">Wi-Fi & Bluetooth</h4>
+                        </div>
+                        <div class="bg-slate-100 p-4 rounded-lg">
+                            <div class="text-4xl mb-2">🔌</div>
+                            <h4 class="font-semibold text-sm">34 GPIOs</h4>
+                        </div>
+                        <div class="bg-slate-100 p-4 rounded-lg">
+                            <div class="text-4xl mb-2">⚡</div>
+                            <h4 class="font-semibold text-sm">Bajo Consumo</h4>
+                        </div>
+                     </div>
+                </div>
+                
+                <div class="bg-white p-8 rounded-2xl shadow-lg flex flex-col">
+                    <h3 class="text-2xl font-bold text-[#144272] mb-4 text-center">3. Almacenamiento de Energía</h3>
+                    <p class="text-center text-slate-600 mb-6 flex-grow">La elección de la batería define la eficiencia, vida útil y seguridad. LiFePO4 destaca por su rendimiento superior.</p>
+                    <div class="chart-container h-80">
+                        <canvas id="batteryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture" class="mb-20">
+            <h2 class="text-4xl font-bold text-center text-[#144272] mb-12">Arquitectura de la IPU: Un Flujo de Energía Sinergético</h2>
+            <p class="text-lg text-slate-600 max-w-3xl mx-auto text-center mb-12">Así es como todos los componentes se integran para capturar, almacenar y liberar energía de manera inteligente y optimizada, desde el sol hasta la carga final.</p>
+            <div class="flex flex-col items-center text-center font-medium text-sm">
+                <div class="bg-white p-4 rounded-lg shadow-md border-2 border-[#27B5B9]">☀️ Conjunto Fotovoltaico (PV)</div>
+                <div class="flow-arrow my-2"></div>
+                <div class="bg-white p-4 rounded-lg shadow-md">⚙️ Convertidor CC-CC (con MPPT)</div>
+                <div class="flow-arrow my-2"></div>
+                <div class="bg-[#0A2647] text-white p-6 rounded-lg shadow-xl w-full max-w-4xl">
+                    <h3 class="text-lg font-bold mb-4">🧠 Unidad de Control (Microcontrolador ESP32)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                        <div class="flex flex-col items-center">
+                            <div class="bg-slate-100 text-slate-800 p-4 rounded-lg shadow-md w-full">🔋 Batería Principal (LiFePO4)</div>
+                            <div class="text-slate-400 text-xs mt-1">Almacenamiento a Largo Plazo</div>
+                        </div>
+                        <div class="flex md:flex-col items-center justify-center h-full w-full">
+                             <div class="flow-arrow-right hidden md:block md:transform md:rotate-90"></div>
+                             <div class="flow-arrow md:hidden"></div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="bg-slate-100 text-slate-800 p-4 rounded-lg shadow-md w-full">💥 Módulo de Potencia Pulsada</div>
+                            <div class="text-slate-400 text-xs mt-1">(Supercapacitor + Inductor)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flow-arrow my-2"></div>
+                <div class="bg-white p-4 rounded-lg shadow-md">🔌 Inversor / Carga Final</div>
+            </div>
+        </section>
+
+        <section id="future" class="bg-white p-8 md:p-12 rounded-2xl shadow-lg">
+            <h2 class="text-4xl font-bold text-center text-[#144272] mb-12">El Futuro de la Energía: Desafíos y Oportunidades</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+                <div>
+                    <h3 class="text-2xl font-bold text-[#E03E3E] mb-6 text-center">Desafíos a Superar</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-start gap-4">
+                            <div class="text-2xl pt-1">🌡️</div>
+                            <div>
+                                <h4 class="font-semibold">Gestión Térmica</h4>
+                                <p class="text-slate-600 text-sm">La alta potencia genera calor, un factor que limita la vida útil y la eficiencia.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="text-2xl pt-1">📉</div>
+                             <div>
+                                <h4 class="font-semibold">Degradación de Materiales</h4>
+                                <p class="text-slate-600 text-sm">Los ciclos rápidos estresan los componentes, exigiendo materiales más robustos.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="text-2xl pt-1">🔒</div>
+                            <div>
+                                <h4 class="font-semibold">Complejidad y Seguridad</h4>
+                                <p class="text-slate-600 text-sm">Orquestar picos de alta energía de forma segura requiere algoritmos y protecciones sofisticadas.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-[#3E9A55] mb-6 text-center">Oportunidades que Desbloquea</h3>
+                     <ul class="space-y-4">
+                        <li class="flex items-start gap-4">
+                            <div class="text-2xl pt-1">🌐</div>
+                            <div>
+                                <h4 class="font-semibold">Estabilidad de la Red</h4>
+                                <p class="text-slate-600 text-sm">Puede proporcionar servicios auxiliares rápidos para una red eléctrica más resiliente.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="text-2xl pt-1">💎</div>
+                            <div>
+                                <h4 class="font-semibold">Nuevos Semiconductores</h4>
+                                <p class="text-slate-600 text-sm">Materiales como SiC y GaN prometen mayor eficiencia y menor tamaño.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="text-2xl pt-1">🤖</div>
+                            <div>
+                                <h4 class="font-semibold">Integración de IA/ML</h4>
+                                <p class="text-slate-600 text-sm">La inteligencia artificial puede optimizar el control de forma predictiva y adaptativa.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="text-center py-8 px-4">
+        <p class="text-sm text-slate-500">Infografía generada a partir del "Informe Integral sobre Componentes Electrónicos de Potencia".</p>
+    </footer>
+
+    <script>
+        const wrapLabel = (label, maxWidth) => {
+            if (label.length <= maxWidth) {
+                return label;
+            }
+            const words = label.split(' ');
+            const lines = [];
+            let currentLine = '';
+            words.forEach(word => {
+                if ((currentLine + ' ' + word).trim().length > maxWidth && currentLine.length > 0) {
+                    lines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    currentLine = (currentLine + ' ' + word).trim();
+                }
+            });
+            lines.push(currentLine);
+            return lines;
+        };
+
+        const tooltipTitleCallback = (tooltipItems) => {
+            const item = tooltipItems[0];
+            let label = item.chart.data.labels[item.dataIndex];
+            if (Array.isArray(label)) {
+              return label.join(' ');
+            } else {
+              return label;
+            }
+        };
+
+        const tooltipOptions = {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: tooltipTitleCallback
+                    },
+                    backgroundColor: '#0A2647',
+                    titleFont: { weight: 'bold' },
+                    bodyFont: { size: 12 },
+                    padding: 12,
+                    cornerRadius: 8,
+                    boxPadding: 4,
+                }
+            }
+        };
+
+        const createEfficiencyChart = () => {
+            const ctx = document.getElementById('efficiencyChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [
+                        wrapLabel('Controladores de Carga (MPPT)', 16), 
+                        wrapLabel('Inversores', 16),
+                        wrapLabel('Convertidores CC-CC', 16),
+                        wrapLabel('Rectificadores', 16),
+                    ],
+                    datasets: [{
+                        label: 'Eficiencia Típica (%)',
+                        data: [99, 98, 97, 95],
+                        backgroundColor: ['#27B5B9', '#205295', '#2C74B3', '#94A3B8'],
+                        borderColor: '#F0F4F8',
+                        borderWidth: 2,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    ...tooltipOptions,
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: false,
+                            min: 80,
+                            max: 100,
+                             grid: { display: false },
+                             ticks: { font: { weight: 'bold' } }
+                        },
+                        y: {
+                            grid: { color: '#E2E8F0' },
+                            ticks: { font: { size: 11 } }
+                        }
+                    },
+                    plugins: {
+                        ...tooltipOptions.plugins,
+                        legend: { display: false },
+                        title: { display: true, text: 'Eficiencia por Componente', font: { size: 14, weight: 'bold' }, color: '#144272' }
+                    }
+                }
+            });
+        };
+        
+        const createBatteryChart = () => {
+            const ctx = document.getElementById('batteryChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: [
+                        wrapLabel('Densidad Energía (Wh/kg)', 16),
+                        wrapLabel('Ciclos de Vida', 16),
+                        wrapLabel('Eficiencia (%)', 16),
+                        wrapLabel('DOD Seguro (%)', 16)
+                    ],
+                    datasets: [
+                        {
+                            label: 'LiFePO4',
+                            data: [175, 4500, 92, 90], 
+                            backgroundColor: 'rgba(39, 181, 185, 0.2)',
+                            borderColor: '#27B5B9',
+                            pointBackgroundColor: '#27B5B9',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#27B5B9',
+                            borderWidth: 2,
+                        },
+                        {
+                            label: 'Plomo-Ácido',
+                            data: [40, 650, 80, 55],
+                            backgroundColor: 'rgba(148, 163, 184, 0.2)',
+                            borderColor: '#94A3B8',
+                            pointBackgroundColor: '#94A3B8',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#94A3B8',
+                             borderWidth: 2,
+                        }
+                    ]
+                },
+                options: {
+                    ...tooltipOptions,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: '#CFD8E3' },
+                            grid: { color: '#CFD8E3' },
+                            pointLabels: { 
+                                font: { size: 10, weight: 'bold' },
+                                color: '#0A2647'
+                            },
+                            ticks: {
+                                display: false,
+                                stepSize: 25
+                            }
+                        }
+                    },
+                    plugins: {
+                        ...tooltipOptions.plugins,
+                        legend: {
+                             labels: { color: '#144272', font: { weight: 'bold' } }
+                        },
+                         title: { display: true, text: 'Comparativa de Baterías', font: { size: 14, weight: 'bold' }, color: '#144272' }
+                    }
+                }
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createEfficiencyChart();
+            createBatteryChart();
+        });
+    </script>
+</body>
+</html>

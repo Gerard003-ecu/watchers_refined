@@ -1,143 +1,133 @@
-# En un nuevo archivo: atomic_piston/atomic_piston.py
-
+# atomic_piston/atomic_piston.py
 import time
+import numpy as np
 from enum import Enum
 import logging
 
 logger = logging.getLogger(__name__)
 
 class PistonMode(Enum):
-    """Define los modos de operación del Pistón Atómico."""
-    CAPACITOR = "capacitor"  # Acumula y descarga en un pulso al alcanzar un umbral.
-    BATTERY = "battery"      # Acumula y descarga de forma sostenida y controlada.
+    CAPACITOR = "capacitor"
+    BATTERY = "battery"
 
 class AtomicPiston:
     """
-    Simula una Unidad de Potencia Inteligente (IPU) que acumula y libera
-    "energía" (señales) de forma controlada, actuando como un buffer
-    estratégico en el ecosistema Watchers.
+    Una unidad de potencia inteligente (IPU) que modela un resonador de señales
+    basado en un sistema físico de masa-resorte-amortiguador.
+    Acumula "fuerza" de las señales del sistema y la convierte en "energía potencial"
+    (compresión del pistón) que puede ser liberada de forma controlada.
     """
-
-    def __init__(self, name: str, capacity: float, mode: PistonMode = PistonMode.CAPACITOR, 
-                 trigger_threshold_ratio: float = 0.9, discharge_rate: float = 0.1):
-        """
-        Inicializa el Pistón Atómico.
-
-        Args:
-            name (str): Nombre único para identificar esta IPU.
-            capacity (float): Capacidad máxima de energía que puede almacenar.
-            mode (PistonMode): Modo de operación inicial (CAPACITOR o BATTERY).
-            trigger_threshold_ratio (float): (Modo CAPACITOR) Porcentaje de la capacidad
-                                             al que se dispara automáticamente (e.g., 0.9 para 90%).
-            discharge_rate (float): (Modo BATTERY) Cantidad de energía liberada por tick
-                                    de descarga.
-        """
-        self.name = name
-        self.capacity = float(capacity)
-        self.current_charge = 0.0
+    def __init__(self,
+                 capacity: float,
+                 elasticity: float,      # Constante del resorte (k). Alta = más rígido.
+                 damping: float,         # Coeficiente de amortiguación (c).
+                 piston_mass: float = 1.0, # Masa inercial del pistón (m).
+                 mode: PistonMode = PistonMode.CAPACITOR):
         
-        # --- Parámetros de Control ---
+        self.capacity = capacity  # Límite máximo de compresión (-capacity).
         self.mode = mode
-        self.is_discharging_sustained = False  # Específico para el modo BATTERY
 
-        # --- Parámetros de Modo ---
-        self.trigger_threshold = self.capacity * trigger_threshold_ratio
-        self.discharge_rate = float(discharge_rate)
+        # Parámetros Físicos
+        self.k = elasticity
+        self.c = damping
+        self.m = piston_mass
+
+        # Estado del Pistón
+        self.position = 0.0  # Posición de equilibrio es 0. Negativo = comprimido/cargado.
+        self.velocity = 0.0  # Velocidad actual del pistón.
+        self.last_applied_force = 0.0
+
+        # Para calcular la velocidad de la señal de entrada
+        self.last_signal_info = {} # Almacenará {'source': {'value': float, 'timestamp': float}}
+
+        # Parámetros de Modo
+        self.capacitor_discharge_threshold = -capacity * 0.9 # Umbral de posición para descarga automática
+        self.battery_is_discharging = False
+        self.battery_discharge_rate = capacity * 0.05 # Cuánta "posición" se libera por segundo
+
+    @property
+    def current_charge(self) -> float:
+        """La carga se define como la compresión del pistón (valor absoluto de la posición negativa)."""
+        return max(0, -self.position)
+
+    def apply_force(self, signal_value: float, source: str, mass_factor: float = 1.0):
+        """
+        Calcula la "fuerza de impacto" de una señal entrante y la aplica al pistón.
+        La fuerza es proporcional a la "masa" de la señal y al cuadrado de su "velocidad" (cambio).
+        """
+        current_time = time.monotonic()
         
-        logger.info(f"IPU '{self.name}' creada. Modo: {self.mode.value}, Capacidad: {self.capacity}")
+        # Calcular la velocidad de la señal (derivada)
+        if source in self.last_signal_info:
+            last_val = self.last_signal_info[source]['value']
+            last_time = self.last_signal_info[source]['timestamp']
+            dt = current_time - last_time
+            
+            if dt > 1e-6: # Evitar división por cero
+                signal_velocity = (signal_value - last_val) / dt
+            else:
+                signal_velocity = 0.0
+        else:
+            signal_velocity = 0.0
 
-    # --- MÉTODOS DE ESTADO (El núcleo de la física) ---
+        # Actualizar para el próximo cálculo
+        self.last_signal_info[source] = {'value': signal_value, 'timestamp': current_time}
 
-    def charge(self, energy_amount: float) -> dict | None:
-        """
-        Añade energía al pistón. En modo CAPACITOR, puede dispararse automáticamente.
-
-        Args:
-            energy_amount (float): La cantidad de energía (señal) a añadir.
-
-        Returns:
-            dict | None: Un diccionario de señal si se produce una descarga, o None.
-        """
-        if energy_amount < 0:
-            return None # No se puede cargar con energía negativa
-
-        previous_charge = self.current_charge
-        self.current_charge = min(self.capacity, self.current_charge + energy_amount)
-        logger.debug(f"IPU '{self.name}' cargada con {energy_amount}. Carga actual: {self.current_charge:.2f}/{self.capacity}")
-
-        # Lógica de disparo automático para el modo CAPACITOR
-        if self.mode == PistonMode.CAPACITOR and self.current_charge >= self.trigger_threshold and previous_charge < self.trigger_threshold:
-            logger.info(f"IPU '{self.name}' ha alcanzado el umbral en modo CAPACITOR. ¡Descargando!")
-            return self.discharge()
+        # Calcular la fuerza de impacto (nuestra "energía cinética")
+        # Usamos el valor absoluto de la velocidad, ya que el impacto es energía, sin dirección.
+        # El signo de la fuerza siempre es para comprimir el pistón (negativo).
+        force = -0.5 * mass_factor * (signal_velocity ** 2)
+        self.last_applied_force = force
         
-        return None
+        logger.debug(f"Fuente '{source}': valor={signal_value:.2f}, vel={signal_velocity:.2f}, masa={mass_factor:.2f} -> Fuerza={force:.2f}")
 
-    def discharge(self) -> dict | None:
+    def update_state(self, dt: float):
         """
-        Libera energía. El comportamiento depende del modo actual.
-        - CAPACITOR: Libera toda la carga en un pulso.
-        - BATTERY: Libera una cantidad fija (discharge_rate) si está activado.
-
-        Returns:
-            dict | None: Un diccionario de señal si se produce una descarga, o None.
+        Actualiza el estado (posición, velocidad) del pistón para un paso de tiempo 'dt'.
+        Esta función debe ser llamada en un bucle de simulación regular.
         """
-        if self.current_charge <= 0:
-            return None
+        # Calcular las fuerzas internas del sistema
+        spring_force = -self.k * self.position  # Ley de Hooke: se opone al desplazamiento
+        damping_force = -self.c * self.velocity # Se opone al movimiento
 
+        # Fuerza total
+        total_force = self.last_applied_force + spring_force + damping_force
+        
+        # Calcular la aceleración (F=ma -> a=F/m)
+        acceleration = total_force / self.m
+        
+        # Actualizar estado usando integración de Euler (método numérico simple)
+        self.velocity += acceleration * dt
+        self.position += self.velocity * dt
+
+        # Limitar la compresión a la capacidad máxima
+        self.position = max(-self.capacity, self.position)
+
+        # Resetear la fuerza externa después de aplicarla por un instante
+        self.last_applied_force = 0.0
+
+    def discharge(self):
+        """Libera la energía almacenada según el modo de operación."""
         if self.mode == PistonMode.CAPACITOR:
-            output_signal = {"type": "pulse", "amplitude": self.current_charge, "source": self.name}
-            logger.info(f"IPU '{self.name}' descargando pulso de {self.current_charge:.2f} de energía.")
-            self.current_charge = 0.0
-            return output_signal
-
-        if self.mode == PistonMode.BATTERY:
-            if self.is_discharging_sustained:
-                energy_to_release = min(self.current_charge, self.discharge_rate)
-                self.current_charge -= energy_to_release
-                output_signal = {"type": "sustained", "amplitude": energy_to_release, "source": self.name}
-                logger.debug(f"IPU '{self.name}' descargando {energy_to_release:.2f} de forma sostenida. Restante: {self.current_charge:.2f}")
-                
-                if self.current_charge <= 0:
-                    self.is_discharging_sustained = False # Se agotó la batería
-                    logger.info(f"IPU '{self.name}' ha agotado su carga en modo BATTERY.")
-
+            # Descarga automática si está suficientemente comprimido
+            if self.position <= self.capacitor_discharge_threshold:
+                output_signal = {"type": "pulse", "amplitude": self.current_charge}
+                logger.info(f"¡Descarga CAPACITOR! Amplitud: {self.current_charge:.2f}")
+                # El "rebote": resetea la posición y le da una velocidad de salida
+                self.position = 0.0
+                self.velocity = 2.0 # Simula el rebote
                 return output_signal
         
-        return None
+        elif self.mode == PistonMode.BATTERY:
+            if self.battery_is_discharging and self.current_charge > 0:
+                # La descarga consume la "compresión" (energía potencial)
+                position_released = self.battery_discharge_rate * (1/UPDATE_INTERVAL) # Asumiendo que update_state se llama a UPDATE_INTERVAL
+                self.position = min(0, self.position + position_released)
 
-    # --- MÉTODOS DE CONTROL (La API para agent_ai) ---
+                if self.current_charge == 0:
+                    self.battery_is_discharging = False
+                    logger.info("Descarga BATTERY completada.")
 
-    def set_mode(self, new_mode: PistonMode):
-        """Permite a un agente externo cambiar el modo de operación de la IPU."""
-        if not isinstance(new_mode, PistonMode):
-            logger.warning(f"Intento de establecer un modo inválido en IPU '{self.name}'")
-            return
+                return {"type": "sustained", "amplitude": 1.0} # Amplitud de salida constante
         
-        if self.mode != new_mode:
-            logger.info(f"IPU '{self.name}' cambiando de modo {self.mode.value} a {new_mode.value}.")
-            self.mode = new_mode
-            self.is_discharging_sustained = False # Resetear estado al cambiar
-
-    def toggle_sustained_discharge(self, enable: bool):
-        """Activa o desactiva la descarga continua para el modo BATTERY."""
-        if self.mode == PistonMode.BATTERY:
-            if self.is_discharging_sustained != enable:
-                self.is_discharging_sustained = enable
-                status = "ACTIVADA" if enable else "DESACTIVADA"
-                logger.info(f"Descarga sostenida de IPU '{self.name}' {status}.")
-        else:
-            logger.warning(f"Intento de activar descarga sostenida en IPU '{self.name}', pero no está en modo BATTERY.")
-
-    # --- MÉTODOS DE INFORMACIÓN (La API para monitoreo) ---
-
-    def get_status(self) -> dict:
-        """Devuelve el estado actual de la IPU en un formato estructurado."""
-        charge_percentage = (self.current_charge / self.capacity) * 100 if self.capacity > 0 else 0
-        return {
-            "name": self.name,
-            "mode": self.mode.value,
-            "capacity": self.capacity,
-            "current_charge": self.current_charge,
-            "charge_percentage": round(charge_percentage, 2),
-            "is_discharging": self.is_discharging_sustained if self.mode == PistonMode.BATTERY else (self.current_charge >= self.trigger_threshold),
-        }
+        return None
