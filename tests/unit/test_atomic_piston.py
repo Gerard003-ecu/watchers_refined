@@ -217,7 +217,7 @@ class TestAtomicPiston:
         assert piston.last_applied_force == 0.0
 
     def test_update_state_spring_force_effect(
-        self
+        self,
         default_piston: AtomicPiston
     ):
         """Verifica el efecto de la fuerza del resorte en update_state."""
