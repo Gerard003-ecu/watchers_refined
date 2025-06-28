@@ -287,6 +287,15 @@
                             </li>
                         </ul>
                          <p class="text-xs text-slate-500 mt-4">Estas características permiten al ESP32 ejecutar algoritmos complejos como MPPT y BMS, controlar con precisión los semiconductores de potencia y comunicarse de forma remota, todo con un consumo de energía mínimo.</p>
+                         <div class="mt-6">
+                            <h4 class="font-bold text-slate-800 mb-2">Otros Microcontroladores y Curva Eficiencia/Costo</h4>
+                            <p class="text-sm text-slate-600 mb-2">Para una IPU más sofisticada, se pueden considerar microcontroladores de mayor rendimiento, aunque esto implica una curva de costo/beneficio diferente:</p>
+                            <ul class="list-disc list-inside text-sm text-slate-600 space-y-1">
+                                <li><strong>NXP MPC5775B/E:</strong> Diseñado para gestión de baterías y aplicaciones de inversores en automoción e industria. Ofrece rendimiento avanzado y soporte ASIL D, crucial para la seguridad crítica. **Costo: Alto, Eficiencia: Muy Alta, Adquisición: Moderada.**</li>
+                                <li><strong>Texas Instruments TMS320F28379D:</strong> Un microcontrolador de señal digital (DSP) con doble núcleo, ideal para control en tiempo real de electrónica de potencia compleja. **Costo: Alto, Eficiencia: Muy Alta, Adquisición: Moderada.**</li>
+                            </ul>
+                            <p class="text-xs text-slate-500 mt-2">La elección entre el ESP32 y estas opciones más potentes dependerá del balance entre la complejidad de los algoritmos de control, la velocidad de respuesta requerida y el presupuesto disponible. A mayor sofisticación y eficiencia, mayor es la inversión en hardware y desarrollo.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -632,21 +641,21 @@
 
 
             const batteryData = {
-                labels: ['LiFePO4', 'Ión-Sodio', 'Plomo-Ácido', 'Flujo'],
+                labels: ['LiFePO4', 'NMC', 'LTO', 'Ión-Sodio', 'Plomo-Ácido', 'Flujo'],
                 datasets: [
                     {
                         label: 'Densidad de Energía (Wh/kg)',
-                        data: [175, 150, 40, 28],
+                        data: [175, 220, 70, 150, 40, 28], /* Updated/added data for NMC, LTO */
                         backgroundColor: '#0d9488', 
                     },
                     {
                         label: 'Ciclos de Vida',
-                        data: [4500, 2000, 650, 12500],
+                        data: [4500, 1500, 10000, 2000, 650, 12500], /* Updated/added data for NMC, LTO */
                         backgroundColor: '#f59e0b',
                     },
                     {
                         label: 'Eficiencia (%)',
-                        data: [92, 90, 80, 78],
+                        data: [92, 90, 95, 90, 80, 78], /* Updated/added data for NMC, LTO */
                         backgroundColor: '#0ea5e9',
                     }
                 ],
@@ -655,29 +664,43 @@
                         title: 'Fosfato de Hierro y Litio (LiFePO4)',
                         text: 'La opción más equilibrada y segura para aplicaciones exigentes. Ideal para la IPU por su alta eficiencia, larga vida útil, alta profundidad de descarga (DOD) y seguridad inherente. Aunque su costo inicial es mayor, su bajo costo por ciclo la hace económicamente viable a largo plazo.',
                         suitability: 'Alta',
-                        costBenefit: 'Alto', /* Added semantic data */
-                        acquisitionEase: 'Moderada' /* Added semantic data */
+                        costBenefit: 'Alto',
+                        acquisitionEase: 'Moderada'
+                    },
+                    {
+                        title: 'Níquel-Manganeso-Cobalto (NMC)',
+                        text: 'Las baterías NMC ofrecen una alta densidad de energía, lo que las hace compactas y ligeras. Son comunes en vehículos eléctricos y electrónica de consumo. Sin embargo, su estabilidad térmica es menor comparada con LiFePO4, y su vida útil de ciclo es más corta con descargas profundas frecuentes.',
+                        suitability: 'Media',
+                        costBenefit: 'Medio-Alto',
+                        acquisitionEase: 'Moderada'
+                    },
+                    {
+                        title: 'Óxido de Titanato de Litio (LTO)',
+                        text: 'Las baterías LTO tienen una densidad de energía más baja, pero sobresalen en una vida útil de ciclo excepcionalmente larga (decenas de miles de ciclos) y una capacidad de carga/descarga ultra-rápida. Son muy seguras y operan bien en un amplio rango de temperaturas, siendo ideales para ciclado extremo.',
+                        suitability: 'Alta (para ciclado)',
+                        costBenefit: 'Bajo (por ciclo)',
+                        acquisitionEase: 'Difícil'
                     },
                     {
                         title: 'Ión-Sodio (Na-ion)',
                         text: 'Tecnología emergente y de bajo costo. Ofrece buena eficiencia pero menor densidad de energía que el litio. Es una alternativa prometedora para almacenamiento estacionario donde el peso y el espacio no son críticos.',
                         suitability: 'Media',
-                        costBenefit: 'Medio', /* Added semantic data */
-                        acquisitionEase: 'Difícil' /* Added semantic data */
+                        costBenefit: 'Medio',
+                        acquisitionEase: 'Difícil'
                     },
                     {
                         title: 'Plomo-Ácido',
                         text: 'Tecnología madura y de bajo costo inicial. Sin embargo, sufre de baja densidad de energía, corta vida útil, baja eficiencia y requiere mantenimiento. No es adecuada para los ciclos rápidos y profundos que exige una IPU.',
                         suitability: 'Baja',
-                        costBenefit: 'Bajo', /* Added semantic data */
-                        acquisitionEase: 'Fácil' /* Added semantic data */
+                        costBenefit: 'Bajo',
+                        acquisitionEase: 'Fácil'
                     },
                      {
                         title: 'Batería de Flujo',
                         text: 'Ofrece una vida útil excepcionalmente larga y 100% de DOD. Sin embargo, su baja densidad de energía, baja eficiencia y bajas tasas de carga/descarga la hacen menos adecuada para las ráfagas de potencia que necesita la IPU.',
                         suitability: 'Media-Baja',
-                        costBenefit: 'Medio', /* Added semantic data */
-                        acquisitionEase: 'Difícil' /* Added semantic data */
+                        costBenefit: 'Medio',
+                        acquisitionEase: 'Difícil'
                     }
                 ]
             };
@@ -691,11 +714,15 @@
                 if(detail.suitability === 'Alta') suitabilityColor = 'text-green-600';
                 if(detail.suitability === 'Media') suitabilityColor = 'text-amber-600';
                 if(detail.suitability === 'Baja') suitabilityColor = 'text-red-600';
+                if(detail.suitability === 'Media-Baja') suitabilityColor = 'text-orange-600'; /* Added for more specific colors */
+                if(detail.suitability === 'Alta (para ciclado)') suitabilityColor = 'text-green-800'; /* Added for more specific colors */
 
                 let costBenefitColor = 'text-slate-600';
                 if(detail.costBenefit === 'Alto') costBenefitColor = 'text-green-600';
                 else if(detail.costBenefit === 'Medio') costBenefitColor = 'text-amber-600';
                 else if(detail.costBenefit === 'Bajo') costBenefitColor = 'text-red-600';
+                else if(detail.costBenefit === 'Medio-Alto') costBenefitColor = 'text-purple-600'; /* Added for more specific colors */
+                else if(detail.costBenefit === 'Bajo (por ciclo)') costBenefitColor = 'text-green-700'; /* Added for more specific colors */
 
                 let acquisitionEaseColor = 'text-slate-600';
                 if(detail.acquisitionEase === 'Fácil') acquisitionEaseColor = 'text-green-600';
