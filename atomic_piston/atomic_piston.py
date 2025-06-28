@@ -201,11 +201,11 @@ class AtomicPiston:
 
                 return {"type": "sustained", "amplitude": 1.0}
             else:  # current_charge is 0 or less
-                 self.battery_is_discharging = False
-                    logger.info(
-                        "Descarga BATTERY: No hay carga para liberar"
-                        "desactivando descarga."
-                    )
+                self.battery_is_discharging = False
+                logger.info(
+                    "Descarga BATTERY: No hay carga para liberar, "  # Added comma for clarity
+                    "desactivando descarga."
+                )
         
         return None
 
