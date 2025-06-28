@@ -242,28 +242,48 @@ class TestAtomicPiston:
         assert piston.velocity == pytest.approx(1.0)
         assert piston.position == pytest.approx(-9.99)
 
-    def test_update_state_damping_effect(
-        self,
-        default_piston: AtomicPiston
-    ):
-        """Verifica el efecto de la amortiguación en update_state."""
-        piston = default_piston
-        # Give it some initial compression and velocity as if it's oscillating
-        piston.position = -10.0
-        piston.velocity = 10.0
-        initial_abs_velocity = abs(piston.velocity)
+    def test_update_state_damping_effect(self):
+        """Verifica el efecto de la amortiguación en update_state comparando dos pistones."""
+        initial_position = -10.0
+        time_steps = 300  # Simulate for enough steps to observe peak velocity
 
-        velocities = []
-        for _ in range(10):
-            piston.update_state(dt=DT)
-            velocities.append(abs(piston.velocity))
-            # Stop if it overshoots and starts compressing again
-            # with negative velocity (simplistic check for oscillation turn)
-            if piston.velocity < 0 and piston.position < -1:
-                break
-        # Check that velocity magnitude generally decreases due to damping
-        # This is a simplified check; true damping causes oscillation decay.
-        assert velocities[-1] < initial_abs_velocity
+        # Piston with low damping
+        piston_low_damping = AtomicPiston(
+            capacity=DEFAULT_CAPACITY,
+            elasticity=DEFAULT_ELASTICITY,
+            damping=0.1,  # Low damping
+            piston_mass=DEFAULT_PISTON_MASS
+        )
+        piston_low_damping.position = initial_position
+
+        # Piston with high damping
+        piston_high_damping = AtomicPiston(
+            capacity=DEFAULT_CAPACITY,
+            elasticity=DEFAULT_ELASTICITY,
+            damping=1.0,  # High damping
+            piston_mass=DEFAULT_PISTON_MASS
+        )
+        piston_high_damping.position = initial_position
+
+        max_velocity_low_damping = 0.0
+        max_velocity_high_damping = 0.0
+
+        for _ in range(time_steps):
+            piston_low_damping.update_state(dt=DT)
+            # We are interested in the velocity magnitude as it moves back towards equilibrium
+            # The first significant velocity will be positive as it moves from -10 towards 0
+            if piston_low_damping.velocity > max_velocity_low_damping:
+                max_velocity_low_damping = piston_low_damping.velocity
+
+            piston_high_damping.update_state(dt=DT)
+            if piston_high_damping.velocity > max_velocity_high_damping:
+                max_velocity_high_damping = piston_high_damping.velocity
+
+        # Assert that the peak velocity of the high_damping piston is lower
+        assert max_velocity_high_damping < max_velocity_low_damping
+        # Also ensure that both pistons actually moved and achieved some velocity
+        assert max_velocity_low_damping > 0
+        assert max_velocity_high_damping > 0
 
     def test_update_state_position_max_capacity(self):
         """Verifica que la posición del pistón no exceda la capacidad máxima."""
