@@ -24,16 +24,30 @@ def check_all_services_health(request):
     Fixture de sesión que verifica la salud de todos los servicios requeridos
     antes de que comience la ejecución de los tests de integración.
     Falla la sesión de test si algún servicio no está saludable.
+    Se ejecuta solo para tests dentro del directorio 'integration'.
     """
+    # Determinar si los tests que se están ejecutando son de integración
+    # Esto se puede hacer inspeccionando los items de la sesión o las rutas.
+    # Una forma simple es verificar si alguna ruta de test incluye "integration".
+    is_integration_run = False
+    for item in request.session.items:
+        if "integration" in item.nodeid.lower(): # O item.fspath si prefieres rutas de archivo
+            is_integration_run = True
+            break
+
+    if not is_integration_run:
+        logger.info("No es una ejecución de tests de integración. Saltando verificaciones de salud de servicios.")
+        return
+
     # Permitir saltar esta verificación si se pasa una opción a pytest
     if request.config.getoption("--skip-health-checks", default=False):
         logger.warning(
-            "Saltando verificaciones de salud de servicios pre-test."
+            "Saltando verificaciones de salud de servicios pre-test para tests de integración."
         )
         return
 
     logger.info(
-        "Iniciando verificación de salud de servicios pre-test..."
+        "Iniciando verificación de salud de servicios pre-test para tests de integración..."
     )
     all_healthy = True
     for service_name, base_url in SERVICES_TO_CHECK.items():
