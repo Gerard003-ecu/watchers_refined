@@ -23,7 +23,15 @@ class AtomicPiston:
                  damping: float,         # Coeficiente de amortiguación (c).
                  piston_mass: float = 1.0, # Masa inercial del pistón (m).
                  mode: PistonMode = PistonMode.CAPACITOR):
-        
+        """Inicializa una nueva instancia de AtomicPiston.
+
+        Args:
+            capacity: Capacidad máxima de compresión del pistón.
+            elasticity: Constante elástica del resorte (k). Un valor alto significa un resorte más rígido.
+            damping: Coeficiente de amortiguación (c).
+            piston_mass: Masa inercial del pistón (m).
+            mode: Modo de operación del pistón (CAPACITOR o BATTERY).
+        """
         self.capacity = capacity  # Límite máximo de compresión (-capacity).
         self.mode = mode
 
@@ -47,13 +55,31 @@ class AtomicPiston:
 
     @property
     def current_charge(self) -> float:
-        """La carga se define como la compresión del pistón (valor absoluto de la posición negativa)."""
+        """Devuelve la carga actual del pistón.
+
+        La carga se define como la compresión del pistón, que es el valor
+        absoluto de la posición negativa del pistón. Una carga mayor indica
+        una mayor compresión.
+
+        Returns:
+            La carga actual como un valor flotante no negativo.
+        """
         return max(0, -self.position)
 
     def apply_force(self, signal_value: float, source: str, mass_factor: float = 1.0):
-        """
-        Calcula la "fuerza de impacto" de una señal entrante y la aplica al pistón.
-        La fuerza es proporcional a la "masa" de la señal y al cuadrado de su "velocidad" (cambio).
+        """Aplica una fuerza al pistón basada en una señal entrante.
+
+        Calcula la "fuerza de impacto" de una señal y la aplica al pistón.
+        La fuerza es proporcional a la 'masa' de la señal (influenciada por
+        `mass_factor`) y al cuadrado de su 'velocidad' (tasa de cambio).
+        La fuerza aplicada siempre actúa para comprimir el pistón (dirección negativa).
+
+        Args:
+            signal_value: El valor actual de la señal.
+            source: Un identificador de la fuente de la señal, usado para rastrear
+                    la velocidad de cambio de señales individuales.
+            mass_factor: Un factor para escalar la 'masa' efectiva de la señal,
+                         afectando la magnitud de la fuerza aplicada.
         """
         current_time = time.monotonic()
         
@@ -82,9 +108,18 @@ class AtomicPiston:
         logger.debug(f"Fuente '{source}': valor={signal_value:.2f}, vel={signal_velocity:.2f}, masa={mass_factor:.2f} -> Fuerza={force:.2f}")
 
     def update_state(self, dt: float):
-        """
-        Actualiza el estado (posición, velocidad) del pistón para un paso de tiempo 'dt'.
-        Esta función debe ser llamada en un bucle de simulación regular.
+        """Actualiza el estado del pistón durante un intervalo de tiempo delta `dt`.
+
+        Calcula la nueva posición y velocidad del pistón basándose en las fuerzas
+        aplicadas (externas e internas como la del resorte y amortiguador)
+        durante el intervalo de tiempo `dt`.
+        Este método utiliza la integración de Euler para la simulación física.
+        La posición del pistón está limitada por su capacidad máxima de compresión.
+        La fuerza externa aplicada (`last_applied_force`) se considera instantánea
+        y se resetea después de cada actualización.
+
+        Args:
+            dt: El intervalo de tiempo (delta t) para la actualización del estado.
         """
         # Calcular las fuerzas internas del sistema
         spring_force = -self.k * self.position  # Ley de Hooke: se opone al desplazamiento
@@ -107,7 +142,24 @@ class AtomicPiston:
         self.last_applied_force = 0.0
 
     def discharge(self):
-        """Libera la energía almacenada según el modo de operación."""
+        """Gestiona la descarga de energía del pistón según su modo de operación.
+
+        En modo CAPACITOR:
+            Si la posición del pistón alcanza o supera el umbral de descarga,
+            libera una señal de tipo "pulso" cuya amplitud es la carga actual.
+            La posición se resetea a 0 y se le imprime una velocidad de rebote.
+        En modo BATTERY:
+            Si `battery_is_discharging` es verdadero y hay carga almacenada,
+            reduce la compresión del pistón (libera posición) a una tasa definida
+            por `battery_discharge_rate`. Emite una señal "sostenida" de amplitud fija.
+            Si la carga llega a cero, `battery_is_discharging` se vuelve falso.
+
+        Returns:
+            Un diccionario representando la señal de salida si ocurre una descarga,
+            o None si no hay descarga.
+            Ejemplo de señal de CAPACITOR: {'type': 'pulse', 'amplitude': float}
+            Ejemplo de señal de BATTERY: {'type': 'sustained', 'amplitude': 1.0}
+        """
         if self.mode == PistonMode.CAPACITOR:
             # Descarga automática si está suficientemente comprimido
             if self.position <= self.capacitor_discharge_threshold:
@@ -119,9 +171,22 @@ class AtomicPiston:
                 return output_signal
         
         elif self.mode == PistonMode.BATTERY:
-            if self.battery_is_discharging and self.current_charge > 0:
-                # La descarga consume la "compresión" (energía potencial)
-                position_released = self.battery_discharge_rate * (1/UPDATE_INTERVAL) # Asumiendo que update_state se llama a UPDATE_INTERVAL
+            if self.battery_is_discharging: # Check if discharging is active
+                if self.current_charge > 0:
+                    # La descarga consume la "compresión" (energía potencial)
+                    # Asumimos que discharge es llamado en cada paso de simulación, similar a update_state
+                # Por lo tanto, el dt para la descarga es el mismo que el dt de update_state.
+                # Para desacoplarlo, necesitaríamos pasar dt como argumento a discharge.
+                # Por ahora, usaremos una aproximación basada en una tasa por segundo.
+                # Si UPDATE_INTERVAL no está definido globalmente, debemos manejarlo.
+                # Una mejor práctica sería pasar dt a discharge.
+                # Por ahora, si UPDATE_INTERVAL no está definido, asumiremos un dt pequeño, por ejemplo 0.01s.
+                try:
+                    update_interval = UPDATE_INTERVAL
+                except NameError:
+                    update_interval = 0.01 # Valor supuesto si UPDATE_INTERVAL no está definido
+
+                position_released = self.battery_discharge_rate * update_interval
                 self.position = min(0, self.position + position_released)
 
                 if self.current_charge == 0:
@@ -129,5 +194,38 @@ class AtomicPiston:
                     logger.info("Descarga BATTERY completada.")
 
                 return {"type": "sustained", "amplitude": 1.0} # Amplitud de salida constante
+                else: # current_charge is 0 or less
+                    self.battery_is_discharging = False
+                    logger.info("Descarga BATTERY: No hay carga para liberar, desactivando descarga.")
         
         return None
+
+    def set_mode(self, mode: PistonMode):
+        """Establece el modo de operación del pistón.
+
+        Args:
+            mode: El nuevo modo de operación (PistonMode.CAPACITOR o PistonMode.BATTERY).
+        """
+        self.mode = mode
+        self.battery_is_discharging = False # Resetear estado de descarga al cambiar de modo
+        logger.info(f"Modo del pistón cambiado a: {mode.value}")
+
+    def trigger_discharge(self, discharge_on: bool):
+        """Activa o desactiva la descarga continua en modo BATTERY.
+
+        Este método solo tiene efecto si el pistón está en modo BATTERY.
+
+        Args:
+            discharge_on: True para activar la descarga, False para desactivarla.
+        """
+        if self.mode == PistonMode.BATTERY:
+            self.battery_is_discharging = discharge_on
+            if discharge_on:
+                logger.info("Descarga en modo BATTERY activada.")
+            else:
+                logger.info("Descarga en modo BATTERY desactivada.")
+        else:
+            logger.warning(
+                f"trigger_discharge llamado en modo {self.mode.value}. "
+                "Solo tiene efecto en modo BATTERY."
+            )
