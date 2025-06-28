@@ -36,18 +36,23 @@ def check_all_services_health(request):
             break
 
     if not is_integration_run:
-        logger.info("No es una ejecución de tests de integración. Saltando verificaciones de salud de servicios.")
+        logger.info(
+            "No es una ejecución de tests de integración."
+            "Saltando verificaciones de salud de servicios."
+        )
         return
 
     # Permitir saltar esta verificación si se pasa una opción a pytest
     if request.config.getoption("--skip-health-checks", default=False):
         logger.warning(
-            "Saltando verificaciones de salud de servicios pre-test para tests de integración."
+            "Saltando verificaciones de salud de servicios"
+            "pre-test para tests de integración."
         )
         return
 
     logger.info(
-        "Iniciando verificación de salud de servicios pre-test para tests de integración..."
+        "Iniciando verificación de salud de servicios"
+        "pre-test para tests de integración..."
     )
     all_healthy = True
     for service_name, base_url in SERVICES_TO_CHECK.items():

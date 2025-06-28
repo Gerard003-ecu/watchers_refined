@@ -174,56 +174,73 @@ class AtomicPiston:
             if self.battery_is_discharging: # Check if discharging is active
                 if self.current_charge > 0:
                     # La descarga consume la "compresión" (energía potencial)
-                    # Asumimos que discharge es llamado en cada paso de simulación, similar a update_state
-                # Por lo tanto, el dt para la descarga es el mismo que el dt de update_state.
-                # Para desacoplarlo, necesitaríamos pasar dt como argumento a discharge.
+                    # Asumimos que discharge es llamado en cada paso de simulación,
+                    # similar a update_state.
+                # Por lo tanto, el dt para la descarga es el mismo que el
+                # dt de update_state.
+                # Para desacoplarlo, necesitaríamos pasar dt
+                # como argumento a discharge.
                 # Por ahora, usaremos una aproximación basada en una tasa por segundo.
                 # Si UPDATE_INTERVAL no está definido globalmente, debemos manejarlo.
                 # Una mejor práctica sería pasar dt a discharge.
-                # Por ahora, si UPDATE_INTERVAL no está definido, asumiremos un dt pequeño, por ejemplo 0.01s.
-                try:
-                    update_interval = UPDATE_INTERVAL
-                except NameError:
-                    update_interval = 0.01 # Valor supuesto si UPDATE_INTERVAL no está definido
+                # Por ahora, si UPDATE_INTERVAL no está definido,
+                # asumiremos un dt pequeño, por ejemplo 0.01s.
+                    try:
+                        update_interval = UPDATE_INTERVAL
+                    except NameError:
+                        update_interval = 0.01
 
-                position_released = self.battery_discharge_rate * update_interval
-                self.position = min(0, self.position + position_released)
+                    position_released = self.battery_discharge_rate * update_interval
+                    self.position = min(0, self.position + position_released)
 
                 if self.current_charge == 0:
                     self.battery_is_discharging = False
-                    logger.info("Descarga BATTERY completada.")
+                    logger.info(
+                        "Descarga BATTERY completada."
+                    )
 
-                return {"type": "sustained", "amplitude": 1.0} # Amplitud de salida constante
-                else: # current_charge is 0 or less
+                return {"type": "sustained", "amplitude": 1.0}
+                else:  # current_charge is 0 or less
                     self.battery_is_discharging = False
-                    logger.info("Descarga BATTERY: No hay carga para liberar, desactivando descarga.")
+                    logger.info(
+                        "Descarga BATTERY: No hay carga para liberar"
+                        "desactivando descarga."
+                    )
         
         return None
 
     def set_mode(self, mode: PistonMode):
-        """Establece el modo de operación del pistón.
+        """
+        Establece el modo de operación del pistón.
 
         Args:
-            mode: El nuevo modo de operación (PistonMode.CAPACITOR o PistonMode.BATTERY).
+            mode:
+            El nuevo modo de operación (PistonMode.CAPACITOR o PistonMode.BATTERY).
         """
         self.mode = mode
-        self.battery_is_discharging = False # Resetear estado de descarga al cambiar de modo
+        self.battery_is_discharging = False
         logger.info(f"Modo del pistón cambiado a: {mode.value}")
 
     def trigger_discharge(self, discharge_on: bool):
-        """Activa o desactiva la descarga continua en modo BATTERY.
+        """
+        Activa o desactiva la descarga continua en modo BATTERY.
 
         Este método solo tiene efecto si el pistón está en modo BATTERY.
 
         Args:
-            discharge_on: True para activar la descarga, False para desactivarla.
+            discharge_on:
+            True para activar la descarga, False para desactivarla.
         """
         if self.mode == PistonMode.BATTERY:
             self.battery_is_discharging = discharge_on
             if discharge_on:
-                logger.info("Descarga en modo BATTERY activada.")
+                logger.info(
+                    "Descarga en modo BATTERY activada."
+                )
             else:
-                logger.info("Descarga en modo BATTERY desactivada.")
+                logger.info(
+                    "Descarga en modo BATTERY desactivada."
+                )
         else:
             logger.warning(
                 f"trigger_discharge llamado en modo {self.mode.value}. "
