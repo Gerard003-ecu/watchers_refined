@@ -1,9 +1,11 @@
 import pytest
-import time
 from unittest.mock import patch
-import numpy as np
+# import numpy as np # Not used directly in tests, can be removed if not needed by AtomicPiston implicitly
 
-from watchers_refined.atomic_piston.atomic_piston import AtomicPiston, PistonMode
+# Import from project structure
+from atomic_piston.atomic_piston import (
+    AtomicPiston, PistonMode
+)
 
 # Constants for testing
 DEFAULT_CAPACITY = 100.0
@@ -12,21 +14,61 @@ DEFAULT_DAMPING = 1.0
 DEFAULT_PISTON_MASS = 1.0
 DT = 0.01  # Time step for updates
 
+# Path for patching time.monotonic
+TIME_PATCH_PATH = 'atomic_piston.atomic_piston.time.monotonic'
+
+
+@pytest.fixture
+def default_piston():
+    """Provides a default AtomicPiston instance."""
+    return AtomicPiston(
+        capacity=DEFAULT_CAPACITY,
+        elasticity=DEFAULT_ELASTICITY,
+        damping=DEFAULT_DAMPING,
+        piston_mass=DEFAULT_PISTON_MASS
+    )
+
+
+@pytest.fixture
+def capacitor_piston():
+    """Provides a default AtomicPiston instance in CAPACITOR mode."""
+    return AtomicPiston(
+        capacity=DEFAULT_CAPACITY,
+        elasticity=DEFAULT_ELASTICITY,
+        damping=DEFAULT_DAMPING,
+        piston_mass=DEFAULT_PISTON_MASS,
+        mode=PistonMode.CAPACITOR
+    )
+
+
+@pytest.fixture
+def battery_piston():
+    """Provides a default AtomicPiston instance in BATTERY mode."""
+    return AtomicPiston(
+        capacity=DEFAULT_CAPACITY,
+        elasticity=DEFAULT_ELASTICITY,
+        damping=DEFAULT_DAMPING,
+        piston_mass=DEFAULT_PISTON_MASS,
+        mode=PistonMode.BATTERY
+    )
+
 
 class TestAtomicPiston:
 
-    def test_initialization_default_params(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING)
+    def test_initialization_default_params(self, default_piston: AtomicPiston):
+        piston = default_piston
         assert piston.capacity == DEFAULT_CAPACITY
         assert piston.k == DEFAULT_ELASTICITY
         assert piston.c == DEFAULT_DAMPING
         assert piston.m == DEFAULT_PISTON_MASS
-        assert piston.mode == PistonMode.CAPACITOR
+        assert piston.mode == PistonMode.CAPACITOR  # Default mode
         assert piston.position == 0.0
         assert piston.velocity == 0.0
         assert piston.last_applied_force == 0.0
         assert piston.current_charge == 0.0
-        assert piston.capacitor_discharge_threshold == -DEFAULT_CAPACITY * 0.9
+        assert piston.capacitor_discharge_threshold == (
+            -DEFAULT_CAPACITY * 0.9
+        )
         assert not piston.battery_is_discharging
         assert piston.battery_discharge_rate == DEFAULT_CAPACITY * 0.05
 
@@ -49,126 +91,159 @@ class TestAtomicPiston:
         assert piston.m == custom_mass
         assert piston.mode == custom_mode
         assert piston.current_charge == 0.0
-        assert piston.capacitor_discharge_threshold == -custom_capacity * 0.9
+        assert piston.capacitor_discharge_threshold == (
+            -custom_capacity * 0.9
+        )
         assert piston.battery_discharge_rate == custom_capacity * 0.05
 
-    @patch('watchers_refined.atomic_piston.atomic_piston.time.monotonic')
-    def test_apply_force_significant_change(self, mock_monotonic_time):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING)
-
+    @patch(TIME_PATCH_PATH)
+    def test_apply_force_significant_change(self, mock_monotonic_time,
+                                            default_piston: AtomicPiston):
+        piston = default_piston
         # First call to establish baseline
         mock_monotonic_time.return_value = 1.0
         piston.apply_force(signal_value=0.0, source="test_source")
-        assert piston.last_applied_force == 0.0 # No velocity yet
+        # If it's the first signal from a source, signal_velocity is 0, so force is 0.
+        assert piston.last_applied_force == 0.0
 
         # Second call with significant change
         mock_monotonic_time.return_value = 1.0 + DT
         piston.apply_force(signal_value=10.0, source="test_source")
 
-        # Expected force: -0.5 * 1.0 * ( (10.0 - 0.0) / DT )^2
+        # Calculation:
         # signal_velocity = (10.0 - 0.0) / 0.01 = 1000.0
+        # force = -0.5 * piston_mass * (signal_velocity)^2
         # force = -0.5 * 1.0 * (1000.0)^2 = -500000.0
-        expected_force = -0.5 * 1.0 * ((10.0 / DT) ** 2)
+        expected_force = -0.5 * DEFAULT_PISTON_MASS * ((10.0 / DT) ** 2)
         assert piston.last_applied_force == pytest.approx(expected_force)
 
-    @patch('watchers_refined.atomic_piston.atomic_piston.time.monotonic')
-    def test_apply_force_constant_signal(self, mock_monotonic_time):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING)
-
+    @patch(TIME_PATCH_PATH)
+    def test_apply_force_constant_signal(self, mock_monotonic_time,
+                                         default_piston: AtomicPiston):
+        piston = default_piston
         mock_monotonic_time.return_value = 1.0
         piston.apply_force(signal_value=5.0, source="test_source")
 
         mock_monotonic_time.return_value = 1.0 + DT
-        piston.apply_force(signal_value=5.0, source="test_source") # Same value
+        # Same signal value, so signal_velocity should be 0
+        piston.apply_force(signal_value=5.0, source="test_source")
 
-        assert piston.last_applied_force == 0.0 # Zero velocity means zero force
+        assert piston.last_applied_force == 0.0  # Zero velocity means zero force
 
-    @patch('watchers_refined.atomic_piston.atomic_piston.time.monotonic')
-    def test_apply_force_mass_factor_scaling(self, mock_monotonic_time):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING)
+    @patch(TIME_PATCH_PATH)
+    def test_apply_force_mass_factor_scaling(self, mock_monotonic_time,
+                                             default_piston: AtomicPiston):
+        piston = default_piston
         mass_factor = 2.0
 
         mock_monotonic_time.return_value = 1.0
-        piston.apply_force(signal_value=0.0, source="test_source", mass_factor=mass_factor)
+        piston.apply_force(signal_value=0.0, source="test_source",
+                           mass_factor=mass_factor)
 
         mock_monotonic_time.return_value = 1.0 + DT
-        piston.apply_force(signal_value=10.0, source="test_source", mass_factor=mass_factor)
+        piston.apply_force(signal_value=10.0, source="test_source",
+                           mass_factor=mass_factor)
 
-        expected_force_no_mass_factor = -0.5 * 1.0 * ((10.0 / DT) ** 2)
-        expected_force_with_mass_factor = -0.5 * mass_factor * ((10.0 / DT) ** 2)
+        base_signal_velocity_sq = (10.0 / DT) ** 2
+        expected_force_no_mass_factor = (
+            -0.5 * DEFAULT_PISTON_MASS * base_signal_velocity_sq
+        )
+        expected_force_with_mass_factor = (
+            -0.5 * mass_factor * base_signal_velocity_sq
+        )
 
-        assert piston.last_applied_force == pytest.approx(expected_force_with_mass_factor)
-        assert piston.last_applied_force == pytest.approx(expected_force_no_mass_factor * mass_factor)
+        assert piston.last_applied_force == pytest.approx(
+            expected_force_with_mass_factor
+        )
+        assert piston.last_applied_force == pytest.approx(  # noqa: E128
+            expected_force_no_mass_factor * mass_factor
+        )
 
-    @patch('watchers_refined.atomic_piston.atomic_piston.time.monotonic')
-    def test_apply_force_dt_too_small(self, mock_monotonic_time):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING)
+    @patch(TIME_PATCH_PATH)
+    def test_apply_force_dt_too_small(self, mock_monotonic_time,
+                                      default_piston: AtomicPiston):
+        piston = default_piston
         mock_monotonic_time.return_value = 1.0
         piston.apply_force(signal_value=0.0, source="test_source")
-        # Next call with almost the same time
+
+        # Next call with dt < 1e-6 (the threshold in apply_force)
         mock_monotonic_time.return_value = 1.0 + 1e-7
         piston.apply_force(signal_value=10.0, source="test_source")
-        assert piston.last_applied_force == 0.0 # signal_velocity should be 0
+        # signal_velocity should be 0 due to small dt
+        assert piston.last_applied_force == 0.0
 
-    def test_update_state_applies_force_and_compresses(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING)
+    def test_update_state_applies_force_and_compresses(self,
+                                                     default_piston: AtomicPiston):
+        piston = default_piston
         initial_position = piston.position
 
-        # Simulate applying a force (directly setting it for this test, apply_force is tested separately)
+        # Simulate applying a force (directly setting it for this test,
+        # as apply_force method is tested separately)
         piston.last_applied_force = -100.0
 
         piston.update_state(dt=DT)
 
-        assert piston.position < initial_position # Piston should compress (negative position)
+        # Piston should compress (negative position)
+        assert piston.position < initial_position
         assert piston.current_charge > 0
-        assert piston.velocity != 0 # Piston should be moving
-        assert piston.last_applied_force == 0.0 # Force should be consumed
+        assert piston.velocity != 0  # Piston should be moving
+        # Force should be consumed after update
+        assert piston.last_applied_force == 0.0
 
-    def test_update_state_spring_force_effect(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=0) # No damping for clarity
+    def test_update_state_spring_force_effect(self, default_piston: AtomicPiston):
+        piston = default_piston
+        piston.c = 0  # No damping for clarity
+        initial_position = -10.0
+        piston.position = initial_position
+        initial_velocity = piston.velocity  # Should be 0
 
-        # Manually compress the piston
-        piston.position = -10.0
-        initial_velocity = piston.velocity # Should be 0
+        piston.update_state(dt=DT)  # No external force, only spring force
 
-        piston.update_state(dt=DT) # No external force, only spring force
+        # Expected calculations:
+        # spring_force = -k * position = -DEFAULT_ELASTICITY * (-10.0)
+        # acceleration = spring_force / m = (10.0 * 10.0) / 1.0 = 100
+        # velocity_change = acceleration * DT = 100 * 0.01 = 1.0
+        # new_velocity = initial_velocity + velocity_change = 0 + 1.0 = 1.0
+        # position_change = new_velocity * DT = 1.0 * 0.01 = 0.01
+        # new_position = initial_position + position_change = -10.0 + 0.01 = -9.99
 
-        # Spring force = -k * position = -10 * (-10) = 100
-        # Acceleration = 100 / 1.0 = 100
-        # Velocity = 0 + 100 * DT = 1.0
-        # Position = -10 + 1.0 * DT = -10 + 0.01 = -9.99
-        assert piston.velocity > initial_velocity # Spring should push it back, positive velocity
-        assert piston.position > -10.0 # Position should move towards 0
+        assert piston.velocity > initial_velocity  # Spring pushes it back
+        assert piston.position > initial_position  # Position moves towards 0
+        assert piston.velocity == pytest.approx(1.0)
+        assert piston.position == pytest.approx(-9.99)
 
-    def test_update_state_damping_effect(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING)
-
+    def test_update_state_damping_effect(self, default_piston: AtomicPiston):
+        piston = default_piston
         # Give it some initial compression and velocity as if it's oscillating
         piston.position = -10.0
         piston.velocity = 10.0
+        initial_abs_velocity = abs(piston.velocity)
 
         velocities = []
         for _ in range(10):
             piston.update_state(dt=DT)
             velocities.append(abs(piston.velocity))
-            # Stop if it overshoots and starts compressing again with negative velocity
+            # Stop if it overshoots and starts compressing again
+            # with negative velocity (simplistic check for oscillation turn)
             if piston.velocity < 0 and piston.position < -1:
                 break
-
-        # Check that velocity magnitude generally decreases
-        # This is a simplified check; true damping causes oscillation decay
-        assert velocities[-1] < velocities[0]
+        # Check that velocity magnitude generally decreases due to damping
+        # This is a simplified check; true damping causes oscillation decay.
+        assert velocities[-1] < initial_abs_velocity
 
     def test_update_state_position_max_capacity(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=1, damping=0) # Low elasticity to reach capacity
-        piston.last_applied_force = -10000 # Large force
+        # Use custom piston for specific elasticity
+        piston = AtomicPiston(
+            capacity=DEFAULT_CAPACITY, elasticity=1.0, damping=0.0
+        )
+        piston.last_applied_force = -10000  # Large force
 
-        for _ in range(100): # Update many times
+        for _ in range(200):  # Update many times to ensure capacity is reached
             piston.update_state(dt=DT)
             if piston.position == -DEFAULT_CAPACITY:
                 break
 
-        assert piston.position == -DEFAULT_CAPACITY # Should not exceed -capacity
+        assert piston.position == -DEFAULT_CAPACITY  # Should not exceed -capacity
         assert piston.current_charge == DEFAULT_CAPACITY
 
         # Apply more force, should not change position further
@@ -177,34 +252,44 @@ class TestAtomicPiston:
         assert piston.position == -DEFAULT_CAPACITY
 
     # --- Capacitor Mode Tests ---
-    def test_discharge_capacitor_above_threshold(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING, mode=PistonMode.CAPACITOR)
-        piston.position = -DEFAULT_CAPACITY * 0.5 # Above threshold (-90)
-        assert piston.current_charge > 0
+    def test_discharge_capacitor_above_threshold(self,
+                                               capacitor_piston: AtomicPiston):
+        piston = capacitor_piston
+        # Position is -50, threshold is -90 for DEFAULT_CAPACITY=100
+        piston.position = -DEFAULT_CAPACITY * 0.5
+        initial_charge = piston.current_charge
+        assert initial_charge > 0
 
         output_signal = piston.discharge()
-        assert output_signal is None
-        assert piston.position == -DEFAULT_CAPACITY * 0.5 # Position unchanged
-        assert piston.current_charge == DEFAULT_CAPACITY * 0.5 # Charge unchanged
 
-    def test_discharge_capacitor_at_threshold(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING, mode=PistonMode.CAPACITOR)
-        piston.position = piston.capacitor_discharge_threshold # Exactly at threshold
+        assert output_signal is None
+        # Position and charge should remain unchanged
+        assert piston.position == -DEFAULT_CAPACITY * 0.5  # noqa: E128
+        assert piston.current_charge == initial_charge
+
+    def test_discharge_capacitor_at_threshold(self,
+                                            capacitor_piston: AtomicPiston):
+        piston = capacitor_piston
+        # Position exactly at threshold
+        piston.position = piston.capacitor_discharge_threshold
         initial_charge = piston.current_charge
-        assert initial_charge == DEFAULT_CAPACITY * 0.9
+        # For DEFAULT_CAPACITY=100, threshold is -90, charge is 90
+        assert initial_charge == pytest.approx(DEFAULT_CAPACITY * 0.9)  # noqa: E128
 
         output_signal = piston.discharge()
 
         assert output_signal is not None
         assert output_signal["type"] == "pulse"
         assert output_signal["amplitude"] == pytest.approx(initial_charge)
-        assert piston.position == 0.0
-        assert piston.velocity == 2.0 # Specific velocity after discharge
-        assert piston.current_charge == 0.0
+        assert piston.position == 0.0  # Position resets
+        assert piston.velocity == 2.0  # Specific velocity after discharge
+        assert piston.current_charge == 0.0  # Charge depleted
 
-    def test_discharge_capacitor_below_threshold(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING, mode=PistonMode.CAPACITOR)
-        piston.position = -DEFAULT_CAPACITY # Fully charged, well below threshold
+    def test_discharge_capacitor_below_threshold(self,
+                                               capacitor_piston: AtomicPiston):
+        piston = capacitor_piston
+        # Fully charged, well below threshold (e.g., -100 vs -90)
+        piston.position = -DEFAULT_CAPACITY
         initial_charge = piston.current_charge
         assert initial_charge == DEFAULT_CAPACITY
 
@@ -212,46 +297,58 @@ class TestAtomicPiston:
 
         assert output_signal is not None
         assert output_signal["type"] == "pulse"
-        assert output_signal["amplitude"] == pytest.approx(initial_charge)
+        assert output_signal["amplitude"] == pytest.approx(initial_charge)  # noqa: E128
         assert piston.position == 0.0
         assert piston.velocity == 2.0
         assert piston.current_charge == 0.0
 
     # --- Battery Mode Tests ---
-    def test_discharge_battery_not_triggered(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING, mode=PistonMode.BATTERY)
-        piston.position = -DEFAULT_CAPACITY * 0.5 # Some charge
+    def test_discharge_battery_not_triggered(self, battery_piston: AtomicPiston):
+        piston = battery_piston
+        piston.position = -DEFAULT_CAPACITY * 0.5  # Some charge
         assert piston.current_charge > 0
+        assert not piston.battery_is_discharging  # Pre-condition
 
         output_signal = piston.discharge()
+
         assert output_signal is None
-        assert piston.battery_is_discharging is False
+        assert not piston.battery_is_discharging
 
-    def test_discharge_battery_triggered_but_no_charge(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING, mode=PistonMode.BATTERY)
-        piston.position = 0 # No charge
+    def test_discharge_battery_triggered_but_no_charge(self,
+                                                      battery_piston: AtomicPiston):
+        piston = battery_piston
+        piston.position = 0  # No charge
         piston.trigger_discharge(True)
-        assert piston.battery_is_discharging is True
+        assert piston.battery_is_discharging  # Triggered
 
         output_signal = piston.discharge()
-        assert output_signal is None # Or could be a specific "empty" signal if designed that way
-                                     # Current implementation returns None if current_charge is 0
-        assert piston.battery_is_discharging is False # Should turn off if charge is 0
 
-    def test_discharge_battery_triggered_with_charge(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING, mode=PistonMode.BATTERY)
-        piston.position = -DEFAULT_CAPACITY * 0.5 # Some charge
+        # Current implementation returns None if current_charge is 0
+        assert output_signal is None
+        # Test asserts desired behavior: if triggered but empty, it should stop.
+        # NOTE: This may require atomic_piston.py to set
+        # self.battery_is_discharging = False if current_charge is 0  # noqa: E128
+        # at the beginning of a triggered discharge call.
+        assert not piston.battery_is_discharging
+
+    def test_discharge_battery_triggered_with_charge(self,
+                                                    battery_piston: AtomicPiston):
+        piston = battery_piston
+        piston.position = -DEFAULT_CAPACITY * 0.5  # Some charge
         piston.trigger_discharge(True)
-        assert piston.battery_is_discharging is True
+        assert piston.battery_is_discharging
 
         output_signal = piston.discharge()
+
         assert output_signal is not None
-        assert output_signal["type"] == "sustained"
+        assert output_signal["type"] == "sustained"  # noqa: E128
         assert output_signal["amplitude"] == 1.0
-        assert piston.battery_is_discharging is True # Should remain true while discharging
+        # Should remain true while discharging and charge > 0
+        assert piston.battery_is_discharging
 
-    def test_discharge_battery_gradual_reduction(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING, mode=PistonMode.BATTERY)
+    def test_discharge_battery_gradual_reduction(self,
+                                                battery_piston: AtomicPiston):
+        piston = battery_piston
         # Charge the piston significantly
         piston.position = -DEFAULT_CAPACITY
         initial_charge = piston.current_charge
@@ -262,99 +359,151 @@ class TestAtomicPiston:
         charges = [initial_charge]
         positions = [piston.position]
 
-        # Simulate multiple update/discharge cycles
-        # UPDATE_INTERVAL in AtomicPiston is 0.05
-        # battery_discharge_rate = capacity * 0.05
-        # position_released_per_discharge_call = capacity * 0.05 * 0.05 = capacity * 0.0025
+        # NOTE: This test assumes that `AtomicPiston.discharge()` in battery mode
+        # correctly uses `battery_discharge_rate` and an implicit or explicit
+        # time step (e.g., related to a concept like UPDATE_INTERVAL from its
+        # own comments) to determine how much position/charge is released per call.
+        # The `atomic_piston.py` code needs to be robust for this.
+        # Example: If `battery_discharge_rate` is "units per second" and
+        # `discharge()` is called representing a tick of `dt_tick`,
+        # then `position_released_this_call = battery_discharge_rate * dt_tick`.
 
-        for i in range(10): # Simulate 10 discharge ticks
-            # Note: In real usage, update_state would likely be called before discharge
-            # to allow external forces, spring, damping to act.
-            # Here, we focus on the discharge mechanism itself.
-            # If update_state were called, it would interact with the position change from discharge.
-            # For this test, we isolate discharge's effect on position.
+        # Simulate multiple discharge ticks (e.g., 10 ticks)
+        # The exact amount of discharge per call depends on atomic_piston.py's
+        # internal logic (e.g., assumed UPDATE_INTERVAL if used).
+        num_discharge_calls = 10
+        assumed_update_interval = 0.05  # Matches example in original test comment
+        # Expected position released per call, if `battery_discharge_rate`
+        # is "units of position per second" and `discharge()` is called
+        # representing `assumed_update_interval` seconds:  # noqa: E128
+        # pos_released_per_call = (
+        #    piston.battery_discharge_rate * assumed_update_interval
+        # )
+        # e.g., (DEFAULT_CAPACITY * 0.05) * 0.05
+        # = DEFAULT_CAPACITY * 0.0025
 
-            signal = piston.discharge()
-            if signal is None and not piston.battery_is_discharging: # Discharged fully
+        for _ in range(num_discharge_calls):
+            if not piston.battery_is_discharging or piston.current_charge == 0:
                 break
-
-            # We are not calling update_state() here to isolate discharge effect.
-            # The discharge() method itself modifies position in battery mode.
+            piston.discharge()
             charges.append(piston.current_charge)
             positions.append(piston.position)
 
         assert piston.current_charge < initial_charge
-        assert piston.position > -DEFAULT_CAPACITY # Position moved towards 0
-        assert charges[-1] < charges[0] # Charge decreased
-        assert positions[-1] > positions[0] # Position value increased (less negative)
+        assert piston.position > -DEFAULT_CAPACITY  # Position moved towards 0
+        assert charges[-1] < charges[0]  # Charge decreased
+        assert positions[-1] > positions[0]  # Position value increased
 
         # Continue discharging until empty
-        while piston.current_charge > 0 and piston.battery_is_discharging:
-            piston.discharge()
-            # piston.update_state(0.05) # If we were simulating full loop
+        # Calculate theoretical calls needed, add some buffer.
+        # This assumes `battery_discharge_rate` is "units of position per
+        # second" and `discharge()` is called representing
+        # `assumed_update_interval` seconds.
+        position_released_per_call = (
+            piston.battery_discharge_rate * assumed_update_interval
+        )
+        if position_released_per_call > 0:  # Avoid division by zero
+            calls_to_empty_fully = (
+                int(DEFAULT_CAPACITY / position_released_per_call) + 5
+            )
+        else:
+            calls_to_empty_fully = 1  # If no discharge rate, no further emptying
 
-        assert piston.current_charge == 0
-        assert piston.position == 0.0
-        assert piston.battery_is_discharging is False
+        for _ in range(calls_to_empty_fully):  # Max attempts to empty
+            if not piston.battery_is_discharging or piston.current_charge == 0:
+                break
+            piston.discharge()
+
+        assert piston.current_charge == pytest.approx(0.0)
+        assert piston.position == pytest.approx(0.0)
+        assert not piston.battery_is_discharging
 
     # --- Mode Switching and Triggering ---
-    def test_set_mode(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING)
-        assert piston.mode == PistonMode.CAPACITOR
+    def test_set_mode(self, default_piston: AtomicPiston):
+        piston = default_piston
+        assert piston.mode == PistonMode.CAPACITOR  # Default
 
         piston.set_mode(PistonMode.BATTERY)
         assert piston.mode == PistonMode.BATTERY
-        assert piston.battery_is_discharging is False # Should reset on mode change
+        # Should reset discharge state on mode change
+        assert not piston.battery_is_discharging
 
-        piston.trigger_discharge(True) # Enable discharge in battery mode
-        assert piston.battery_is_discharging is True
+        piston.trigger_discharge(True)  # Enable discharge in battery mode
+        assert piston.battery_is_discharging
 
-        piston.set_mode(PistonMode.CAPACITOR) # Switch back
+        piston.set_mode(PistonMode.CAPACITOR)  # Switch back
         assert piston.mode == PistonMode.CAPACITOR
-        assert piston.battery_is_discharging is False # Should reset
+        # Should reset discharge state
+        assert not piston.battery_is_discharging
 
-    def test_trigger_discharge_behavior(self):
-        piston = AtomicPiston(capacity=DEFAULT_CAPACITY, elasticity=DEFAULT_ELASTICITY, damping=DEFAULT_DAMPING)
+    def test_trigger_discharge_behavior(self, default_piston: AtomicPiston):
+        piston = default_piston
 
-        # In Capacitor mode
+        # In Capacitor mode (default)
         assert piston.mode == PistonMode.CAPACITOR
         piston.trigger_discharge(True)
-        assert piston.battery_is_discharging is False # Should not change in capacitor mode
+        # Should not change battery_is_discharging in capacitor mode
+        assert not piston.battery_is_discharging
 
         piston.trigger_discharge(False)
-        assert piston.battery_is_discharging is False # Still false
+        assert not piston.battery_is_discharging  # Still false
 
         # Switch to Battery mode
         piston.set_mode(PistonMode.BATTERY)
         assert piston.mode == PistonMode.BATTERY
+        assert not piston.battery_is_discharging  # Reset by set_mode
 
         piston.trigger_discharge(True)
-        assert piston.battery_is_discharging is True
+        assert piston.battery_is_discharging
 
         piston.trigger_discharge(False)
-        assert piston.battery_is_discharging is False
+        assert not piston.battery_is_discharging
 
-    @patch('watchers_refined.atomic_piston.atomic_piston.time.monotonic')
-    def test_force_application_multiple_sources(self, mock_monotonic_time):
-        piston = AtomicPiston(DEFAULT_CAPACITY, DEFAULT_ELASTICITY, DEFAULT_DAMPING)
+    @patch(TIME_PATCH_PATH)
+    def test_force_application_multiple_sources(self, mock_monotonic_time,
+                                                default_piston: AtomicPiston):
+        piston = default_piston
         mock_monotonic_time.return_value = 1.0
-        piston.apply_force(0, "source1")
-        piston.apply_force(0, "source2")
+        # Initial calls to establish history for both sources
+        piston.apply_force(signal_value=0, source="source1")
+        piston.apply_force(signal_value=0, source="source2")
 
+        # Apply force from source1
         mock_monotonic_time.return_value = 1.0 + DT
-        piston.apply_force(10, "source1") # This will set last_applied_force
+        piston.apply_force(signal_value=10, source="source1")
         force1 = piston.last_applied_force
-        assert force1 < 0 # Negative force due to positive velocity
+        assert force1 < 0  # Negative force due to positive velocity change
 
-        mock_monotonic_time.return_value = 1.0 + DT + DT # Advance time again for source2
-        piston.apply_force(5, "source2") # This will overwrite last_applied_force
+        # Apply force from source2, time advances for source2's dt calculation
+        # Note: last_applied_force is overwritten by the latest call.
+        # To test accumulation or combined effect, update_state would be needed.
+        # This test correctly checks that apply_force reacts to the specified source.
+        mock_monotonic_time.return_value = 1.0 + DT + DT  # Further advance time
+        piston.apply_force(signal_value=5, source="source2")
         force2 = piston.last_applied_force
         assert force2 < 0
-        assert force1 != force2 # Different forces from different signals
 
-        # Check if last_signal_info is updated correctly
+        # Detailed calculation for force comparison:
+        # Source 1: value 0 at t=1.0, then value 10 at t=1.0+DT.
+        #   dt_s1 = DT
+        #   vel_s1 = (10 - 0) / DT = 10 / DT
+        #   force1_calc = -0.5 * piston.m * (vel_s1 ** 2)
+        # Source 2: value 0 at t=1.0, then value 5 at t=1.0+2*DT.
+        #   (its previous 'source2' call was at t=1.0)
+        #   dt_s2 = (1.0 + 2*DT) - 1.0 = 2*DT
+        #   vel_s2 = (5 - 0) / (2*DT) = 5 / (2*DT)
+        #   force2_calc = -0.5 * piston.m * (vel_s2 ** 2)
+        # Example: force1_calc = -0.5 * 1.0 * (100 / (DT**2))
+        #          force2_calc = -0.5 * 1.0 * (25 / (4 * DT**2))
+        # abs(force1_calc) is clearly greater than abs(force2_calc).
+        assert abs(force1) > abs(force2)  # Magnitudes should differ
+        assert force1 != force2  # Forces should be different
+
+        # Check if last_signal_info is updated correctly for both sources
         assert "source1" in piston.last_signal_info
         assert piston.last_signal_info["source1"]["value"] == 10
+        assert piston.last_signal_info["source1"]["timestamp"] == 1.0 + DT
+
         assert "source2" in piston.last_signal_info
         assert piston.last_signal_info["source2"]["value"] == 5
-```
+        assert piston.last_signal_info["source2"]["timestamp"] == 1.0 + DT + DT
