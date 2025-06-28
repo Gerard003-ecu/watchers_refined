@@ -369,7 +369,12 @@
                     link.classList.toggle('active', link.getAttribute('href') === `#${targetId}`);
                 });
                 mobileNavLinks.forEach(link => {
-                    link.classList.toggle('bg-teal-50', link.getAttribute('href') === `#${targetId}`);
+                    const isActive = link.getAttribute('href') === `#${targetId}`;
+                    link.classList.toggle('bg-teal-100', isActive); // A slightly more visible background
+                    link.classList.toggle('text-teal-700', isActive);
+                    link.classList.toggle('font-semibold', isActive);
+                    link.classList.toggle('text-slate-600', !isActive); // Ensure non-active links revert
+                    link.classList.toggle('font-medium', !isActive);   // Ensure non-active links revert
                 });
             }
 
