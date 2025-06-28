@@ -1,14 +1,15 @@
 # atomic_piston/atomic_piston.py
 import time
-import numpy as np
 from enum import Enum
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class PistonMode(Enum):
     CAPACITOR = "capacitor"
     BATTERY = "battery"
+
 
 class AtomicPiston:
     """
@@ -19,15 +20,16 @@ class AtomicPiston:
     """
     def __init__(self,
                  capacity: float,
-                 elasticity: float,      # Constante del resorte (k). Alta = más rígido.
-                 damping: float,         # Coeficiente de amortiguación (c).
-                 piston_mass: float = 1.0, # Masa inercial del pistón (m).
+                 elasticity: float,  # Constante del resorte (k). Alta = más rígido.
+                 damping: float,  # Coeficiente de amortiguación (c).
+                 piston_mass: float = 1.0,  # Masa inercial del pistón (m).
                  mode: PistonMode = PistonMode.CAPACITOR):
         """Inicializa una nueva instancia de AtomicPiston.
 
         Args:
             capacity: Capacidad máxima de compresión del pistón.
-            elasticity: Constante elástica del resorte (k). Un valor alto significa un resorte más rígido.
+            elasticity: Constante elástica del resorte (k).
+                        Un valor alto significa un resorte más rígido.
             damping: Coeficiente de amortiguación (c).
             piston_mass: Masa inercial del pistón (m).
             mode: Modo de operación del pistón (CAPACITOR o BATTERY).
@@ -41,17 +43,21 @@ class AtomicPiston:
         self.m = piston_mass
 
         # Estado del Pistón
-        self.position = 0.0  # Posición de equilibrio es 0. Negativo = comprimido/cargado.
+        # Posición de equilibrio es 0. Negativo = comprimido/cargado.
+        self.position = 0.0
         self.velocity = 0.0  # Velocidad actual del pistón.
         self.last_applied_force = 0.0
 
         # Para calcular la velocidad de la señal de entrada
-        self.last_signal_info = {} # Almacenará {'source': {'value': float, 'timestamp': float}}
+        # Almacenará {'source': {'value': float, 'timestamp': float}}
+        self.last_signal_info = {}
 
         # Parámetros de Modo
-        self.capacitor_discharge_threshold = -capacity * 0.9 # Umbral de posición para descarga automática
+        # Umbral de posición para descarga automática
+        self.capacitor_discharge_threshold = -capacity * 0.9
         self.battery_is_discharging = False
-        self.battery_discharge_rate = capacity * 0.05 # Cuánta "posición" se libera por segundo
+        # Cuánta "posición" se libera por segundo
+        self.battery_discharge_rate = capacity * 0.05
 
     @property
     def current_charge(self) -> float:
@@ -66,13 +72,15 @@ class AtomicPiston:
         """
         return max(0, -self.position)
 
-    def apply_force(self, signal_value: float, source: str, mass_factor: float = 1.0):
+    def apply_force(self, signal_value: float, source: str,
+                    mass_factor: float = 1.0):
         """Aplica una fuerza al pistón basada en una señal entrante.
 
         Calcula la "fuerza de impacto" de una señal y la aplica al pistón.
         La fuerza es proporcional a la 'masa' de la señal (influenciada por
         `mass_factor`) y al cuadrado de su 'velocidad' (tasa de cambio).
-        La fuerza aplicada siempre actúa para comprimir el pistón (dirección negativa).
+        La fuerza aplicada siempre actúa para comprimir el pistón (dirección
+        negativa).
 
         Args:
             signal_value: El valor actual de la señal.
@@ -82,14 +90,14 @@ class AtomicPiston:
                          afectando la magnitud de la fuerza aplicada.
         """
         current_time = time.monotonic()
-        
+
         # Calcular la velocidad de la señal (derivada)
         if source in self.last_signal_info:
             last_val = self.last_signal_info[source]['value']
             last_time = self.last_signal_info[source]['timestamp']
             dt = current_time - last_time
-            
-            if dt > 1e-6: # Evitar división por cero
+
+            if dt > 1e-6:  # Evitar división por cero
                 signal_velocity = (signal_value - last_val) / dt
             else:
                 signal_velocity = 0.0
@@ -97,15 +105,21 @@ class AtomicPiston:
             signal_velocity = 0.0
 
         # Actualizar para el próximo cálculo
-        self.last_signal_info[source] = {'value': signal_value, 'timestamp': current_time}
+        self.last_signal_info[source] = {'value': signal_value,
+                                         'timestamp': current_time}
 
         # Calcular la fuerza de impacto (nuestra "energía cinética")
-        # Usamos el valor absoluto de la velocidad, ya que el impacto es energía, sin dirección.
+        # Usamos el valor absoluto de la velocidad, ya que el impacto es energía,
+        # sin dirección.
         # El signo de la fuerza siempre es para comprimir el pistón (negativo).
         force = -0.5 * mass_factor * (signal_velocity ** 2)
         self.last_applied_force = force
-        
-        logger.debug(f"Fuente '{source}': valor={signal_value:.2f}, vel={signal_velocity:.2f}, masa={mass_factor:.2f} -> Fuerza={force:.2f}")
+
+        logger.debug(
+            f"Fuente '{source}': valor={signal_value:.2f}, "
+            f"vel={signal_velocity:.2f}, masa={mass_factor:.2f} -> "
+            f"Fuerza={force:.2f}"
+        )
 
     def update_state(self, dt: float):
         """Actualiza el estado del pistón durante un intervalo de tiempo delta `dt`.
@@ -122,15 +136,16 @@ class AtomicPiston:
             dt: El intervalo de tiempo (delta t) para la actualización del estado.
         """
         # Calcular las fuerzas internas del sistema
-        spring_force = -self.k * self.position  # Ley de Hooke: se opone al desplazamiento
-        damping_force = -self.c * self.velocity # Se opone al movimiento
+        # Ley de Hooke: se opone al desplazamiento
+        spring_force = -self.k * self.position
+        damping_force = -self.c * self.velocity  # Se opone al movimiento
 
         # Fuerza total
         total_force = self.last_applied_force + spring_force + damping_force
-        
+
         # Calcular la aceleración (F=ma -> a=F/m)
         acceleration = total_force / self.m
-        
+
         # Actualizar estado usando integración de Euler (método numérico simple)
         self.velocity += acceleration * dt
         self.position += self.velocity * dt
@@ -151,7 +166,8 @@ class AtomicPiston:
         En modo BATTERY:
             Si `battery_is_discharging` es verdadero y hay carga almacenada,
             reduce la compresión del pistón (libera posición) a una tasa definida
-            por `battery_discharge_rate`. Emite una señal "sostenida" de amplitud fija.
+            por `battery_discharge_rate`. Emite una señal "sostenida" de amplitud
+            fija.
             Si la carga llega a cero, `battery_is_discharging` se vuelve falso.
 
         Returns:
@@ -163,34 +179,42 @@ class AtomicPiston:
         if self.mode == PistonMode.CAPACITOR:
             # Descarga automática si está suficientemente comprimido
             if self.position <= self.capacitor_discharge_threshold:
-                output_signal = {"type": "pulse", "amplitude": self.current_charge}
-                logger.info(f"¡Descarga CAPACITOR! Amplitud: {self.current_charge:.2f}")
+                output_signal = {"type": "pulse",
+                                 "amplitude": self.current_charge}
+                logger.info(
+                    f"¡Descarga CAPACITOR! Amplitud: {self.current_charge:.2f}"
+                )
                 # El "rebote": resetea la posición y le da una velocidad de salida
                 self.position = 0.0
-                self.velocity = 2.0 # Simula el rebote
+                self.velocity = 2.0  # Simula el rebote
                 return output_signal
-        
+
         elif self.mode == PistonMode.BATTERY:
-            if self.battery_is_discharging: # Check if discharging is active
+            if self.battery_is_discharging:  # Check if discharging is active
                 if self.current_charge > 0:
                     # La descarga consume la "compresión" (energía potencial)
                     # Asumimos que discharge es llamado en cada paso de simulación,
                     # similar a update_state.
-                # Por lo tanto, el dt para la descarga es el mismo que el
-                # dt de update_state.
-                # Para desacoplarlo, necesitaríamos pasar dt
-                # como argumento a discharge.
-                # Por ahora, usaremos una aproximación basada en una tasa por segundo.
-                # Si UPDATE_INTERVAL no está definido globalmente, debemos manejarlo.
-                # Una mejor práctica sería pasar dt a discharge.
-                # Por ahora, si UPDATE_INTERVAL no está definido,
-                # asumiremos un dt pequeño, por ejemplo 0.01s.
+                    # Por lo tanto, el dt para la descarga es el mismo que el
+                    # dt de update_state.
+                    # Para desacoplarlo, necesitaríamos pasar dt
+                    # como argumento a discharge.
+                    # Por ahora, usaremos una aproximación basada en una tasa por
+                    # segundo.
+                    # Si UPDATE_INTERVAL no está definido globalmente, debemos
+                    # manejarlo.
+                    # Una mejor práctica sería pasar dt a discharge.
+                    # Por ahora, si UPDATE_INTERVAL no está definido,
+                    # asumiremos un dt pequeño, por ejemplo 0.01s.
                     try:
+                        # Esta variable global no está definida en este archivo.
+                        # Considerar pasar dt como argumento o usar una constante.
                         update_interval = UPDATE_INTERVAL
                     except NameError:
-                        update_interval = 0.01
+                        update_interval = 0.01  # Asumir un dt pequeño
 
-                    position_released = self.battery_discharge_rate * update_interval
+                    position_released = (self.battery_discharge_rate *
+                                         update_interval)
                     self.position = min(0, self.position + position_released)
 
                 if self.current_charge == 0:
@@ -203,10 +227,10 @@ class AtomicPiston:
             else:  # current_charge is 0 or less
                 self.battery_is_discharging = False
                 logger.info(
-                    "Descarga BATTERY: No hay carga para liberar, "  # Added comma for clarity
+                    "Descarga BATTERY: No hay carga para liberar, "
                     "desactivando descarga."
                 )
-        
+
         return None
 
     def set_mode(self, mode: PistonMode):
@@ -215,7 +239,8 @@ class AtomicPiston:
 
         Args:
             mode:
-            El nuevo modo de operación (PistonMode.CAPACITOR o PistonMode.BATTERY).
+            El nuevo modo de operación (PistonMode.CAPACITOR o
+            PistonMode.BATTERY).
         """
         self.mode = mode
         self.battery_is_discharging = False
