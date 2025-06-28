@@ -401,9 +401,9 @@ class TestAtomicPiston:
         assert piston.battery_is_discharging
 
     def test_discharge_battery_gradual_reduction(
-            self,
-            battery_piston: AtomicPiston
-        ):
+        self,
+        battery_piston: AtomicPiston
+    ):
         """Prueba la reducción gradual de carga en modo batería."""
         piston = battery_piston
         # Charge the piston significantly
