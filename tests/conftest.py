@@ -31,7 +31,7 @@ def check_all_services_health(request):
     # Una forma simple es verificar si alguna ruta de test incluye "integration".
     is_integration_run = False
     for item in request.session.items:
-        if "integration" in item.nodeid.lower(): # O item.fspath si prefieres rutas de archivo
+        if "integration" in item.nodeid.lower():
             is_integration_run = True
             break
 

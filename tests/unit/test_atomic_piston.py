@@ -198,7 +198,7 @@ class TestAtomicPiston:
     def test_update_state_applies_force_and_compresses(
         self,
         default_piston: AtomicPiston
-        ):
+    ):
         """Verifica que update_state aplica fuerza y comprime el pistón."""
         piston = default_piston
         initial_position = piston.position
