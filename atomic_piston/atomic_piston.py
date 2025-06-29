@@ -190,7 +190,7 @@ class AtomicPiston:
                 return output_signal
 
         elif self.mode == PistonMode.BATTERY:
-            if self.battery_is_discharging:  # Check if discharging is active
+            if self.battery_is_discharging:
                 if self.current_charge > 0:
                     # La descarga consume la "compresión" (energía potencial)
                     # Asumimos que discharge es llamado en cada paso de simulación,
@@ -217,21 +217,21 @@ class AtomicPiston:
                                          update_interval)
                     self.position = min(0, self.position + position_released)
 
-                if self.current_charge == 0:
+                    # Check again if charge depleted after release
+                    if self.current_charge == 0:
+                        self.battery_is_discharging = False
+                        logger.info("Descarga BATTERY: Carga agotada durante la descarga.")
+                        return None # Stop discharging and return None as charge is now zero
+
+                    return {"type": "sustained", "amplitude": 1.0}
+                else:
+                    # No charge left, so stop discharging and return None
                     self.battery_is_discharging = False
-                    logger.info(
-                        "Descarga BATTERY completada."
-                    )
+                    logger.info("Descarga BATTERY: Sin carga inicial, desactivando descarga.")
+                    return None
+            return None # Not discharging (self.battery_is_discharging is False)
 
-                return {"type": "sustained", "amplitude": 1.0}
-            else:  # current_charge is 0 or less
-                self.battery_is_discharging = False
-                logger.info(
-                    "Descarga BATTERY: No hay carga para liberar, "
-                    "desactivando descarga."
-                )
-
-        return None
+        return None # Should be unreachable if mode is CAPACITOR or BATTERY, but good for safety
 
     def set_mode(self, mode: PistonMode):
         """
