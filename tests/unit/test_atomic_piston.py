@@ -243,7 +243,9 @@ class TestAtomicPiston:
         assert piston.position == pytest.approx(-9.99)
 
     def test_update_state_damping_effect(self):
-        """Verifica el efecto de la amortiguación en update_state comparando dos pistones."""
+        """
+        Verifica el efecto de la amortiguación en update_state comparando dos pistones.
+        """
         initial_position = -10.0
         time_steps = 300  # Simulate for enough steps to observe peak velocity
 
@@ -270,8 +272,10 @@ class TestAtomicPiston:
 
         for _ in range(time_steps):
             piston_low_damping.update_state(dt=DT)
-            # We are interested in the velocity magnitude as it moves back towards equilibrium
-            # The first significant velocity will be positive as it moves from -10 towards 0
+            # We are interested in the velocity magnitude
+            # as it moves back towards equilibrium
+            # The first significant velocity will be
+            # positive as it moves from -10 towards 0
             if piston_low_damping.velocity > max_velocity_low_damping:
                 max_velocity_low_damping = piston_low_damping.velocity
 

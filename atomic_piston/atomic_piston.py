@@ -220,18 +220,22 @@ class AtomicPiston:
                     # Check again if charge depleted after release
                     if self.current_charge == 0:
                         self.battery_is_discharging = False
-                        logger.info("Descarga BATTERY: Carga agotada durante la descarga.")
-                        return None # Stop discharging and return None as charge is now zero
+                        logger.info(
+                            "Descarga BATTERY: Carga agotada durante la descarga."
+                        )
+                        return None
 
                     return {"type": "sustained", "amplitude": 1.0}
                 else:
                     # No charge left, so stop discharging and return None
                     self.battery_is_discharging = False
-                    logger.info("Descarga BATTERY: Sin carga inicial, desactivando descarga.")
+                    logger.info(
+                        "Descarga BATTERY: Sin carga inicial, desactivando descarga."
+                    )
                     return None
-            return None # Not discharging (self.battery_is_discharging is False)
+            return None
 
-        return None # Should be unreachable if mode is CAPACITOR or BATTERY, but good for safety
+        return None
 
     def set_mode(self, mode: PistonMode):
         """
