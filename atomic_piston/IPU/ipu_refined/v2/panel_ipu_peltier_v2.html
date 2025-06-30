@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis Interactivo: Placas de Peltier para el Pistón Atómico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutral Harmony -->
+    <!-- Application Structure Plan: The SPA is structured into five thematic sections (Challenge, Peltier 101, Analysis, Hybrid Solution, Conclusion) to guide the user from the problem to the final recommendation. This non-linear, exploratory structure is more intuitive than the original report's format. Key interactions include a pulsed heat load visualization to establish the problem's scale, an interactive Peltier performance simulator to explain technical trade-offs (COP vs. ΔT), and a clickable diagram of the proposed hybrid system. This design facilitates understanding by allowing users to actively engage with complex concepts rather than passively reading. -->
+    <!-- Visualization & Content Choices: 
+        1. Heat Load: Report's description of "brief bursts of energy" and "excessive heat" -> Goal: Inform/Contrast -> Viz: Line Chart (Chart.js) comparing pulsed vs. steady heat. -> Interaction: Hover tooltips. -> Justification: Immediately visualizes the core challenge of transient spikes. -> Library: Chart.js.
+        2. Peltier Metrics: Report's explanation of COP, Qmax, dTmax interdependency -> Goal: Explain/Explore -> Viz: Line Chart + Slider + Data Readouts. -> Interaction: User drags a ΔT slider, which updates a line chart showing cooling capacity (Qc) and dynamically recalculates/displays the Coefficient of Performance (COP). -> Justification: Makes the abstract concept of performance trade-offs tangible and interactive. -> Library: Chart.js & Vanilla JS.
+        3. Hybrid System: Report's conclusion that a hybrid architecture is necessary -> Goal: Explain/Organize -> Viz: Diagram built with HTML/CSS. -> Interaction: Clickable hotspots on each component (Peltier, Liquid Cooler, PCM) reveal detailed explanations. -> Justification: Clearly illustrates the complex, multi-technology solution in a single, easy-to-digest visual. -> Library: Vanilla JS.
+        4. Pros/Cons: Report's lists of advantages and disadvantages -> Goal: Compare -> Viz: Two-column card layout. -> Interaction: Clean, static visual comparison. -> Justification: Provides a quick, scannable summary of the key trade-offs. -> Library: None.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fdfcfb;
+            color: #333;
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link.active {
+            color: #c7a783;
+            border-bottom-color: #c7a783;
+        }
+        .card-hover {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .hotspot {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background-color: rgba(199, 167, 131, 0.8);
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .hotspot:hover {
+            transform: scale(1.2);
+            background-color: #c7a783;
+        }
+        .chart-container {
+            position: relative; 
+            width: 100%; 
+            max-width: 700px; 
+            margin-left: auto; 
+            margin-right: auto; 
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .section-title {
+            color: #7d6c5b;
+        }
+        .accent-bg { background-color: #c7a783; }
+        .accent-text { color: #c7a783; }
+        .neutral-bg-soft { background-color: #f5f1ed; }
+        .neutral-text-strong { color: #5c5043; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header id="header" class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-3">
+            <div class="flex justify-between items-center">
+                <div class="text-xl font-bold neutral-text-strong">Pistón Atómico</div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#desafio" class="nav-link border-b-2 border-transparent pb-1">El Desafío</a>
+                    <a href="#peltier101" class="nav-link border-b-2 border-transparent pb-1">Peltier 101</a>
+                    <a href="#analisis" class="nav-link border-b-2 border-transparent pb-1">Análisis</a>
+                    <a href="#solucion" class="nav-link border-b-2 border-transparent pb-1">Solución Híbrida</a>
+                    <a href="#conclusion" class="nav-link border-b-2 border-transparent pb-1">Veredicto</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="hero" class="py-16 md:py-24 bg-white">
+            <div class="container mx-auto px-6 text-center">
+                <h1 class="text-4xl md:text-6xl font-bold neutral-text-strong leading-tight">Placas de Peltier y el Pistón Atómico</h1>
+                <p class="mt-4 text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">Un análisis interactivo sobre la viabilidad de la refrigeración termoeléctrica para sistemas de potencia pulsada de alta energía.</p>
+            </div>
+        </section>
+
+        <section id="desafio" class="py-16 md:py-20 neutral-bg-soft">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold section-title">El Desafío Térmico Extremo</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">El "Pistón Atómico" de IPU opera en ráfagas de energía extremadamente breves, generando picos de calor masivos y transitorios. Gestionar este calor no es solo enfriar, es mantener una estabilidad de temperatura casi perfecta bajo condiciones extremas.</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-8 text-center mb-12">
+                    <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                        <div class="text-4xl font-bold accent-text">800 kW</div>
+                        <p class="mt-2 text-gray-700">De calor residual generado por un sistema de 150 kW.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                        <div class="text-4xl font-bold accent-text">&lt; 2 K</div>
+                        <p class="mt-2 text-gray-700">Variación máxima de temperatura permitida durante un pulso.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md card-hover">
+                        <div class="text-4xl font-bold accent-text">6 s</div>
+                        <p class="mt-2 text-gray-700">Duración de un pulso de alta energía, exigiendo una respuesta instantánea.</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-center mb-4 neutral-text-strong">Carga Térmica: Pulsada vs. Estacionaria</h3>
+                    <div class="chart-container">
+                        <canvas id="pulseChart"></canvas>
+                    </div>
+                    <p class="text-center mt-4 text-gray-600">La gráfica ilustra la diferencia fundamental: mientras un sistema tradicional enfrenta una carga de calor constante, el Pistón Atómico genera picos intensos que exigen una capacidad de absorción de calor casi instantánea, un reto que los métodos convencionales no pueden superar.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="peltier101" class="py-16 md:py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold section-title">Peltier 101: Fundamentos de Refrigeración</h2>
+                     <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">Las placas de Peltier (TEC) son dispositivos de estado sólido que bombean calor utilizando electricidad. Su rendimiento depende de un delicado equilibrio entre la capacidad de enfriamiento, la eficiencia y la diferencia de temperatura.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-12 items-center">
+                    <div class="bg-neutral-100 p-8 rounded-lg shadow-inner relative h-80 flex flex-col justify-center items-center">
+                        <div class="absolute top-2 w-full text-center font-semibold text-gray-600">LADO FRÍO (Absorbe Calor, Qc)</div>
+                        <div class="absolute bottom-2 w-full text-center font-semibold text-gray-600">LADO CALIENTE (Disipa Calor, Qh)</div>
+                        
+                        <div class="w-48 h-5 bg-gray-200 border-2 border-gray-400 rounded-t-md"></div>
+                        <div class="flex justify-between w-56 -my-1 z-10">
+                             <div class="w-8 h-16 bg-blue-400 border-2 border-blue-600 rounded-sm"><span class="text-white text-sm font-bold ml-1">n</span></div>
+                             <div class="w-8 h-16 bg-red-400 border-2 border-red-600 rounded-sm"><span class="text-white text-sm font-bold ml-1">p</span></div>
+                             <div class="w-8 h-16 bg-blue-400 border-2 border-blue-600 rounded-sm"><span class="text-white text-sm font-bold ml-1">n</span></div>
+                             <div class="w-8 h-16 bg-red-400 border-2 border-red-600 rounded-sm"><span class="text-white text-sm font-bold ml-1">p</span></div>
+                        </div>
+                        <div class="w-48 h-5 bg-gray-200 border-2 border-gray-400 rounded-b-md"></div>
+
+                        <div class="absolute -left-12 top-1/2 transform -translate-y-1/2 text-5xl text-blue-500 font-thin">&larr;</div>
+                        <div class="absolute -left-28 top-1/2 transform -translate-y-1/2 text-center text-sm text-gray-600">
+                            <span class="font-bold">Corriente DC</span><br>Fluye a través de<br>semiconductores
+                        </div>
+                    </div>
+                    
+                    <div class="text-gray-700">
+                        <h3 class="text-2xl font-bold mb-4 neutral-text-strong">El Efecto Peltier</h3>
+                        <p class="mb-4">Cuando una corriente continua (DC) pasa a través de la unión de dos semiconductores diferentes (tipo-n y tipo-p), se crea una diferencia de temperatura. Un lado se enfría (absorbiendo calor del entorno) y el otro se calienta. Este es el efecto Peltier.</p>
+                        <ul class="space-y-2 list-disc list-inside">
+                            <li><span class="font-semibold">Placas Cerámicas:</span> Aíslan eléctricamente y conducen el calor.</li>
+                            <li><span class="font-semibold">Semiconductores (Pastillas):</span> Elementos de Telururo de Bismuto que generan el efecto.</li>
+                            <li><span class="font-semibold">Control Preciso:</span> La cantidad de calor bombeado es proporcional a la corriente aplicada.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="mt-16 bg-neutral-bg-soft p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-center mb-4 neutral-text-strong">Simulador de Rendimiento Peltier</h3>
+                    <p class="text-center text-sm text-gray-600 mb-4">Ajuste la diferencia de temperatura (ΔT) para ver cómo afecta la capacidad de enfriamiento (Qc) y la eficiencia (COP). Observe cómo la capacidad de enfriamiento disminuye y la eficiencia se desploma a medida que exige una mayor diferencia de temperatura.</p>
+                    <div class="grid md:grid-cols-3 gap-4 text-center mb-4">
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <div class="text-sm text-gray-500">Diferencia de Temp. (ΔT)</div>
+                            <div id="deltaTValue" class="text-2xl font-bold accent-text">25 °C</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <div class="text-sm text-gray-500">Enfriamiento Real (Qc)</div>
+                            <div id="qcValue" class="text-2xl font-bold neutral-text-strong">... W</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <div class="text-sm text-gray-500">Eficiencia (COP)</div>
+                            <div id="copValue" class="text-2xl font-bold neutral-text-strong">...</div>
+                        </div>
+                    </div>
+                    <div class="px-4 mb-4">
+                        <input id="deltaTSlider" type="range" min="0" max="65" value="25" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-bg">
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="peltierPerfChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="analisis" class="py-16 md:py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold section-title">Análisis de Viabilidad: Ventajas vs. Desventajas</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">Para el Pistón Atómico, las placas Peltier ofrecen una mezcla de capacidades únicas y limitaciones críticas. El éxito depende de aprovechar sus fortalezas mientras se mitigan sus debilidades.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-2xl font-bold text-green-600 mb-4 text-center">Ventajas Clave</h3>
+                        <div class="space-y-4">
+                            <div class="p-6 bg-green-50 rounded-lg border border-green-200 card-hover">
+                                <h4 class="font-bold text-lg text-green-800">✓ Respuesta Transitoria Rápida</h4>
+                                <p class="text-gray-700 mt-1">El fenómeno de "superenfriamiento" permite absorber picos de calor casi instantáneamente, ideal para cargas pulsadas.</p>
+                            </div>
+                            <div class="p-6 bg-green-50 rounded-lg border border-green-200 card-hover">
+                                <h4 class="font-bold text-lg text-green-800">✓ Control Preciso y Bidireccional</h4>
+                                <p class="text-gray-700 mt-1">Permite una regulación de temperatura extremadamente fina (hasta mK) y puede calentar o enfriar invirtiendo la corriente.</p>
+                            </div>
+                            <div class="p-6 bg-green-50 rounded-lg border border-green-200 card-hover">
+                                <h4 class="font-bold text-lg text-green-800">✓ Estado Sólido y Compacto</h4>
+                                <p class="text-gray-700 mt-1">Sin partes móviles, son fiables, silenciosos y se adaptan a espacios reducidos, perfecto para diseños de alta densidad.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-red-600 mb-4 text-center">Desventajas Críticas</h3>
+                        <div class="space-y-4">
+                            <div class="p-6 bg-red-50 rounded-lg border border-red-200 card-hover">
+                                <h4 class="font-bold text-lg text-red-800">✗ Baja Eficiencia Energética (COP < 1)</h4>
+                                <p class="text-gray-700 mt-1">Consumen mucha más energía de la que bombean como calor, generando una carga eléctrica significativa en el sistema.</p>
+                            </div>
+                            <div class="p-6 bg-red-50 rounded-lg border border-red-200 card-hover">
+                                <h4 class="font-bold text-lg text-red-800">✗ Generación Masiva de Calor Residual</h4>
+                                <p class="text-gray-700 mt-1">El calor a disipar en el lado caliente (Qh) es la suma del calor del objeto (Qc) + la energía eléctrica (Pel), exigiendo un disipador secundario "super-robusto".</p>
+                            </div>
+                            <div class="p-6 bg-red-50 rounded-lg border border-red-200 card-hover">
+                                <h4 class="font-bold text-lg text-red-800">✗ Fiabilidad bajo Ciclos Térmicos</h4>
+                                <p class="text-gray-700 mt-1">Los pulsos rápidos causan estrés mecánico por expansión/contracción, degradando los módulos estándar con el tiempo.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="solucion" class="py-16 md:py-20 neutral-bg-soft">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold section-title">La Solución Híbrida: Un Enfoque Integrado</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">Los Peltier no pueden funcionar solos en esta aplicación. La clave del éxito es una arquitectura híbrida que combine múltiples tecnologías, cada una desempeñando un papel específico. Haga clic en los puntos (+) para explorar cada componente.</p>
+                </div>
+
+                <div class="relative bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto">
+                    <div id="hybrid-diagram" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center text-center">
+                        <div class="md:col-span-1 flex flex-col items-center">
+                           <div class="font-bold neutral-text-strong">Pistón Atómico</div>
+                           <div class="text-sm text-gray-500">(Fuente de Calor Pulsado)</div>
+                           <div class="w-16 h-16 bg-red-500 rounded-full my-2 flex items-center justify-center text-white font-bold shadow-lg">CALOR</div>
+                        </div>
+                        
+                        <div class="text-3xl font-thin text-gray-400 transform md:rotate-0 rotate-90">&rarr;</div>
+
+                        <div class="relative md:col-span-1 flex flex-col items-center">
+                           <div class="font-bold neutral-text-strong">Placa Peltier</div>
+                           <div class="text-sm text-gray-500">(Respuesta Rápida)</div>
+                           <div class="w-20 h-24 bg-blue-200 border-2 border-blue-400 my-2 rounded-md shadow-md">
+                                <div class="h-1/2 bg-blue-400 rounded-t-sm"></div>
+                           </div>
+                           <div class="hotspot" style="top: -10px; right: -10px;" data-target="info-peltier">+</div>
+                        </div>
+
+                        <div class="text-3xl font-thin text-gray-400 transform md:rotate-0 rotate-90">&rarr;</div>
+
+                        <div class="md:col-span-2 grid grid-rows-2 gap-4">
+                            <div class="relative flex items-center bg-green-100 p-4 rounded-lg border border-green-300">
+                                <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white text-2xl shadow-md">♨</div>
+                                <div class="ml-4 text-left">
+                                    <div class="font-bold neutral-text-strong">Material de Cambio de Fase (PCM)</div>
+                                    <div class="text-sm text-gray-500">(Amortiguador de Picos)</div>
+                                </div>
+                                <div class="hotspot" style="top: -10px; right: -10px;" data-target="info-pcm">+</div>
+                            </div>
+                            <div class="relative flex items-center bg-cyan-100 p-4 rounded-lg border border-cyan-300">
+                                <div class="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center text-white text-2xl shadow-md">❄️</div>
+                                <div class="ml-4 text-left">
+                                    <div class="font-bold neutral-text-strong">Enfriamiento Líquido</div>
+                                    <div class="text-sm text-gray-500">(Disipación de Calor Masiva)</div>
+                                </div>
+                                <div class="hotspot" style="top: -10px; right: -10px;" data-target="info-liquid">+</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="info-panel" class="mt-8 p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 hidden">
+                        <h4 id="info-title" class="font-bold text-lg mb-2"></h4>
+                        <p id="info-text"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="conclusion" class="py-16 md:py-20 bg-white">
+            <div class="container mx-auto px-6">
+                 <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold section-title">Veredicto y Recomendaciones Clave</h2>
+                </div>
+                <div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-8 items-center">
+                    <div class="p-8 bg-neutral-bg-soft rounded-lg shadow-lg">
+                        <h3 class="text-2xl font-bold neutral-text-strong mb-4">Conclusión Final</h3>
+                        <p class="text-gray-700">Las placas de Peltier <span class="font-bold text-green-700">son una solución viable</span> para el Pistón Atómico, pero <span class="font-bold text-red-700">solo como un componente</span> dentro de una arquitectura de gestión térmica híbrida y cuidadosamente diseñada. Su capacidad de respuesta transitoria es su mayor fortaleza, pero sus limitaciones en eficiencia y generación de calor deben ser abordadas proactivamente con tecnologías complementarias.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold neutral-text-strong mb-4">Recomendaciones de Diseño:</h3>
+                        <ul class="space-y-3">
+                            <li class="flex items-start"><span class="accent-text font-bold text-xl mr-3 mt-1">&#10003;</span><span><span class="font-semibold">Usar Módulos Avanzados:</span> Seleccionar TECs diseñados específicamente para ciclos térmicos de alta frecuencia para garantizar la fiabilidad.</span></li>
+                            <li class="flex items-start"><span class="accent-text font-bold text-xl mr-3 mt-1">&#10003;</span><span><span class="font-semibold">Disipación Robusta:</span> Implementar un sistema de enfriamiento líquido de alto rendimiento para el lado caliente del Peltier.</span></li>
+                            <li class="flex items-start"><span class="accent-text font-bold text-xl mr-3 mt-1">&#10003;</span><span><span class="font-semibold">Integrar PCMs:</span> Utilizar Materiales de Cambio de Fase para amortiguar los picos de calor y reducir la carga máxima en el sistema.</span></li>
+                            <li class="flex items-start"><span class="accent-text font-bold text-xl mr-3 mt-1">&#10003;</span><span><span class="font-semibold">Control Inteligente:</span> Emplear algoritmos que optimicen los pulsos de corriente del Peltier para maximizar el superenfriamiento y minimizar la degradación.</span></li>
+                             <li class="flex items-start"><span class="accent-text font-bold text-xl mr-3 mt-1">&#10003;</span><span><span class="font-semibold">Modelado Integral:</span> Realizar simulaciones a nivel de sistema ("Tip to Tail") para optimizar el rendimiento y la fiabilidad del conjunto.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="bg-gray-800 text-white py-6 mt-16">
+        <div class="container mx-auto px-6 text-center">
+            <p>&copy; 2024 Análisis Interactivo de Gestión Térmica.</p>
+            <p class="text-sm text-gray-400 mt-1">Basado en el informe de evaluación para el Pistón Atómico de IPU.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const pulseChartCtx = document.getElementById('pulseChart').getContext('2d');
+            new Chart(pulseChartCtx, {
+                type: 'line',
+                data: {
+                    labels: ['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10'],
+                    datasets: [{
+                        label: 'Carga Térmica Pulsada (Pistón Atómico)',
+                        data: [0, 800, 50, 0, 800, 50, 0, 800, 50, 0, 0],
+                        borderColor: '#c7a783',
+                        backgroundColor: 'rgba(199, 167, 131, 0.2)',
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#c7a783'
+                    }, {
+                        label: 'Carga Térmica Estacionaria (Sistema Tradicional)',
+                        data: [150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150],
+                        borderColor: '#9ca3af',
+                        backgroundColor: 'rgba(156, 163, 175, 0.1)',
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Calor Generado (kW)' }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y} kW`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const peltierPerfChartCtx = document.getElementById('peltierPerfChart').getContext('2d');
+            const qMaxValue = 290; 
+            const dtMaxValue = 70; 
+            const iMaxValue = 15.4; 
+            const vMaxValue = 24.6;
+            let peltierChart;
+
+            function updatePeltierChart(deltaT) {
+                const qc = qMaxValue * (1 - deltaT / dtMaxValue);
+                const powerInput = vMaxValue * iMaxValue * 0.7;
+                const cop = qc > 0 ? qc / powerInput : 0;
+                
+                document.getElementById('deltaTValue').textContent = `${deltaT.toFixed(0)} °C`;
+                document.getElementById('qcValue').textContent = `${qc.toFixed(1)} W`;
+                document.getElementById('copValue').textContent = cop.toFixed(2);
+                
+                const data = [];
+                const labels = [];
+                for (let i = 0; i <= dtMaxValue; i += 5) {
+                    labels.push(i);
+                    data.push(qMaxValue * (1 - i / dtMaxValue));
+                }
+
+                if (!peltierChart) {
+                    peltierChart = new Chart(peltierPerfChartCtx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Capacidad de Enfriamiento (Qc)',
+                                data: data,
+                                borderColor: '#7d6c5b',
+                                backgroundColor: 'rgba(125, 108, 91, 0.1)',
+                                fill: true
+                            }, {
+                                label: 'Punto de Operación Actual',
+                                data: [{x: deltaT, y: qc}],
+                                pointRadius: 8,
+                                pointBackgroundColor: '#c7a783',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                type: 'scatter',
+                                showLine: false,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { title: { display: true, text: 'Diferencia de Temperatura ΔT (°C)' } },
+                                y: { beginAtZero: true, title: { display: true, text: 'Calor Bombeado Qc (W)' } }
+                            }
+                        }
+                    });
+                } else {
+                    peltierChart.data.datasets[1].data = [{x: deltaT, y: qc}];
+                    peltierChart.update();
+                }
+            }
+
+            const deltaTSlider = document.getElementById('deltaTSlider');
+            deltaTSlider.addEventListener('input', (e) => updatePeltierChart(parseFloat(e.target.value)));
+            updatePeltierChart(parseFloat(deltaTSlider.value));
+            
+            const infoData = {
+                'info-peltier': {
+                    title: 'Rol de la Placa Peltier',
+                    text: 'Actúa como el primer respondedor. Utiliza su capacidad de superenfriamiento transitorio para absorber el pico de calor inicial del Pistón Atómico, manteniendo la temperatura del componente estable en los primeros instantes del pulso.'
+                },
+                'info-pcm': {
+                    title: 'Rol del Material de Cambio de Fase (PCM)',
+                    text: 'Funciona como un amortiguador térmico. Absorbe grandes cantidades de energía a una temperatura casi constante mientras cambia de fase (sólido a líquido), suavizando los picos de calor que el Peltier no puede manejar y liberando esa energía lentamente después.'
+                },
+                'info-liquid': {
+                    title: 'Rol del Enfriamiento Líquido',
+                    text: 'Es el sistema de disipación de calor masivo. Se encarga de la tarea principal: eliminar eficientemente todo el calor del sistema, incluyendo el calor del Pistón Atómico y, crucialmente, el calor residual generado por la ineficiencia de la propia placa Peltier.'
+                }
+            };
+
+            const infoPanel = document.getElementById('info-panel');
+            const infoTitle = document.getElementById('info-title');
+            const infoText = document.getElementById('info-text');
+
+            document.querySelectorAll('.hotspot').forEach(hotspot => {
+                hotspot.addEventListener('click', () => {
+                    const targetId = hotspot.dataset.target;
+                    const data = infoData[targetId];
+                    infoTitle.textContent = data.title;
+                    infoText.textContent = data.text;
+                    infoPanel.classList.remove('hidden');
+                });
+            });
+            
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('main section[id]');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.toggle('active', link.getAttribute('href').substring(1) === entry.target.id);
+                        });
+                    }
+                });
+            }, { rootMargin: "-50% 0px -50% 0px" });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+</body>
+</html>

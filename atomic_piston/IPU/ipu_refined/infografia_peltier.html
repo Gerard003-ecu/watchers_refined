@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chosen Palette: Slate & Sky -->
+    <!-- Application Structure Plan: Se ha diseñado una aplicación de una sola página con una barra de navegación lateral fija para facilitar el acceso a las diferentes secciones del análisis. La estructura sigue un flujo lógico: 1) Definición del problema térmico basado en el informe. 2) Análisis de la tecnología Peltier, contrastando sus debilidades (estado estacionario) con su fortaleza clave (respuesta transitoria), que es el núcleo de la tesis. 3) Propuesta de una arquitectura de sistema concreta. 4) Evaluación equilibrada de ventajas y desventajas. 5) Un análisis de fiabilidad (FMEA) para abordar los riesgos. 6) Conclusiones y recomendaciones. Esta estructura permite al usuario comprender el problema, explorar la solución propuesta y evaluar su viabilidad de forma ordenada. Se eligió este enfoque de "panel de control" en lugar de un informe lineal para hacer la información técnica densa más digerible y atractiva. -->
+    <!-- Visualization & Content Choices: La visualización clave es el gráfico dinámico de Chart.js que demuestra el "superenfriamiento transitorio", un concepto difícil de entender solo con texto. El FMEA se presenta en una tabla interactiva para que el usuario pueda ordenar los riesgos por prioridad (RPN), lo que añade utilidad práctica. Los diagramas se construyen con HTML/CSS estructurado (Flexbox/Grid) para cumplir con la restricción de NO SVG. La elección de estos métodos busca transformar datos y análisis complejos en una experiencia de usuario clara, interactiva y educativa. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <title>Análisis de Refrigeración Peltier para el Pistón Atómico (IPU)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .chart-container { position: relative; height: 350px; width: 100%; max-width: 800px; margin: auto; }
+        .section-title-border { border-left: 4px solid #0ea5e9; }
+        .nav-link.active { color: #38bdf8; border-right: 2px solid #38bdf8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="flex flex-col md:flex-row">
+        <aside class="w-full md:w-64 bg-slate-800 text-white p-6 md:h-screen md:sticky md:top-0">
+            <h1 class="text-xl font-bold mb-8 text-sky-300">Gestión Térmica IPU</h1>
+            <nav id="nav-menu">
+                <ul class="space-y-4">
+                    <li><a href="#problema" class="nav-link block px-4 py-2 rounded-md hover:bg-slate-700 transition-colors">El Desafío Térmico</a></li>
+                    <li><a href="#peltier" class="nav-link block px-4 py-2 rounded-md hover:bg-slate-700 transition-colors">La Paradoja Peltier</a></li>
+                    <li><a href="#arquitectura" class="nav-link block px-4 py-2 rounded-md hover:bg-slate-700 transition-colors">Solución Híbrida</a></li>
+                    <li><a href="#balance" class="nav-link block px-4 py-2 rounded-md hover:bg-slate-700 transition-colors">Balance de Viabilidad</a></li>
+                    <li><a href="#fiabilidad" class="nav-link block px-4 py-2 rounded-md hover:bg-slate-700 transition-colors">Análisis de Riesgos</a></li>
+                    <li><a href="#conclusion" class="nav-link block px-4 py-2 rounded-md hover:bg-slate-700 transition-colors">Conclusiones</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="flex-1 p-6 md:p-10">
+            <section id="problema" class="mb-12 min-h-[80vh] flex flex-col justify-center">
+                <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 pl-4 section-title-border mb-4">El Desafío Crítico del Pistón Atómico</h2>
+                <p class="text-lg text-slate-600 leading-relaxed mb-6">El "Pistón Atómico" de la IPU genera "ráfagas instantáneas y potentes" de energía, pero a un costo: pulsos de calor intensos que limitan el rendimiento y la vida útil del sistema. Este no es un problema de calor constante, sino de picos de alto flujo que demandan una solución de refrigeración excepcionalmente rápida.</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                     <div class="bg-white p-6 rounded-lg shadow-lg border-t-4 border-sky-400">
+                        <h3 class="font-bold text-lg text-slate-800 mb-2">Fuentes de Calor</h3>
+                        <p class="text-4xl">⚡</p>
+                        <p class="mt-2 text-slate-600">Pérdidas de conmutación y conducción en los semiconductores de potencia (SiC/GaN).</p>
+                    </div>
+                    <div class="bg-white p-8 rounded-lg shadow-2xl border-t-4 border-red-500 transform md:scale-110">
+                        <h3 class="font-bold text-lg text-slate-800 mb-2">Carga Térmica Pulsada</h3>
+                         <div class="text-5xl font-extrabold text-red-600">
+                            <span id="heat-load-value">551</span>W
+                        </div>
+                        <p class="mt-2 text-slate-600">Potencia de calor estimada que el sistema debe disipar durante un pulso, llegando a picos de más de **730W** bajo sobrecarga.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-lg border-t-4 border-sky-400">
+                        <h3 class="font-bold text-lg text-slate-800 mb-2">Naturaleza del Reto</h3>
+                        <p class="text-4xl">⏱️</p>
+                        <p class="mt-2 text-slate-600">El calor es transitorio y de alto flujo, exigiendo una respuesta de refrigeración casi instantánea.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="peltier" class="mb-12">
+                <h2 class="text-3xl font-bold text-slate-900 pl-4 section-title-border mb-4">La Paradoja Peltier: De la Ineficiencia a la Oportunidad</h2>
+                <p class="text-slate-600 leading-relaxed mb-6">Un refrigerador termoeléctrico (TEC) o placa Peltier es ineficiente para enfriamiento continuo (bajo COP), ya que añade su propio consumo de energía a la carga térmica total. Sin embargo, su comportamiento dinámico revela una capacidad única: el **superenfriamiento transitorio**, un fenómeno que se alinea perfectamente con la carga térmica pulsada de la IPU.</p>
+                 <div class="bg-white p-6 rounded-lg shadow-xl border border-slate-200">
+                    <h3 class="text-xl font-bold text-center mb-4 text-slate-800">Visualización: Superenfriamiento vs. Estado Estacionario</h3>
+                    <div class="chart-container">
+                        <canvas id="peltierChart"></canvas>
+                    </div>
+                    <div class="text-center mt-6">
+                        <button id="pulseButton" class="bg-sky-500 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 transition-transform transform hover:scale-105">⚡ Aplicar Pulso de Corriente al TEC</button>
+                    </div>
+                    <p class="text-sm text-center mt-4 text-slate-500">Al aplicar un pulso de alta corriente, el TEC alcanza momentáneamente una temperatura mucho más fría que en operación continua, antes de que el sobrecalentamiento por efecto Joule domine.</p>
+                </div>
+            </section>
+
+            <section id="arquitectura" class="mb-12">
+                <h2 class="text-3xl font-bold text-slate-900 pl-4 section-title-border mb-4">Arquitectura Híbrida: La Solución Propuesta</h2>
+                <p class="text-slate-600 leading-relaxed mb-6">Se propone un sistema de refrigeración híbrido que integra las fortalezas de la refrigeración activa y pasiva. La estrategia consiste en usar un TEC para una absorción de calor rápida y localizada, y un disipador convencional para la evacuación masiva y continua del calor al ambiente.</p>
+                <div class="bg-white p-8 rounded-lg shadow-lg border-slate-200">
+                    <h3 class="text-xl font-bold text-center mb-6 text-slate-800">Flujo de Disipación de Calor</h3>
+                    <div class="flex flex-col md:flex-row items-stretch justify-center gap-2 md:gap-4 text-center">
+                        <div class="flex-1 p-4 bg-red-50 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-3xl mb-2">🔥</div>
+                            <h4 class="font-semibold text-red-800">1. Pulso de Calor</h4>
+                            <p class="text-sm text-red-700">El semiconductor (SiC/GaN) genera un intenso pulso de calor ($Q_c$) durante la operación del pistón.</p>
+                        </div>
+                        <div class="self-center text-2xl font-bold text-slate-400 mx-2 my-2 md:my-0">→</div>
+                        <div class="flex-1 p-4 bg-sky-50 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-3xl mb-2">❄️</div>
+                            <h4 class="font-semibold text-sky-800">2. Absorción Transitoria</h4>
+                            <p class="text-sm text-sky-700">Un pulso de corriente sincronizado activa el superenfriamiento del TEC, que absorbe el pico de calor $Q_c$ instantáneamente.</p>
+                        </div>
+                         <div class="self-center text-2xl font-bold text-slate-400 mx-2 my-2 md:my-0">→</div>
+                        <div class="flex-1 p-4 bg-slate-100 rounded-lg flex flex-col items-center justify-center">
+                             <div class="text-3xl mb-2">🌬️</div>
+                            <h4 class="font-semibold text-slate-800">3. Disipación Continua</h4>
+                            <p class="text-sm text-slate-700">El disipador convencional evacúa el calor total ($Q_h = Q_c + P_{el}$) del lado caliente del TEC al ambiente de forma continua y eficiente.</p>
+                        </div>
+                    </div>
+                     <p class="mt-8 text-center text-slate-600"><strong>Control Crítico:</strong> El éxito de este sistema depende de un **controlador digital (DSP/FPGA)** de alta velocidad que sincronice con precisión el pulso de refrigeración con el pulso de calor, maximizando la ventaja transitoria neta.</p>
+                </div>
+            </section>
+
+            <section id="balance" class="mb-12">
+                <h2 class="text-3xl font-bold text-slate-900 pl-4 section-title-border mb-4">Balance de Viabilidad: Ventajas y Desventajas</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-2xl font-bold text-green-600 mb-4">Ventajas</h3>
+                        <ul class="space-y-4">
+                            <li class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500">
+                                <strong class="block text-slate-800">Refrigeración Localizada de Precisión</strong>
+                                <p class="text-slate-600">Aplica enfriamiento intenso directamente sobre los "puntos calientes" de los semiconductores.</p>
+                            </li>
+                            <li class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500">
+                                <strong class="block text-slate-800">Respuesta de Alta Velocidad</strong>
+                                <p class="text-slate-600">El superenfriamiento es casi instantáneo, ideal para la naturaleza pulsada del calor de la IPU.</p>
+                            </li>
+                            <li class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500">
+                                <strong class="block text-slate-800">Fiabilidad de Estado Sólido</strong>
+                                <p class="text-slate-600">La ausencia de partes móviles en el TEC se traduce en un MTBF extremadamente alto (>100,000 horas).</p>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-red-600 mb-4">Desventajas</h3>
+                        <ul class="space-y-4">
+                            <li class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-red-500">
+                                <strong class="block text-slate-800">Baja Eficiencia y Consumo</strong>
+                                <p class="text-slate-600">El TEC añade su propio consumo de energía, reduciendo la eficiencia general del sistema.</p>
+                            </li>
+                            <li class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-red-500">
+                                <strong class="block text-slate-800">Alta Complejidad y Coste</strong>
+                                <p class="text-slate-600">Requiere control avanzado (DSP), fuentes de alimentación adicionales y un diseño de sistema más complejo.</p>
+                            </li>
+                            <li class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-red-500">
+                                <strong class="block text-slate-800">Carga del Disipador</strong>
+                                <p class="text-slate-600">El disipador debe evacuar tanto el calor del componente como el generado por el TEC.</p>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+             <section id="fiabilidad" class="mb-12">
+                <h2 class="text-3xl font-bold text-slate-900 pl-4 section-title-border mb-4">Análisis de Fiabilidad (FMEA)</h2>
+                 <p class="mb-4 text-slate-600 leading-relaxed">Un Análisis de Modos y Efectos de Fallo (FMEA) ayuda a identificar y mitigar riesgos. La tabla muestra los modos de fallo potenciales, su impacto y las acciones para aumentar la robustez del sistema. Puede hacer clic en las cabeceras para ordenar la tabla.</p>
+                <div class="overflow-x-auto bg-white rounded-lg shadow-md">
+                    <table class="w-full text-sm text-left text-slate-500" id="fmeaTable">
+                        <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 cursor-pointer" onclick="sortTable(0)">Componente/Subsistema</th>
+                                <th scope="col" class="px-6 py-3 cursor-pointer" onclick="sortTable(1)">Modo de Fallo</th>
+                                <th scope="col" class="px-6 py-3 cursor-pointer" onclick="sortTable(3)">RPN &uarr;&darr;</th>
+                                <th scope="col" class="px-6 py-3">Acciones de Mitigación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="bg-white border-b hover:bg-slate-50">
+                                <td class="px-6 py-4 font-medium text-slate-900">Sensor de Temperatura</td>
+                                <td class="px-6 py-4">Fallo o deriva del sensor</td>
+                                <td class="px-6 py-4 font-bold">144</td>
+                                <td class="px-6 py-4">Usar sensores redundantes; implementar comprobaciones de validez en el firmware.</td>
+                            </tr>
+                            <tr class="bg-white border-b hover:bg-slate-50">
+                                <td class="px-6 py-4 font-medium text-slate-900">Módulo Peltier (TEC)</td>
+                                <td class="px-6 py-4">Degradación (aumento de resistencia)</td>
+                                <td class="px-6 py-4 font-bold">140</td>
+                                <td class="px-6 py-4">Monitorizar la impedancia del TEC para predecir el fin de su vida útil (SOH).</td>
+                            </tr>
+                            <tr class="bg-white border-b hover:bg-slate-50">
+                                <td class="px-6 py-4 font-medium text-slate-900">DSP de Control Térmico</td>
+                                <td class="px-6 py-4">Cuelgue / Fallo de Firmware</td>
+                                <td class="px-6 py-4 font-bold">108</td>
+                                <td class="px-6 py-4">Implementar un temporizador "watchdog" y rutinas de apagado seguro.</td>
+                            </tr>
+                            <tr class="bg-white border-b hover:bg-slate-50">
+                                <td class="px-6 py-4 font-medium text-slate-900">Ventilador del Disipador</td>
+                                <td class="px-6 py-4">Fallo mecánico</td>
+                                <td class="px-6 py-4 font-bold">80</td>
+                                <td class="px-6 py-4">Monitorizar la velocidad del ventilador (tacómetro) y activar un apagado de emergencia.</td>
+                            </tr>
+                             <tr class="bg-white border-b hover:bg-slate-50">
+                                <td class="px-6 py-4 font-medium text-slate-900">Módulo Peltier (TEC)</td>
+                                <td class="px-6 py-4">Fallo Catastrófico (Corto/Abierto)</td>
+                                <td class="px-6 py-4 font-bold">54</td>
+                                <td class="px-6 py-4">Protección contra sobrecorriente en el driver del TEC y monitorización de temperatura.</td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-6 py-4 font-medium text-slate-900">Semiconductor (SiC/GaN)</td>
+                                <td class="px-6 py-4">Fallo por Cortocircuito</td>
+                                <td class="px-6 py-4 font-bold">40</td>
+                                <td class="px-6 py-4">Implementar protección ultra-rápida contra cortocircuitos en el gate driver.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="conclusion">
+                <h2 class="text-3xl font-bold text-slate-900 pl-4 section-title-border mb-4">Conclusión y Hoja de Ruta</h2>
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-sky-500">
+                        <h3 class="text-xl font-bold text-slate-800 mb-2">Veredicto Final: Factible pero Complejo</h3>
+                        <p class="text-slate-600 leading-relaxed">Un sistema de refrigeración termoeléctrico **híbrido y optimizado para transitorios** es una solución tecnológicamente factible y de alto rendimiento para el "Pistón Atómico". Sin embargo, su adopción solo se justifica si las ganancias de rendimiento (mayor potencia de pulso, mayor tasa de repetición) son críticas para la propuesta de valor de la IPU y no pueden lograrse por medios más convencionales.</p>
+                    </div>
+                     <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-sky-500">
+                        <h3 class="text-xl font-bold text-slate-800 mb-2">Hoja de Ruta para la Validación</h3>
+                         <div class="flex flex-col md:flex-row gap-4 text-slate-700">
+                            <div class="flex-1 bg-slate-100 p-4 rounded-lg">
+                                <div class="font-bold text-sky-600">Paso 1: Simulación</div>
+                                <p class="text-sm">Desarrollar un modelo termoeléctrico acoplado (SPICE, Simulink) para validar teóricamente el efecto de superenfriamiento bajo el perfil de calor de la IPU.</p>
+                            </div>
+                             <div class="flex-1 bg-slate-100 p-4 rounded-lg">
+                                <div class="font-bold text-sky-600">Paso 2: Prototipado</div>
+                                <p class="text-sm">Construir una maqueta de un solo componente (Semiconductor SiC + TEC + DSP) para medir experimentalmente la reducción de temperatura y validar la "ventaja transitoria neta".</p>
+                            </div>
+                             <div class="flex-1 bg-slate-100 p-4 rounded-lg">
+                                <div class="font-bold text-sky-600">Paso 3: Integración</div>
+                                <p class="text-sm">Basado en los datos del prototipo, diseñar e integrar la solución de gestión térmica completa en el sistema IPU.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const heatLoadEl = document.getElementById('heat-load-value');
+    if(heatLoadEl) {
+        let currentLoad = 551;
+        let targetLoad = 733;
+        setInterval(() => {
+            currentLoad += 5;
+            if(currentLoad > targetLoad) currentLoad = 551;
+            heatLoadEl.textContent = currentLoad;
+        }, 200);
+    }
+    
+    const ctx = document.getElementById('peltierChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    let chart;
+    let animationFrameId;
+
+    const steadyStateTemp = -10; 
+    const supercoolTemp = -25;
+    const overheatTemp = 5;
+    const ambientTemp = 25;
+
+    const steadyStateData = Array(100).fill(steadyStateTemp);
+    const initialPulseData = Array(100).fill(steadyStateTemp);
+
+    function generatePulseData() {
+        const data = [];
+        for (let i = 0; i < 100; i++) {
+            if (i < 15) { 
+                const progress = i / 14;
+                data.push(steadyStateTemp - (steadyStateTemp - supercoolTemp) * Math.sin(progress * Math.PI / 2));
+            } else if (i < 40) { 
+                 const progress = (i - 15) / 25;
+                 const temp = supercoolTemp + (overheatTemp - supercoolTemp) * Math.sin(progress * Math.PI / 2);
+                 data.push(temp);
+            } else { 
+                const progress = (i - 40) / 59;
+                data.push(overheatTemp - (overheatTemp - steadyStateTemp) * progress);
+            }
+        }
+        return data;
+    }
+    
+    const chartData = {
+        labels: Array.from({length: 100}, (_, i) => i * 5),
+        datasets: [{
+                label: 'Temperatura TEC (Operación Continua)',
+                data: steadyStateData,
+                borderColor: 'rgb(252, 165, 165)',
+                backgroundColor: 'rgba(252, 165, 165, 0.2)',
+                borderWidth: 2,
+                pointRadius: 0,
+                borderDash: [5, 5],
+                tension: 0.1
+            }, {
+                label: 'Temperatura TEC (Pulso Transitorio)',
+                data: initialPulseData,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                borderWidth: 3,
+                pointRadius: 0,
+                tension: 0.4,
+                fill: true,
+            }]
+    };
+
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { title: { display: true, text: 'Temperatura (°C)' }, suggestedMin: -30, suggestedMax: 30 },
+                x: { title: { display: true, text: 'Tiempo (ms)' } }
+            },
+            plugins: {
+                legend: { position: 'bottom' },
+                title: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            const item = tooltipItems[0];
+                            let label = item.chart.data.labels[item.dataIndex];
+                            if (Array.isArray(label)) { return label.join(' '); }
+                            return label;
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            }
+        }
+    });
+
+    document.getElementById('pulseButton').addEventListener('click', () => {
+        if (animationFrameId) { cancelAnimationFrame(animationFrameId); }
+        
+        const targetPulseData = generatePulseData();
+        let startTime = null;
+        const animationDuration = 800; 
+
+        function animateChart(timestamp) {
+            if (!startTime) startTime = timestamp;
+            const progress = Math.min((timestamp - startTime) / animationDuration, 1);
+
+            for (let i = 0; i < 100; i++) {
+                chart.data.datasets[1].data[i] = initialPulseData[i] + (targetPulseData[i] - initialPulseData[i]) * progress;
+            }
+            chart.update('none');
+
+            if (progress < 1) {
+                animationFrameId = requestAnimationFrame(animateChart);
+            } else {
+                 setTimeout(() => {
+                    let resetStartTime = null;
+                    function resetAnimation(ts) {
+                         if (!resetStartTime) resetStartTime = ts;
+                         const resetProgress = Math.min((ts - resetStartTime) / 1000, 1);
+                         for (let i = 0; i < 100; i++) {
+                            chart.data.datasets[1].data[i] = targetPulseData[i] - (targetPulseData[i] - initialPulseData[i]) * resetProgress;
+                         }
+                         chart.update('none');
+                         if(resetProgress < 1) {
+                            requestAnimationFrame(resetAnimation);
+                         }
+                    }
+                    requestAnimationFrame(resetAnimation);
+                 }, 1500);
+            }
+        }
+        animationFrameId = requestAnimationFrame(animateChart);
+    });
+
+    window.sortTable = function(n) {
+        const table = document.getElementById("fmeaTable");
+        let rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        switching = true;
+        const currentDir = table.getAttribute('data-sort-dir-' + n) || 'desc';
+        dir = currentDir === 'desc' ? 'asc' : 'desc';
+        table.setAttribute('data-sort-dir-' + n, dir);
+
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+                
+                let xContent = isNaN(parseFloat(x.innerHTML)) ? x.innerHTML.toLowerCase() : parseFloat(x.innerHTML);
+                let yContent = isNaN(parseFloat(y.innerHTML)) ? y.innerHTML.toLowerCase() : parseFloat(y.innerHTML);
+                
+                if (dir == "asc") {
+                    if (xContent > yContent) { shouldSwitch = true; break; }
+                } else if (dir == "desc") {
+                    if (xContent < yContent) { shouldSwitch = true; break; }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount++;
+            } else {
+                if (switchcount == 0 && dir == "desc") {
+                    //dir = "asc"; switching = true; // This part is buggy, simplified logic
+                }
+            }
+        }
+    };
+    
+    const navLinks = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('main section');
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').substring(1) === entry.target.id) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    }, { rootMargin: '-50% 0px -50% 0px' });
+
+    sections.forEach(section => {
+        observer.observe(section);
+    });
+});
+</script>
+</body>
+</html>
