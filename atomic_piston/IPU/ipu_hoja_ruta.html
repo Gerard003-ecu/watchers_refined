@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chosen Palette: Energetic & Playful -->
+    <!-- Application Structure Plan: The application is structured as a single-page, scrollable investor pitch deck. A sticky top navigation bar allows for quick access to key sections: Problema, Solución (IPU), Mercado, Hoja de Ruta, Modelo de Negocio, Finanzas, y La Inversión. This logical flow guides the investor from understanding the market pain point to seeing the financial opportunity and the specific ask. The core interactive element is the "Hoja de Ruta Tecnológica", which visually presents the phased evolution from a simple MVP to a sophisticated SoC-based system, with clickable stages revealing details. This structure is designed to be persuasive, clear, and easy to navigate, directly supporting the goal of attracting investment. -->
+    <!-- Visualization & Content Choices: 
+        1. Market Opportunity: Goal: Inform -> Viz: Bar chart (Chart.js) to show TAM, SAM, and SOM. Justification: Clearly visualizes the scale of the market and our addressable segment.
+        2. Technology Roadmap: Goal: Organize -> Viz: Interactive diagram built with HTML/CSS Flexbox. Justification: Allows investors to explore the product evolution at their own pace, making the technological progression tangible and understandable.
+        3. Use of Funds: Goal: Inform -> Viz: Donut chart (Chart.js). Justification: Provides a quick, clear breakdown of how the investment will be allocated.
+        4. Financial Projections: Goal: Change -> Viz: Combined Bar and Line chart (Chart.js). Justification: Effectively shows revenue and profit margin growth over time, key metrics for investors.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <title>Hoja de Ruta de Inversión: El Pistón Atómico (IPU)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #111827; }
+        .chart-container { position: relative; height: 40vh; max-height: 400px; width: 100%; max-width: 700px; margin: 2rem auto; }
+        .nav-link { transition: color 0.3s; }
+        .nav-link.active { color: #8338ec; font-weight: 700; }
+        .roadmap-card { transition: transform 0.3s, box-shadow 0.3s; }
+        .roadmap-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .roadmap-card.active { border-color: #8338ec; transform: scale(1.05); }
+        .stat-card { background-color: #f8f7ff; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-black text-gray-800">
+                <span class="text-violet-600">IPU</span>tech
+            </div>
+            <div class="hidden md:flex space-x-8" id="nav-menu">
+                <a href="#problema" class="nav-link text-gray-600 hover:text-violet-600">El Problema</a>
+                <a href="#solucion" class="nav-link text-gray-600 hover:text-violet-600">La Solución</a>
+                <a href="#mercado" class="nav-link text-gray-600 hover:text-violet-600">Mercado</a>
+                <a href="#roadmap" class="nav-link text-gray-600 hover:text-violet-600">Hoja de Ruta</a>
+                <a href="#modelo" class="nav-link text-gray-600 hover:text-violet-600">Modelo de Negocio</a>
+                <a href="#finanzas" class="nav-link text-gray-600 hover:text-violet-600">Finanzas</a>
+                <a href="#inversion" class="nav-link text-gray-600 hover:text-violet-600">La Inversión</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+
+        <section id="hero" class="text-center py-20">
+            <h1 class="text-5xl md:text-7xl font-black text-gray-900 leading-tight">
+                La Unidad de Potencia Inteligente (IPU):<br>
+                <span class="text-violet-600">Redefiniendo la Eficiencia Energética.</span>
+            </h1>
+            <p class="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
+                Presentamos una hoja de ruta para desarrollar y escalar el "Pistón Atómico", una tecnología disruptiva que optimiza la gestión de energía en sistemas fotovoltaicos, desde un producto mínimo viable hasta una solución líder en el mercado.
+            </p>
+        </section>
+
+        <section id="problema" class="py-16">
+            <h2 class="text-4xl font-bold text-center mb-12">El Problema: El Talón de Aquiles de la Energía Solar</h2>
+            <p class="text-center text-lg text-gray-600 max-w-3xl mx-auto mb-12">La energía solar es intermitente y las baterías convencionales luchan por gestionar picos de demanda. Esto resulta en sistemas sobredimensionados, ineficientes y con una vida útil reducida. El mercado necesita una solución que no solo almacene energía, sino que la gestione de forma inteligente.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div class="stat-card p-6 rounded-lg border border-gray-200">
+                    <div class="text-5xl font-extrabold text-amber-500">30%</div>
+                    <h3 class="text-xl font-bold mt-2">Pérdida de Potencial</h3>
+                    <p class="mt-2 text-gray-600">De energía se pierde o no se aprovecha debido a la ineficiencia en la carga y descarga durante picos de demanda.</p>
+                </div>
+                <div class="stat-card p-6 rounded-lg border border-gray-200">
+                    <div class="text-5xl font-extrabold text-rose-500">50%</div>
+                    <h3 class="text-xl font-bold mt-2">Reducción de Vida Útil</h3>
+                    <p class="mt-2 text-gray-600">Sufren las baterías al ser sometidas a ciclos de carga y descarga rápidos y profundos para cubrir picos de potencia.</p>
+                </div>
+                <div class="stat-card p-6 rounded-lg border border-gray-200">
+                    <div class="text-5xl font-extrabold text-violet-600">25%</div>
+                    <h3 class="text-xl font-bold mt-2">Sobredimensionamiento</h3>
+                    <p class="mt-2 text-gray-600">Es el sobrecoste promedio en sistemas fotovoltaicos para compensar la falta de capacidad de respuesta a picos de demanda.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="solucion" class="py-16 bg-white rounded-2xl shadow-lg">
+            <div class="max-w-4xl mx-auto text-center">
+                <h2 class="text-4xl font-bold mb-4">Nuestra Solución: El "Pistón Atómico"</h2>
+                <p class="text-lg text-gray-600 mb-8">La IPU no es solo un controlador de carga; es un gestor de energía dinámico. Su núcleo, el "Pistón Atómico", utiliza una combinación de descarga capacitiva y retroceso inductivo para proporcionar ráfagas de potencia masivas e instantáneas. Esto permite que el sistema principal de baterías opere en su rango de eficiencia óptima, mientras la IPU se encarga de los picos, protegiendo la inversión y maximizando el rendimiento.</p>
+                <div class="flex justify-center items-center space-x-8">
+                    <div class="text-center">
+                        <div class="text-5xl">⚡️</div>
+                        <h4 class="font-bold mt-2">Descarga Capacitiva</h4>
+                        <p class="text-sm text-gray-500">Pulso de potencia instantáneo.</p>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-300">+</div>
+                     <div class="text-center">
+                        <div class="text-5xl">🔄</div>
+                        <h4 class="font-bold mt-2">Retroceso Inductivo</h4>
+                        <p class="text-sm text-gray-500">Amplificación del pulso.</p>
+                    </div>
+                </div>
+                 <p class="mt-8 text-2xl font-bold text-violet-600">= Potencia Eficiente y Bajo Demanda</p>
+            </div>
+        </section>
+
+        <section id="mercado" class="py-16">
+            <h2 class="text-4xl font-bold text-center mb-12">La Oportunidad de Mercado</h2>
+            <p class="text-center text-lg text-gray-600 max-w-3xl mx-auto mb-12">El mercado global de almacenamiento de energía para sistemas fotovoltaicos está en plena expansión, impulsado por la transición energética. La IPU se posiciona en el segmento de alto crecimiento de la gestión inteligente de energía, con un mercado objetivo inicial en sistemas residenciales y comerciales de alta gama.</p>
+            <div class="bg-white p-8 rounded-2xl shadow-lg">
+                <h3 class="text-2xl font-bold text-center mb-6">Tamaño del Mercado de Almacenamiento de Energía (Anual)</h3>
+                <div class="chart-container">
+                    <canvas id="marketChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="roadmap" class="py-16">
+            <h2 class="text-4xl font-bold text-center mb-12">Hoja de Ruta Tecnológica y de Producto</h2>
+            <p class="text-center text-lg text-gray-600 max-w-3xl mx-auto mb-12">Nuestra estrategia se basa en una evolución por fases, comenzando con un Producto Mínimo Viable (MVP) para validar la tecnología central a bajo coste, y escalando hacia soluciones sofisticadas para capturar diferentes segmentos del mercado. Haga clic en cada fase para ver los detalles.</p>
+            <div class="flex flex-col md:flex-row justify-center items-stretch gap-6" id="roadmap-container">
+                <div id="phase1" class="roadmap-card flex-1 p-6 rounded-lg border-2 border-gray-200 cursor-pointer">
+                    <span class="text-sm font-bold text-violet-600">FASE 1 (Año 1)</span>
+                    <h3 class="text-xl font-bold mt-2">Producto Mínimo Viable (MVP)</h3>
+                    <p class="text-sm text-gray-500 mt-2">Cargador solar inteligente unidireccional.</p>
+                </div>
+                <div id="phase2" class="roadmap-card flex-1 p-6 rounded-lg border-2 border-gray-200 cursor-pointer">
+                    <span class="text-sm font-bold text-violet-600">FASE 2 (Año 2)</span>
+                    <h3 class="text-xl font-bold mt-2">IPU Comercial v1.0</h3>
+                    <p class="text-sm text-gray-500 mt-2">Sistema bidireccional con "Pistón Atómico".</p>
+                </div>
+                <div id="phase3" class="roadmap-card flex-1 p-6 rounded-lg border-2 border-gray-200 cursor-pointer">
+                    <span class="text-sm font-bold text-violet-600">FASE 3 (Año 3+)</span>
+                    <h3 class="text-xl font-bold mt-2">Plataforma IPU Avanzada</h3>
+                    <p class="text-sm text-gray-500 mt-2">Solución escalable con IA y servicios de red.</p>
+                </div>
+            </div>
+            <div id="roadmap-details" class="mt-8 bg-white p-8 rounded-2xl shadow-lg min-h-[200px]">
+            </div>
+        </section>
+        
+        <section id="modelo" class="py-16">
+             <h2 class="text-4xl font-bold text-center mb-12">Modelo de Negocio</h2>
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="stat-card p-6 rounded-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold text-violet-600 mb-3">Venta Directa (B2C & B2B)</h3>
+                    <p class="text-gray-600">Comercialización de unidades IPU a través de canales online y distribuidores de equipos fotovoltaicos para instalaciones residenciales y comerciales. El precio se basará en la capacidad de potencia y las características del software.</p>
+                </div>
+                 <div class="stat-card p-6 rounded-lg border border-gray-200">
+                    <h3 class="text-2xl font-bold text-violet-600 mb-3">Licenciamiento de Tecnología (B2B)</h3>
+                    <p class="text-gray-600">Licenciar la arquitectura del controlador SoC y los algoritmos de control a grandes fabricantes de inversores y sistemas de almacenamiento de energía, permitiéndoles integrar la tecnología del "Pistón Atómico" en sus propios productos.</p>
+                </div>
+             </div>
+        </section>
+
+        <section id="finanzas" class="py-16">
+            <h2 class="text-4xl font-bold text-center mb-12">Proyecciones Financieras (3 Años)</h2>
+            <p class="text-center text-lg text-gray-600 max-w-3xl mx-auto mb-12">Nuestras proyecciones se basan en una entrada conservadora al mercado, capturando inicialmente el 0.1% del Mercado Objetivo (SOM) y escalando a medida que la producción y los canales de venta se consolidan. El enfoque en el licenciamiento a partir del Año 3 impulsará márgenes de beneficio significativamente más altos.</p>
+            <div class="bg-white p-8 rounded-2xl shadow-lg">
+                 <div class="chart-container">
+                    <canvas id="financialsChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="inversion" class="py-16 text-center bg-violet-600 text-white rounded-2xl">
+            <h2 class="text-4xl font-bold mb-4 text-white">La Oportunidad de Inversión</h2>
+            <p class="text-xl mb-8">Buscamos una inversión semilla para llevar nuestro Producto Mínimo Viable a la producción y validación en campo.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h3 class="text-3xl font-bold text-amber-300 mb-4">$250,000 USD</h3>
+                    <p>Esta inversión nos permitirá finalizar el desarrollo del MVP, obtener certificaciones, establecer una línea de producción inicial y ejecutar proyectos piloto con socios estratégicos.</p>
+                </div>
+                <div class="w-full max-w-sm mx-auto">
+                    <div class="chart-container" style="height:300px;">
+                        <canvas id="fundsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tooltipTitleCallback = (tooltipItems) => {
+        const item = tooltipItems[0];
+        let label = item.chart.data.labels[item.dataIndex];
+        if (Array.isArray(label)) {
+          return label.join(' ');
+        }
+        return label;
+    };
+
+    const marketCtx = document.getElementById('marketChart').getContext('2d');
+    new Chart(marketCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Mercado Global (TAM)', 'Sistemas Residenciales/Comerciales (SAM)', 'Nuestro Objetivo Inicial (SOM)'],
+            datasets: [{
+                label: 'Tamaño del Mercado (USD)',
+                data: [25000000000, 8000000000, 25000000],
+                backgroundColor: ['#ffbe0b', '#fb5607', '#8338ec'],
+                borderColor: ['#ffbe0b', '#fb5607', '#8338ec'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + (value / 1e9) + 'B';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Mercado Anual de Almacenamiento de Energía Fotovoltaica' },
+                tooltip: { callbacks: { title: tooltipTitleCallback } }
+            }
+        }
+    });
+
+    const roadmapDetailsContainer = document.getElementById('roadmap-details');
+    const roadmapCards = document.querySelectorAll('.roadmap-card');
+    const roadmapData = {
+        phase1: {
+            title: "Fase 1: Producto Mínimo Viable (MVP)",
+            content: `
+                <p><strong>Objetivo:</strong> Validar la tecnología de control y el algoritmo MPPT a bajo coste.</p>
+                <ul class="list-disc list-inside mt-4 space-y-2">
+                    <li><strong>Tecnología:</strong> Cargador solar unidireccional (panel a batería).</li>
+                    <li><strong>Controlador:</strong> Microcontrolador de bajo coste (ESP32).</li>
+                    <li><strong>Potencia:</strong> ~500W.</li>
+                    <li><strong>Hitos Clave:</strong> Prototipo funcional, pruebas de eficiencia >95%, validación de algoritmos de carga.</li>
+                    <li><strong>Inversión Requerida:</strong> Mínima, ideal para capital semilla.</li>
+                </ul>
+            `
+        },
+        phase2: {
+            title: "Fase 2: IPU Comercial v1.0",
+            content: `
+                <p><strong>Objetivo:</strong> Lanzar el primer producto comercial con la funcionalidad completa del "Pistón Atómico".</p>
+                <ul class="list-disc list-inside mt-4 space-y-2">
+                    <li><strong>Tecnología:</strong> Sistema bidireccional con capacidad de pulso de alta potencia.</li>
+                    <li><strong>Controlador:</strong> DSP de gama media para gestionar la mayor complejidad.</li>
+                    <li><strong>Potencia:</strong> 2kW - 5kW (residencial/comercial pequeño).</li>
+                    <li><strong>Hitos Clave:</strong> Diseño certificado, producción a pequeña escala, establecimiento de canales de venta.</li>
+                </ul>
+            `
+        },
+        phase3: {
+            title: "Fase 3: Plataforma IPU Avanzada",
+            content: `
+                <p><strong>Objetivo:</strong> Establecer la IPU como una plataforma líder, escalable y preparada para el futuro.</p>
+                <ul class="list-disc list-inside mt-4 space-y-2">
+                    <li><strong>Tecnología:</strong> Arquitectura modular con semiconductores de banda ancha (SiC/GaN).</li>
+                    <li><strong>Controlador:</strong> SoC (Procesador + FPGA) para máximo rendimiento, paralelismo y capacidad de IA.</li>
+                    <li><strong>Potencia:</strong> Escala desde 5kW hasta >50kW para aplicaciones industriales.</li>
+                    <li><strong>Hitos Clave:</strong> Implementación de algoritmos de IA para mantenimiento predictivo, integración con servicios de red (V2G), modelo de licenciamiento de IP.</li>
+                </ul>
+            `
+        }
+    };
+
+    function updateRoadmapDetails(phaseId) {
+        const data = roadmapData[phaseId];
+        roadmapDetailsContainer.innerHTML = `
+            <h3 class="text-2xl font-bold mb-4">${data.title}</h3>
+            <div class="prose max-w-none text-gray-600">${data.content}</div>
+        `;
+        roadmapCards.forEach(card => {
+            card.classList.remove('active');
+            if (card.id === phaseId) {
+                card.classList.add('active');
+            }
+        });
+    }
+
+    document.getElementById('roadmap-container').addEventListener('click', (e) => {
+        const card = e.target.closest('.roadmap-card');
+        if (card) {
+            updateRoadmapDetails(card.id);
+        }
+    });
+    updateRoadmapDetails('phase1');
+
+    const financialsCtx = document.getElementById('financialsChart').getContext('2d');
+    new Chart(financialsCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Año 1', 'Año 2', 'Año 3'],
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Ingresos (USD)',
+                    data: [150000, 1200000, 5500000],
+                    backgroundColor: '#8338ec',
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'line',
+                    label: 'Margen de Beneficio (%)',
+                    data: [15, 25, 45],
+                    borderColor: '#ffbe0b',
+                    backgroundColor: '#ffbe0b',
+                    tension: 0.1,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    type: 'linear',
+                    position: 'left',
+                    ticks: { callback: function(value) { return '$' + (value / 1e6) + 'M'; } }
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: { callback: function(value) { return value + '%'; } }
+                }
+            },
+            plugins: {
+                title: { display: true, text: 'Proyección de Ingresos y Margen de Beneficio' },
+                tooltip: { callbacks: { title: tooltipTitleCallback } }
+            }
+        }
+    });
+
+    const fundsCtx = document.getElementById('fundsChart').getContext('2d');
+    new Chart(fundsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['I+D y Prototipado', 'Certificaciones', 'Producción Inicial', 'Marketing y Ventas'],
+            datasets: [{
+                data: [45, 15, 25, 15],
+                backgroundColor: ['#8338ec', '#fb5607', '#ffbe0b', '#3a86ff'],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: {
+                        color: '#FFFFFF'
+                    }
+                },
+                title: { 
+                    display: true, 
+                    text: 'Uso de los Fondos de Inversión',
+                    color: '#FFFFFF'
+                },
+                tooltip: { callbacks: { title: tooltipTitleCallback } }
+            }
+        }
+    });
+
+    const navMenu = document.getElementById('nav-menu');
+    const sections = document.querySelectorAll('main section');
+    const navLinks = navMenu.querySelectorAll('a');
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if(entry.isIntersecting){
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if(link.getAttribute('href').substring(1) === entry.target.id){
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    }, { threshold: 0.5 });
+
+    sections.forEach(section => {
+        if(section.id) {
+            observer.observe(section);
+        }
+    });
+});
+</script>
+</body>
+</html>

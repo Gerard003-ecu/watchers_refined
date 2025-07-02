@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chosen Palette: Warm Neutral Harmony -->
+    <!-- Application Structure Plan: The SPA is designed as an interactive technical dashboard. A sticky navigation sidebar allows users to jump to key sections: El Desafío, Esparcidores de Calor, Recuperación de Energía (TEG), and Arquitecturas Propuestas. This thematic structure allows a user to logically progress from the core engineering problem to potential integrated solutions. The design uses interactive elements, such as clickable tabs for comparing Heat Pipes and Vapor Chambers, and an interactive chart to demonstrate TEG matrix configurations. This approach makes complex technical trade-offs more understandable than a static report. -->
+    <!-- Visualization & Content Choices: 
+        1. Heat Spreader Comparison: Goal: Compare -> Viz: Tabbed interface with HTML/CSS diagrams. Justification: Provides a direct, side-by-side comparison of Heat Pipes and Vapor Chambers, explaining their function and ideal use cases without SVG.
+        2. TEG Matrix Configuration: Goal: Organize/Compare -> Viz: Interactive line chart (Chart.js) with buttons. Justification: Allows the user to actively see how series vs. parallel connections affect the voltage and current output of a TEG array, making an abstract electrical concept tangible.
+        3. Architecture Comparison: Goal: Compare -> Viz: Radar chart (Chart.js). Justification: Offers a multi-dimensional comparison of the proposed system architectures (Max Cooling vs. Hybrid) across key engineering metrics (Performance, Cost, Complexity, etc.), providing a quick, holistic overview for decision-making.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <title>Panel Interactivo: Gestión Térmica Avanzada para la IPU</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #FDFCFB; color: #43403A; }
+        .chart-container { position: relative; height: 45vh; max-height: 450px; width: 100%; max-width: 800px; margin: 2rem auto; }
+        .nav-link { transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-link.active { color: #A56E5A; border-left-color: #A56E5A; background-color: #F5F1EE; }
+        .tab-button { transition: all 0.2s; }
+        .tab-button.active { background-color: #A56E5A; color: white; }
+        .heat-pipe-demo .vapor { animation: flow-vapor 4s linear infinite; }
+        .heat-pipe-demo .liquid { animation: flow-liquid 4s linear infinite; }
+        @keyframes flow-vapor { 0% { transform: translateY(0); opacity: 0; } 50% { transform: translateY(-80px); opacity: 1; } 100% { transform: translateY(-80px); opacity: 0; } }
+        @keyframes flow-liquid { 0%, 50% { transform: translateY(0); opacity: 0; } 100% { transform: translateY(80px); opacity: 1; } }
+    </style>
+</head>
+<body class="bg-[#FDFCFB]">
+
+<div class="flex">
+    <!-- Barra lateral de navegación -->
+    <aside class="w-64 min-h-screen bg-[#F5F1EE] p-4 sticky top-0">
+        <h1 class="text-xl font-bold text-[#A56E5A] mb-8">Gestión Térmica IPU</h1>
+        <nav id="nav-menu" class="space-y-2">
+            <a href="#desafio" class="nav-link block p-3 rounded-r-lg text-[#7C6A62] hover:bg-[#EAE2DC]">El Desafío Térmico</a>
+            <a href="#esparcidores" class="nav-link block p-3 rounded-r-lg text-[#7C6A62] hover:bg-[#EAE2DC]">Esparcidores de Calor</a>
+            <a href="#recuperacion" class="nav-link block p-3 rounded-r-lg text-[#7C6A62] hover:bg-[#EAE2DC]">Recuperación de Energía</a>
+            <a href="#arquitecturas" class="nav-link block p-3 rounded-r-lg text-[#7C6A62] hover:bg-[#EAE2DC]">Arquitecturas Propuestas</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-10">
+        
+        <section id="desafio" class="mb-16">
+            <h2 class="text-3xl font-bold text-[#A56E5A] mb-4">El Desafío: Disipar Calor Concentrado y Pulsado</h2>
+            <p class="text-lg text-[#43403A] max-w-3xl">El "Pistón Atómico" de la IPU genera una carga térmica significativa y concentrada (~700W) en el lado caliente de su sistema de refrigeración (TEC). Un simple disipador de calor no puede transferir esta energía eficientemente. El problema se divide en dos: <strong>1) Esparcir</strong> el calor de una fuente pequeña a un área grande y <strong>2) Transportar</strong> ese calor de manera efectiva a un disipador final.</p>
+        </section>
+
+        <section id="esparcidores" class="mb-16">
+            <h2 class="text-3xl font-bold text-[#A56E5A] mb-4">Tecnologías de Esparcimiento de Calor por Cambio de Fase</h2>
+            <p class="text-lg text-[#43403A] max-w-3xl mb-8">Estas tecnologías pasivas utilizan el calor latente de un fluido en un ciclo de evaporación-condensación para mover el calor con una conductividad térmica órdenes de magnitud superior al cobre sólido.</p>
+
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex border-b border-gray-200 mb-4">
+                    <button class="tab-button active py-2 px-4 rounded-t-lg" data-tab="heatpipe">Tubos de Calor (Heat Pipes)</button>
+                    <button class="tab-button py-2 px-4 rounded-t-lg" data-tab="vaporchamber">Cámaras de Vapor</button>
+                </div>
+                
+                <div id="heatpipe" class="tab-content">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div>
+                            <h3 class="text-xl font-bold mb-2">Principio de Funcionamiento</h3>
+                            <p class="text-gray-600 mb-4">Un tubo de calor es un transportador de calor lineal. El calor en el extremo caliente (evaporador) vaporiza un fluido. El vapor viaja al extremo frío (condensador), libera su calor al condensarse, y el líquido regresa por capilaridad a través de una mecha interna.</p>
+                            <h4 class="font-semibold">Ventajas:</h4>
+                            <ul class="list-disc list-inside text-gray-600">
+                                <li>Flexibles, pueden doblarse para adaptarse a geometrías complejas.</li>
+                                <li>Ideales para mover calor a disipadores remotos.</li>
+                            </ul>
+                            <h4 class="font-semibold mt-2">Desventajas para la IPU:</h4>
+                            <ul class="list-disc list-inside text-gray-600">
+                                <li>No son eficientes para esparcir calor de una fuente concentrada.</li>
+                                <li>Su rendimiento se degrada con cada curvatura.</li>
+                            </ul>
+                        </div>
+                        <div class="heat-pipe-demo bg-[#F5F1EE] rounded-lg p-4 h-64 flex flex-col justify-between items-center">
+                            <div class="text-center">
+                                <span class="text-sm font-semibold text-blue-600">CONDENSADOR (Frío)</span>
+                                <div class="w-32 h-4 bg-blue-300 rounded"></div>
+                                <div class="vapor text-blue-500 text-3xl">▲</div>
+                            </div>
+                            <div class="w-2 h-20 bg-gray-300 relative overflow-hidden">
+                                <div class="liquid absolute bottom-0 w-full bg-blue-400"></div>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-32 h-4 bg-red-300 rounded"></div>
+                                <span class="text-sm font-semibold text-red-600">EVAPORADOR (Caliente)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="vaporchamber" class="tab-content hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div>
+                             <h3 class="text-xl font-bold mb-2">Principio de Funcionamiento</h3>
+                            <p class="text-gray-600 mb-4">Una cámara de vapor es esencialmente un tubo de calor plano. Funciona con el mismo ciclo de evaporación-condensación, pero su geometría está diseñada para esparcir el calor de manera uniforme en dos dimensiones.</p>
+                             <h4 class="font-semibold">Ventajas para la IPU:</h4>
+                            <ul class="list-disc list-inside text-gray-600">
+                                <li><strong>Rendimiento superior</strong> para flujos de calor altos y concentrados, como los del TEC.</li>
+                                <li>Crea una superficie isotérmica, ideal para montar disipadores o una matriz de TEG.</li>
+                            </ul>
+                             <h4 class="font-semibold mt-2">Desventajas:</h4>
+                            <ul class="list-disc list-inside text-gray-600">
+                                <li>Más costosas y menos flexibles en su forma que los tubos de calor.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-[#F5F1EE] rounded-lg p-4 h-64 flex flex-col justify-center items-center">
+                            <div class="text-sm font-semibold text-blue-600 mb-2">SUPERFICIE ISOTÉRMICA (Fría)</div>
+                            <div class="w-48 h-24 bg-gray-300 rounded-lg flex justify-center items-center relative">
+                                <span class="text-blue-500 text-4xl">⇡ ⇡ ⇡</span>
+                                <div class="absolute -bottom-5 w-10 h-10 bg-red-400 rounded-full flex justify-center items-center">
+                                    <span class="text-white font-bold">🔥</span>
+                                </div>
+                            </div>
+                            <div class="text-sm font-semibold text-red-600 mt-6">FUENTE DE CALOR CONCENTRADA</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="recuperacion" class="mb-16">
+            <h2 class="text-3xl font-bold text-[#A56E5A] mb-4">Recuperación de Energía: La Matriz de TEG</h2>
+            <p class="text-lg text-[#43403A] max-w-3xl mb-8">Una vez que el calor se ha esparcido, podemos intentar recuperar una parte de esa energía residual usando Generadores Termoeléctricos (TEG). Un solo TEG grande es ineficiente; una matriz de TEG más pequeños es superior en cobertura y fiabilidad. Su conexión eléctrica es clave para el rendimiento.</p>
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-xl font-bold text-center mb-4">Simulador de Configuración de Matriz de TEG</h3>
+                <p class="text-center text-sm text-gray-500 mb-6">Seleccione una configuración para ver cómo afecta al voltaje y la corriente de salida de la matriz.</p>
+                <div class="flex justify-center gap-4 mb-4">
+                    <button class="config-button bg-gray-200 px-4 py-2 rounded-lg" data-config="series">Serie</button>
+                    <button class="config-button bg-gray-200 px-4 py-2 rounded-lg" data-config="parallel">Paralelo</button>
+                    <button class="config-button bg-gray-200 px-4 py-2 rounded-lg active" data-config="hybrid">Serie-Paralelo</button>
+                </div>
+                <div class="chart-container" style="height:40vh; max-height: 350px;">
+                    <canvas id="tegChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="arquitecturas" class="mb-16">
+            <h2 class="text-3xl font-bold text-[#A56E5A] mb-4">Arquitecturas de Sistema Propuestas</h2>
+            <p class="text-lg text-[#43403A] max-w-3xl mb-8">Combinando estas tecnologías, podemos proponer dos arquitecturas principales para la gestión térmica de la IPU. La elección depende del equilibrio deseado entre máximo rendimiento de refrigeración, coste y eficiencia energética.</p>
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div>
+                        <h3 class="text-xl font-bold mb-2">Opción A: Máximo Rendimiento</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="p-2 bg-[#F5F1EE] rounded">1. Fuente de Calor (TEC)</div>
+                            <div class="text-center">↓</div>
+                            <div class="p-2 bg-[#EAE2DC] rounded">2. Cámara de Vapor</div>
+                             <div class="text-center">↓</div>
+                            <div class="p-2 bg-[#DED3CB] rounded font-semibold">3. Refrigeración Líquida (Microcanales)</div>
+                        </div>
+                        <p class="mt-4 text-gray-600">La ruta de menor resistencia térmica. Prioriza la fiabilidad y el rendimiento de los componentes sobre todo lo demás.</p>
+                    </div>
+                     <div>
+                        <h3 class="text-xl font-bold mb-2">Opción B: Sistema Híbrido</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="p-2 bg-[#F5F1EE] rounded">1. Fuente de Calor (TEC)</div>
+                            <div class="text-center">↓</div>
+                            <div class="p-2 bg-[#EAE2DC] rounded">2. Cámara de Vapor</div>
+                             <div class="text-center">↓</div>
+                            <div class="p-2 bg-[#DED3CB] rounded font-semibold">3. Matriz de TEG</div>
+                            <div class="text-center">↓</div>
+                            <div class="p-2 bg-[#C7B9B0] rounded">4. Disipador de Aire Forzado</div>
+                        </div>
+                        <p class="mt-4 text-gray-600">Equilibra la refrigeración con la recuperación de energía, mejorando la eficiencia global y la resiliencia del sistema.</p>
+                    </div>
+                </div>
+                <div class="chart-container" style="height:40vh; max-height: 400px;">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const tooltipTitleCallback = (tooltipItems) => {
+        const item = tooltipItems[0];
+        let label = item.chart.data.labels[item.dataIndex];
+        if (Array.isArray(label)) {
+          return label.join(' ');
+        }
+        return label;
+    };
+
+    // Tab switcher logic
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            const tabId = button.dataset.tab;
+            tabContents.forEach(content => {
+                if (content.id === tabId) {
+                    content.classList.remove('hidden');
+                } else {
+                    content.classList.add('hidden');
+                }
+            });
+        });
+    });
+
+    // TEG Chart Logic
+    const tegCtx = document.getElementById('tegChart').getContext('2d');
+    const tegData = {
+        baseVoltage: 0.5, // Volts per module
+        baseCurrent: 0.8, // Amps per module
+        modules: 16,
+        seriesStrings: 4,
+        parallelStrings: 4,
+    };
+
+    let tegChart;
+
+    function generateTegData(config) {
+        let V_oc, I_sc, label;
+        if (config === 'series') {
+            V_oc = tegData.baseVoltage * tegData.modules;
+            I_sc = tegData.baseCurrent;
+            label = '16 Módulos en Serie';
+        } else if (config === 'parallel') {
+            V_oc = tegData.baseVoltage;
+            I_sc = tegData.baseCurrent * tegData.modules;
+            label = '16 Módulos en Paralelo';
+        } else { // hybrid
+            V_oc = tegData.baseVoltage * tegData.seriesStrings;
+            I_sc = tegData.baseCurrent * tegData.parallelStrings;
+            label = '4 Cadenas de 4 Módulos en Paralelo';
+        }
+        return {
+            label: label,
+            data: [{x: 0, y: I_sc}, {x: V_oc, y: 0}],
+            borderColor: '#A56E5A',
+            backgroundColor: 'rgba(165, 110, 90, 0.2)',
+            tension: 0.1,
+            fill: false
+        };
+    }
+
+    function updateTegChart(config) {
+        if (tegChart) {
+            tegChart.destroy();
+        }
+        const newDataset = generateTegData(config);
+        tegChart = new Chart(tegCtx, {
+            type: 'line',
+            data: {
+                datasets: [newDataset]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: { display: true, text: 'Voltaje de Salida (V)' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Corriente de Salida (A)' }
+                    }
+                },
+                plugins: {
+                   legend: { display: false },
+                   tooltip: { callbacks: { title: tooltipTitleCallback } }
+                }
+            }
+        });
+    }
+
+    const configButtons = document.querySelectorAll('.config-button');
+    configButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            configButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            updateTegChart(button.dataset.config);
+        });
+    });
+
+    updateTegChart('hybrid'); // Initial chart
+
+    // Comparison Chart Logic
+    const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+    new Chart(comparisonCtx, {
+        type: 'radar',
+        data: {
+            labels: ['Rendimiento Térmico', 'Coste BOM', 'Complejidad', 'Fiabilidad', 'Recuperación Energía'],
+            datasets: [{
+                label: 'Opción A: Máx. Refrigeración (Líquida)',
+                data: [9, 3, 7, 8, 1],
+                backgroundColor: 'rgba(165, 110, 90, 0.2)',
+                borderColor: '#A56E5A',
+                pointBackgroundColor: '#A56E5A'
+            }, {
+                label: 'Opción B: Híbrida (TEG + Aire)',
+                data: [6, 6, 8, 6, 7],
+                backgroundColor: 'rgba(124, 106, 98, 0.2)',
+                borderColor: '#7C6A62',
+                pointBackgroundColor: '#7C6A62'
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: { display: true },
+                    suggestedMin: 0,
+                    suggestedMax: 10,
+                    pointLabels: { font: { size: 12 } }
+                }
+            },
+            plugins: {
+                legend: { position: 'top' },
+                title: { display: true, text: 'Comparación de Arquitecturas de Sistema' },
+                tooltip: { callbacks: { title: tooltipTitleCallback } }
+            }
+        }
+    });
+    
+    // Nav link active state on scroll
+    const navMenu = document.getElementById('nav-menu');
+    const sections = document.querySelectorAll('main section[id]');
+    const navLinks = navMenu.querySelectorAll('a');
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').substring(1) === entry.target.id) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    }, {
+        threshold: 0.5
+    });
+
+    sections.forEach(section => observer.observe(section));
+});
+</script>
+</body>
+</html>

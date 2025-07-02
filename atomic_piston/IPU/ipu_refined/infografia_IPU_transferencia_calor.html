@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chosen Palette: Energetic & Playful -->
+    <!-- Application Structure Plan: The infographic follows a top-down narrative structure. It begins with the core problem (high heat flux), then presents the first-level solution (heat spreading), followed by a value-add opportunity (energy recovery), and concludes with integrated system architectures. This logical flow guides the user from problem to solution. Key interactive elements include: 1) A tabbed interface to compare Heat Pipes and Vapor Chambers directly. 2) An interactive line chart to demonstrate TEG matrix configurations, making an abstract electrical concept tangible. 3) A radar chart to provide a multi-dimensional comparison of the final proposed architectures. This structure is designed to make complex engineering trade-offs clear and engaging. -->
+    <!-- Visualization & Content Choices: 
+        1. Heat Load Stat: Goal: Inform -> Viz: Single Big Number card. Justification: Immediately establishes the scale of the engineering challenge. Library: None.
+        2. Heat Spreader Comparison: Goal: Compare -> Viz: Tabbed interface with HTML/CSS diagrams. Justification: Provides a direct, side-by-side comparison of Heat Pipes and Vapor Chambers, explaining their function and ideal use cases without SVG.
+        3. TEG Matrix Configuration: Goal: Organize/Compare -> Viz: Interactive line chart (Chart.js) with buttons. Justification: Allows the user to actively see how series vs. parallel connections affect the voltage and current output of a TEG array.
+        4. Architecture Comparison: Goal: Compare -> Viz: Radar chart (Chart.js). Justification: Offers a multi-dimensional comparison of the proposed system architectures across key engineering metrics (Performance, Cost, Complexity), providing a quick, holistic overview.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <title>Infografía: Gestión Térmica Avanzada para la IPU</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1f2937; }
+        .chart-container { position: relative; height: 40vh; max-height: 400px; width: 100%; max-width: 700px; margin: 2rem auto; }
+        .tab-button.active { background-color: #8338ec; color: white; }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
+
+        <header class="text-center my-12">
+            <h1 class="text-4xl md:text-6xl font-black tracking-tight text-gray-900">Del Calor al Valor</h1>
+            <p class="mt-4 text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">Un análisis visual de las tecnologías de transferencia de calor y recuperación de energía para la Unidad de Potencia Inteligente (IPU).</p>
+        </header>
+
+        <section id="challenge" class="my-16">
+            <h2 class="text-3xl font-bold text-center mb-8 text-gray-800">El Desafío: Un Punto Caliente de Alta Intensidad</h2>
+            <p class="text-center text-lg text-gray-600 max-w-3xl mx-auto mb-12">La operación del "Pistón Atómico" de la IPU genera un intenso pulso de calor en un área muy concentrada. La gestión eficaz de esta carga térmica es fundamental para la fiabilidad y el rendimiento del sistema.</p>
+            <div class="flex justify-center">
+                <div class="bg-white p-8 rounded-2xl shadow-2xl border-t-4 border-rose-500 text-center">
+                    <h3 class="text-xl font-bold text-gray-700">Carga Térmica de Pico</h3>
+                    <div class="text-7xl font-extrabold text-rose-600 my-2">~750W</div>
+                    <p class="text-gray-500">Concentrados en la pequeña superficie del lado caliente del módulo de refrigeración.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="heat-spreaders" class="my-16">
+            <h2 class="text-3xl font-bold text-center mb-8 text-gray-800">Paso 1: Esparcir el Calor Eficazmente</h2>
+            <p class="text-center text-lg text-gray-600 max-w-3xl mx-auto mb-12">Antes de disipar el calor, debemos esparcirlo desde la fuente concentrada a un área más grande. Las tecnologías de cambio de fase son órdenes de magnitud más efectivas que el cobre sólido para esta tarea.</p>
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex border-b border-gray-200 mb-6 justify-center">
+                    <button class="tab-button active py-2 px-6 rounded-t-lg font-semibold" data-tab="vaporchamber">Cámaras de Vapor</button>
+                    <button class="tab-button py-2 px-6 rounded-t-lg font-semibold" data-tab="heatpipe">Tubos de Calor</button>
+                </div>
+                
+                <div id="vaporchamber" class="tab-content">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div class="flex justify-center items-center h-48 bg-slate-100 rounded-lg p-4">
+                           <div class="w-48 h-24 bg-gray-300 rounded-lg flex justify-center items-center relative">
+                                <span class="text-blue-500 text-4xl">⇡ ⇡ ⇡</span>
+                                <div class="absolute -bottom-5 w-10 h-10 bg-rose-400 rounded-full flex justify-center items-center"><span class="text-white font-bold">🔥</span></div>
+                                <div class="absolute top-0 left-0 w-full text-center -mt-6 text-sm font-semibold text-blue-600">SUPERFICIE ISOTÉRMICA</div>
+                                <div class="absolute bottom-0 left-0 w-full text-center -mb-10 text-sm font-semibold text-rose-600">FUENTE CONCENTRADA</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold mb-2 text-violet-700">La Solución Superior para la IPU</h3>
+                            <p class="text-gray-600 mb-4">Una cámara de vapor es un esparcidor de calor planar. Es la tecnología ideal para tomar el alto flujo de calor del "Pistón Atómico" y distribuirlo uniformemente, creando una superficie de temperatura constante perfecta para la siguiente etapa de refrigeración.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="heatpipe" class="tab-content hidden">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div class="flex justify-center items-center h-48 bg-slate-100 rounded-lg p-4">
+                           <div class="flex items-center space-x-4">
+                                <div class="text-center">
+                                    <div class="w-16 h-4 bg-rose-300 rounded"></div>
+                                    <span class="text-sm font-semibold text-rose-600">CALIENTE</span>
+                                </div>
+                                <div class="w-24 h-2 bg-gray-400"></div>
+                                <div class="text-center">
+                                     <div class="w-16 h-4 bg-blue-300 rounded"></div>
+                                    <span class="text-sm font-semibold text-blue-600">FRÍO</span>
+                                </div>
+                           </div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold mb-2">Transporte Lineal de Calor</h3>
+                            <p class="text-gray-600 mb-4">Un tubo de calor es excelente para mover calor de un punto A a un punto B. Es útil para disipadores remotos, pero menos eficaz que una cámara de vapor para esparcir el calor de una fuente concentrada como la de la IPU.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="energy-recovery" class="my-16">
+            <h2 class="text-3xl font-bold text-center mb-8 text-gray-800">Paso 2: Recuperar la Energía Residual</h2>
+            <p class="text-center text-lg text-gray-600 max-w-3xl mx-auto mb-12">El calor disipado es energía perdida. Mediante Generadores Termoeléctricos (TEG), podemos convertir una parte de este calor en electricidad utilizable. La clave está en configurar una matriz de TEGs para obtener un voltaje y una corriente prácticos.</p>
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-center mb-4">Simulador de Configuración de Matriz de 16 TEGs</h3>
+                <p class="text-center text-sm text-gray-500 mb-6">Seleccione una configuración para ver cómo afecta a la curva de potencia (Voltaje vs. Corriente) de la matriz.</p>
+                <div class="flex justify-center gap-4 mb-4">
+                    <button class="config-button bg-gray-200 hover:bg-violet-200 py-2 px-4 rounded-lg font-semibold" data-config="series">16 en Serie</button>
+                    <button class="config-button bg-gray-200 hover:bg-violet-200 py-2 px-4 rounded-lg font-semibold" data-config="parallel">16 en Paralelo</button>
+                    <button class="config-button active bg-violet-600 text-white py-2 px-4 rounded-lg font-semibold" data-config="hybrid">4x4 Serie-Paralelo</button>
+                </div>
+                <div class="chart-container" style="height:350px;">
+                    <canvas id="tegChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="architectures" class="my-16">
+            <h2 class="text-3xl font-bold text-center mb-8 text-gray-800">Arquitecturas de Sistema Propuestas</h2>
+            <p class="text-center text-lg text-gray-600 max-w-3xl mx-auto mb-12">La integración de estas tecnologías nos lleva a dos arquitecturas finales. La elección depende del equilibrio entre el máximo rendimiento de refrigeración y la eficiencia energética global.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
+                    <h3 class="text-2xl font-bold mb-3 text-blue-600">Opción A: Máximo Rendimiento</h3>
+                    <p class="text-gray-600 mb-4">Prioriza la disipación de calor por encima de todo para garantizar la máxima fiabilidad y el mayor rendimiento posible de los componentes de potencia.</p>
+                    <div class="space-y-2 font-medium">
+                        <div class="p-3 bg-slate-100 rounded-md">1. Fuente de Calor (TEC)</div>
+                        <div class="text-center text-gray-400">▼</div>
+                        <div class="p-3 bg-slate-100 rounded-md">2. Cámara de Vapor</div>
+                        <div class="text-center text-gray-400">▼</div>
+                        <div class="p-3 bg-blue-100 text-blue-800 rounded-md">3. Refrigeración Líquida (Microcanales)</div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-amber-500">
+                    <h3 class="text-2xl font-bold mb-3 text-amber-600">Opción B: Sistema Híbrido</h3>
+                    <p class="text-gray-600 mb-4">Busca un equilibrio, recuperando energía del calor residual para mejorar la eficiencia y la resiliencia del sistema global.</p>
+                     <div class="space-y-2 font-medium">
+                        <div class="p-3 bg-slate-100 rounded-md">1. Fuente de Calor (TEC)</div>
+                        <div class="text-center text-gray-400">▼</div>
+                        <div class="p-3 bg-slate-100 rounded-md">2. Cámara de Vapor</div>
+                        <div class="text-center text-gray-400">▼</div>
+                        <div class="p-3 bg-amber-100 text-amber-800 rounded-md">3. Matriz de TEG</div>
+                        <div class="text-center text-gray-400">▼</div>
+                        <div class="p-3 bg-slate-100 rounded-md">4. Disipador de Aire Forzado</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-8 mt-8 rounded-2xl shadow-lg">
+                 <h3 class="text-2xl font-bold text-center mb-6">Comparación de Arquitecturas</h3>
+                 <div class="chart-container">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const tooltipTitleCallback = (tooltipItems) => {
+        const item = tooltipItems[0];
+        let label = item.chart.data.labels[item.dataIndex];
+        if (Array.isArray(label)) {
+          return label.join(' ');
+        }
+        return label;
+    };
+
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            const tabId = button.dataset.tab;
+            tabContents.forEach(content => {
+                content.classList.toggle('hidden', content.id !== tabId);
+            });
+        });
+    });
+
+    const tegCtx = document.getElementById('tegChart').getContext('2d');
+    const tegData = {
+        baseVoltage: 0.2,
+        baseCurrent: 0.5,
+        modules: 16,
+        seriesStrings: 4,
+        parallelStrings: 4,
+    };
+
+    let tegChart;
+
+    function generateTegData(config) {
+        let V_oc, I_sc, label;
+        if (config === 'series') {
+            V_oc = tegData.baseVoltage * tegData.modules;
+            I_sc = tegData.baseCurrent;
+            label = '16 Módulos en Serie';
+        } else if (config === 'parallel') {
+            V_oc = tegData.baseVoltage;
+            I_sc = tegData.baseCurrent * tegData.modules;
+            label = '16 Módulos en Paralelo';
+        } else {
+            V_oc = tegData.baseVoltage * tegData.seriesStrings;
+            I_sc = tegData.baseCurrent * tegData.parallelStrings;
+            label = '4 Cadenas de 4 Módulos en Paralelo';
+        }
+        return {
+            label: label,
+            data: [{x: 0, y: I_sc}, {x: V_oc, y: 0}],
+            borderColor: '#8338ec',
+            backgroundColor: 'rgba(131, 56, 236, 0.1)',
+            borderWidth: 3,
+            tension: 0.1,
+            fill: true,
+            pointRadius: 5,
+        };
+    }
+
+    function updateTegChart(config) {
+        const newDataset = generateTegData(config);
+        if (tegChart) {
+            tegChart.data.datasets[0] = newDataset;
+            tegChart.options.plugins.title.text = `Curva I-V: ${newDataset.label}`;
+            tegChart.update();
+        } else {
+            tegChart = new Chart(tegCtx, {
+                type: 'line',
+                data: { datasets: [newDataset] },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'linear', position: 'bottom', title: { display: true, text: 'Voltaje de Salida (V)' } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Corriente de Salida (A)' } }
+                    },
+                    plugins: {
+                       legend: { display: false },
+                       title: { display: true, text: `Curva I-V: ${newDataset.label}`, font: { size: 16 } },
+                       tooltip: { callbacks: { title: tooltipTitleCallback } }
+                    }
+                }
+            });
+        }
+    }
+
+    const configButtons = document.querySelectorAll('.config-button');
+    configButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            configButtons.forEach(btn => {
+                btn.classList.remove('active', 'bg-violet-600', 'text-white');
+                btn.classList.add('bg-gray-200');
+            });
+            button.classList.add('active', 'bg-violet-600', 'text-white');
+            button.classList.remove('bg-gray-200');
+            updateTegChart(button.dataset.config);
+        });
+    });
+
+    updateTegChart('hybrid');
+
+    const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+    new Chart(comparisonCtx, {
+        type: 'radar',
+        data: {
+            labels: ['Rendimiento Térmico', 'Coste del Sistema', 'Complejidad', 'Fiabilidad', 'Recuperación de Energía'],
+            datasets: [{
+                label: 'Opción A: Máx. Refrigeración (Líquida)',
+                data: [9, 3, 7, 8, 1],
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgb(54, 162, 235)',
+                pointBackgroundColor: 'rgb(54, 162, 235)'
+            }, {
+                label: 'Opción B: Híbrida (TEG + Aire)',
+                data: [6, 6, 8, 6, 7],
+                backgroundColor: 'rgba(251, 86, 7, 0.2)',
+                borderColor: 'rgb(251, 86, 7)',
+                pointBackgroundColor: 'rgb(251, 86, 7)'
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: { color: '#e5e7eb' },
+                    grid: { color: '#e5e7eb' },
+                    pointLabels: { font: { size: 12 }, color: '#4b5563' },
+                    ticks: {
+                        backdropColor: 'rgba(255, 255, 255, 0.75)',
+                        color: '#6b7280',
+                        stepSize: 2
+                    },
+                    suggestedMin: 0,
+                    suggestedMax: 10
+                }
+            },
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: { callbacks: { title: tooltipTitleCallback } }
+            }
+        }
+    });
+
+});
+</script>
+
+</body>
+</html>
