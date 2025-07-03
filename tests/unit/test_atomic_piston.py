@@ -244,6 +244,7 @@ class TestAtomicPiston:
         # Force should be consumed after update
         assert piston.last_applied_force == 0.0
 
+
     def test_update_state_increases_stored_energy_on_compression(
         self,
         default_piston: AtomicPiston
@@ -251,7 +252,7 @@ class TestAtomicPiston:
         """Verifica que stored_energy aumenta cuando el pistón se comprime."""
         piston = default_piston
         initial_energy = piston.stored_energy
-        assert initial_energy == 0.0 # Starts at rest
+        assert initial_energy == 0.0  # Starts at rest
 
         # Apply a force to compress the piston
         piston.last_applied_force = -10.0  # Negative force to compress
@@ -268,8 +269,9 @@ class TestAtomicPiston:
         assert piston.stored_energy > initial_energy
 
         # Let it oscillate a bit, energy should still be present
-        piston.update_state(dt=DT) # Force is consumed, now spring/damping act
-        assert piston.stored_energy > 0 # Energy might change but still be positive
+        piston.update_state(dt=DT)  # Force is consumed, now spring/damping act
+        assert piston.stored_energy > 0  # Energy might change but still be positive
+
 
     def test_update_state_spring_force_effect(
         self,
@@ -284,21 +286,24 @@ class TestAtomicPiston:
         # position at t=-dt (previous_position) should be pos(0) - vel(0)*dt = -10 - 0*dt = -10
         initial_pos = -10.0
         piston.position = initial_pos
-        piston.previous_position = initial_pos # For Verlet start from rest
-        piston.velocity = 0.0 # Explicitly set, though not directly used by Verlet pos update if prev_pos is set right
+        piston.previous_position = initial_pos  # For Verlet start from rest
+        # Explicitly set, though not directly used by Verlet pos update if prev_pos is set right
+        piston.velocity = 0.0
 
-        initial_velocity_val = piston.velocity # Should be 0
+        initial_velocity_val = piston.velocity  # Should be 0
 
         piston.update_state(dt=DT)  # No external force, only spring force
 
-        # With Verlet integration, starting from pos=-10, prev_pos=-10, vel=0 (due to prev_pos setting):
+        # With Verlet integration, starting from pos=-10, prev_pos=-10, vel=0
+        # (due to prev_pos setting):
         # spring_force = -k * position = -10 * (-10) = 100
         # acceleration = spring_force / m = 100 / 1 = 100
         # new_position = 2*(-10) - (-10) + 100*(0.01^2) = -20 + 10 + 0.01 = -9.99
         # new_velocity = (new_position - previous_position_before_update) / (2*dt)
         # new_velocity = (-9.99 - (-10)) / (2*0.01) = 0.01 / 0.02 = 0.5
 
-        assert piston.velocity > initial_velocity_val  # Spring pushes it back, velocity becomes positive
+        # Spring pushes it back, velocity becomes positive
+        assert piston.velocity > initial_velocity_val
         assert piston.position > initial_pos  # Position moves towards 0
         assert piston.position == pytest.approx(-9.99)
         assert piston.velocity == pytest.approx(0.5)
@@ -355,15 +360,16 @@ class TestAtomicPiston:
         """Verifica que la posición del pistón no exceda la capacidad máxima."""
         # Use custom piston for specific elasticity
         piston = AtomicPiston(
-            capacity=DEFAULT_CAPACITY, elasticity=1.0, damping=0.0 # k=1
+            capacity=DEFAULT_CAPACITY, elasticity=1.0, damping=0.0  # k=1
         )
         applied_force = -10000.0  # Large constant force
 
-        # Loop enough times to ensure saturation is reached or equilibrium with the large force
-        # If k=1, then at position -110 (saturation), spring force is 110.
-        # Applied force is -10000. So it should definitely hit saturation.
-        for _ in range(500): # Increased iterations
-            piston.last_applied_force = applied_force # Re-apply force each step
+        # Loop enough times to ensure saturation is reached or equilibrium
+        # with the large force. If k=1, then at position -110 (saturation),
+        # spring force is 110. Applied force is -10000.
+        # So it should definitely hit saturation.
+        for _ in range(500):  # Increased iterations
+            piston.last_applied_force = applied_force  # Re-apply force each step
             piston.update_state(dt=DT)
             # Check if it has reached or passed the saturation threshold
             if piston.position <= -piston.saturation_threshold:
@@ -371,8 +377,8 @@ class TestAtomicPiston:
 
         # Position should be clipped at -saturation_threshold
         assert piston.position == pytest.approx(-piston.saturation_threshold)
-        # Current charge is based on position, but capped effectively by capacity in its definition
-        # current_charge = max(0, -position)
+        # Current charge is based on position, but capped effectively by
+        # capacity in its definition current_charge = max(0, -position)
         # If position is -110, current_charge would be 110.
         # This seems fine as current_charge reflects the actual compression.
         assert piston.current_charge == pytest.approx(piston.saturation_threshold)
@@ -381,6 +387,7 @@ class TestAtomicPiston:
         piston.last_applied_force = applied_force
         piston.update_state(dt=DT)
         assert piston.position == pytest.approx(-piston.saturation_threshold)
+
 
     # --- Capacitor Mode Tests ---
     def test_discharge_capacitor_above_threshold(
@@ -394,11 +401,11 @@ class TestAtomicPiston:
         initial_charge = piston.current_charge
         assert initial_charge > 0
 
-        output_signal = piston.discharge(dt=DT) # Added dt=DT
+        output_signal = piston.discharge(dt=DT)  # Added dt=DT
 
         assert output_signal is None
         # Position and charge should remain unchanged
-        assert piston.position == -DEFAULT_CAPACITY * 0.5  # noqa: E128
+        assert piston.position == -DEFAULT_CAPACITY * 0.5
         assert piston.current_charge == initial_charge
 
     def test_discharge_capacitor_at_threshold(
@@ -414,7 +421,7 @@ class TestAtomicPiston:
         initial_charge = piston.current_charge
         assert initial_charge == pytest.approx(abs(discharge_threshold))
 
-        output_signal = piston.discharge(dt=DT) # Pass dt
+        output_signal = piston.discharge(dt=DT)  # Pass dt
 
         assert output_signal is not None
         assert output_signal["type"] == "pulse"
@@ -440,7 +447,7 @@ class TestAtomicPiston:
         initial_charge = piston.current_charge
         assert initial_charge == DEFAULT_CAPACITY
 
-        output_signal = piston.discharge(dt=DT) # Pass dt
+        output_signal = piston.discharge(dt=DT)  # Pass dt
 
         assert output_signal is not None
         assert output_signal["type"] == "pulse"
@@ -549,6 +556,7 @@ class TestAtomicPiston:
         assert output_signal is None
         assert not piston.battery_is_discharging
 
+
     def test_discharge_battery_triggered_but_no_charge(
         self,
         battery_piston: AtomicPiston
@@ -565,18 +573,22 @@ class TestAtomicPiston:
         assert output_signal is None
         # Test asserts desired behavior: if triggered but empty, it should stop.
         # NOTE: This may require atomic_piston.py to set
-        # self.battery_is_discharging = False if current_charge is 0  # noqa: E128
+        # self.battery_is_discharging = False if current_charge is 0
         # at the beginning of a triggered discharge call.
         assert not piston.battery_is_discharging
 
+
     # --- Electronic Signal Application Tests ---
-    def test_apply_electronic_signal_piezoelectric(self, default_piston: AtomicPiston):
+    def test_apply_electronic_signal_piezoelectric(
+            self,
+            default_piston: AtomicPiston
+    ):
         """Verifica apply_electronic_signal para transductor piezoeléctrico."""
         piston = default_piston
         # Ensure it's Piezoelectric, or set it if fixture allows modification
         piston.transducer_type = TransducerType.PIEZOELECTRIC
         piston.voltage_sensitivity = 50.0  # V/m
-        piston.force_sensitivity = 0.02  # N/V
+        piston.force_sensitivity = 0.02   # N/V
 
         voltage = 10.0  # Volts
         piston.apply_electronic_signal(voltage)
@@ -611,21 +623,23 @@ class TestAtomicPiston:
         # The internal circuit_current calculation depends on dt if called over time.
 
         voltage = 15.0  # Volts
-        initial_current = piston.circuit_current # Should be 0
+        initial_current = piston.circuit_current  # Should be 0
 
         # First call: circuit_current is 0
         # voltage_drop = 0 * R = 0
         # di_dt = (voltage - 0) / L = voltage / m
         # circuit_current += di_dt * piston.dt (piston.dt is 0.01 by default)
         # applied_force = circuit_current * force_sensitivity
-
         piston.apply_electronic_signal(voltage)
 
         # After first call:
         # di_dt = (15.0 - 0.0 * 1.0) / 1.0 = 15.0
         # piston.circuit_current = 0.0 + 15.0 * 0.01 = 0.15 A
         # expected_force = 0.15 * 0.05 = 0.0075 N
-        expected_di_dt = (voltage - initial_current * piston.equivalent_resistance) / piston.equivalent_inductance
+        expected_di_dt = (
+            (voltage - initial_current * piston.equivalent_resistance) /
+            piston.equivalent_inductance
+        )
         expected_current = initial_current + expected_di_dt * piston.dt
         expected_force = expected_current * piston.force_sensitivity
         assert piston.circuit_current == pytest.approx(expected_current)
@@ -638,12 +652,17 @@ class TestAtomicPiston:
         # di_dt = (voltage - voltage_drop) / L
         # new_circuit_current = expected_current + di_dt * piston.dt
         # new_expected_force = new_circuit_current * force_sensitivity
-
-        second_di_dt = (voltage - expected_current * piston.equivalent_resistance) / piston.equivalent_inductance
+        second_di_dt = (
+            (voltage - expected_current * piston.equivalent_resistance) /
+            piston.equivalent_inductance
+        )
         second_expected_current = expected_current + second_di_dt * piston.dt
         second_expected_force = second_expected_current * piston.force_sensitivity
         assert piston.circuit_current == pytest.approx(second_expected_current)
-        assert piston.last_applied_force == pytest.approx(expected_force + second_expected_force) # Forces accumulate
+        # Forces accumulate
+        assert piston.last_applied_force == pytest.approx(
+            expected_force + second_expected_force
+        )
 
     def test_discharge_battery_triggered_with_charge(
         self,
@@ -662,6 +681,7 @@ class TestAtomicPiston:
         assert output_signal["amplitude"] == 1.0
         # Should remain true while discharging and charge > 0
         assert piston.battery_is_discharging
+
 
     def test_discharge_battery_gradual_reduction(
         self,
@@ -700,13 +720,14 @@ class TestAtomicPiston:
         # Ensure there's something to discharge to avoid infinite loops if rate is zero
         if position_released_per_call == 0 and piston.current_charge > 0:
             # If discharge rate or interval is zero, it will never discharge.
-            # This can happen if capacity is zero, leading to battery_discharge_rate = 0
+            # This can happen if capacity is zero,
+            # leading to battery_discharge_rate = 0
             pass
 
         for _ in range(num_discharge_calls):
             if not piston.battery_is_discharging or piston.current_charge == 0:
                 break
-            piston.discharge(dt=DT) # Pass dt, using the test's DT
+            piston.discharge(dt=DT)  # Pass dt, using the test's DT
             charges.append(piston.current_charge)
             positions.append(piston.position)
 
@@ -732,11 +753,12 @@ class TestAtomicPiston:
         for _ in range(calls_to_empty_fully):  # Max attempts to empty
             if not piston.battery_is_discharging or piston.current_charge == 0:
                 break
-            piston.discharge(dt=DT) # Pass dt
+            piston.discharge(dt=DT)  # Pass dt
 
         assert piston.current_charge == pytest.approx(0.0, abs=1e-5)
         assert piston.position == pytest.approx(0.0, abs=1e-5)
         assert not piston.battery_is_discharging
+
 
     # --- Mode Switching and Triggering ---
     def test_set_mode(self, default_piston: AtomicPiston):
@@ -797,7 +819,8 @@ class TestAtomicPiston:
         # Apply force from source1
         mock_monotonic_time.return_value = 1.0 + DT
         piston.apply_force(signal_value=10, source="source1")
-        force1_accumulated = piston.last_applied_force # Force after s1's dynamic contribution
+        # Force after s1's dynamic contribution
+        force1_accumulated = piston.last_applied_force
         # This is the first significant force, previous was 0.
         # force1_contribution = -0.5 * piston.m * ((10.0/DT)**2)
         force1_contribution = force1_accumulated
@@ -808,35 +831,41 @@ class TestAtomicPiston:
         # Apply force from source2, time advances for source2's dt calculation
         mock_monotonic_time.return_value = 1.0 + DT + DT  # Further advance time
         piston.apply_force(signal_value=5, source="source2")
-        force2_accumulated = piston.last_applied_force # Force after s1 and s2 dynamic contributions
+        # Force after s1 and s2 dynamic contributions
+        force2_accumulated = piston.last_applied_force
 
         # force2_contribution = -0.5 * piston.m * ((5.0/(2*DT))**2)
         force2_contribution = force2_accumulated - force_before_s2_dynamic_change
 
-        assert force2_contribution < 0 # This specific contribution should also be negative
+        # This specific contribution should also be negative
+        assert force2_contribution < 0
 
         # Compare magnitudes of individual contributions
         # abs(force1_contribution) = |-0.5 * 1 * (10/0.01)^2| = |-500000| = 500000
-        # abs(force2_contribution) = |-0.5 * 1 * (5/(2*0.01))^2| = |-0.5 * (250)^2| = |-31250| = 31250
+        # abs(force2_contribution) = |-0.5*1*(5/(2*0.01))^2| = |-0.5*(250)^2| = |-31250|=31250
         assert abs(force1_contribution) > abs(force2_contribution)
         assert force1_accumulated != force2_accumulated
 
         # Check if last_signal_info is updated correctly for both sources
         assert "source1" in piston.last_signal_info
-        assert piston.last_signal_info["source1"][0] == 10  # Access by index
-        assert piston.last_signal_info["source1"][1] == 1.0 + DT # Access by index
+        assert piston.last_signal_info["source1"][0] == 10     # Access by index
+        assert piston.last_signal_info["source1"][1] == 1.0 + DT  # Access by index
 
         assert "source2" in piston.last_signal_info
-        assert piston.last_signal_info["source2"][0] == 5 # Access by index
-        assert piston.last_signal_info["source2"][1] == 1.0 + DT + DT # Access by index
+        assert piston.last_signal_info["source2"][0] == 5      # Access by index
+        assert piston.last_signal_info["source2"][1] == 1.0 + DT + DT  # Access by index
+
 
     # --- Bode Data Generation Tests ---
-    def test_generate_bode_data_output_structure_and_length(self, default_piston: AtomicPiston):
+    def test_generate_bode_data_output_structure_and_length(
+            self,
+            default_piston: AtomicPiston
+    ):
         """
         Verifica la estructura del output de generate_bode_data y la longitud de los arrays.
         """
         piston = default_piston
-        frequency_range = np.array([10, 100, 1000, 10000]) # Hz
+        frequency_range = np.array([10, 100, 1000, 10000])  # Hz
 
         bode_data = piston.generate_bode_data(frequency_range)
 
@@ -850,19 +879,34 @@ class TestAtomicPiston:
 
         # 3. Verify array lengths
         input_len = len(frequency_range)
-        assert len(bode_data["frequencies"]) == input_len, "Frequencies array length mismatch"
-        assert len(bode_data["magnitude"]) == input_len, "Magnitude array length mismatch"
+        assert len(bode_data["frequencies"]) == input_len, (
+            "Frequencies array length mismatch"
+        )
+        assert len(bode_data["magnitude"]) == input_len, (
+            "Magnitude array length mismatch"
+        )
         assert len(bode_data["phase"]) == input_len, "Phase array length mismatch"
 
         # 4. Verify output types (basic check)
-        assert isinstance(bode_data["frequencies"], (np.ndarray, list)), "Frequencies should be array-like"
-        assert isinstance(bode_data["magnitude"], list), "Magnitude should be a list (as per current implementation)"
-        assert isinstance(bode_data["phase"], list), "Phase should be a list (as per current implementation)"
+        assert isinstance(bode_data["frequencies"], (np.ndarray, list)), (
+            "Frequencies should be array-like"
+        )
+        assert isinstance(bode_data["magnitude"], list), (
+            "Magnitude should be a list (as per current implementation)"
+        )
+        assert isinstance(bode_data["phase"], list), (
+            "Phase should be a list (as per current implementation)"
+        )
 
         # 5. Verify frequencies array is the same as input
-        assert np.array_equal(bode_data["frequencies"], frequency_range), "Frequencies array should match input"
+        assert np.array_equal(
+            bode_data["frequencies"], frequency_range
+        ), "Frequencies array should match input"
 
-    def test_generate_bode_data_empty_frequency_range(self, default_piston: AtomicPiston):
+    def test_generate_bode_data_empty_frequency_range(
+            self,
+            default_piston: AtomicPiston
+    ):
         """
         Verifica el comportamiento de generate_bode_data con un rango de frecuencias vacío.
         """
@@ -913,7 +957,9 @@ class TestAtomicPiston:
 
         # Check if phase varies (it should for different frequencies in a dynamic system)
         if len(phases) > 1:
-            assert not all(p == phases[0] for p in phases[1:]), "Phase does not vary, which is unlikely for these frequencies"
+            assert not all(p == phases[0] for p in phases[1:]), (
+                "Phase does not vary, which is unlikely for these frequencies"
+            )
 
 
     # --- Reset Function Tests ---
@@ -923,13 +969,14 @@ class TestAtomicPiston:
 
         # 1. Modificar el estado del pistón
         piston.last_applied_force = -50.0
-        piston.update_state(dt=DT) # Apply force, change position, velocity
-        piston.update_state(dt=DT) # Let it move a bit
+        piston.update_state(dt=DT)  # Apply force, change position, velocity
+        piston.update_state(dt=DT)  # Let it move a bit
 
-        piston.apply_electronic_signal(voltage=5.0) # Accumulate some electronic state
-        piston.update_state(dt=DT) # Update state after electronic signal
+        # Accumulate some electronic state
+        piston.apply_electronic_signal(voltage=5.0)
+        piston.update_state(dt=DT)  # Update state after electronic signal
 
-        piston.charge_accumulated = 1.23 # Directly set for testing
+        piston.charge_accumulated = 1.23  # Directly set for testing
         piston.last_signal_info["test_src"] = {"value": 1, "timestamp": 123}
         piston.energy_history.append(100)
         piston.efficiency_history.append(0.5)
@@ -937,8 +984,10 @@ class TestAtomicPiston:
             piston.trigger_discharge(True)
 
         # Ensure state is indeed modified
-        assert piston.position != 0.0 or piston.velocity != 0.0 or piston.charge_accumulated != 0.0
-        assert piston.last_applied_force == 0.0 # This gets reset by update_state
+        assert (piston.position != 0.0 or
+                piston.velocity != 0.0 or
+                piston.charge_accumulated != 0.0)
+        assert piston.last_applied_force == 0.0  # This gets reset by update_state
         assert piston.circuit_voltage != 0.0 or piston.circuit_current != 0.0
         assert len(piston.last_signal_info) > 0
         assert len(piston.energy_history) > 0
@@ -958,25 +1007,33 @@ class TestAtomicPiston:
         assert piston.circuit_voltage == 0.0
         assert piston.circuit_current == 0.0
         assert piston.charge_accumulated == 0.0
-        assert not piston.battery_is_discharging # Should be reset regardless of original mode
+        # Should be reset regardless of original mode
+        assert not piston.battery_is_discharging
         assert len(piston.last_signal_info) == 0
         assert len(piston.energy_history) == 0
         assert len(piston.efficiency_history) == 0
         # Default values from __init__
-        assert piston.dt == 0.01 # Default dt is set in __init__
+        assert piston.dt == 0.01  # Default dt is set in __init__
 
         # Check a few more specific items from reset logic
-        original_mode = default_piston.mode # Store original mode for fixture
-        piston_battery = AtomicPiston(DEFAULT_CAPACITY, DEFAULT_ELASTICITY, DEFAULT_DAMPING, mode=PistonMode.BATTERY)
+        original_mode = default_piston.mode  # Store original mode for fixture
+        piston_battery = AtomicPiston(
+            DEFAULT_CAPACITY, DEFAULT_ELASTICITY, DEFAULT_DAMPING,
+            mode=PistonMode.BATTERY
+        )
         piston_battery.trigger_discharge(True)
         assert piston_battery.battery_is_discharging
         piston_battery.reset()
         assert not piston_battery.battery_is_discharging
-        default_piston.mode = original_mode # Restore fixture state if necessary, though test creates its own usually
+        # Restore fixture state if necessary, though test creates its own usually
+        default_piston.mode = original_mode
 
 
     # --- Simulate Discharge Circuit Tests ---
-    def test_simulate_discharge_circuit_basic_operation(self, default_piston: AtomicPiston):
+    def test_simulate_discharge_circuit_basic_operation(
+            self,
+            default_piston: AtomicPiston
+    ):
         """
         Verifica la operación básica de simulate_discharge_circuit.
         - Comprime el pistón para generar voltaje.
@@ -989,45 +1046,65 @@ class TestAtomicPiston:
 
         # 1. Comprimir el pistón para generar voltaje
         # Apply force and update state to compress
-        piston.last_applied_force = -200.0 # Significant force to ensure compression
-        piston.update_state(dt=DT) # Compress
-        piston.update_state(dt=DT) # Settle a bit
+        # Significant force to ensure compression
+        piston.last_applied_force = -200.0
+        piston.update_state(dt=DT)  # Compress
+        piston.update_state(dt=DT)  # Settle a bit
 
         assert piston.position < 0, "Piston should be compressed"
-        assert piston.circuit_voltage > 0, "Circuit voltage should be generated due to compression"
+        assert piston.circuit_voltage > 0, (
+            "Circuit voltage should be generated due to compression"
+        )
 
         initial_position = piston.position
         initial_stored_energy = piston.stored_energy
         initial_circuit_voltage = piston.circuit_voltage
 
         # 2. Llamar a simulate_discharge_circuit
-        voltage_on_load, current_on_load, power_dissipated = piston.simulate_discharge_circuit(
-            load_resistance=load_resistance, dt=DT
+        voltage_on_load, current_on_load, power_dissipated = (
+            piston.simulate_discharge_circuit(
+                load_resistance=load_resistance, dt=DT
+            )
         )
 
         # 3. Verificar potencia disipada
-        assert power_dissipated > 0, "Power should be dissipated in the load resistor"
+        assert power_dissipated > 0, (
+            "Power should be dissipated in the load resistor"
+        )
         # Power = V_load * I_load = (I_load * R_load) * I_load = I_load^2 * R_load
         # I_load = V_circuit / (R_equiv + R_load)
         # V_circuit is based on -position * voltage_sensitivity
-        expected_current = initial_circuit_voltage / (piston.equivalent_resistance + load_resistance)
+        expected_current = initial_circuit_voltage / (
+            piston.equivalent_resistance + load_resistance
+        )
         expected_power = expected_current**2 * load_resistance
         assert power_dissipated == pytest.approx(expected_power)
-        assert voltage_on_load == pytest.approx(expected_current * load_resistance)
+        assert voltage_on_load == pytest.approx(
+            expected_current * load_resistance
+        )
         assert current_on_load == pytest.approx(expected_current)
 
         # 4. Verificar que la posición del pistón se mueva hacia cero
         # (o sea, menos negativa, ya que la energía se disipa)
-        assert piston.position > initial_position, "Piston position should move towards zero (less negative)"
-        assert piston.position < 0, "Piston should still be somewhat compressed or at zero"
+        assert piston.position > initial_position, (
+            "Piston position should move towards zero (less negative)"
+        )
+        assert piston.position < 0, (
+            "Piston should still be somewhat compressed or at zero"
+        )
 
         # Verify stored energy decreased (mechanical energy converted and dissipated)
         # Note: update_electronic_state is called within simulate_discharge_circuit,
         # which updates circuit_voltage based on the *new* position.
         # So, the energy calculation should reflect this.
-        assert piston.stored_energy < initial_stored_energy, "Stored energy should decrease after dissipation"
+        assert piston.stored_energy < initial_stored_energy, (
+            "Stored energy should decrease after dissipation"
+        )
 
-    def test_simulate_discharge_circuit_no_compression(self, default_piston: AtomicPiston):
+    def test_simulate_discharge_circuit_no_compression(
+            self,
+            default_piston: AtomicPiston
+    ):
         """
         Verifica el comportamiento de simulate_discharge_circuit cuando no hay compresión.
         """
@@ -1038,16 +1115,21 @@ class TestAtomicPiston:
         assert piston.circuit_voltage == 0.0
         initial_position = piston.position
 
-        voltage_on_load, current_on_load, power_dissipated = piston.simulate_discharge_circuit(
-            load_resistance=load_resistance, dt=DT
+        voltage_on_load, current_on_load, power_dissipated = (
+            piston.simulate_discharge_circuit(
+                load_resistance=load_resistance, dt=DT
+            )
         )
 
         assert power_dissipated == 0.0
         assert voltage_on_load == 0.0
         assert current_on_load == 0.0
-        assert piston.position == initial_position # No change in position
+        assert piston.position == initial_position  # No change in position
 
-    def test_simulate_discharge_circuit_repeated_calls(self, default_piston: AtomicPiston):
+    def test_simulate_discharge_circuit_repeated_calls(
+            self,
+            default_piston: AtomicPiston
+    ):
         """
         Verifica que múltiples llamadas a simulate_discharge_circuit continúan disipando energía.
         """
@@ -1056,7 +1138,7 @@ class TestAtomicPiston:
 
         # Comprimir el pistón
         piston.last_applied_force = -100.0
-        for _ in range(5): # Compress over a few steps
+        for _ in range(5):  # Compress over a few steps
             piston.update_state(dt=DT)
 
         assert piston.position < 0
@@ -1065,22 +1147,26 @@ class TestAtomicPiston:
         last_position = piston.position
         total_power_dissipated = 0
 
-        for i in range(10): # Simulate discharge over several steps
-            if piston.circuit_voltage <= 1e-3: # Stop if voltage is negligible
+        for i in range(10):  # Simulate discharge over several steps
+            if piston.circuit_voltage <= 1e-3:  # Stop if voltage is negligible
                 break
 
             _, _, power_dissipated = piston.simulate_discharge_circuit(
                 load_resistance=load_resistance, dt=DT
             )
-            assert power_dissipated >= 0 # Can be zero if voltage becomes zero
+            assert power_dissipated >= 0  # Can be zero if voltage becomes zero
             total_power_dissipated += power_dissipated
 
             if power_dissipated > 0:
-                 assert piston.position > last_position, f"Position should improve on step {i}"
+                assert piston.position > last_position, (
+                    f"Position should improve on step {i}"
+                )
             last_position = piston.position
-            if piston.position >= 0: # Piston returned to or past zero
+            if piston.position >= 0:  # Piston returned to or past zero
                 break
 
         assert total_power_dissipated > 0
-        assert piston.position > -DEFAULT_CAPACITY # Should not have gone more negative
-        assert piston.position == pytest.approx(0, abs=1e-1) # Should be close to zero after many dissipations
+        # Should not have gone more negative
+        assert piston.position > -DEFAULT_CAPACITY
+        # Should be close to zero after many dissipations
+        assert piston.position == pytest.approx(0, abs=1e-1)
