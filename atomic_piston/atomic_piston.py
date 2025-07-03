@@ -21,7 +21,8 @@ class TransducerType(Enum):
 class AtomicPiston:
     """
     Unidad de Potencia Inteligente (IPU) que simula un sistema físico
-    de pistón atómico con interfaz electrónica integrada para sistemas fotovoltaicos.
+    de un pistón atómico con interfaz electrónica integrada para
+    sistemas fotovoltaicos.
 
     Este modelo combina:
     - Simulación física del pistón (masa-resorte-amortiguador)
@@ -41,12 +42,12 @@ class AtomicPiston:
         Inicializa una nueva instancia de AtomicPiston.
 
         Args:
-            capacity: Capacidad máxima de compresión del pistón (en metros)
-            elasticity: Constante elástica del resorte (k en N/m)
-            damping: Coeficiente de amortiguación (c en N·s/m)
-            piston_mass: Masa inercial del pistón (m en kg)
-            mode: Modo de operación (CAPACITOR o BATTERY)
-            transducer_type: Tipo de transductor para interfaz electrónica
+            capacity: Capacidad máxima de compresión del pistón (en metros).
+            elasticity: Constante elástica del resorte (k en N/m).
+            damping: Coeficiente de amortiguación (c en N·s/m).
+            piston_mass: Masa inercial del pistón (m en kg).
+            mode: Modo de operación (CAPACITOR o BATTERY).
+            transducer_type: Tipo de transductor para interfaz electrónica.
         """
         # Parámetros físicos
         self.capacity = capacity
