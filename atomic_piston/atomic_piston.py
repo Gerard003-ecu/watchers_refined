@@ -96,7 +96,7 @@ class AtomicPiston:
         # Factor de histéresis para evitar ciclado rápido
         self.hysteresis_factor = 0.1
         self.saturation_threshold = capacity * 1.1  # Límite de saturación
-        self.compression_direction = -1  #  -1: comprimir, 1: expandir
+        self.compression_direction = -1  # -1: comprimir, 1: expandir
 
         # Historial para diagnóstico
         self.energy_history = []
@@ -179,8 +179,8 @@ class AtomicPiston:
         self.dt = dt
 
         # Calcular fuerzas internas
-        spring_force = -self.k * self.position  #  Fuerza del resorte (Ley de Hooke)
-        damping_force = -self.c * self.velocity  #  Fuerza de amortiguación
+        spring_force = -self.k * self.position  # Fuerza del resorte (Ley de Hooke)
+        damping_force = -self.c * self.velocity  # Fuerza de amortiguación
 
         # Fuerza total = fuerzas externas + fuerzas internas
         total_force = self.last_applied_force + spring_force + damping_force
@@ -279,19 +279,23 @@ class AtomicPiston:
             self.position += discharge_amount
 
             # Señal proporcional a la tasa de descarga
-            output_amplitude = discharge_amount / (self.battery_discharge_rate * dt) # Ensure dt is not zero if rate is non-zero
+            # Ensure dt is not zero if rate is non-zero
+            output_amplitude = discharge_amount / (self.battery_discharge_rate * dt)
 
             # Check if charge is now depleted after this step
-            if self.current_charge <= 1e-5: # Threshold for effective depletion (aligned with test approx)
+            # Threshold for effective depletion (aligned with test approx)
+            if self.current_charge <= 1e-5:
                 self.battery_is_discharging = False
-                logger.info("Descarga BATTERY: Carga agotada después del paso de descarga.")
+                logger.info(
+                    "Descarga BATTERY: Carga agotada después del paso de descarga."
+                )
 
             return {
                 "type": "sustained",
                 "amplitude": output_amplitude,
                 "duration": dt
             }
-        else: # current_charge is already <= 0 at the beginning of the call
+        else:  # current_charge is already <= 0 at the beginning of the call
             self.battery_is_discharging = False
             logger.info("Descarga BATTERY: Carga ya estaba agotada.")
             return None
