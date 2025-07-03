@@ -95,7 +95,7 @@ class AtomicPiston:
         # Factor de histéresis para evitar ciclado rápido
         self.hysteresis_factor = 0.1
         self.saturation_threshold = capacity * 1.1  # Límite de saturación
-        self.compression_direction = -1 #  -1: comprimir, 1: expandir
+        self.compression_direction = -1  #  -1: comprimir, 1: expandir
 
         # Historial para diagnóstico
         self.energy_history = []
@@ -178,8 +178,8 @@ class AtomicPiston:
         self.dt = dt
 
         # Calcular fuerzas internas
-        spring_force = -self.k * self.position #  Fuerza del resorte (Ley de Hooke)
-        damping_force = -self.c * self.velocity #  Fuerza de amortiguación
+        spring_force = -self.k * self.position  #  Fuerza del resorte (Ley de Hooke)
+        damping_force = -self.c * self.velocity  #  Fuerza de amortiguación
 
         # Fuerza total = fuerzas externas + fuerzas internas
         total_force = self.last_applied_force + spring_force + damping_force
