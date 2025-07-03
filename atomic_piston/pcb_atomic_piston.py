@@ -3,14 +3,16 @@
 import os
 import sys
 import math
-from skidl import *
+from skidl import Part, Net, generate_netlist, reset
 
 try:
     import pcbnew
 except ImportError:
     print("Error: No se pudo importar la librería 'pcbnew' de KiCad.")
-    print("Asegúrate de ejecutar este script con el intérprete de Python que viene con KiCad.")
-    print("Ejemplo en Windows: \"C:\\Program Files\\KiCad\\6.0\\bin\\python.exe\" pcb_atomic_piston.py")
+    print("Asegúrate de ejecutar este script con el intérprete de Python que "
+          "viene con KiCad.")
+    print("Ejemplo en Windows: \"C:\\Program Files\\KiCad\\6.0\\bin\\python.exe\" "
+          "pcb_atomic_piston.py")
     sys.exit(1)
 
 print(f"Usando KiCad (pcbnew) versión: {pcbnew.GetBuildVersion()}")
@@ -38,6 +40,7 @@ FOOTPRINTS = {
     'PRE_CHARGE_RES': 'Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Horizontal'
 }
 
+
 # --- CREACIÓN DE ESQUEMÁTICO MEJORADO ---
 def create_schematic_netlist(filename="atomic_piston.net"):
     """Define las conexiones lógicas del circuito con separación de tierras."""
@@ -46,12 +49,17 @@ def create_schematic_netlist(filename="atomic_piston.net"):
     # Definición de componentes
     esp32 = Part('Module', 'ESP32-WROOM-32', footprint=FOOTPRINTS['ESP32'])
     gate_driver = Part('Driver_Gate', 'UCC21520', footprint=FOOTPRINTS['GATE_DRIVER'])
-    q1_mosfet = Part('Device', 'Q_NMOS_GDS', footprint=FOOTPRINTS['MOSFET_POWER'])
-    supercap = Part('Device', 'C', value='3000F', footprint=FOOTPRINTS['SUPERCAP'])
-    inductor = Part('Device', 'L', value='100uH', footprint=FOOTPRINTS['INDUCTOR_POWER'])
-    pv_connector = Part('Connector', 'Conn_01x02', footprint=FOOTPRINTS['CONN_PV'])
-    precharge_res = Part('Device', 'R', value='100', footprint=FOOTPRINTS['PRE_CHARGE_RES'])
-    
+    q1_mosfet = Part('Device', 'Q_NMOS_GDS',
+                     footprint=FOOTPRINTS['MOSFET_POWER'])
+    supercap = Part('Device', 'C', value='3000F',
+                    footprint=FOOTPRINTS['SUPERCAP'])
+    inductor = Part('Device', 'L', value='100uH',
+                    footprint=FOOTPRINTS['INDUCTOR_POWER'])
+    pv_connector = Part('Connector', 'Conn_01x02',
+                        footprint=FOOTPRINTS['CONN_PV'])
+    precharge_res = Part('Device', 'R', value='100',
+                         footprint=FOOTPRINTS['PRE_CHARGE_RES'])
+
     # Definición de redes (Nets) principales
     gnd_digital = Net('GND_DIGITAL')
     gnd_power = Net('GND_POWER')
@@ -69,22 +77,22 @@ def create_schematic_netlist(filename="atomic_piston.net"):
     pv_plus += pv_connector[1]
     pv_plus += precharge_res[1]  # Resistencia de precarga
     precharge_res[2] += supercap[1]  # Precarga antes del supercap
-    
+
     pv_plus += inductor[1]
     inductor[2] += sw_node
     sw_node += q1_mosfet['D']  # Drain del MOSFET al inductor
     q1_mosfet['S'] += gnd_power  # Source del MOSFET a tierra de potencia
     gate_driver['OUTA'] += q1_mosfet['G']  # Salida del driver al Gate del MOSFET
-    
+
     # Conexión del supercapacitor
     sw_node += supercap[1]  # Conexión directa después de precarga
     gnd_power += supercap[2]
-    
+
     # Conexión a tierra común a través de un punto único
     star_point = Part('Device', 'TestPoint', value='STAR_POINT')
     gnd_digital += star_point[1]
     gnd_power += star_point[1]
-    
+
     # Conexión de entrada solar
     pv_minus += pv_connector[2], gnd_power
 
@@ -94,11 +102,12 @@ def create_schematic_netlist(filename="atomic_piston.net"):
     print(f"Netlist guardada como '{filename}'")
     return os.path.abspath(filename)
 
+
 # --- DISEÑO DE PCB MEJORADO ---
 def layout_and_generate_gerbers(netlist_file):
     """Crea el layout de la PCB con 4 capas y exporta Gerbers."""
     board = pcbnew.BOARD()
-    
+
     # Cargar la netlist en la placa
     print("Cargando netlist en la PCB...")
     pcbnew.ReadNetlist(netlist_file, board)
@@ -120,20 +129,21 @@ def layout_and_generate_gerbers(netlist_file):
 
     # Generar archivos Gerber para 4 capas
     generate_gerber_files(board)
-    
+
     # Guardar el archivo de KiCad PCB
     board.Save("atomic_piston_layout.kicad_pcb")
     print("\n¡Proceso completado! Archivos Gerber generados en 'gerbers/'")
+
 
 # --- FUNCIONES AUXILIARES MEJORADAS ---
 def create_board_outline(board):
     """Crea el contorno de la placa en la capa Edge.Cuts."""
     edge_layer = pcbnew.Edge_Cuts
     edge_points = [
-        (0, 0), (BOARD_WIDTH, 0), (BOARD_WIDTH, BOARD_HEIGHT), 
+        (0, 0), (BOARD_WIDTH, 0), (BOARD_WIDTH, BOARD_HEIGHT),
         (0, BOARD_HEIGHT), (0, 0)
     ]
-    
+
     for i in range(len(edge_points) - 1):
         start = pcbnew.wxPointMM(edge_points[i][0], edge_points[i][1])
         end = pcbnew.wxPointMM(edge_points[i+1][0], edge_points[i+1][1])
@@ -144,11 +154,12 @@ def create_board_outline(board):
         segment.SetWidth(pcbnew.FromMM(0.15))
         board.Add(segment)
 
+
 def place_components(board):
     """Coloca componentes con orientaciones adecuadas."""
     print("Colocando componentes en la placa...")
     components = board.GetModules()
-    
+
     # Definir posiciones y rotaciones
     placements = {
         'U1': {'pos': (30, 50), 'rot': 0, 'side': 'top'},     # ESP32
@@ -159,7 +170,7 @@ def place_components(board):
         'J1': {'pos': (140, 85), 'rot': 270, 'side': 'top'},  # PV Connector
         'R1': {'pos': (115, 40), 'rot': 0, 'side': 'top'},    # Precharge Res
     }
-    
+
     for comp in components:
         ref = comp.GetReference()
         if ref in placements:
@@ -167,14 +178,15 @@ def place_components(board):
             pos = pcbnew.wxPointMM(*placement['pos'])
             comp.SetPosition(pos)
             comp.SetOrientationDegrees(placement['rot'])
-            
+
             if placement['side'] == 'bottom':
                 comp.Flip(pos, False)
+
 
 def route_critical_nets(board):
     """Enruta todas las redes críticas manualmente."""
     print("Enrutando pistas críticas...")
-    
+
     # Pistas de alta potencia
     power_nets = ["PV+", "SWITCH_NODE", "GND_POWER"]
     for net_name in power_nets:
@@ -182,13 +194,14 @@ def route_critical_nets(board):
         if not net:
             print(f"Advertencia: Red {net_name} no encontrada")
             continue
-            
+
         # Ancho de pista basado en la red
-        width = pcbnew.FromMM(POWER_TRACK_WIDTH if "PV+" in net_name else POWER_TRACK_WIDTH * 0.8)
-        
+        width = pcbnew.FromMM(POWER_TRACK_WIDTH if "PV+" in net_name
+                              else POWER_TRACK_WIDTH * 0.8)
+
         # Obtener todos los pads de esta red
         pads = [pad for pad in net.Pads()]
-        
+
         # Enrutar conexiones entre pads principales
         for i in range(len(pads)-1):
             track = pcbnew.PCB_TRACK(board)
@@ -213,10 +226,11 @@ def route_critical_nets(board):
                 track.SetLayer(pcbnew.F_Cu)
                 board.Add(track)
 
+
 def add_thermal_management(board):
     """Añade vías térmicas y zonas de disipación."""
     print("Añadiendo gestión térmica...")
-    
+
     # Vías térmicas bajo MOSFETs
     mosfet_refs = ["Q1"]
     for ref in mosfet_refs:
@@ -228,7 +242,7 @@ def add_thermal_management(board):
                 radius = pcbnew.FromMM(3.5)
                 x_offset = int(radius * math.cos(angle))
                 y_offset = int(radius * math.sin(angle))
-                
+
                 via = pcbnew.PCB_VIA(board)
                 via.SetPosition(position + pcbnew.VECTOR2I(x_offset, y_offset))
                 via.SetDrill(pcbnew.FromMM(THERMAL_VIA_DRILL))
@@ -236,14 +250,14 @@ def add_thermal_management(board):
                 via.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu)
                 via.SetNet(board.FindNet("GND_POWER"))
                 board.Add(via)
-    
+
     # Zona de disipación en capa inferior
     zone_settings = pcbnew.ZONE_SETTINGS()
     zone_settings.m_ZoneClearance = pcbnew.FromMM(0.5)
     thermal_zone = pcbnew.ZONE(board, zone_settings)
     thermal_zone.SetLayer(pcbnew.B_Cu)
     thermal_zone.SetNet(board.FindNet("GND_POWER"))
-    
+
     # Contorno alrededor de componentes calientes
     outline = pcbnew.wxPoint_Vector()
     outline.append(pcbnew.wxPointMM(90, 15))
@@ -253,20 +267,21 @@ def add_thermal_management(board):
     thermal_zone.AddPolygon(outline)
     board.Add(thermal_zone)
 
+
 def create_power_planes(board):
     """Crea planos de tierra y potencia en capas internas."""
     print("Creando planos de potencia...")
-    
+
     # Plano de tierra digital en capa interna 1
     gnd_digital_net = board.FindNet("GND_DIGITAL")
     if gnd_digital_net:
         zone_settings = pcbnew.ZONE_SETTINGS()
         zone_settings.m_ZoneClearance = pcbnew.FromMM(0.5)
-        
+
         gnd_zone = pcbnew.ZONE(board, zone_settings)
         gnd_zone.SetLayer(pcbnew.In1_Cu)
         gnd_zone.SetNet(gnd_digital_net)
-        
+
         outline = pcbnew.wxPoint_Vector()
         padding = 2  # mm
         outline.append(pcbnew.wxPointMM(padding, padding))
@@ -275,17 +290,17 @@ def create_power_planes(board):
         outline.append(pcbnew.wxPointMM(padding, BOARD_HEIGHT - padding))
         gnd_zone.AddPolygon(outline)
         board.Add(gnd_zone)
-    
+
     # Plano de tierra de potencia en capa interna 2
     gnd_power_net = board.FindNet("GND_POWER")
     if gnd_power_net:
         zone_settings = pcbnew.ZONE_SETTINGS()
         zone_settings.m_ZoneClearance = pcbnew.FromMM(0.5)
-        
+
         gnd_zone = pcbnew.ZONE(board, zone_settings)
         gnd_zone.SetLayer(pcbnew.In2_Cu)
         gnd_zone.SetNet(gnd_power_net)
-        
+
         outline = pcbnew.wxPoint_Vector()
         padding = 2  # mm
         outline.append(pcbnew.wxPointMM(BOARD_WIDTH/2 + 5, padding))
@@ -294,17 +309,18 @@ def create_power_planes(board):
         outline.append(pcbnew.wxPointMM(BOARD_WIDTH/2 + 5, BOARD_HEIGHT - padding))
         gnd_zone.AddPolygon(outline)
         board.Add(gnd_zone)
-    
+
     # Rellenar todas las zonas
     filler = pcbnew.ZONE_FILLER(board)
     filler.Fill(board.GetZones())
+
 
 def generate_gerber_files(board):
     """Genera archivos Gerber para diseño de 4 capas."""
     print("Generando archivos Gerber...")
     plot_controller = pcbnew.PLOT_CONTROLLER(board)
     plot_options = plot_controller.GetPlotOptions()
-    
+
     plot_options.SetOutputDirectory("gerbers")
     plot_options.SetPlotFrameRef(False)
     plot_options.SetUseGerberProtelExtensions(True)
@@ -338,15 +354,16 @@ def generate_gerber_files(board):
     drill_writer.SetFormat(True)  # Usar formato métrico
     drill_writer.CreateDrillandMapFiles(plot_options.GetOutputDirectory(), True, False)
 
+
 # --- EJECUCIÓN PRINCIPAL ---
 if __name__ == "__main__":
     # Crear directorios de salida
     os.makedirs("gerbers", exist_ok=True)
-    
+
     # Ejecutar el flujo completo
     netlist_path = create_schematic_netlist()
     layout_and_generate_gerbers(netlist_path)
-    
+
     print("\nInstrucciones para fabricación:")
     print("1. Enviar carpeta 'gerbers' a JLCPCB o PCBWay")
     print("2. Especificar: 4 capas, 2oz cobre, 1.6mm grosor, acabado ENIG")
