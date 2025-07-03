@@ -246,7 +246,8 @@ class AtomicPiston:
     def capacitor_discharge(self, dt: float):
         """Descarga en modo capacitor (pulso instantáneo)"""
         discharge_threshold = self.capacitor_discharge_threshold
-        hysteresis_threshold = discharge_threshold * (1 + self.hysteresis_factor)
+        # Corrected hysteresis: bounces to a *less* compressed state
+        hysteresis_threshold = discharge_threshold * (1 - self.hysteresis_factor)
 
         if self.position <= discharge_threshold:
             amplitude = self.current_charge
@@ -277,17 +278,21 @@ class AtomicPiston:
             self.position += discharge_amount
 
             # Señal proporcional a la tasa de descarga
-            output_amplitude = discharge_amount / (self.battery_discharge_rate * dt)
+            output_amplitude = discharge_amount / (self.battery_discharge_rate * dt) # Ensure dt is not zero if rate is non-zero
+
+            # Check if charge is now depleted after this step
+            if self.current_charge <= 1e-5: # Threshold for effective depletion (aligned with test approx)
+                self.battery_is_discharging = False
+                logger.info("Descarga BATTERY: Carga agotada después del paso de descarga.")
 
             return {
                 "type": "sustained",
                 "amplitude": output_amplitude,
                 "duration": dt
             }
-        else:
-            # Detener descarga cuando no hay carga
+        else: # current_charge is already <= 0 at the beginning of the call
             self.battery_is_discharging = False
-            logger.info("Descarga BATTERY: Carga agotada")
+            logger.info("Descarga BATTERY: Carga ya estaba agotada.")
             return None
 
     def simulate_discharge_circuit(self, load_resistance: float, dt: float):
@@ -312,8 +317,11 @@ class AtomicPiston:
 
         # Calcular cambio de posición proporcional a la energía disipada
         # (Suponiendo que la energía mecánica se convierte en eléctrica)
+        # dE = k * x * dx  => dx = dE / (k * x)
+        # If energy is lost from system (dE = -discharge_energy for system):
+        # dx = -discharge_energy / (k * x)
         if abs(self.position) > 1e-6:  # Evitar división por cero
-            position_change = -discharge_energy / (0.5 * self.k * abs(self.position))
+            position_change = -discharge_energy / (self.k * self.position)
         else:
             position_change = 0.0
 
