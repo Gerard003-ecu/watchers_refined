@@ -55,20 +55,20 @@ class AtomicPiston:
         self.m = piston_mass
         self.mode = mode
         self.transducer_type = transducer_type
-        self.dt = 0.01  #  Paso de tiempo predeterminado
+        self.dt = 0.01  # Paso de tiempo predeterminado
 
         # Estado del pistón
-        self.position = 0.0 #  Posición actual (metros)
-        self.velocity = 0.0 #  Velocidad actual (m/s)
-        self.acceleration = 0.0 #  Aceleración actual (m/s²)
-        self.previous_position = 0.0 #  Posición anterior (para integración Verlet)
-        self.last_applied_force = 0.0 #  Última fuerza aplicada (N)
-        self.last_signal_info = {} #  Almacena información de señales anteriores
+        self.position = 0.0  # Posición actual (metros)
+        self.velocity = 0.0  # Velocidad actual (m/s)
+        self.acceleration = 0.0  # Aceleración actual (m/s²)
+        self.previous_position = 0.0  # Posición anterior (para integración Verlet)
+        self.last_applied_force = 0.0  # Última fuerza aplicada (N)
+        self.last_signal_info = {}  # Almacena información de señales anteriores
 
         # Parámetros de transducción
         if transducer_type == TransducerType.PIEZOELECTRIC:
-            self.voltage_sensitivity = 50.0 # V/m (sensibilidad de posición a voltaje)
-            self.force_sensitivity = 0.02 # N/V (sensibilidad de voltaje a fuerza)
+            self.voltage_sensitivity = 50.0  # V/m (sensibilidad de posición a voltaje)
+            self.force_sensitivity = 0.02  # N/V (sensibilidad de voltaje a fuerza)
         elif transducer_type == TransducerType.ELECTROSTATIC:
             self.voltage_sensitivity = 100.0
             self.force_sensitivity = 0.01
@@ -82,19 +82,19 @@ class AtomicPiston:
         self.equivalent_resistance = 1.0 / max(0.001, self.c)    # R = 1/c
 
         # Estado electrónico
-        self.circuit_voltage = 0.0 #  Voltaje en el circuito equivalente (V)
-        self.circuit_current = 0.0 #  Corriente en el circuito equivalente (A)
-        self.charge_accumulated = 0.0 #  Carga acumulada (C)
+        self.circuit_voltage = 0.0  # Voltaje en el circuito equivalente (V)
+        self.circuit_current = 0.0  # Corriente en el circuito equivalente (A)
+        self.charge_accumulated = 0.0  # Carga acumulada (C)
 
         # Parámetros de operación
         # Umbral de descarga para modo capacitor
         self.capacitor_discharge_threshold = -capacity * 0.9
-        self.battery_is_discharging = False #  Estado de descarga para modo batería
+        self.battery_is_discharging = False  # Estado de descarga para modo batería
         # Tasa de descarga en modo batería
         self.battery_discharge_rate = capacity * 0.05
         # Factor de histéresis para evitar ciclado rápido
         self.hysteresis_factor = 0.1
-        self.saturation_threshold = capacity * 1.1 #  Límite de saturación
+        self.saturation_threshold = capacity * 1.1  # Límite de saturación
         self.compression_direction = -1 #  -1: comprimir, 1: expandir
 
         # Historial para diagnóstico
