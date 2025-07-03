@@ -127,7 +127,9 @@ class TestAtomicPiston:
             DEFAULT_CAPACITY, DEFAULT_ELASTICITY, DEFAULT_DAMPING,
             transducer_type=TransducerType.MAGNETOSTRICTIVE
         )
-        assert piston_magneto.transducer_type == TransducerType.MAGNETOSTRICTIVE
+        assert piston_magneto.transducer_type == (
+            TransducerType.MAGNETOSTRICTIVE
+        )
         assert piston_magneto.voltage_sensitivity == 30.0
         assert piston_magneto.force_sensitivity == 0.05
 
@@ -142,7 +144,8 @@ class TestAtomicPiston:
         # First call to establish baseline
         mock_monotonic_time.return_value = 1.0
         piston.apply_force(signal_value=0.0, source="test_source")
-        # If it's the first signal from a source, signal_velocity is 0, so force is 0.
+        # If it's the first signal from a source, signal_velocity is 0,
+        # so force is 0.
         assert piston.last_applied_force == 0.0
 
         # Second call with significant change
@@ -244,7 +247,6 @@ class TestAtomicPiston:
         # Force should be consumed after update
         assert piston.last_applied_force == 0.0
 
-
     def test_update_state_increases_stored_energy_on_compression(
         self,
         default_piston: AtomicPiston
@@ -272,7 +274,6 @@ class TestAtomicPiston:
         piston.update_state(dt=DT)  # Force is consumed, now spring/damping act
         assert piston.stored_energy > 0  # Energy might change but still be positive
 
-
     def test_update_state_spring_force_effect(
         self,
         default_piston: AtomicPiston
@@ -283,11 +284,13 @@ class TestAtomicPiston:
 
         # Setup for Verlet: To start from pos=-10, vel=0 at t=0
         # position at t=0 is -10
-        # position at t=-dt (previous_position) should be pos(0) - vel(0)*dt = -10 - 0*dt = -10
+        # position at t=-dt (previous_position) should be pos(0) - vel(0)*dt
+        # = -10 - 0*dt = -10
         initial_pos = -10.0
         piston.position = initial_pos
         piston.previous_position = initial_pos  # For Verlet start from rest
-        # Explicitly set, though not directly used by Verlet pos update if prev_pos is set right
+        # Explicitly set, though not directly used by Verlet pos update if
+        # prev_pos is set right
         piston.velocity = 0.0
 
         initial_velocity_val = piston.velocity  # Should be 0
@@ -307,7 +310,6 @@ class TestAtomicPiston:
         assert piston.position > initial_pos  # Position moves towards 0
         assert piston.position == pytest.approx(-9.99)
         assert piston.velocity == pytest.approx(0.5)
-
 
     def test_update_state_damping_effect(self):
         """
@@ -381,13 +383,14 @@ class TestAtomicPiston:
         # capacity in its definition current_charge = max(0, -position)
         # If position is -110, current_charge would be 110.
         # This seems fine as current_charge reflects the actual compression.
-        assert piston.current_charge == pytest.approx(piston.saturation_threshold)
+        assert piston.current_charge == pytest.approx(
+            piston.saturation_threshold
+        )
 
         # Apply more force, should not change position further due to clipping
         piston.last_applied_force = applied_force
         piston.update_state(dt=DT)
         assert piston.position == pytest.approx(-piston.saturation_threshold)
-
 
     # --- Capacitor Mode Tests ---
     def test_discharge_capacitor_above_threshold(
@@ -415,7 +418,9 @@ class TestAtomicPiston:
         """Prueba descarga en modo capacitor cuando se está justo en el umbral."""
         piston = capacitor_piston
         discharge_threshold = piston.capacitor_discharge_threshold
-        hysteresis_position = discharge_threshold * (1 + piston.hysteresis_factor)
+        hysteresis_position = (
+            discharge_threshold * (1 + piston.hysteresis_factor)
+        )
 
         piston.position = discharge_threshold
         initial_charge = piston.current_charge
@@ -430,8 +435,9 @@ class TestAtomicPiston:
         assert piston.position == pytest.approx(hysteresis_position)
         assert piston.velocity == 5.0  # Specific velocity after discharge
         # Current charge should reflect the new position
-        assert piston.current_charge == pytest.approx(max(0, -hysteresis_position))
-
+        assert piston.current_charge == pytest.approx(
+            max(0, -hysteresis_position)
+        )
 
     def test_discharge_capacitor_below_threshold(
         self,
@@ -440,7 +446,9 @@ class TestAtomicPiston:
         """Prueba descarga en modo capacitor cuando se supera el umbral."""
         piston = capacitor_piston
         discharge_threshold = piston.capacitor_discharge_threshold
-        hysteresis_position = discharge_threshold * (1 + piston.hysteresis_factor)
+        hysteresis_position = (
+            discharge_threshold * (1 + piston.hysteresis_factor)
+        )
 
         # Fully charged, well below threshold (e.g., -100 vs -90 for default)
         piston.position = -DEFAULT_CAPACITY
@@ -454,37 +462,49 @@ class TestAtomicPiston:
         assert output_signal["amplitude"] == pytest.approx(initial_charge)
         assert piston.position == pytest.approx(hysteresis_position)
         assert piston.velocity == 5.0
-        assert piston.current_charge == pytest.approx(max(0, -hysteresis_position))
+        assert piston.current_charge == pytest.approx(
+            max(0, -hysteresis_position)
+        )
 
-    def test_capacitor_discharge_hysteresis_effect(self, capacitor_piston: AtomicPiston):
+    def test_capacitor_discharge_hysteresis_effect(
+            self, capacitor_piston: AtomicPiston
+    ):
         """Verifica el efecto de histéresis en la descarga del capacitor."""
         piston = capacitor_piston
-        discharge_threshold = piston.capacitor_discharge_threshold # e.g., -90
+        discharge_threshold = piston.capacitor_discharge_threshold  # e.g., -90
         # Hysteresis factor is 0.1 by default
-        # hysteresis_position = -90 * (1 + 0.1) = -90 * 1.1 = -99 (Incorrect interpretation)
-        # Hysteresis makes it *less* sensitive, so bounce should be to a *less* negative value.
+        # hysteresis_position = -90 * (1 + 0.1) = -90 * 1.1 = -99 (Incorrect)
+        # Hysteresis makes it *less* sensitive, so bounce should be to a
+        # *less* negative value.
         # The code is: self.position = discharge_threshold * (1 - self.hysteresis_factor)
-        # OR self.position = discharge_threshold * (1 + self.hysteresis_factor) if threshold is negative
+        # OR self.position = discharge_threshold * (1 + self.hysteresis_factor)
+        # if threshold is negative.
         # Let's re-check atomic_piston.py:
         # hysteresis_threshold = discharge_threshold * (1 + self.hysteresis_factor)
         # self.position = hysteresis_threshold
         # If discharge_threshold = -90, hysteresis_factor = 0.1
         # hysteresis_threshold = -90 * (1 + 0.1) = -90 * 1.1 = -99.
-        # This means it bounces *further* into compression if hysteresis_factor is positive.
-        # This seems counter-intuitive for "bouncing back".
-        # Let's assume the intention is to reduce oscillation, so it should bounce to a position
-        # that is less negative than the discharge_threshold.
-        # The current code: `hysteresis_threshold = discharge_threshold * (1 + self.hysteresis_factor)`
-        # If discharge_threshold = -90, hysteresis_factor = 0.1, then hysteresis_threshold = -99.
+        # This means it bounces *further* into compression if
+        # hysteresis_factor is positive. This seems counter-intuitive for
+        # "bouncing back". Let's assume the intention is to reduce
+        # oscillation, so it should bounce to a position that is less
+        # negative than the discharge_threshold.
+        # The current code:
+        # `hysteresis_threshold = discharge_threshold * (1 + self.hysteresis_factor)`
+        # If discharge_threshold = -90, hysteresis_factor = 0.1,
+        # then hysteresis_threshold = -99.
         # This means `self.position` becomes -99.
         # This would make it discharge again immediately if not careful.
         #
-        # Re-reading the problem: "Verify that the piston position "bounces" to a lower value (due to hysteresis)."
+        # Re-reading the problem: "Verify that the piston position "bounces"
+        # to a lower value (due to hysteresis)."
         # "Lower value" likely means less negative (closer to zero).
-        # The current implementation `discharge_threshold * (1 + self.hysteresis_factor)`
-        # with negative `discharge_threshold` and positive `hysteresis_factor` makes the
-        # `hysteresis_threshold` *more* negative.
-        # Example: -90 * (1 + 0.1) = -99. This is not a bounce to a "lower" (less compressed) state.
+        # The current implementation
+        # `discharge_threshold * (1 + self.hysteresis_factor)`
+        # with negative `discharge_threshold` and positive `hysteresis_factor`
+        # makes the `hysteresis_threshold` *more* negative.
+        # Example: -90 * (1 + 0.1) = -99. This is not a bounce to a "lower"
+        # (less compressed) state.
         #
         # The code in `atomic_piston.py` has:
         # `self.capacitor_discharge_threshold = -capacity * 0.9` (e.g., -90)
@@ -494,53 +514,69 @@ class TestAtomicPiston:
         # `hysteresis_threshold = discharge_threshold * (1 + self.hysteresis_factor)`
         # `self.position = hysteresis_threshold`
         # This means: position_after_discharge = -90 * (1 + 0.1) = -99.
-        # This will cause it to re-trigger if `self.position <= discharge_threshold` is checked.
+        # This will cause it to re-trigger if
+        # `self.position <= discharge_threshold` is checked.
         #
-        # Given the problem statement "bounces to a lower value", it implies less compression.
-        # This means the `hysteresis_threshold` should be `discharge_threshold * (1 - self.hysteresis_factor)`
+        # Given the problem statement "bounces to a lower value", it implies
+        # less compression. This means the `hysteresis_threshold` should be
+        # `discharge_threshold * (1 - self.hysteresis_factor)`
         # or `discharge_threshold + abs(discharge_threshold * self.hysteresis_factor)`.
         #
-        # For now, I will test according to the *current code implementation* and note this discrepancy.
-        # The current code's hysteresis makes it *more* compressed after a pulse.
+        # For now, I will test according to the *current code implementation*
+        # and note this discrepancy. The current code's hysteresis makes it
+        # *more* compressed after a pulse.
 
-        expected_hysteresis_position = discharge_threshold * (1 + piston.hysteresis_factor)
+        expected_hysteresis_position = (
+            discharge_threshold * (1 + piston.hysteresis_factor)
+        )
 
-        piston.position = discharge_threshold - 1 # Trigger discharge (e.g. -91)
-        charge_before_discharge = piston.current_charge
+        piston.position = discharge_threshold - 1  # Trigger discharge (e.g. -91)
 
         output = piston.discharge(dt=DT)
         assert output is not None
         assert piston.position == pytest.approx(expected_hysteresis_position)
         # If expected_hysteresis_position is -99 and discharge_threshold is -90,
         # then piston.position (-99) <= discharge_threshold (-90) is true.
-        # This means it would immediately discharge again if discharge() is called in a loop.
-        # This test verifies the implemented logic, though the logic itself might be questioned.
+        # This means it would immediately discharge again if discharge() is
+        # called in a loop. This test verifies the implemented logic,
+        # though the logic itself might be questioned.
 
-        # To prevent immediate re-discharge, the bounce should be to a position P such that P > discharge_threshold.
+        # To prevent immediate re-discharge, the bounce should be to a position P
+        # such that P > discharge_threshold.
         # e.g., P = discharge_threshold * (1 - piston.hysteresis_factor)
         # P = -90 * (1 - 0.1) = -90 * 0.9 = -81.
         # Since -81 > -90, it would not immediately re-discharge.
         # The problem statement "bounces to a lower value" is ambiguous.
-        # If "lower" means "less negative", then the current code is incorrect for that interpretation.
-        # If "lower" means "further from zero on the negative side", then current code is correct.
+        # If "lower" means "less negative", then the current code is incorrect
+        # for that interpretation.
+        # If "lower" means "further from zero on the negative side",
+        # then current code is correct.
         # I'll stick to testing the current code's behavior.
-        # UPDATE: With corrected hysteresis logic, expected_hysteresis_position will be LESS negative
+        # UPDATE: With corrected hysteresis logic,
+        # expected_hysteresis_position will be LESS negative
         # e.g. -90 * (1 - 0.1) = -81.
 
-        # Let's verify it *would NOT* discharge again if called immediately, due to corrected hysteresis logic
-        piston.velocity = 0 # Reset velocity to see if position alone triggers it
+        # Let's verify it *would NOT* discharge again if called immediately,
+        # due to corrected hysteresis logic
+        piston.velocity = 0  # Reset velocity to see if position alone triggers it
         output_again = piston.discharge(dt=DT)
 
-        # With corrected hysteresis, expected_hysteresis_position (-81) > discharge_threshold (-90).
+        # With corrected hysteresis,
+        # expected_hysteresis_position (-81) > discharge_threshold (-90).
         # So, it should NOT discharge again.
         if expected_hysteresis_position <= discharge_threshold:
-             assert output_again is not None, "Piston should re-discharge if hysteresis position is still at/beyond threshold"
+            assert output_again is not None, (
+                "Piston should re-discharge if hysteresis position is still "
+                "at/beyond threshold"
+            )
         else:
-             assert output_again is None, "Piston should NOT re-discharge due to corrected hysteresis"
+            assert output_again is None, (
+                "Piston should NOT re-discharge due to corrected hysteresis"
+            )
         assert output_again is None
 
-
     # --- Battery Mode Tests ---
+
     def test_discharge_battery_not_triggered(
         self,
         battery_piston: AtomicPiston
@@ -555,7 +591,6 @@ class TestAtomicPiston:
 
         assert output_signal is None
         assert not piston.battery_is_discharging
-
 
     def test_discharge_battery_triggered_but_no_charge(
         self,
@@ -577,8 +612,8 @@ class TestAtomicPiston:
         # at the beginning of a triggered discharge call.
         assert not piston.battery_is_discharging
 
-
     # --- Electronic Signal Application Tests ---
+
     def test_apply_electronic_signal_piezoelectric(
             self,
             default_piston: AtomicPiston
@@ -657,7 +692,9 @@ class TestAtomicPiston:
             piston.equivalent_inductance
         )
         second_expected_current = expected_current + second_di_dt * piston.dt
-        second_expected_force = second_expected_current * piston.force_sensitivity
+        second_expected_force = (
+            second_expected_current * piston.force_sensitivity
+        )
         assert piston.circuit_current == pytest.approx(second_expected_current)
         # Forces accumulate
         assert piston.last_applied_force == pytest.approx(
@@ -681,7 +718,6 @@ class TestAtomicPiston:
         assert output_signal["amplitude"] == 1.0
         # Should remain true while discharging and charge > 0
         assert piston.battery_is_discharging
-
 
     def test_discharge_battery_gradual_reduction(
         self,
@@ -759,8 +795,8 @@ class TestAtomicPiston:
         assert piston.position == pytest.approx(0.0, abs=1e-5)
         assert not piston.battery_is_discharging
 
-
     # --- Mode Switching and Triggering ---
+
     def test_set_mode(self, default_piston: AtomicPiston):
         """Verifica el cambio de modo de operación y el reseteo de estados."""
         piston = default_piston
@@ -835,14 +871,17 @@ class TestAtomicPiston:
         force2_accumulated = piston.last_applied_force
 
         # force2_contribution = -0.5 * piston.m * ((5.0/(2*DT))**2)
-        force2_contribution = force2_accumulated - force_before_s2_dynamic_change
+        force2_contribution = (
+            force2_accumulated - force_before_s2_dynamic_change
+        )
 
         # This specific contribution should also be negative
         assert force2_contribution < 0
 
         # Compare magnitudes of individual contributions
         # abs(force1_contribution) = |-0.5 * 1 * (10/0.01)^2| = |-500000| = 500000
-        # abs(force2_contribution) = |-0.5*1*(5/(2*0.01))^2| = |-0.5*(250)^2| = |-31250|=31250
+        # abs(force2_contribution) = |-0.5*1*(5/(2*0.01))^2|
+        #                          = |-0.5*(250)^2| = |-31250|=31250
         assert abs(force1_contribution) > abs(force2_contribution)
         assert force1_accumulated != force2_accumulated
 
@@ -853,10 +892,10 @@ class TestAtomicPiston:
 
         assert "source2" in piston.last_signal_info
         assert piston.last_signal_info["source2"][0] == 5      # Access by index
-        assert piston.last_signal_info["source2"][1] == 1.0 + DT + DT  # Access by index
-
+        assert piston.last_signal_info["source2"][1] == 1.0 + DT + DT
 
     # --- Bode Data Generation Tests ---
+
     def test_generate_bode_data_output_structure_and_length(
             self,
             default_piston: AtomicPiston
@@ -924,32 +963,38 @@ class TestAtomicPiston:
         assert len(bode_data["magnitude"]) == 0
         assert len(bode_data["phase"]) == 0
 
-    def test_generate_bode_data_values_sanity_check(self, default_piston: AtomicPiston):
+    def test_generate_bode_data_values_sanity_check(
+        self, default_piston: AtomicPiston
+    ):
         """
         Realiza una comprobación de cordura básica de los valores de magnitud y fase.
         No se calculan valores exactos, pero se comprueba que no sean todos cero o NaN
         para un sistema físico razonable.
         """
-        piston = default_piston # k=10, c=1, m=1
+        piston = default_piston  # k=10, c=1, m=1
         # Piezo: voltage_sensitivity = 50.0, force_sensitivity = 0.02
         # H_electrical = H_mech * voltage_sensitivity * force_sensitivity
         # H_electrical = H_mech * 50 * 0.02 = H_mech * 1.0
         # So, for piezo, electrical response magnitude/phase is same as mechanical.
 
-        frequency_range = np.array([1, 10, 100]) # Frequencies away from DC
+        frequency_range = np.array([1, 10, 100])  # Frequencies away from DC
 
         bode_data = piston.generate_bode_data(frequency_range)
 
         magnitudes = bode_data["magnitude"]
         phases = bode_data["phase"]
 
-        assert all(isinstance(m, float) for m in magnitudes), "Magnitudes should be floats"
+        assert all(isinstance(m, float) for m in magnitudes), (
+            "Magnitudes should be floats"
+        )
         assert all(isinstance(p, float) for p in phases), "Phases should be floats"
 
-        # For a typical 2nd order system, magnitude will not be zero everywhere (unless gain is zero)
-        # and phase will vary.
+        # For a typical 2nd order system, magnitude will not be zero everywhere
+        # (unless gain is zero) and phase will vary.
         # Check that not ALL magnitudes are zero (or very close to zero)
-        assert not all(abs(m) < 1e-9 for m in magnitudes), "All magnitudes are zero, which is unlikely"
+        assert not all(abs(m) < 1e-9 for m in magnitudes), (
+            "All magnitudes are zero, which is unlikely"
+        )
 
         # Check for NaNs
         assert not any(np.isnan(m) for m in magnitudes), "NaN found in magnitudes"
@@ -961,8 +1006,8 @@ class TestAtomicPiston:
                 "Phase does not vary, which is unlikely for these frequencies"
             )
 
-
     # --- Reset Function Tests ---
+
     def test_reset_function(self, default_piston: AtomicPiston):
         """Verifica que la función reset restaura el estado inicial del pistón."""
         piston = default_piston
@@ -1028,8 +1073,8 @@ class TestAtomicPiston:
         # Restore fixture state if necessary, though test creates its own usually
         default_piston.mode = original_mode
 
-
     # --- Simulate Discharge Circuit Tests ---
+
     def test_simulate_discharge_circuit_basic_operation(
             self,
             default_piston: AtomicPiston
@@ -1170,3 +1215,5 @@ class TestAtomicPiston:
         assert piston.position > -DEFAULT_CAPACITY
         # Should be close to zero after many dissipations
         assert piston.position == pytest.approx(0, abs=1e-1)
+
+[end of tests/unit/test_atomic_piston.py]
