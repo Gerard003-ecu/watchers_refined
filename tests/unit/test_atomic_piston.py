@@ -1215,5 +1215,3 @@ class TestAtomicPiston:
         assert piston.position > -DEFAULT_CAPACITY
         # Should be close to zero after many dissipations
         assert piston.position == pytest.approx(0, abs=1e-1)
-
-[end of tests/unit/test_atomic_piston.py]
