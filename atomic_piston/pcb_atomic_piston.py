@@ -41,7 +41,7 @@ FOOTPRINTS = {
 }
 
 
-# --- CREACIÓN DE ESQUEMÁTICO MEJORADO ---
+# --- CREACIÓN ESQUEMÁTICA MEJORADA ---
 def create_schematic_netlist(filename="atomic_piston.net"):
     """Define las conexiones lógicas del circuito con separación de tierras."""
     reset()

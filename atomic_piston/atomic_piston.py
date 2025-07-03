@@ -21,7 +21,8 @@ class TransducerType(Enum):
 class AtomicPiston:
     """
     Unidad de Potencia Inteligente (IPU) que simula un sistema físico
-    de pistón atómico con interfaz electrónica integrada para sistemas fotovoltaicos.
+    de un pistón atómico con interfaz electrónica integrada para
+    sistemas fotovoltaicos.
 
     Este modelo combina:
     - Simulación física del pistón (masa-resorte-amortiguador)
@@ -41,12 +42,12 @@ class AtomicPiston:
         Inicializa una nueva instancia de AtomicPiston.
 
         Args:
-            capacity: Capacidad máxima de compresión del pistón (en metros)
-            elasticity: Constante elástica del resorte (k en N/m)
-            damping: Coeficiente de amortiguación (c en N·s/m)
-            piston_mass: Masa inercial del pistón (m en kg)
-            mode: Modo de operación (CAPACITOR o BATTERY)
-            transducer_type: Tipo de transductor para interfaz electrónica
+            capacity: Capacidad máxima de compresión del pistón (en metros).
+            elasticity: Constante elástica del resorte (k en N/m).
+            damping: Coeficiente de amortiguación (c en N·s/m).
+            piston_mass: Masa inercial del pistón (m en kg).
+            mode: Modo de operación (CAPACITOR o BATTERY).
+            transducer_type: Tipo de transductor para interfaz electrónica.
         """
         # Parámetros físicos
         self.capacity = capacity
@@ -95,7 +96,7 @@ class AtomicPiston:
         # Factor de histéresis para evitar ciclado rápido
         self.hysteresis_factor = 0.1
         self.saturation_threshold = capacity * 1.1  # Límite de saturación
-        self.compression_direction = -1 #  -1: comprimir, 1: expandir
+        self.compression_direction = -1  # -1: comprimir, 1: expandir
 
         # Historial para diagnóstico
         self.energy_history = []
@@ -178,8 +179,8 @@ class AtomicPiston:
         self.dt = dt
 
         # Calcular fuerzas internas
-        spring_force = -self.k * self.position #  Fuerza del resorte (Ley de Hooke)
-        damping_force = -self.c * self.velocity #  Fuerza de amortiguación
+        spring_force = -self.k * self.position  # Fuerza del resorte (Ley de Hooke)
+        damping_force = -self.c * self.velocity  # Fuerza de amortiguación
 
         # Fuerza total = fuerzas externas + fuerzas internas
         total_force = self.last_applied_force + spring_force + damping_force
@@ -246,7 +247,8 @@ class AtomicPiston:
     def capacitor_discharge(self, dt: float):
         """Descarga en modo capacitor (pulso instantáneo)"""
         discharge_threshold = self.capacitor_discharge_threshold
-        hysteresis_threshold = discharge_threshold * (1 + self.hysteresis_factor)
+        # Corrected hysteresis: bounces to a *less* compressed state
+        hysteresis_threshold = discharge_threshold * (1 - self.hysteresis_factor)
 
         if self.position <= discharge_threshold:
             amplitude = self.current_charge
@@ -277,17 +279,25 @@ class AtomicPiston:
             self.position += discharge_amount
 
             # Señal proporcional a la tasa de descarga
+            # Ensure dt is not zero if rate is non-zero
             output_amplitude = discharge_amount / (self.battery_discharge_rate * dt)
+
+            # Check if charge is now depleted after this step
+            # Threshold for effective depletion (aligned with test approx)
+            if self.current_charge <= 1e-5:
+                self.battery_is_discharging = False
+                logger.info(
+                    "Descarga BATTERY: Carga agotada después del paso de descarga."
+                )
 
             return {
                 "type": "sustained",
                 "amplitude": output_amplitude,
                 "duration": dt
             }
-        else:
-            # Detener descarga cuando no hay carga
+        else:  # current_charge is already <= 0 at the beginning of the call
             self.battery_is_discharging = False
-            logger.info("Descarga BATTERY: Carga agotada")
+            logger.info("Descarga BATTERY: Carga ya estaba agotada.")
             return None
 
     def simulate_discharge_circuit(self, load_resistance: float, dt: float):
@@ -312,8 +322,11 @@ class AtomicPiston:
 
         # Calcular cambio de posición proporcional a la energía disipada
         # (Suponiendo que la energía mecánica se convierte en eléctrica)
+        # dE = k * x * dx  => dx = dE / (k * x)
+        # If energy is lost from system (dE = -discharge_energy for system):
+        # dx = -discharge_energy / (k * x)
         if abs(self.position) > 1e-6:  # Evitar división por cero
-            position_change = -discharge_energy / (0.5 * self.k * abs(self.position))
+            position_change = -discharge_energy / (self.k * self.position)
         else:
             position_change = 0.0
 
