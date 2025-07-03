@@ -476,7 +476,7 @@ class TestAtomicPiston:
         # hysteresis_position = -90 * (1 + 0.1) = -90 * 1.1 = -99 (Incorrect)
         # Hysteresis makes it *less* sensitive, so bounce should be to a
         # *less* negative value.
-        # The code is: self.position = discharge_threshold * (1 - self.hysteresis_factor)
+        # Code: self.position = discharge_threshold * (1 - self.hysteresis_factor)
         # OR self.position = discharge_threshold * (1 + self.hysteresis_factor)
         # if threshold is negative.
         # Let's re-check atomic_piston.py:
@@ -901,7 +901,8 @@ class TestAtomicPiston:
             default_piston: AtomicPiston
     ):
         """
-        Verifica la estructura del output de generate_bode_data y la longitud de los arrays.
+        Verifica la estructura del output de generate_bode_data
+        y la longitud de los arrays.
         """
         piston = default_piston
         frequency_range = np.array([10, 100, 1000, 10000])  # Hz
@@ -947,7 +948,8 @@ class TestAtomicPiston:
             default_piston: AtomicPiston
     ):
         """
-        Verifica el comportamiento de generate_bode_data con un rango de frecuencias vacío.
+        Verifica el comportamiento de generate_bode_data
+        con un rango de frecuencias vacío.
         """
         piston = default_piston
         frequency_range = np.array([])
@@ -1000,7 +1002,7 @@ class TestAtomicPiston:
         assert not any(np.isnan(m) for m in magnitudes), "NaN found in magnitudes"
         assert not any(np.isnan(p) for p in phases), "NaN found in phases"
 
-        # Check if phase varies (it should for different frequencies in a dynamic system)
+        # Check if phase varies
         if len(phases) > 1:
             assert not all(p == phases[0] for p in phases[1:]), (
                 "Phase does not vary, which is unlikely for these frequencies"
@@ -1151,7 +1153,8 @@ class TestAtomicPiston:
             default_piston: AtomicPiston
     ):
         """
-        Verifica el comportamiento de simulate_discharge_circuit cuando no hay compresión.
+        Verifica el comportamiento de simulate_discharge_circuit
+        cuando no hay compresión.
         """
         piston = default_piston
         load_resistance = 10.0
@@ -1176,7 +1179,8 @@ class TestAtomicPiston:
             default_piston: AtomicPiston
     ):
         """
-        Verifica que múltiples llamadas a simulate_discharge_circuit continúan disipando energía.
+        Verifica que múltiples llamadas a simulate_discharge_circuit
+        continúan disipando energía.
         """
         piston = default_piston
         load_resistance = 5.0
