@@ -1184,7 +1184,9 @@ class TestAtomicPiston:
             self,
             default_piston: AtomicPiston
     ):
-        """Verifica la disipación de energía con múltiples llamadas a simulate_discharge_circuit.
+        """
+        Verifica la disipación de energía con múltiples llamadas a
+        simulate_discharge_circuit.
 
         Asegura que llamadas sucesivas continúen disipando energía si hay voltaje
         y que la posición del pistón se mueva progresivamente hacia cero.
