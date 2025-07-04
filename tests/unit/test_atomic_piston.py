@@ -420,8 +420,9 @@ class TestAtomicPiston:
         """Prueba descarga en modo capacitor cuando se está justo en el umbral."""
         piston = capacitor_piston
         discharge_threshold = piston.capacitor_discharge_threshold
+        # Corrected hysteresis calculation
         hysteresis_position = (
-            discharge_threshold * (1 + piston.hysteresis_factor)
+            discharge_threshold * (1 - piston.hysteresis_factor)
         )
 
         piston.position = discharge_threshold
@@ -448,8 +449,9 @@ class TestAtomicPiston:
         """Prueba descarga en modo capacitor cuando se supera el umbral."""
         piston = capacitor_piston
         discharge_threshold = piston.capacitor_discharge_threshold
+        # Corrected hysteresis calculation
         hysteresis_position = (
-            discharge_threshold * (1 + piston.hysteresis_factor)
+            discharge_threshold * (1 - piston.hysteresis_factor)
         )
 
         # Fully charged, well below threshold (e.g., -100 vs -90 for default)
@@ -528,8 +530,9 @@ class TestAtomicPiston:
         # and note this discrepancy. The current code's hysteresis makes it
         # *more* compressed after a pulse.
 
+        # Corrected hysteresis calculation
         expected_hysteresis_position = (
-            discharge_threshold * (1 + piston.hysteresis_factor)
+            discharge_threshold * (1 - piston.hysteresis_factor)
         )
 
         piston.position = discharge_threshold - 1  # Trigger discharge (e.g. -91)
