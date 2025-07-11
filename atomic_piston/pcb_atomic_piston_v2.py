@@ -139,11 +139,11 @@ def create_pcb_design(netlist_file):
         
         # Crear capas
         create_board_outline(board)
-        place_components(board)
-        route_critical_nets(board)
-        create_power_planes(board)
-        add_thermal_management(board)
-        add_silkscreen_labels(board)
+        # place_components(board)
+        # route_critical_nets(board)
+        # create_power_planes(board)
+        # add_thermal_management(board)
+        # add_silkscreen_labels(board)
         
         # Verificar diseño
         if not verify_design(board):
