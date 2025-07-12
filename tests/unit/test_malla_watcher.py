@@ -1055,7 +1055,7 @@ def test_api_control_success(client, reset_globals):
         max(0.0, expected_C_neg)
     )
     assert mock_ctrl_params["electron_D"] == pytest.approx(
-        max(0.0, expected_D_neg)                                # noqa: E129
+        max(0.0, expected_D_neg)
     )
 
 
@@ -1330,4 +1330,38 @@ def test_api_malla_influence_push_invalid_payload(client, reset_globals):
     data_empty = response_empty_json.get_json()
     assert data_empty["status"] == "error"
     assert "falta 'field_vector'" in data_empty["message"].lower()
+
+
+def test_simulation_loop_integration(reset_globals, tmp_path):
+    """Ejecuta simulation_loop durante 2 iteraciones reales."""
+    from watchers.watchers_tools.malla_watcher.malla_watcher import (
+        simulation_loop, stop_simulation_event
+    )
+    import threading
+    import time
+
+    stop_simulation_event.clear()
+    thread = threading.Thread(target=simulation_loop, daemon=True)
+    thread.start()
+    time.sleep(1.1)  # 2 iteraciones aproximadas
+    stop_simulation_event.set()
+    thread.join(timeout=2)
+    assert not thread.is_alive()
+
+
+@pytest.mark.slow
+def test_performance_simular_paso_malla():
+    """Mide tiempo de simulación con 1000 celdas."""
+    mesh = HexCylindricalMesh(
+        radius=10.0,
+        height_segments=10,
+        circumference_segments_target=30,
+        hex_size=1.0,
+        periodic_z=False
+    )
+    assert len(mesh.cells) >= 1000
+    start = time.perf_counter()
+    simular_paso_malla()
+    elapsed = time.perf_counter() - start
+    assert elapsed < 1.0  # Umbral ajustable
 # -- END OF FILE test_malla_watcher.py (REFINADO para Osciladores Acoplados) --

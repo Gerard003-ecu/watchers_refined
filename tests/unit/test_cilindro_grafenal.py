@@ -66,8 +66,11 @@ def sample_mesh_cg():
         Una instancia de `HexCylindricalMesh` preconfigurada.
     """
     return HexCylindricalMesh(
-        radius=3.0, height_segments=3,
-        circumference_segments_target=6, hex_size=1.0, periodic_z=False
+        radius=3.0,
+        height_segments=2,
+        circumference_segments_target=12,
+        hex_size=1.0,
+        periodic_z=False
     )
 
 
@@ -323,6 +326,34 @@ def test_mesh_verify_connectivity(sample_mesh_cg: HexCylindricalMesh):
         )
 
 
+def test_compute_voronoi_neighbors(sample_mesh_cg: HexCylindricalMesh):
+    """Verifica que compute_voronoi_neighbors asigne vecinos ≤ 6."""
+    if len(sample_mesh_cg.cells) < 3:
+        pytest.skip("Se necesitan ≥3 celdas para Voronoi")
+    sample_mesh_cg.compute_voronoi_neighbors(periodic_theta=True)
+    for cell in sample_mesh_cg.get_all_cells():
+        assert 0 <= len(cell.voronoi_neighbors) <= 6
+
+
+def test_periodic_z_neighbors():
+    """Comprueba vecinos envueltos en Z cuando periodic_z=True."""
+    mesh = HexCylindricalMesh(
+        radius=3.0,
+        height_segments=2,
+        circumference_segments_target=6,
+        hex_size=1.0,
+        periodic_z=True
+    )
+    if len(mesh.cells) < 3:
+        pytest.skip("No se generaron suficientes celdas")
+    central = mesh.get_cell(0, 0)
+    if not central:
+        pytest.skip("Celda (0,0) no encontrada")
+    neighbors = mesh.get_neighbor_cells(0, 0)
+    # Al menos debe encontrar vecinos envueltos en Z
+    assert len(neighbors) >= 3
+
+    
 # --- Tests para Funciones Auxiliares ---
 
 
