@@ -626,8 +626,8 @@ def get_field_vector_api() -> Tuple[Any, int]:
             # Obtener una copia del campo para evitar modificarlo mientras
             # se serializa
             campo_copia = [
-                [(c.real, c.imag) for c in r]
-                for r in campo_toroidal_global_servicio.campo_q
+                [[(c.real, c.imag) for c in row] for row in layer]
+                for layer in campo_toroidal_global_servicio.campo_q
             ]
 
         logger.info(
