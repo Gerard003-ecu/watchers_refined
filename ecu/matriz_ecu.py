@@ -106,9 +106,9 @@ class ToroidalField:
         self.num_capas = num_capas
         self.num_rows = num_rows
         self.num_cols = num_cols
-        self.campo = [
-            np.zeros((self.num_rows, self.num_cols, 2))
-            for _ in range(self.num_capas)
+        self.campo_q = [
+            np.zeros((self.num_rows, self.num_cols), dtype=np.complex128)
+            for _ in range(self.num_capas
         ]
         self.lock = threading.Lock()
 
@@ -145,7 +145,7 @@ class ToroidalField:
             capa (int): Índice de la capa (0 a num_capas-1).
             row (int): Índice de la fila (0 a num_rows-1).
             col (int): Índice de la columna (0 a num_cols-1).
-            vector (np.ndarray): Vector 2D [vx, vy] a añadir al campo local.
+            vector complex: Número complejo.
             nombre_watcher (str): Nombre del watcher que aplica la influencia.
 
         Returns:
@@ -181,8 +181,8 @@ class ToroidalField:
         try:
             vector_valido = np.nan_to_num(vector)
             with self.lock:
-                self.campo[capa][row, col] += vector_valido
-                valor_actual = self.campo[capa][row, col]
+                self.campo_q[capa][row, col] += complex(vector_valido)
+                valor_actual = self.campo_q[capa][row, col]
             # SOLUCIÓN E501: Se divide el logging en múltiples líneas.
             logger.info(
                 "'%s' aplicó influencia en capa %d, nodo (%d, %d): %s. "
@@ -327,6 +327,18 @@ class ToroidalField:
             self.campo = next_campo
 
 
+     def apply_quantum_step(self, dt: float):
+        """
+        Paso unitario discreto:
+        |ψ(t+dt)> = e^{-i α dt} |ψ(t)>
+        """
+        with self.lock:
+            for capa_idx in range(self.num_capas):
+                alpha = self.alphas[capa_idx]
+                phase = np.exp(-1j * alpha * dt)
+                self.campo_q[capa_idx] *= phase
+
+
 # --- Instancia Global y Lógica de Simulación ---
 campo_toroidal_global = ToroidalField(NUM_CAPAS, NUM_FILAS, NUM_COLUMNAS)
 stop_event = threading.Event()
@@ -384,6 +396,7 @@ def simulation_loop(dt: float, beta: float):
     while not stop_simulation_event.is_set():
         start_time = time.monotonic()
         campo_toroidal_global_servicio.apply_rotational_step(dt, beta)
+        campo_toroidal_global_servicio.apply_quantum_step(dt)
         elapsed = time.monotonic() - start_time
         sleep_time = max(0, dt - elapsed)
         stop_simulation_event.wait(sleep_time)
@@ -442,7 +455,7 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
     agregada del campo vectorial en cada punto, ponderada por capa.
     """
     try:
-        campo_unificado = campo_toroidal_global_servicio.obtener_campo_unificado()
+        campo_unificado = np.abs(campo_toroidal_global_servicio.campo_q[0])
         # SOLUCIÓN E501: Se formatea el diccionario para mayor legibilidad.
         response_data = {
             "status": "success",
@@ -588,10 +601,7 @@ def get_field_vector_api() -> Tuple[Any, int]:
         with campo_toroidal_global_servicio.lock:
             # Obtener una copia del campo para evitar modificarlo mientras
             # se serializa
-            campo_copia = [
-                np.copy(capa).tolist()
-                for capa in campo_toroidal_global_servicio.campo
-            ]
+            campo_copia = [[c.real.tolist(), c.imag.tolist()] for c in self.campo_q]
 
         logger.info(
             "Solicitud GET /api/ecu/field_vector recibida. "
