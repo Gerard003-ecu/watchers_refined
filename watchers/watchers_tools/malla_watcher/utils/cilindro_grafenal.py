@@ -57,6 +57,7 @@ class Cell:
     Almacena coordenadas cilíndricas (r, theta, z), estado local de oscilador
     (amplitud, velocidad) y valor del campo vectorial externo (q_vector).
     """
+
     def __init__(
             self,
             cyl_radius: float,
@@ -125,6 +126,7 @@ class HexCylindricalMesh:
     Gestiona malla hexagonal cilíndrica, incluyendo creación,
     validación de conectividad y acceso a celdas.
     """
+
     def __init__(
             self,
             radius: float,
@@ -333,8 +335,8 @@ class HexCylindricalMesh:
                 strict_min_z - EPSILON <= cyl_z_calc <= strict_max_z + EPSILON
             )
             is_within_explore_margin_z = (
-                (strict_min_z - height_margin - EPSILON <= cyl_z_calc) and
-                (cyl_z_calc <= strict_max_z + height_margin + EPSILON)
+                (strict_min_z - height_margin - EPSILON <= cyl_z_calc)
+                and (cyl_z_calc <= strict_max_z + height_margin + EPSILON)
             )
 
             if not is_within_explore_margin_z:
@@ -487,12 +489,13 @@ class HexCylindricalMesh:
                 cells_with_few_neighbors * 100 / len(self.cells)
             )
             # Fix for original Line 382 E501
-            logger.info(
+            log_msg = (
                 f"  Mínimo vecinos: {min_neighbors_found}, "
                 f"Máximo: {max_neighbors_found}. "
                 f"Celdas con baja conectividad: {cells_with_few_neighbors} "
                 f"({percentage_low_connectivity:.1f}%)."
             )
+            logger.info(log_msg)
         else:
             log_message = "  Mínimo vecinos: N/A, Máximo vecinos: N/A."
             logger.info(log_message)
@@ -741,7 +744,8 @@ class HexCylindricalMesh:
         for i in range(n_original):
             cell = original_cells[i]
             voronoi_neighbors_indices = neighbor_dict[i]
-            cell.voronoi_neighbors = [original_cells[j] for j in voronoi_neighbors_indices]
+            cell.voronoi_neighbors = [original_cells[j]
+                                      for j in voronoi_neighbors_indices]
 
         if periodic_theta:
             tree = cKDTree(points_array)
