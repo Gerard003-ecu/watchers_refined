@@ -106,8 +106,8 @@ class ToroidalField:
         self.num_capas = num_capas
         self.num_rows = num_rows
         self.num_cols = num_cols
-        self.campo = [
-            np.zeros((self.num_rows, self.num_cols, 2))
+        self.campo_q = [
+            np.zeros((self.num_rows, self.num_cols), dtype=np.complex128)
             for _ in range(self.num_capas)
         ]
         self.lock = threading.Lock()
@@ -131,7 +131,7 @@ class ToroidalField:
         )
 
     def aplicar_influencia(
-        self, capa: int, row: int, col: int, vector: np.ndarray,
+        self, capa: int, row: int, col: int, vector: complex,
         nombre_watcher: str
     ) -> bool:
         """
@@ -145,45 +145,46 @@ class ToroidalField:
             capa (int): Índice de la capa (0 a num_capas-1).
             row (int): Índice de la fila (0 a num_rows-1).
             col (int): Índice de la columna (0 a num_cols-1).
-            vector (np.ndarray): Vector 2D [vx, vy] a añadir al campo local.
+            vector (complex): Número complejo que representa la influencia.
             nombre_watcher (str): Nombre del watcher que aplica la influencia.
 
         Returns:
             bool: True si la influencia se aplicó correctamente,
                   False en caso contrario.
         """
-        """Aplica una influencia externa a un punto específico del campo."""
         if not (0 <= capa < self.num_capas):
             logger.error(
-                "Error al aplicar influencia de '%s': índice de capa fuera de rango (%d). Rango válido: 0-%d.", # noqa E501
+                "Error al aplicar influencia de '%s': índice de capa fuera "
+                "de rango (%d). Rango válido: 0-%d.",
                 nombre_watcher, capa, self.num_capas - 1
             )
             return False
         if not (0 <= row < self.num_rows):
             logger.error(
-                "Error al aplicar influencia de '%s': índice de fila fuera de rango (%d). Rango válido: 0-%d.", # noqa E501
+                "Error al aplicar influencia de '%s': índice de fila fuera "
+                "de rango (%d). Rango válido: 0-%d.",
                 nombre_watcher, row, self.num_rows - 1
             )
             return False
         if not (0 <= col < self.num_cols):
             logger.error(
-                "Error al aplicar influencia de '%s': índice de columna fuera de rango (%d). Rango válido: 0-%d.", # noqa E501
+                "Error al aplicar influencia de '%s': índice de columna "
+                "fuera de rango (%d). Rango válido: 0-%d.",
                 nombre_watcher, col, self.num_cols - 1
             )
             return False
-        if not isinstance(vector, np.ndarray) or vector.shape != (2,):
+        if not isinstance(vector, complex):
             logger.error(
-                "Error al aplicar influencia de '%s': vector de influencia inválido. Debe ser np.ndarray de shape (2,). Recibido: %s", # noqa E501
-                nombre_watcher, vector
+                "Error al aplicar influencia de '%s': vector de influencia "
+                "inválido. Debe ser un número complejo. Recibido: %s",
+                nombre_watcher, type(vector)
             )
             return False
 
         try:
-            vector_valido = np.nan_to_num(vector)
             with self.lock:
-                self.campo[capa][row, col] += vector_valido
-                valor_actual = self.campo[capa][row, col]
-            # SOLUCIÓN E501: Se divide el logging en múltiples líneas.
+                self.campo_q[capa][row, col] += vector
+                valor_actual = self.campo_q[capa][row, col]
             logger.info(
                 "'%s' aplicó influencia en capa %d, nodo (%d, %d): %s. "
                 "Nuevo valor: %s",
@@ -191,7 +192,7 @@ class ToroidalField:
                 capa,
                 row,
                 col,
-                vector_valido,
+                vector,
                 valor_actual)
             return True
         except Exception:
@@ -233,13 +234,13 @@ class ToroidalField:
             return np.array([])
 
         with self.lock:
-            campo_copia = [np.copy(capa) for capa in self.campo]
+            campo_copia = [np.copy(capa) for capa in self.campo_q]
 
         gradiente_entre_capas = np.zeros((self.num_capas - 1,
                                           self.num_rows, self.num_cols))
         for i in range(self.num_capas - 1):
             diferencia_vectorial = campo_copia[i] - campo_copia[i + 1]
-            magnitud_diferencia = np.linalg.norm(diferencia_vectorial, axis=2)
+            magnitud_diferencia = np.abs(diferencia_vectorial)
             gradiente_entre_capas[i] = magnitud_diferencia
         logger.debug(
             "Gradiente de confinamiento entre capas calculado "
@@ -267,10 +268,10 @@ class ToroidalField:
         )
         campo_unificado = np.zeros((self.num_rows, self.num_cols))
         with self.lock:
-            campo_copia = [np.copy(capa) for capa in self.campo]
+            campo_copia = [np.copy(capa) for capa in self.campo_q]
 
         for i, capa_actual in enumerate(campo_copia):
-            magnitud_capa = np.linalg.norm(capa_actual, axis=2)
+            magnitud_capa = np.abs(capa_actual)
             campo_unificado += pesos[i] * magnitud_capa
         return campo_unificado
 
@@ -300,20 +301,20 @@ class ToroidalField:
                            "debería ser no negativo.")
 
         with self.lock:
-            next_campo = [np.copy(capa) for capa in self.campo]
+            next_campo = [np.copy(capa) for capa in self.campo_q]
             for capa_idx in range(self.num_capas):
                 alpha_capa = self.alphas[capa_idx]
                 damping_capa = self.dampings[capa_idx]
                 for r in range(self.num_rows):
                     for c in range(self.num_cols):
-                        v_curr = self.campo[capa_idx][r, c]
-                        v_left = self.campo[capa_idx][
+                        v_curr = self.campo_q[capa_idx][r, c]
+                        v_left = self.campo_q[capa_idx][
                             r, (c - 1) % self.num_cols
                         ]
-                        v_up = self.campo[capa_idx][
+                        v_up = self.campo_q[capa_idx][
                             (r - 1) % self.num_rows, c
                         ]
-                        v_down = self.campo[capa_idx][
+                        v_down = self.campo_q[capa_idx][
                             (r + 1) % self.num_rows, c
                         ]
 
@@ -324,7 +325,47 @@ class ToroidalField:
                         next_campo[capa_idx][r, c] = (
                             damped + advected + coupled
                         )
-            self.campo = next_campo
+            self.campo_q = next_campo
+
+    def set_initial_quantum_phase(self, seed: Optional[int] = None):
+        """
+        Inicializa la fase cuántica del campo a un estado aleatorio.
+
+        Asigna a cada nodo (c, r, c) un estado cuántico inicial en el
+        círculo unitario con una fase aleatoria, resultando en un
+        número complejo `e^(i * random_angle)`.
+
+        Args:
+            seed (Optional[int]): Semilla para el generador de números
+                                  aleatorios para reproducibilidad.
+        """
+        rng = np.random.default_rng(seed)
+        with self.lock:
+            for capa_idx in range(self.num_capas):
+                random_angles = rng.uniform(
+                    0, 2 * np.pi, size=(self.num_rows, self.num_cols)
+                )
+                self.campo_q[capa_idx] = np.exp(1j * random_angles)
+
+    def apply_quantum_step(self, dt: float):
+        """
+        Aplica un paso de evolución cuántica discreta al campo.
+
+        Este método simula la evolución de la fase de cada estado cuántico
+        en la grilla bajo un Hamiltoniano simple. La evolución sigue la
+        ecuación de Schrödinger para un paso de tiempo `dt`.
+
+        La transformación es: |ψ(t+dt)> = e^(-i * α * dt) * |ψ(t)>,
+        donde α es un coeficiente específico de la capa.
+
+        Args:
+            dt (float): El paso de tiempo para la evolución.
+        """
+        with self.lock:
+            for capa_idx in range(self.num_capas):
+                alpha = self.alphas[capa_idx]
+                phase_change = np.exp(-1j * alpha * dt)
+                self.campo_q[capa_idx] *= phase_change
 
 
 # --- Instancia Global y Lógica de Simulación ---
@@ -384,6 +425,7 @@ def simulation_loop(dt: float, beta: float):
     while not stop_simulation_event.is_set():
         start_time = time.monotonic()
         campo_toroidal_global_servicio.apply_rotational_step(dt, beta)
+        campo_toroidal_global_servicio.apply_quantum_step(dt)
         elapsed = time.monotonic() - start_time
         sleep_time = max(0, dt - elapsed)
         stop_simulation_event.wait(sleep_time)
@@ -442,7 +484,7 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
     agregada del campo vectorial en cada punto, ponderada por capa.
     """
     try:
-        campo_unificado = campo_toroidal_global_servicio.obtener_campo_unificado()
+        campo_unificado = np.abs(campo_toroidal_global_servicio.campo_q[0])
         # SOLUCIÓN E501: Se formatea el diccionario para mayor legibilidad.
         response_data = {
             "status": "success",
@@ -507,7 +549,6 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
         return jsonify({"status": "error", "message": msg}), 400
 
     type_errors = []
-    vector_np = None
     for field, expected_type in required_fields.items():
         # Asegurarse que el campo existe antes de verificar el tipo
         if field in data and not isinstance(data[field], expected_type):
@@ -517,16 +558,12 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
             )
 
     vector_data = data.get("vector")
+    vector_complex = None
     if isinstance(vector_data, list) and len(vector_data) == 2:
         try:
-            vector_np = np.array([float(v) for v in vector_data], dtype=float)
-            if vector_np.shape != (2,):
-                type_errors.append(
-                    "Campo 'vector' debe ser lista de 2 números."
-                )
+            vector_complex = complex(float(vector_data[0]), float(vector_data[1]))
         except (ValueError, TypeError):
             type_errors.append("Campo 'vector' debe contener números.")
-    # Solo añadir error si 'vector' existe pero no es válido
     elif 'vector' in data:
         type_errors.append("Campo 'vector' debe ser lista de 2 números")
 
@@ -543,7 +580,7 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
     try:
         success = campo_toroidal_global_servicio.aplicar_influencia(
             capa=capa, row=row, col=col,
-            vector=vector_np, nombre_watcher=nombre_watcher
+            vector=vector_complex, nombre_watcher=nombre_watcher
         )
         if success:
             logger.info(
@@ -554,7 +591,7 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
                 "status": "success",
                 "message": f"Influencia de '{nombre_watcher}' aplicada.",
                 "applied_to": {"capa": capa, "row": row, "col": col},
-                "vector": vector_np.tolist()
+                "vector": [vector_complex.real, vector_complex.imag]
             }), 200
         else:
             logger.error(
@@ -589,8 +626,8 @@ def get_field_vector_api() -> Tuple[Any, int]:
             # Obtener una copia del campo para evitar modificarlo mientras
             # se serializa
             campo_copia = [
-                np.copy(capa).tolist()
-                for capa in campo_toroidal_global_servicio.campo
+                [(c.real, c.imag) for c in r]
+                for r in campo_toroidal_global_servicio.campo_q
             ]
 
         logger.info(
@@ -608,7 +645,6 @@ def get_field_vector_api() -> Tuple[Any, int]:
                 "capas": campo_toroidal_global_servicio.num_capas,
                 "filas": campo_toroidal_global_servicio.num_rows,
                 "columnas": campo_toroidal_global_servicio.num_cols,
-                "vector_dim": 2
             }
         }
         return jsonify(response_data), 200

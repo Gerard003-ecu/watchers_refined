@@ -38,16 +38,25 @@ class AtomicPiston:
                  piston_mass: float = 1.0,
                  mode: PistonMode = PistonMode.CAPACITOR,
                  transducer_type: TransducerType = TransducerType.PIEZOELECTRIC):
-        """
-        Inicializa una nueva instancia de AtomicPiston.
+        """Inicializa una nueva instancia de AtomicPiston.
 
         Args:
-            capacity: Capacidad máxima de compresión del pistón (en metros).
-            elasticity: Constante elástica del resorte (k en N/m).
-            damping: Coeficiente de amortiguación (c en N·s/m).
-            piston_mass: Masa inercial del pistón (m en kg).
-            mode: Modo de operación (CAPACITOR o BATTERY).
-            transducer_type: Tipo de transductor para interfaz electrónica.
+            capacity (float): Capacidad máxima de compresión del pistón (en metros).
+                Define el límite físico de desplazamiento en compresión.
+            elasticity (float): Constante elástica del resorte (k en N/m).
+                Determina la rigidez del componente elástico del pistón.
+            damping (float): Coeficiente de amortiguación (c en N·s/m).
+                Representa las pérdidas de energía debido a la fricción o resistencia.
+            piston_mass (float, optional): Masa inercial del pistón (m en kg).
+                Por defecto es 1.0 kg.
+            mode (PistonMode, optional): Modo de operación inicial del pistón.
+                Puede ser `PistonMode.CAPACITOR` o `PistonMode.BATTERY`.
+                Por defecto es `PistonMode.CAPACITOR`.
+            transducer_type (TransducerType, optional): Tipo de transductor
+                utilizado para la interfaz electromecánica. Puede ser
+                `TransducerType.PIEZOELECTRIC`, `TransducerType.ELECTROSTATIC`,
+                o `TransducerType.MAGNETOSTRICTIVE`.
+                Por defecto es `TransducerType.PIEZOELECTRIC`.
         """
         # Parámetros físicos
         self.capacity = capacity
@@ -109,24 +118,41 @@ class AtomicPiston:
 
     @property
     def current_charge(self) -> float:
-        """Devuelve la carga actual del pistón (compresión)"""
+        """float: La carga actual del pistón, representada como la compresión.
+
+        Se calcula como el valor máximo entre cero y la posición negativa
+        del pistón (ya que la compresión se considera en la dirección negativa).
+        Un valor mayor indica una mayor compresión (carga).
+        """
         return max(0, -self.position)
 
     @property
     def stored_energy(self) -> float:
-        """Calcula la energía almacenada (potencial + cinética)"""
+        """float: La energía mecánica total almacenada actualmente en el pistón.
+
+        Corresponde a la suma de la energía potencial elástica debido a la
+        deformación del resorte (0.5 * k * x²) y la energía cinética debido
+        al movimiento del pistón (0.5 * m * v²).
+        """
         potential = 0.5 * self.k * self.position**2
         kinetic = 0.5 * self.m * self.velocity**2
         return potential + kinetic
 
     def apply_force(self, signal_value: float, source: str, mass_factor: float = 1.0):
-        """
-        Aplica una fuerza mecánica al pistón basada en una señal de entrada.
+        """Aplica una fuerza mecánica al pistón basada en una señal de entrada.
+
+        La fuerza se calcula utilizando la energía cinética derivada de la
+        velocidad de la señal de entrada. La dirección de la fuerza puede ser
+        configurada mediante `set_compression_direction`.
 
         Args:
-            signal_value: Valor actual de la señal
-            source: Identificador de la fuente de señal
-            mass_factor: Factor para escalar la 'masa' efectiva de la señal
+            signal_value: El valor actual de la señal de entrada.
+            source: Un identificador único para la fuente de la señal.
+                Se utiliza para calcular la velocidad de la señal correctamente
+                cuando hay múltiples fuentes.
+            mass_factor: Un factor para escalar la 'masa' efectiva asociada
+                con la señal. Esto permite ajustar la magnitud de la fuerza
+                generada a partir de la velocidad de la señal. Por defecto es 1.0.
         """
         current_time = time.monotonic()
 
@@ -149,11 +175,19 @@ class AtomicPiston:
         logger.debug(f"Fuente '{source}': Fuerza aplicada = {force:.2f}N")
 
     def apply_electronic_signal(self, voltage: float):
-        """
-        Aplica una señal eléctrica al sistema, traduciéndola en fuerza mecánica.
+        """Aplica una señal eléctrica al sistema, traduciéndola en fuerza mecánica.
+
+        La conversión de voltaje a fuerza depende del tipo de transductor
+        configurado (`transducer_type`). Para transductores piezoeléctricos y
+        electrostáticos, la fuerza es directamente proporcional al voltaje.
+        Para transductores magnetostrictivos, se simula un circuito RL para
+        determinar la corriente y, consecuentemente, la fuerza.
+
+        La fuerza generada se suma a `last_applied_force` para ser utilizada
+        en la próxima actualización del estado del pistón.
 
         Args:
-            voltage: Voltaje aplicado al transductor (V)
+            voltage: El voltaje (en Voltios) aplicado al transductor.
         """
         # Para transductores piezoeléctricos y electrostáticos
         applied_force = voltage * self.force_sensitivity
@@ -170,11 +204,20 @@ class AtomicPiston:
         logger.debug(f"Señal eléctrica: {voltage:.2f}V → Fuerza: {applied_force:.2f}N")
 
     def update_state(self, dt: float):
-        """
-        Actualiza el estado físico del pistón usando integración Verlet.
+        """Actualiza el estado físico del pistón para un intervalo de tiempo dt.
+
+        Este método calcula la nueva posición, velocidad y aceleración del pistón
+        utilizando la integración de Verlet para mayor estabilidad numérica.
+        Considera las fuerzas internas (resorte y amortiguador) y cualquier
+        fuerza externa acumulada a través de `apply_force` o
+        `apply_electronic_signal`.
+
+        También actualiza el estado electrónico del sistema y registra
+        la energía y eficiencia. La fuerza externa acumulada se resetea
+        después de cada actualización.
 
         Args:
-            dt: Paso de tiempo para la simulación (s)
+            dt: El paso de tiempo (delta t, en segundos) para la simulación.
         """
         self.dt = dt
 
@@ -221,7 +264,19 @@ class AtomicPiston:
         self.efficiency_history.append(self.get_conversion_efficiency())
 
     def update_electronic_state(self):
-        """Actualiza el estado del circuito equivalente basado en el estado mecánico"""
+        """Actualiza el estado del circuito electrónico equivalente.
+
+        Este método se basa en el estado mecánico actual del pistón (posición y
+        velocidad) para calcular el voltaje y la corriente en el circuito
+        eléctrico simulado. También actualiza la carga acumulada.
+
+        El voltaje del circuito se considera proporcional a la compresión
+        (posición negativa) del pistón, modulado por `voltage_sensitivity`.
+        La corriente del circuito es proporcional a la velocidad del pistón,
+        modulada por la `equivalent_capacitance`.
+        La carga acumulada se actualiza integrando la corriente a lo largo del
+        paso de tiempo `dt`.
+        """
         # Voltaje proporcional a la compresión (posición negativa)
         self.circuit_voltage = -self.position * self.voltage_sensitivity
 
@@ -232,11 +287,19 @@ class AtomicPiston:
         self.charge_accumulated += self.circuit_current * self.dt
 
     def discharge(self, dt: float):
-        """
-        Gestiona la descarga de energía del pistón según su modo de operación.
+        """Gestiona la descarga de energía del pistón según su modo de operación.
+
+        Este método delega la lógica de descarga a `capacitor_discharge` o
+        `battery_discharge` dependiendo del `mode` actual del pistón.
+
+        Args:
+            dt: El paso de tiempo (delta t, en segundos) relevante para la
+                descarga, especialmente para el modo batería.
 
         Returns:
-            dict or None: Señal de salida si ocurre una descarga, None en caso contrario
+            dict | None: Un diccionario que representa la señal de salida si
+            ocurre una descarga, o `None` si no hay descarga.
+            El formato del diccionario depende del modo de descarga.
         """
         if self.mode == PistonMode.CAPACITOR:
             return self.capacitor_discharge(dt)
@@ -245,7 +308,25 @@ class AtomicPiston:
         return None
 
     def capacitor_discharge(self, dt: float):
-        """Descarga en modo capacitor (pulso instantáneo)"""
+        """Realiza una descarga en modo capacitor si se cumplen las condiciones.
+
+        En modo capacitor, la descarga ocurre como un pulso instantáneo cuando
+        la posición del pistón alcanza o supera el umbral de descarga
+        (`capacitor_discharge_threshold`).
+        Después de la descarga, la posición del pistón se ajusta a un umbral
+        de histéresis para evitar un ciclado rápido, y se simula un rebote
+        asignando una velocidad positiva.
+
+        Args:
+            dt: El paso de tiempo (delta t, en segundos). Aunque la descarga es
+                instantánea, este parámetro se mantiene por consistencia con
+                la interfaz de `discharge`.
+
+        Returns:
+            dict | None: Un diccionario que representa la señal de pulso si
+            ocurre una descarga, con claves "type", "amplitude" y "duration".
+            Retorna `None` si no se cumplen las condiciones de descarga.
+        """
         discharge_threshold = self.capacitor_discharge_threshold
         # Corrected hysteresis: bounces to a *less* compressed state
         hysteresis_threshold = discharge_threshold * (1 - self.hysteresis_factor)
@@ -267,7 +348,26 @@ class AtomicPiston:
         return None
 
     def battery_discharge(self, dt: float):
-        """Descarga en modo batería (señal sostenida)"""
+        """Realiza una descarga en modo batería si está activada y hay carga.
+
+        En modo batería, la descarga es un proceso continuo mientras
+        `battery_is_discharging` sea `True` y haya carga almacenada
+        (`current_charge` > 0). La cantidad de descarga en cada paso de tiempo
+        es proporcional a `battery_discharge_rate`.
+
+        La descarga se detiene si `current_charge` llega a cero o si
+        `battery_is_discharging` se establece en `False`.
+
+        Args:
+            dt: El paso de tiempo (delta t, en segundos) durante el cual
+                ocurre la descarga.
+
+        Returns:
+            dict | None: Un diccionario que representa la señal sostenida si
+            ocurre una descarga, con claves "type", "amplitude" y "duration".
+            La amplitud es proporcional a la cantidad descargada.
+            Retorna `None` si no hay descarga activa o no hay carga.
+        """
         if not self.battery_is_discharging:
             return None
 
@@ -301,15 +401,34 @@ class AtomicPiston:
             return None
 
     def simulate_discharge_circuit(self, load_resistance: float, dt: float):
-        """
-        Simula la descarga del pistón en un circuito eléctrico con carga.
+        """Simula la descarga de energía del pistón a través de una carga externa.
+
+        Ecuación clave:
+        dE = 0.5 * I² * R_load * dt  (Energía disipada)
+        dx = -dE / (k * x)           (Cambio en compresión)
+
+        Este método calcula cómo la energía almacenada en el pistón (representada
+        por `circuit_voltage`) se disipa a través de una resistencia de carga
+        externa. Modifica la posición del pistón para reflejar la pérdida de
+        energía mecánica debido a la descarga eléctrica.
+
+        La simulación asume que la energía mecánica perdida por el pistón se
+        convierte en energía eléctrica disipada en el circuito.
 
         Args:
-            load_resistance: Resistencia de carga (ohmios)
-            dt: Paso de tiempo para la simulación (s)
+            load_resistance: La resistencia de la carga externa (en Ohmios) a
+                través de la cual se descarga el pistón.
+            dt: El paso de tiempo (delta t, en segundos) para la simulación de
+                la descarga.
 
         Returns:
-            tuple: (voltaje_en_carga, corriente_en_carga, potencia_disipada)
+            tuple[float, float, float]: Una tupla conteniendo:
+                - voltaje_en_carga (float): El voltaje a través de la resistencia
+                  de carga (en Voltios).
+                - corriente_en_carga (float): La corriente que fluye a través de
+                  la resistencia de carga (en Amperios).
+                - potencia_disipada (float): La potencia disipada por la
+                  resistencia de carga (en Vatios).
         """
         # Calcular resistencia total (interna + carga)
         total_resistance = self.equivalent_resistance + load_resistance
@@ -346,11 +465,18 @@ class AtomicPiston:
         return load_voltage, discharge_current, power_dissipated
 
     def set_compression_direction(self, direction: int):
-        """
-        Configura la dirección de compresión del pistón.
+        """Configura la dirección en la que las fuerzas externas comprimen el pistón.
+
+        Por defecto, una fuerza positiva aplicada mediante `apply_force` resulta
+        en una compresión (movimiento en la dirección negativa del eje de posición).
+        Este método permite invertir esa lógica.
 
         Args:
-            direction: -1 para compresión (predeterminado), 1 para expansión
+            direction: El indicador de dirección.
+                -1: Las fuerzas aplicadas tienden a comprimir el pistón (disminuyen
+                la posición). Este es el valor predeterminado.
+                -1: Las fuerzas aplicadas tienden a expandir el pistón (aumentan
+                la posición).
         """
         if direction not in (-1, 1):
             logger.warning(
@@ -362,11 +488,15 @@ class AtomicPiston:
             self.compression_direction = direction
 
     def get_conversion_efficiency(self) -> float:
-        """
-        Calcula la eficiencia de conversión de energía del sistema.
+        """Calcula la eficiencia de conversión de energía instantánea del sistema.
+
+        La eficiencia se define como la relación entre la energía mecánica
+        almacenada (potencial y cinética) y la energía total almacenada
+        (mecánica más eléctrica en el circuito equivalente).
 
         Returns:
-            float: Eficiencia como valor entre 0 y 1
+            float: La eficiencia de conversión como un valor entre 0.0 y 1.0.
+                   Retorna 0.0 si la energía total almacenada es cero.
         """
         # Energía mecánica almacenada (potencial + cinética)
         mechanical_energy = self.stored_energy
@@ -381,22 +511,31 @@ class AtomicPiston:
         return 0.0
 
     def set_mode(self, mode: PistonMode):
-        """
-        Establece el modo de operación del pistón.
+        """Establece el modo de operación del pistón.
+
+        Cambiar el modo puede afectar cómo el pistón gestiona la descarga de
+        energía. Si se cambia a modo batería, el estado de descarga
+        (`battery_is_discharging`) se resetea a `False`.
 
         Args:
-            mode: Nuevo modo de operación (PistonMode.CAPACITOR o PistonMode.BATTERY)
+            mode: El nuevo modo de operación, que debe ser un miembro de la
+                  enumeración `PistonMode` (ej. `PistonMode.CAPACITOR` o
+                  `PistonMode.BATTERY`).
         """
         self.mode = mode
         self.battery_is_discharging = False
         logger.info(f"Modo del pistón cambiado a: {mode.value}")
 
     def trigger_discharge(self, discharge_on: bool):
-        """
-        Activa o desactiva la descarga continua en modo BATTERY.
+        """Activa o desactiva la descarga continua en modo BATTERY.
+
+        Este método solo tiene efecto si el pistón está actualmente en
+        `PistonMode.BATTERY`. Si se llama en modo `PistonMode.CAPACITOR`,
+        se registrará una advertencia y no se realizará ninguna acción.
 
         Args:
-            discharge_on: True para activar la descarga, False para desactivarla
+            discharge_on: Un booleano que indica si la descarga debe activarse
+                (`True`) o desactivarse (`False`).
         """
         if self.mode == PistonMode.BATTERY:
             self.battery_is_discharging = discharge_on
@@ -411,14 +550,25 @@ class AtomicPiston:
             )
 
     def generate_bode_data(self, frequency_range: np.ndarray) -> dict:
-        """
-        Genera datos para un diagrama de Bode del sistema pistón-electrónica.
+        """Genera datos para un diagrama de Bode de la respuesta electromecánica.
+
+        Calcula la magnitud (en dB) y la fase (en grados) de la función de
+        transferencia del sistema. Esta función relaciona una excitación de
+        fuerza mecánica con una respuesta de voltaje eléctrica, considerando
+        las propiedades del pistón (masa, amortiguación, elasticidad) y las
+        sensibilidades del transductor.
 
         Args:
-            frequency_range: Array de frecuencias a evaluar (Hz)
+            frequency_range: Un array de NumPy con las frecuencias (en Hertz)
+                para las cuales se calculará la respuesta.
 
         Returns:
-            dict: Datos para el diagrama de Bode
+            dict: Un diccionario conteniendo:
+                - 'frequencies' (np.ndarray): El mismo array de frecuencias de entrada.
+                - 'magnitude' (list[float]): Lista de magnitudes de la respuesta
+                  en dB para cada frecuencia.
+                - 'phase' (list[float]): Lista de fases de la respuesta en grados
+                  para cada frecuencia.
         """
         magnitude = []
         phase = []
@@ -446,7 +596,14 @@ class AtomicPiston:
         }
 
     def reset(self):
-        """Reinicia el estado del pistón a condiciones iniciales"""
+        """Reinicia el estado del pistón a sus condiciones iniciales.
+
+        Esto incluye restablecer la posición, velocidad, aceleración,
+        fuerzas aplicadas, estado del circuito electrónico, estado de descarga
+        de la batería, historial de señales, historial de energía y eficiencia.
+        Es útil para comenzar una nueva simulación o prueba desde un
+        estado conocido y limpio.
+        """
         self.position = 0.0
         self.velocity = 0.0
         self.acceleration = 0.0

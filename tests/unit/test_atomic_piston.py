@@ -312,8 +312,10 @@ class TestAtomicPiston:
         assert piston.velocity == pytest.approx(0.5)
 
     def test_update_state_damping_effect(self):
-        """
-        Verifica el efecto de la amortiguación en update_state comparando dos pistones.
+        """Verifica el efecto de la amortiguación en update_state.
+
+        Compara dos pistones con diferentes niveles de amortiguación,
+        asegurando que una mayor amortiguación resulte en una menor velocidad pico.
         """
         initial_position = -10.0
         time_steps = 300  # Simulate for enough steps to observe peak velocity
@@ -418,8 +420,9 @@ class TestAtomicPiston:
         """Prueba descarga en modo capacitor cuando se está justo en el umbral."""
         piston = capacitor_piston
         discharge_threshold = piston.capacitor_discharge_threshold
+        # Corrected hysteresis calculation
         hysteresis_position = (
-            discharge_threshold * (1 + piston.hysteresis_factor)
+            discharge_threshold * (1 - piston.hysteresis_factor)
         )
 
         piston.position = discharge_threshold
@@ -446,8 +449,9 @@ class TestAtomicPiston:
         """Prueba descarga en modo capacitor cuando se supera el umbral."""
         piston = capacitor_piston
         discharge_threshold = piston.capacitor_discharge_threshold
+        # Corrected hysteresis calculation
         hysteresis_position = (
-            discharge_threshold * (1 + piston.hysteresis_factor)
+            discharge_threshold * (1 - piston.hysteresis_factor)
         )
 
         # Fully charged, well below threshold (e.g., -100 vs -90 for default)
@@ -526,8 +530,9 @@ class TestAtomicPiston:
         # and note this discrepancy. The current code's hysteresis makes it
         # *more* compressed after a pulse.
 
+        # Corrected hysteresis calculation
         expected_hysteresis_position = (
-            discharge_threshold * (1 + piston.hysteresis_factor)
+            discharge_threshold * (1 - piston.hysteresis_factor)
         )
 
         piston.position = discharge_threshold - 1  # Trigger discharge (e.g. -91)
@@ -900,9 +905,11 @@ class TestAtomicPiston:
             self,
             default_piston: AtomicPiston
     ):
-        """
-        Verifica la estructura del output de generate_bode_data
-        y la longitud de los arrays.
+        """Verifica la estructura y longitud del output de generate_bode_data.
+
+        Asegura que el resultado sea un diccionario con las claves esperadas
+        ('frequencies', 'magnitude', 'phase') y que las longitudes de los arrays
+        coincidan con el rango de frecuencias de entrada.
         """
         piston = default_piston
         frequency_range = np.array([10, 100, 1000, 10000])  # Hz
@@ -947,9 +954,10 @@ class TestAtomicPiston:
             self,
             default_piston: AtomicPiston
     ):
-        """
-        Verifica el comportamiento de generate_bode_data
-        con un rango de frecuencias vacío.
+        """Verifica generate_bode_data con un rango de frecuencias vacío.
+
+        Asegura que el método maneje correctamente una entrada de frecuencia vacía,
+        produciendo un diccionario con claves correctas y arrays vacíos.
         """
         piston = default_piston
         frequency_range = np.array([])
@@ -1152,9 +1160,10 @@ class TestAtomicPiston:
             self,
             default_piston: AtomicPiston
     ):
-        """
-        Verifica el comportamiento de simulate_discharge_circuit
-        cuando no hay compresión.
+        """Verifica simulate_discharge_circuit sin compresión inicial.
+
+        Asegura que si el pistón no está comprimido (sin voltaje inicial),
+        no se disipe potencia y la posición del pistón no cambie.
         """
         piston = default_piston
         load_resistance = 10.0
@@ -1179,8 +1188,11 @@ class TestAtomicPiston:
             default_piston: AtomicPiston
     ):
         """
-        Verifica que múltiples llamadas a simulate_discharge_circuit
-        continúan disipando energía.
+        Verifica la disipación de energía con múltiples llamadas a
+        simulate_discharge_circuit.
+
+        Asegura que llamadas sucesivas continúen disipando energía si hay voltaje
+        y que la posición del pistón se mueva progresivamente hacia cero.
         """
         piston = default_piston
         load_resistance = 5.0
