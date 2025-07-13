@@ -423,12 +423,18 @@ def simulation_loop(dt: float, beta: float):
     # to campo_toroidal_global_servicio for
     # consistency with the rest of the module.
     while not stop_simulation_event.is_set():
-        start_time = time.monotonic()
-        campo_toroidal_global_servicio.apply_rotational_step(dt, beta)
-        campo_toroidal_global_servicio.apply_quantum_step(dt)
-        elapsed = time.monotonic() - start_time
-        sleep_time = max(0, dt - elapsed)
-        stop_simulation_event.wait(sleep_time)
+        try:
+            start_time = time.monotonic()
+            campo_toroidal_global_servicio.apply_rotational_step(dt, beta)
+            campo_toroidal_global_servicio.apply_quantum_step(dt)
+            elapsed = time.monotonic() - start_time
+            sleep_time = max(0, dt - elapsed)
+            stop_simulation_event.wait(sleep_time)
+        except Exception as e:
+            logger.error(f"Error en el bucle de simulación: {e}", exc_info=True)
+            # Opcional: esperar un poco antes de reintentar para
+            # evitar un bucle de error rápido
+            stop_simulation_event.wait(5)
 
 
 # --- Servidor Flask ---
@@ -484,7 +490,7 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
     agregada del campo vectorial en cada punto, ponderada por capa.
     """
     try:
-        campo_unificado = np.abs(campo_toroidal_global_servicio.campo_q[0])
+        campo_unificado = campo_toroidal_global_servicio.obtener_campo_unificado()
         # SOLUCIÓN E501: Se formatea el diccionario para mayor legibilidad.
         response_data = {
             "status": "success",
@@ -577,6 +583,13 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
     capa, row, col = data['capa'], data['row'], data['col']
     nombre_watcher = data['nombre_watcher']
 
+    if not (0 <= capa < campo_toroidal_global_servicio.num_capas):
+        return jsonify({"status": "error", "message": "Índice de capa fuera de rango."}), 400
+    if not (0 <= row < campo_toroidal_global_servicio.num_rows):
+        return jsonify({"status": "error", "message": "Índice de fila fuera de rango."}), 400
+    if not (0 <= col < campo_toroidal_global_servicio.num_cols):
+        return jsonify({"status": "error", "message": "Índice de columna fuera de rango."}), 400
+
     try:
         success = campo_toroidal_global_servicio.aplicar_influencia(
             capa=capa, row=row, col=col,
@@ -626,7 +639,7 @@ def get_field_vector_api() -> Tuple[Any, int]:
             # Obtener una copia del campo para evitar modificarlo mientras
             # se serializa
             campo_copia = [
-                [[(c.real, c.imag) for c in row] for row in layer]
+                [[[cell.real, cell.imag] for cell in row] for row in layer]
                 for layer in campo_toroidal_global_servicio.campo_q
             ]
 

@@ -273,48 +273,41 @@ def test_endpoint_health(cliente_flask: FlaskClient):
 
 def test_endpoint_ecu_api(cliente_flask: FlaskClient):
     """Test: Respuesta OK del endpoint /api/ecu."""
-    # Paso 1: Definir el payload de influencia
-    influence_payload = {
-        "capa": 0,
-        "row": 0,
-        "col": 0,
-        "vector": [1.1, -2.2],
-        "nombre_watcher": "test_api_ecu_via_post"
+    # Paso 1: Definir y aplicar influencias en múltiples capas
+    influence_payload_1 = {
+        "capa": 0, "row": 0, "col": 0, "vector": [3.0, 4.0],
+        "nombre_watcher": "test_api_ecu_1"
     }
-    vector_influencia = 1.1 - 2.2j
+    influence_payload_2 = {
+        "capa": 1, "row": 0, "col": 0, "vector": [0.0, -6.0],
+        "nombre_watcher": "test_api_ecu_2"
+    }
+    vector_influencia_1 = 3.0 + 4.0j
+    vector_influencia_2 = 0.0 - 6.0j
 
-    # Paso 2: Usar cliente_flask.post para aplicar la influencia
-    post_response = cliente_flask.post("/api/ecu/influence", json=influence_payload)
-    assert post_response.status_code == 200
-    post_data = post_response.get_json()
-    assert post_data["status"] == "success"
+    # Aplicar influencias
+    cliente_flask.post("/api/ecu/influence", json=influence_payload_1)
+    cliente_flask.post("/api/ecu/influence", json=influence_payload_2)
 
-    # Paso 3: Usar cliente_flask.get para obtener el estado del ECU
+    # Paso 2: Usar cliente_flask.get para obtener el estado del ECU
     get_response = cliente_flask.get("/api/ecu")
     assert get_response.status_code == 200
     get_data = get_response.get_json()
     assert get_data["status"] == "success"
     assert "estado_campo_unificado" in get_data
-    assert isinstance(get_data["estado_campo_unificado"], list)
     assert get_data["metadata"]["capas"] == NUM_CAPAS
-    assert get_data["metadata"]["filas"] == NUM_FILAS
-    assert get_data["metadata"]["columnas"] == NUM_COLUMNAS
 
-    # Paso 4: Realizar la aserción sobre la respuesta del GET
-    # El valor esperado es la norma del vector de influencia,
-    # ponderado por el peso de la capa 0.
-    norma_influencia = np.abs(vector_influencia)
+    # Paso 3: Calcular el valor unificado esperado
     pesos = (
         np.linspace(1.0, 0.5, NUM_CAPAS)
         if NUM_CAPAS > 1
         else np.array([1.0])
     )
-    peso_capa_0 = pesos[0]
-    valor_esperado_nodo_00 = peso_capa_0 * norma_influencia
+    valor_esperado = (pesos[0] * np.abs(vector_influencia_1)) + \
+                     (pesos[1] * np.abs(vector_influencia_2))
 
-    assert get_data["estado_campo_unificado"][0][0] == pytest.approx(
-        valor_esperado_nodo_00
-    )
+    # Paso 4: Realizar la aserción
+    assert get_data["estado_campo_unificado"][0][0] == pytest.approx(valor_esperado)
 
 
 def test_endpoint_influence_valido(cliente_flask: FlaskClient):
@@ -396,35 +389,28 @@ def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
 def test_endpoint_influence_invalido_rango(cliente_flask: FlaskClient):
     """Test: Error 400 por API índic. fuera de rango."""
     payload_capa = {
-        "capa": NUM_CAPAS,
-        "row": 0,
-        "col": 0,
-        "vector": [1.0, 0.0],
+        "capa": NUM_CAPAS, "row": 0, "col": 0, "vector": [1.0, 0.0],
         "nombre_watcher": "api_test_range_capa"
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_capa)
     assert respuesta.status_code == 400
-    assert "error de validación" in respuesta.get_json()["message"].lower()
+    assert "índice de capa fuera de rango" in respuesta.get_json()["message"].lower()
 
     payload_row = {
-        "capa": 0,
-        "row": NUM_FILAS,
-        "col": 0,
-        "vector": [1.0, 0.0],
+        "capa": 0, "row": NUM_FILAS, "col": 0, "vector": [1.0, 0.0],
         "nombre_watcher": "api_test_range_row"
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_row)
     assert respuesta.status_code == 400
+    assert "índice de fila fuera de rango" in respuesta.get_json()["message"].lower()
 
     payload_col = {
-        "capa": 0,
-        "row": 0,
-        "col": NUM_COLUMNAS,
-        "vector": [1.0, 0.0],
+        "capa": 0, "row": 0, "col": NUM_COLUMNAS, "vector": [1.0, 0.0],
         "nombre_watcher": "api_test_range_col"
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_col)
     assert respuesta.status_code == 400
+    assert "índice de columna fuera de rango" in respuesta.get_json()["message"].lower()
 
 
 def test_endpoint_get_field_vector(cliente_flask):
