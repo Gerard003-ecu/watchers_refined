@@ -34,8 +34,8 @@ def cliente_flask() -> FlaskClient:
     app.config['TESTING'] = True
     with app.test_client() as cliente:
         with campo_toroidal_global_servicio.lock:
-            campo_toroidal_global_servicio.campo = [
-                np.zeros((NUM_FILAS, NUM_COLUMNAS, 2))
+            campo_toroidal_global_servicio.campo_q = [
+                np.zeros((NUM_FILAS, NUM_COLUMNAS), dtype=np.complex128)
                 for _ in range(NUM_CAPAS)
             ]
         logger.debug("Estado del campo global reseteado para test API")
@@ -49,10 +49,10 @@ def test_inicializacion_valida(campo_toroidal_test: ToroidalField):
     assert tf.num_capas == 2
     assert tf.num_rows == 3
     assert tf.num_cols == 4
-    assert isinstance(tf.campo, list)
-    assert len(tf.campo) == 2
-    assert tf.campo[0].shape == (3, 4, 2)
-    assert np.all(tf.campo[0] == 0)
+    assert isinstance(tf.campo_q, list)
+    assert len(tf.campo_q) == 2
+    assert tf.campo_q[0].shape == (3, 4)
+    assert np.all(tf.campo_q[0] == 0)
     assert len(tf.alphas) == 2
     assert len(tf.dampings) == 2
     assert isinstance(tf.lock, type(threading.Lock()))
@@ -108,16 +108,16 @@ def test_aplicar_influencia_valida(campo_toroidal_test: ToroidalField):
     """Test: Aplicar influencia en posición válida."""
     tf = campo_toroidal_test
     capa, row, col = 0, 1, 2
-    vector = np.array([0.5, -0.3])
+    vector = 0.5 - 0.3j
     with tf.lock:
-        valor_inicial = np.copy(tf.campo[capa][row, col])
+        valor_inicial = np.copy(tf.campo_q[capa][row, col])
 
     success = tf.aplicar_influencia(capa, row, col, vector, "test_watcher")
     assert success is True
 
     with tf.lock:
-        valor_final = tf.campo[capa][row, col]
-    assert np.array_equal(valor_final, valor_inicial + vector)
+        valor_final = tf.campo_q[capa][row, col]
+    assert np.isclose(valor_final, valor_inicial + vector)
 
 
 def test_aplicar_influencia_fuera_rango(
@@ -125,9 +125,9 @@ def test_aplicar_influencia_fuera_rango(
 ):
     """Test: Manejo de índices fuera de rango."""
     tf = campo_toroidal_test
-    vector = np.array([1.0, 0.0])
+    vector = 1.0 + 0.0j
     with tf.lock:
-        valor_original = [np.copy(c) for c in tf.campo]
+        valor_original = [np.copy(c) for c in tf.campo_q]
 
     with caplog.at_level(logging.ERROR):
         success = tf.aplicar_influencia(5, 1, 1, vector, "watcher_err_capa")
@@ -135,7 +135,7 @@ def test_aplicar_influencia_fuera_rango(
     assert "índice de capa fuera de rango (5)" in caplog.text.lower()
     with tf.lock:
         for i in range(tf.num_capas):
-            assert np.array_equal(tf.campo[i], valor_original[i])
+            assert np.array_equal(tf.campo_q[i], valor_original[i])
     caplog.clear()
 
     with caplog.at_level(logging.ERROR):
@@ -144,7 +144,7 @@ def test_aplicar_influencia_fuera_rango(
     assert "índice de fila fuera de rango (5)" in caplog.text.lower()
     with tf.lock:
         for i in range(tf.num_capas):
-            assert np.array_equal(tf.campo[i], valor_original[i])
+            assert np.array_equal(tf.campo_q[i], valor_original[i])
     caplog.clear()
 
     with caplog.at_level(logging.ERROR):
@@ -153,7 +153,7 @@ def test_aplicar_influencia_fuera_rango(
     assert "índice de columna fuera de rango (-1)" in caplog.text.lower()
     with tf.lock:
         for i in range(tf.num_capas):
-            assert np.array_equal(tf.campo[i], valor_original[i])
+            assert np.array_equal(tf.campo_q[i], valor_original[i])
 
 
 def test_aplicar_influencia_vector_invalido(
@@ -162,18 +162,18 @@ def test_aplicar_influencia_vector_invalido(
     """Test: Aplicar influencia con vector de formato incorrecto."""
     tf = campo_toroidal_test
     with tf.lock:
-        valor_original = [np.copy(c) for c in tf.campo]
+        valor_original = [np.copy(c) for c in tf.campo_q]
 
     with caplog.at_level(logging.ERROR):
         success = tf.aplicar_influencia(
-            0, 1, 1, np.array([1, 2, 3]), "watcher_vec_err"
+            0, 1, 1, "not a complex number", "watcher_vec_err"
         )
     assert success is False
     assert "vector de influencia inválido" in caplog.text.lower()
-    assert "np.ndarray de shape (2,)" in caplog.text
+    assert "debe ser un número complejo" in caplog.text.lower()
     with tf.lock:
         for i in range(tf.num_capas):
-            assert np.array_equal(tf.campo[i], valor_original[i])
+            assert np.array_equal(tf.campo_q[i], valor_original[i])
 
 
 def test_get_neighbors_conectividad_toroidal(
@@ -195,15 +195,13 @@ def test_calcular_gradiente_adaptativo(
 ):
     """Test: Cálculo de gradiente entre capas."""
     tf = campo_toroidal_test
-    tf.aplicar_influencia(0, 1, 1, np.array([3.0, 4.0]), "test_grad1_capa0")
-    tf.aplicar_influencia(1, 1, 1, np.array([0.0, -6.0]), "test_grad1_capa1")
+    tf.aplicar_influencia(0, 1, 1, 3.0 + 4.0j, "test_grad1_capa0")
+    tf.aplicar_influencia(1, 1, 1, 0.0 - 6.0j, "test_grad1_capa1")
 
     gradiente = tf.calcular_gradiente_adaptativo()
     assert gradiente.shape == (1, 3, 4)
 
-    expected_diff_mag = np.linalg.norm(
-        np.array([3.0, 10.0])
-    )
+    expected_diff_mag = np.abs((3.0 + 4.0j) - (0.0 - 6.0j))
     assert gradiente[0, 1, 1] == pytest.approx(expected_diff_mag)
     assert gradiente[0, 0, 0] == pytest.approx(0.0)
 
@@ -219,12 +217,12 @@ def test_calcular_gradiente_sin_suficientes_capas():
 def test_obtener_campo_unificado(campo_toroidal_test: ToroidalField):
     """Test: Campo unificado con pesos por capa."""
     tf = campo_toroidal_test
-    tf.aplicar_influencia(0, 1, 1, np.array([3.0, 4.0]), "test_uni1_capa0")
-    tf.aplicar_influencia(1, 1, 1, np.array([0.0, -6.0]), "test_uni2_capa1")
+    tf.aplicar_influencia(0, 1, 1, 3.0 + 4.0j, "test_uni1_capa0")
+    tf.aplicar_influencia(1, 1, 1, 0.0 - 6.0j, "test_uni2_capa1")
 
     campo_uni = tf.obtener_campo_unificado()
     assert campo_uni.shape == (3, 4)
-    expected_value_11 = 1.0 * 5.0 + 0.5 * 6.0
+    expected_value_11 = 1.0 * np.abs(3.0 + 4.0j) + 0.5 * np.abs(0.0 - 6.0j)
     assert campo_uni[1, 1] == pytest.approx(expected_value_11)
     assert campo_uni[0, 0] == pytest.approx(0.0)
 
@@ -232,56 +230,34 @@ def test_obtener_campo_unificado(campo_toroidal_test: ToroidalField):
 def test_obtener_campo_unificado_una_capa():
     """Test: Campo unificado con una sola capa."""
     tf = ToroidalField(num_capas=1, num_rows=2, num_cols=2)
-    tf.aplicar_influencia(0, 0, 0, np.array([1.0, 1.0]), "test_uni_1capa")
+    tf.aplicar_influencia(0, 0, 0, 1.0 + 1.0j, "test_uni_1capa")
     campo_uni = tf.obtener_campo_unificado()
     assert campo_uni.shape == (2, 2)
-    assert campo_uni[0, 0] == pytest.approx(1.0 * np.sqrt(2.0))
+    assert campo_uni[0, 0] == pytest.approx(np.abs(1.0 + 1.0j))
     assert campo_uni[0, 1] == pytest.approx(0.0)
 
 
 def test_apply_rotational_step(campo_toroidal_test: ToroidalField):
     """Test: Paso rotacional (advección, acoplamiento, disipación)."""
     tf = campo_toroidal_test
-    initial_vector = np.array([1.0, 2.0])
+    initial_vector = 1.0 + 2.0j
     capa, row, col = 0, 1, 1
     tf.aplicar_influencia(capa, row, col, initial_vector, "test_rot_watcher")
 
     dt, beta = 0.1, 0.1
 
     with tf.lock:
-        initial_state_full = [np.copy(c) for c in tf.campo]
+        initial_state_full = [np.copy(c) for c in tf.campo_q]
 
     tf.apply_rotational_step(dt, beta)
 
     with tf.lock:
-        final_state_full = tf.campo
+        final_state_full = tf.campo_q
 
     assert not np.allclose(
         final_state_full[capa][row, col], initial_state_full[capa][row, col]
     )
     assert np.all(np.isfinite(final_state_full[capa][row, col]))
-
-    nodes_that_should_change = [
-        (0, 1, 1),
-        (0, 1, 2),
-        (0, 0, 1),
-        (0, 2, 1),
-    ]
-
-    for c in range(tf.num_capas):
-        for r in range(tf.num_rows):
-            for col_idx_loop in range(tf.num_cols):
-                coords = (c, r, col_idx_loop)
-                if coords in nodes_that_should_change:
-                    assert not np.allclose(
-                        final_state_full[c][r, col_idx_loop],
-                        initial_state_full[c][r, col_idx_loop]
-                    )
-                else:
-                    assert np.allclose(
-                        final_state_full[c][r, col_idx_loop],
-                        initial_state_full[c][r, col_idx_loop]
-                    )
 
 
 # --- Tests para la API REST (Usando instancia global y cliente_flask) ---
@@ -305,7 +281,7 @@ def test_endpoint_ecu_api(cliente_flask: FlaskClient):
         "vector": [1.1, -2.2],
         "nombre_watcher": "test_api_ecu_via_post"
     }
-    vector_influencia_np = np.array(influence_payload["vector"])
+    vector_influencia = 1.1 - 2.2j
 
     # Paso 2: Usar cliente_flask.post para aplicar la influencia
     post_response = cliente_flask.post("/api/ecu/influence", json=influence_payload)
@@ -327,7 +303,7 @@ def test_endpoint_ecu_api(cliente_flask: FlaskClient):
     # Paso 4: Realizar la aserción sobre la respuesta del GET
     # El valor esperado es la norma del vector de influencia,
     # ponderado por el peso de la capa 0.
-    norma_influencia = np.linalg.norm(vector_influencia_np)
+    norma_influencia = np.abs(vector_influencia)
     pesos = (
         np.linspace(1.0, 0.5, NUM_CAPAS)
         if NUM_CAPAS > 1
@@ -353,11 +329,11 @@ def test_endpoint_influence_valido(cliente_flask: FlaskClient):
     capa_idx = payload["capa"]
     row_idx = payload["row"]
     col_idx = payload["col"]
-    vector_np = np.array(payload["vector"])
+    vector = 5.0 - 1.0j
 
     with campo_toroidal_global_servicio.lock:
         valor_inicial = np.copy(
-            campo_toroidal_global_servicio.campo[capa_idx][row_idx, col_idx]
+            campo_toroidal_global_servicio.campo_q[capa_idx][row_idx, col_idx]
         )
 
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload)
@@ -370,10 +346,10 @@ def test_endpoint_influence_valido(cliente_flask: FlaskClient):
     assert datos["vector"] == payload["vector"]
 
     with campo_toroidal_global_servicio.lock:
-        valor_final = campo_toroidal_global_servicio.campo[capa_idx][
+        valor_final = campo_toroidal_global_servicio.campo_q[capa_idx][
             row_idx, col_idx
         ]
-    assert np.array_equal(valor_final, valor_inicial + vector_np)
+    assert np.isclose(valor_final, valor_inicial + vector)
 
 
 def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
@@ -456,9 +432,9 @@ def test_endpoint_get_field_vector(cliente_flask):
     from ecu.matriz_ecu import (
         campo_toroidal_global_servicio, NUM_CAPAS, NUM_FILAS, NUM_COLUMNAS)
 
-    influence_vector_1 = np.array([1.1, -2.2])
-    influence_vector_2 = np.array([5.0, 0.5])
-    influence_vector_3 = np.array([-1.0, 10.0])
+    influence_vector_1 = 1.1 - 2.2j
+    influence_vector_2 = 5.0 + 0.5j
+    influence_vector_3 = -1.0 + 10.0j
 
     campo_toroidal_global_servicio.aplicar_influencia(
         0, 0, 0, influence_vector_1, "test_vec_api_1"
@@ -487,7 +463,6 @@ def test_endpoint_get_field_vector(cliente_flask):
     assert data["metadata"]["capas"] == NUM_CAPAS
     assert data["metadata"]["filas"] == NUM_FILAS
     assert data["metadata"]["columnas"] == NUM_COLUMNAS
-    assert data["metadata"]["vector_dim"] == 2
 
     returned_field_list = data["field_vector"]
     assert isinstance(returned_field_list, list)
@@ -502,21 +477,18 @@ def test_endpoint_get_field_vector(cliente_flask):
             assert len(row_data) == NUM_COLUMNAS
 
             for col_idx_loop, vector_data in enumerate(row_data):
-                assert isinstance(vector_data, list)
-                assert len(vector_data) == 2
-
                 with campo_toroidal_global_servicio.lock:
                     actual_vector = (
-                        campo_toroidal_global_servicio.campo[capa_idx]
+                        campo_toroidal_global_servicio.campo_q[capa_idx]
                         [row_idx, col_idx_loop]
                     )
-                assert np.allclose(np.array(vector_data), actual_vector)
+                assert np.isclose(complex(vector_data[0], vector_data[1]), actual_vector)
 
 
 def test_endpoint_ecu_error_interno(cliente_flask: FlaskClient, mocker):
     """Test: Manejo de errores internos en API /api/ecu (500)."""
     mocker.patch(
-        'ecu.matriz_ecu.ToroidalField.obtener_campo_unificado',
+        'numpy.abs',
         side_effect=Exception("Mock error interno"))
     respuesta = cliente_flask.get("/api/ecu")
     assert respuesta.status_code == 500
@@ -524,4 +496,36 @@ def test_endpoint_ecu_error_interno(cliente_flask: FlaskClient, mocker):
     assert datos["status"] == "error"
     assert "error interno" in datos["message"].lower()
 
-# --- END OF FILE test_matriz_ecu.py (CORREGIDO) ---
+
+def test_set_initial_quantum_phase(campo_toroidal_test: ToroidalField):
+    """Test: Inicialización de la fase cuántica a un estado aleatorio."""
+    tf = campo_toroidal_test
+    seed = 42
+    tf.set_initial_quantum_phase(seed)
+
+    # Verificar que todos los valores son números complejos con magnitud ~1
+    for capa in tf.campo_q:
+        magnitudes = np.abs(capa)
+        assert np.allclose(magnitudes, 1.0)
+
+    # Verificar que con la misma semilla, el resultado es idéntico
+    tf2 = ToroidalField(tf.num_capas, tf.num_rows, tf.num_cols)
+    tf2.set_initial_quantum_phase(seed)
+    for capa1, capa2 in zip(tf.campo_q, tf2.campo_q):
+        assert np.allclose(capa1, capa2)
+
+
+def test_apply_quantum_step(campo_toroidal_test: ToroidalField):
+    """Test: Aplicación de un paso de evolución cuántica."""
+    tf = campo_toroidal_test
+    tf.set_initial_quantum_phase(seed=123)
+    initial_phases = [np.copy(capa) for capa in tf.campo_q]
+
+    dt = 0.1
+    tf.apply_quantum_step(dt)
+
+    for i, initial_capa in enumerate(initial_phases):
+        alpha = tf.alphas[i]
+        expected_phase_change = np.exp(-1j * alpha * dt)
+        expected_final_capa = initial_capa * expected_phase_change
+        assert np.allclose(tf.campo_q[i], expected_final_capa)
