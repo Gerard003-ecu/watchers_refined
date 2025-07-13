@@ -748,8 +748,6 @@ class HexCylindricalMesh:
             border_tol = self.hex_size / self.radius if self.radius > 0 else 0.1
 
             left_border_indices = [i for i, p in enumerate(points) if p[0] < border_tol]
-            right_border_indices = [i for i, p in enumerate(points) if p[0] > 2 * math.pi - border_tol]
-
             for i in left_border_indices:
                 p = points_array[i]
                 p_shifted = (p[0] + 2 * math.pi, p[1])
