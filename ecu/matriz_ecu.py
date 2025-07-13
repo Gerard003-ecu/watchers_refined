@@ -154,25 +154,29 @@ class ToroidalField:
         """
         if not (0 <= capa < self.num_capas):
             logger.error(
-                "Error al aplicar influencia de '%s': índice de capa fuera de rango (%d). Rango válido: 0-%d.",
+                "Error al aplicar influencia de '%s': índice de capa fuera "
+                "de rango (%d). Rango válido: 0-%d.",
                 nombre_watcher, capa, self.num_capas - 1
             )
             return False
         if not (0 <= row < self.num_rows):
             logger.error(
-                "Error al aplicar influencia de '%s': índice de fila fuera de rango (%d). Rango válido: 0-%d.",
+                "Error al aplicar influencia de '%s': índice de fila fuera "
+                "de rango (%d). Rango válido: 0-%d.",
                 nombre_watcher, row, self.num_rows - 1
             )
             return False
         if not (0 <= col < self.num_cols):
             logger.error(
-                "Error al aplicar influencia de '%s': índice de columna fuera de rango (%d). Rango válido: 0-%d.",
+                "Error al aplicar influencia de '%s': índice de columna "
+                "fuera de rango (%d). Rango válido: 0-%d.",
                 nombre_watcher, col, self.num_cols - 1
             )
             return False
         if not isinstance(vector, complex):
             logger.error(
-                "Error al aplicar influencia de '%s': vector de influencia inválido. Debe ser un número complejo. Recibido: %s",
+                "Error al aplicar influencia de '%s': vector de influencia "
+                "inválido. Debe ser un número complejo. Recibido: %s",
                 nombre_watcher, type(vector)
             )
             return False
@@ -323,7 +327,6 @@ class ToroidalField:
                         )
             self.campo_q = next_campo
 
-
     def set_initial_quantum_phase(self, seed: Optional[int] = None):
         """
         Inicializa la fase cuántica del campo a un estado aleatorio.
@@ -339,7 +342,9 @@ class ToroidalField:
         rng = np.random.default_rng(seed)
         with self.lock:
             for capa_idx in range(self.num_capas):
-                random_angles = rng.uniform(0, 2 * np.pi, size=(self.num_rows, self.num_cols))
+                random_angles = rng.uniform(
+                    0, 2 * np.pi, size=(self.num_rows, self.num_cols)
+                )
                 self.campo_q[capa_idx] = np.exp(1j * random_angles)
 
     def apply_quantum_step(self, dt: float):
@@ -544,7 +549,6 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
         return jsonify({"status": "error", "message": msg}), 400
 
     type_errors = []
-    vector_np = None
     for field, expected_type in required_fields.items():
         # Asegurarse que el campo existe antes de verificar el tipo
         if field in data and not isinstance(data[field], expected_type):
@@ -621,7 +625,10 @@ def get_field_vector_api() -> Tuple[Any, int]:
         with campo_toroidal_global_servicio.lock:
             # Obtener una copia del campo para evitar modificarlo mientras
             # se serializa
-            campo_copia = [[(c.real, c.imag) for c in r] for r in capa]
+            campo_copia = [
+                [(c.real, c.imag) for c in r]
+                for r in campo_toroidal_global_servicio.campo_q
+            ]
 
         logger.info(
             "Solicitud GET /api/ecu/field_vector recibida. "
