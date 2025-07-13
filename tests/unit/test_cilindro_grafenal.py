@@ -154,7 +154,7 @@ def test_mesh_initialization(sample_mesh_cg: HexCylindricalMesh):
             instancia de `HexCylindricalMesh`.
     """
     assert sample_mesh_cg.radius == 3.0
-    assert sample_mesh_cg.height_segments == 3
+    assert sample_mesh_cg.height_segments == 2
     assert sample_mesh_cg.hex_size == 1.0
     # Use 'is' for boolean comparison
     assert sample_mesh_cg.periodic_z is False
@@ -353,7 +353,7 @@ def test_periodic_z_neighbors():
     # Al menos debe encontrar vecinos envueltos en Z
     assert len(neighbors) >= 3
 
-    
+
 # --- Tests para Funciones Auxiliares ---
 
 

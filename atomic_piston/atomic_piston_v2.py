@@ -370,7 +370,8 @@ class AtomicPiston:
             load_resistance (float): La resistencia de la carga externa.
             dt (float): El intervalo de tiempo.
         Returns:
-            tuple: Una tupla con el voltaje de la carga, la corriente de descarga y la potencia disipada.
+            tuple: Una tupla con el voltaje de la carga, la corriente de
+            descarga y la potencia disipada.
         """
         # Calcular resistencia total (interna + carga)
         total_resistance = self.internal_resistance + load_resistance
@@ -458,9 +459,13 @@ class AtomicPiston:
         for f in frequency_range:
             omega = 2 * np.pi * f
             # Función de transferencia del sistema mecánico
-            H_mech = 1 / (self.m * (1j * omega) ** 2 + self.c * (1j * omega) + self.k)
+            H_mech = 1 / (
+                self.m * (1j * omega) ** 2 + self.c * (1j * omega) + self.k
+            )
             # Convertir a respuesta eléctrica
-            H_electrical = H_mech * self.voltage_sensitivity * self.force_sensitivity
+            H_electrical = (
+                H_mech * self.voltage_sensitivity * self.force_sensitivity
+            )
             magnitude.append(20 * np.log10(np.abs(H_electrical)))
             phase.append(np.angle(H_electrical, deg=True))
         return {"frequencies": frequency_range, "magnitude": magnitude, "phase": phase}

@@ -688,9 +688,8 @@ class HexCylindricalMesh:
         en la malla.
 
         La periodicidad en la dirección theta (circunferencial) se maneja
-        replicando los puntos en theta - 2*pi y theta + 2*pi antes de calcular
-        el diagrama, y luego mapeando los vecinos encontrados de vuelta a las
-        celdas originales.
+        calculando el diagrama en el espacio desenrollado y luego buscando
+        vecinos periódicos para las celdas en los bordes.
 
         Requiere que `scipy` esté instalado. Si `scipy.spatial.Voronoi` no
         puede ser importado, se registra un error y el método no hace nada.
@@ -702,7 +701,7 @@ class HexCylindricalMesh:
                 franja plana desenrollada.
         """
         try:
-            from scipy.spatial import Voronoi
+            from scipy.spatial import Voronoi, cKDTree
         except ImportError:
             logger.error(
                 "Scipy no instalado. Voronoi no disp."
@@ -729,65 +728,35 @@ class HexCylindricalMesh:
             )
             return
 
-        # Replicar puntos para periodicidad theta
-        extended_points = points.copy()
-        index_mapping = list(range(n_original))
-
-        if periodic_theta:
-            # Réplicas izquierda y derecha
-            for i, (theta, z) in enumerate(points):
-                # Fix for original Line 487 E501
-                point_to_add_minus = (theta - math.tau, z)
-                extended_points.append(point_to_add_minus)
-                index_mapping.append(i)
-                point_to_add_plus = (theta + math.tau, z)
-                extended_points.append(point_to_add_plus)
-                index_mapping.append(i)
-
-        # Convertir a array numpy
-        points_array = np.array(extended_points)
-
-        # Calcular diagrama de Voronoi
+        points_array = np.array(points)
         vor = Voronoi(points_array)
 
         # Construir diccionario de vecinos
-        neighbor_dict = {i: set() for i in range(len(extended_points))}
+        neighbor_dict = {i: set() for i in range(n_original)}
         for ridge in vor.ridge_points:
             i, j = ridge
             neighbor_dict[i].add(j)
             neighbor_dict[j].add(i)
 
-        # Procesar vecinos para cada celda original
-        for orig_idx in range(n_original):
-            cell = original_cells[orig_idx]
-            voronoi_neighbors = set()
+        for i in range(n_original):
+            cell = original_cells[i]
+            voronoi_neighbors_indices = neighbor_dict[i]
+            cell.voronoi_neighbors = [original_cells[j] for j in voronoi_neighbors_indices]
 
-            # Considerar todas las réplicas del punto actual
-            replica_indices = [orig_idx]
-            if periodic_theta:
-                # Line 533
-                # Réplica izquierda
-                replica_indices.append(
-                    orig_idx + n_original
-                )
-                # Réplica derecha
-                replica_indices.append(
-                    orig_idx + 2 * n_original
-                )
+        if periodic_theta:
+            tree = cKDTree(points_array)
+            border_tol = self.hex_size / self.radius if self.radius > 0 else 0.1
 
-            # Recopilar vecinos de todas las réplicas
-            for rep_idx in replica_indices:
-                if rep_idx < len(neighbor_dict):
-                    for neighbor_ext_idx in neighbor_dict[rep_idx]:
-                        neighbor_orig_idx = index_mapping[neighbor_ext_idx]
-                        # Excluir auto-vecindad y vecinos duplicados
-                        if neighbor_orig_idx != orig_idx:
-                            voronoi_neighbors.add(neighbor_orig_idx)
-
-            # Asignar vecinos como objetos Cell
-            cell.voronoi_neighbors = [
-                original_cells[i] for i in voronoi_neighbors
-            ]
+            left_border_indices = [i for i, p in enumerate(points) if p[0] < border_tol]
+            for i in left_border_indices:
+                p = points_array[i]
+                p_shifted = (p[0] + 2 * math.pi, p[1])
+                dist, j = tree.query(p_shifted, k=1)
+                if dist < border_tol * 2:
+                    if original_cells[j] not in original_cells[i].voronoi_neighbors:
+                        original_cells[i].voronoi_neighbors.append(original_cells[j])
+                    if original_cells[i] not in original_cells[j].voronoi_neighbors:
+                        original_cells[j].voronoi_neighbors.append(original_cells[i])
 
         logger.info(
             f"Vecinos Voronoi calculados para {n_original} celdas."
