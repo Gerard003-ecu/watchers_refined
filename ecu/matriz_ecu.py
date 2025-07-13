@@ -584,20 +584,20 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
     nombre_watcher = data['nombre_watcher']
 
     if not (0 <= capa < campo_toroidal_global_servicio.num_capas):
-        return jsonify(
-            {"status": "error",
+        return jsonify({
+            "status": "error",
             "message": "Índice de capa fuera de rango."
-            }), 400
+        }), 400
     if not (0 <= row < campo_toroidal_global_servicio.num_rows):
-        return jsonify(
-            {"status": "error",
+        return jsonify({
+            "status": "error",
             "message": "Índice de fila fuera de rango."
-            }), 400
+        }), 400
     if not (0 <= col < campo_toroidal_global_servicio.num_cols):
-        return jsonify(
-            {"status": "error",
+        return jsonify({
+            "status": "error",
             "message": "Índice de columna fuera de rango."
-            }), 400
+        }), 400
 
     try:
         success = campo_toroidal_global_servicio.aplicar_influencia(
