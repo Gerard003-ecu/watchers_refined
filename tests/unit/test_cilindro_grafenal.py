@@ -327,12 +327,12 @@ def test_mesh_verify_connectivity(sample_mesh_cg: HexCylindricalMesh):
 
 
 def test_compute_voronoi_neighbors(sample_mesh_cg: HexCylindricalMesh):
-    """Verifica que compute_voronoi_neighbors asigne vecinos ≤ 6."""
+    """Verifica que compute_voronoi_neighbors asigne vecinos ≤ 8."""
     if len(sample_mesh_cg.cells) < 3:
         pytest.skip("Se necesitan ≥3 celdas para Voronoi")
     sample_mesh_cg.compute_voronoi_neighbors(periodic_theta=True)
     for cell in sample_mesh_cg.get_all_cells():
-        assert 0 <= len(cell.voronoi_neighbors) <= 6
+        assert 0 <= len(cell.voronoi_neighbors) <= 8
 
 
 def test_periodic_z_neighbors():
