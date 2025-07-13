@@ -403,10 +403,10 @@ class AtomicPiston:
     def simulate_discharge_circuit(self, load_resistance: float, dt: float):
         """Simula la descarga de energía del pistón a través de una carga externa.
 
-        Ecuación clave: 
+        Ecuación clave:
         dE = 0.5 * I² * R_load * dt  (Energía disipada)
         dx = -dE / (k * x)           (Cambio en compresión)
-        
+
         Este método calcula cómo la energía almacenada en el pistón (representada
         por `circuit_voltage`) se disipa a través de una resistencia de carga
         externa. Modifica la posición del pistón para reflejar la pérdida de

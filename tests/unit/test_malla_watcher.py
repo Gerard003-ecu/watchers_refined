@@ -5,6 +5,7 @@ import pytest
 import os
 import numpy as np
 import math
+import time
 from unittest.mock import patch, MagicMock
 
 # Importaciones del módulo bajo prueba

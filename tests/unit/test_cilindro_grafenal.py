@@ -353,7 +353,7 @@ def test_periodic_z_neighbors():
     # Al menos debe encontrar vecinos envueltos en Z
     assert len(neighbors) >= 3
 
-    
+
 # --- Tests para Funciones Auxiliares ---
 
 
