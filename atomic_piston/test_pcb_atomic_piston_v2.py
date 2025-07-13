@@ -9,7 +9,6 @@ import os
 import sys
 import zipfile
 import tempfile
-import subprocess
 
 # Añadir la carpeta actual al path para importar
 sys.path.insert(0, os.getcwd())
@@ -28,7 +27,8 @@ try:
     with tempfile.TemporaryDirectory() as tmp:
         net_path = os.path.join(tmp, "test_atomic_piston.net")
         create_schematic_netlist(net_path)
-        assert os.path.isfile(net_path) and os.path.getsize(net_path) > 0, "netlist vacío"
+        assert os.path.isfile(net_path) and os.path.getsize(net_path) > 0, \
+            "netlist vacío"
         print("✅ Netlist creado:", net_path)
 # ------------------------------------------------------------------
 # 2. Generar Gerbers
