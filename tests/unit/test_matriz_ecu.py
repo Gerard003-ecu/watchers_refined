@@ -482,7 +482,9 @@ def test_endpoint_get_field_vector(cliente_flask):
                         campo_toroidal_global_servicio.campo_q[capa_idx]
                         [row_idx, col_idx_loop]
                     )
-                assert np.isclose(complex(vector_data[0], vector_data[1]), actual_vector)
+                assert np.isclose(
+                    complex(vector_data[0], vector_data[1]), actual_vector
+                )
 
 
 def test_endpoint_ecu_error_interno(cliente_flask: FlaskClient, mocker):
