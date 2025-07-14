@@ -1,0 +1,151 @@
+version: '3'
+
+services:
+  #watchers_wave:
+  #  build:
+  #    context: ./watchers/watchers_tools/watchers_wave
+  #    dockerfile: Dockerfile
+  #  volumes:
+  #    - pip-cache:/root/.cache/pip
+  #    - ./logs:/app/logs
+  #  networks:
+  #    - watchers_net
+  #  restart: unless-stopped
+  #  ports:
+  #    - "5000:5000"
+  #  environment:
+  #    - PORT=5000
+  #    - PYTHONPATH=/app
+
+  #watcher_focus:
+  #  build:
+  #    context: ./watchers/watchers_tools/watcher_focus
+  #    dockerfile: Dockerfile
+  #  volumes:
+  #    - pip-cache:/root/.cache/pip
+  #    - ./logs:/app/logs
+  #  networks:
+  #    - watchers_net
+  #  restart: unless-stopped
+  #  ports:
+  #    - "6000:6000"
+  #  environment:
+  #    - PORT=6000
+  #    - PYTHONPATH=/app
+
+  malla_watcher:
+    build:
+      context: ./watchers/watchers_tools/malla_watcher
+      dockerfile: Dockerfile
+    volumes:
+      - pip-cache:/root/.cache/pip
+      - ./logs:/app/logs
+    networks:
+      - watchers_net
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - MATRIZ_ECU_URL=http://ecu:8000
+      - TORUS_NUM_CAPAS=3
+      - TORUS_NUM_FILAS=4
+      - TORUS_NUM_COLUMNAS=5
+      - MW_INFLUENCE_THRESHOLD=5.0
+      - MW_MAX_AMPLITUDE_NORM=20.0
+      - MW_REQUESTS_TIMEOUT=2.0
+      - MW_BASE_T=0.6
+      - MW_BASE_E=0.1
+      - MW_K_GAIN_T=0.1
+      - MW_K_GAIN_E=0.05
+      - MW_RADIUS=5.0
+      - MW_HEIGHT_SEG=6
+      - MW_CIRCUM_SEG=12
+      - MW_HEX_SIZE=1.0
+      - MW_PERIODIC_Z=True
+      - MW_SIM_INTERVAL=0.5
+      - PORT=5001
+      - PYTHONPATH=/app
+
+  ecu:
+    container_name: matriz_ecu
+    build:
+      context: ./ecu
+      dockerfile: Dockerfile
+    volumes:
+      - pip-cache:/root/.cache/pip
+      - ./logs:/app/logs
+    networks:
+      - watchers_net
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ECU_NUM_CAPAS=3
+      - ECU_NUM_FILAS=4
+      - ECU_NUM_COLUMNAS=5
+      - ECU_SIM_INTERVAL=1.0
+      - ECU_BETA_COUPLING=0.1
+      - MATRIZ_ECU_PORT=8000
+      - PORT=8000
+      - PYTHONPATH=/app
+
+ # harmony_controller:
+ #   container_name: harmony_controller
+ #   build:
+ #     context: ./control
+ #     dockerfile: Dockerfile
+ #   volumes:
+ #     - pip-cache:/root/.cache/pip
+ #     - ./logs:/app/logs
+ #   networks:
+ #     - watchers_net
+ #   restart: unless-stopped
+ #   ports:
+ #     - "7000:7000"
+ #   environment:
+ #     - ECU_API_URL=http://ecu:8000/api/ecu
+ #     - HC_KP=1.0
+ #     - HC_KI=0.1
+ #     - HC_KD=0.05
+ #     - HC_SETPOINT_VECTOR=[1.0, 0.0]
+ #     - HC_INTERVAL=1.0
+ #     - HC_REQUESTS_TIMEOUT=2.0
+ #     - HC_MAX_RETRIES=3
+ #     - HC_BASE_RETRY_DELAY=0.5
+ #     - HC_PORT=7000
+ #     - PYTHONPATH=/app
+
+ # agent_ai:
+ #   container_name: agent_ai
+ #   build:
+ #     context: ./agent_ai
+ #     dockerfile: Dockerfile
+ #   volumes:
+ #     - pip-cache:/root/.cache/pip
+ #     - ./logs:/app/logs
+ #   networks:
+ #     - watchers_net
+ #   restart: unless-stopped
+ #   ports:
+ #     - "9000:9000"
+ #   environment:
+ #     - HARMONY_CONTROLLER_URL=http://harmony_controller:7000
+ #     - AGENT_AI_ECU_URL=http://ecu:8000
+ #     - AGENT_AI_MALLA_URL=http://malla_watcher:5001
+ #     - PORT=9000
+ #     - AA_INTERVAL=5.0
+ #     - AA_REQUESTS_TIMEOUT=4.0
+ #     - AA_MAX_RETRIES=3
+ #     - AA_BASE_RETRY_DELAY=0.5
+ #     - AA_INITIAL_STRATEGY=default
+ #     - AA_INITIAL_SETPOINT_VECTOR=[1.0, 0.0]
+ #     - AA_GLOBAL_REQ_PATH=/app/requirements.txt
+ #     - PYTHONPATH=/app
+
+volumes:
+  pip-cache:
+    driver: local
+
+networks:
+  watchers_net:
+    driver: bridge
