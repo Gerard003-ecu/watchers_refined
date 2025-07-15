@@ -182,7 +182,7 @@
             <div class="flex items-center justify-between h-16">
                 <div class="flex-shrink-0 flex items-center">
                      <div class="w-10 h-10 rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 flex items-center justify-center mr-3">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <i class="fas fa-atom text-white text-xl"></i>
                     </div>
                     <h1 class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400">Pistón Atómico</h1>
                 </div>
@@ -263,6 +263,56 @@
             </div>
         </section>
 
+        <section id="mercado" class="py-16">
+            <h2 class="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 mb-4">Mercado y Hoja de Ruta</h2>
+            <p class="text-center max-w-3xl mx-auto text-lg text-slate-300 mb-12">Nos dirigimos a un mercado en plena expansión con una estrategia por fases, desde la validación de la tecnología hasta la captura de mercado y el licenciamiento.</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+                <div class="lg:col-span-2 quantum-card p-6">
+                    <h3 class="text-xl font-bold text-center text-slate-200 mb-4">Tamaño del Mercado de Almacenamiento (Anual)</h3>
+                    <div class="chart-container">
+                        <canvas id="marketChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3 quantum-card p-6">
+                    <h3 class="text-xl font-bold text-center text-slate-200 mb-4">Hoja de Ruta Tecnológica</h3>
+                    <div id="roadmap" class="space-y-2">
+                        <!-- Fases de la hoja de ruta se insertarán aquí -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="inversion" class="py-16">
+            <h2 class="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-green-400 mb-4">La Oportunidad de Inversión</h2>
+             <p class="text-center max-w-3xl mx-auto text-lg text-slate-300 mb-12">Buscamos una inversión semilla para llevar nuestro Producto Mínimo Viable (MVP) a la producción y validación en campo. Las proyecciones se basan en una entrada conservadora al mercado, escalando hacia un modelo de licenciamiento de alto margen.</p>
+
+            <div class="quantum-card p-8 max-w-5xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-8">
+                    <div class="md:col-span-3">
+                        <h3 class="text-xl font-bold text-center text-slate-200 mb-4">Proyecciones Financieras (3 Años)</h3>
+                        <div class="chart-container">
+                            <canvas id="financialsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 flex flex-col justify-center">
+                        <div class="text-center mb-8">
+                            <h3 class="text-xl font-bold text-center text-slate-200 mb-4">Uso de los Fondos</h3>
+                            <div class="chart-container" style="height: 200px; max-height:250px;">
+                                <canvas id="fundsChart"></canvas>
+                            </div>
+                        </div>
+                         <div class="bg-gradient-to-br from-quantum-teal to-atomic-blue text-white p-6 rounded-lg text-center shadow-lg shadow-teal-500/20">
+                            <h3 class="text-lg font-bold">Inversión Semilla Requerida</h3>
+                            <p class="text-4xl font-extrabold my-2">$250,000 USD</p>
+                            <p class="text-sm opacity-90">Para finalizar MVP, certificaciones, producción inicial y proyectos piloto.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <footer class="bg-slate-900 mt-16 border-t border-slate-800">
@@ -287,19 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 titleColor: '#e2e8f0',
                 bodyColor: '#cbd5e1',
                 borderColor: '#334155',
-                borderWidth: 1,
-                callbacks: {
-                    label: function(context) {
-                        let label = context.dataset.label || '';
-                        if (label) {
-                            label += ': ';
-                        }
-                        if (context.parsed.y !== null) {
-                            label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
-                        }
-                        return label;
-                    }
-                }
+                borderWidth: 1
             }
         },
         scales: {
@@ -442,13 +480,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, { threshold: 0.1 });
     animatedSections.forEach(section => sectionObserver.observe(section));
-    
+
     const capacitorChargeEl = document.getElementById('capacitor-charge');
     const magneticFieldEl = document.getElementById('magnetic-field');
     const sparkEl = document.getElementById('spark');
     const pistonRodEl = document.getElementById('piston-rod');
     const pistonHeadEl = document.getElementById('piston-head');
-    
+
     function runPistonAnimation() {
         // Charge
         capacitorChargeEl.style.height = '100%';
@@ -464,11 +502,10 @@ document.addEventListener('DOMContentLoaded', () => {
             pistonHeadEl.style.top = '30px';
             magneticFieldEl.style.opacity = '1';
         }, 1500);
-        
+
         // Spark
         setTimeout(() => {
             sparkEl.style.opacity = '1';
-            sparkEl.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scale(1, ${Math.random() * 1.5 + 0.5})`;
         }, 2000);
     }
     setInterval(runPistonAnimation, 3500);
