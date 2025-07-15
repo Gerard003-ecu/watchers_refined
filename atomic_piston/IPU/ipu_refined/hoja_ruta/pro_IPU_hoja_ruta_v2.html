@@ -47,7 +47,7 @@
             max-height: 400px;
         }
         @media (min-width: 768px) { .chart-container { height: 350px; } }
-        
+
         .nav-link {
             position: relative;
             transition: all 0.3s;
@@ -66,7 +66,7 @@
         .nav-link.active::after, .nav-link:hover::after {
             width: 100%;
         }
-        
+
         .quantum-card {
             background: rgba(30, 41, 59, 0.5);
             backdrop-filter: blur(10px);
@@ -266,7 +266,7 @@
         <section id="mercado" class="py-16">
             <h2 class="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 mb-4">Mercado y Hoja de Ruta</h2>
             <p class="text-center max-w-3xl mx-auto text-lg text-slate-300 mb-12">Nos dirigimos a un mercado en plena expansión con una estrategia por fases, desde la validación de la tecnología hasta la captura de mercado y el licenciamiento.</p>
-            
+
             <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
                 <div class="lg:col-span-2 quantum-card p-6">
                     <h3 class="text-xl font-bold text-center text-slate-200 mb-4">Tamaño del Mercado de Almacenamiento (Anual)</h3>
@@ -480,13 +480,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, { threshold: 0.1 });
     animatedSections.forEach(section => sectionObserver.observe(section));
-    
+
     const capacitorChargeEl = document.getElementById('capacitor-charge');
     const magneticFieldEl = document.getElementById('magnetic-field');
     const sparkEl = document.getElementById('spark');
     const pistonRodEl = document.getElementById('piston-rod');
     const pistonHeadEl = document.getElementById('piston-head');
-    
+
     function runPistonAnimation() {
         // Charge
         capacitorChargeEl.style.height = '100%';
@@ -502,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pistonHeadEl.style.top = '30px';
             magneticFieldEl.style.opacity = '1';
         }, 1500);
-        
+
         // Spark
         setTimeout(() => {
             sparkEl.style.opacity = '1';
@@ -547,9 +547,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (header) {
             const phase = header.parentElement;
             const wasActive = phase.classList.contains('active');
-            
+
             document.querySelectorAll('#roadmap .phase').forEach(p => p.classList.remove('active'));
-            
+
             if (!wasActive) {
                 phase.classList.add('active');
             }
