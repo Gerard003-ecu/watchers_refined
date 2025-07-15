@@ -49,7 +49,162 @@
         };
     </script>
 
-    <link rel="stylesheet" href="pro_panel_ipu.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .quantum-card {
+            background: rgba(15, 23, 42, .6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, .15);
+            transition: .3s;
+        }
+        .quantum-card:hover {
+            border-color: rgba(56, 189, 248, .4);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,.4);
+        }
+
+        .nav-link {
+            position: relative;
+            transition: color .3s;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #0d9488;
+            transition: width .3s;
+        }
+        .nav-link.active::after,
+        .nav-link:hover::after { width: 100%; }
+
+        .content-section {
+            display: none;
+            animation: fadeIn .5s ease forwards;
+        }
+        .content-section.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            max-height: 45vh;
+        }
+        @media (min-width: 768px) { .chart-container { height: 400px; } }
+
+        .tooltip {
+            position: absolute;
+            display: none;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: .875rem;
+            z-index: 50;
+            box-shadow: 0 4px 6px rgba(0,0,0,.1);
+            border: 1px solid #334155;
+        }
+
+        .piston-chamber {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(to right, #1e293b, #0f172a);
+            border: 2px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,.5);
+        }
+        .piston-rod {
+            position: absolute;
+            width: 20px;
+            height: 100px;
+            background: linear-gradient(to right, #94a3b8, #cbd5e1);
+            left: 50%;
+            transform: translateX(-50%);
+            top: 0;
+            z-index: 2;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(245,158,11,.5);
+        }
+        .piston-head {
+            position: absolute;
+            width: 80px;
+            height: 30px;
+            background: linear-gradient(to right, #f59e0b, #fbbf24);
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 8px;
+            z-index: 3;
+            box-shadow: 0 0 15px rgba(245,158,11,.7);
+        }
+        .capacitor-charge {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(14,165,233,.8), rgba(56,189,248,.2));
+            transition: height 1.5s cubic-bezier(.4,0,.2,1);
+        }
+        .magnetic-field {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px dashed rgba(139,92,246,.5);
+            opacity: 0;
+            transition: opacity .5s;
+        }
+        .spark {
+            position: absolute;
+            width: 4px;
+            height: 40px;
+            background: linear-gradient(to bottom, #fde047, #f59e0b, #ef4444);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(30deg);
+            opacity: 0;
+            box-shadow: 0 0 20px #fde047;
+            z-index: 4;
+        }
+        .energy-wave {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(245,158,11,.3) 0%, transparent 70%);
+            opacity: 0;
+            transform: scale(0);
+            transition: all .5s ease;
+        }
+        .energy-meter {
+            position: relative;
+            height: 20px;
+            background: rgba(30,41,59,.7);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+            border: 1px solid #334155;
+        }
+        .energy-level {
+            height: 100%;
+            background: linear-gradient(90deg, #0ea5e9, #8b5cf6);
+            width: 0%;
+            transition: width .5s ease;
+            border-radius: 10px;
+        }
+    </style>
 </head>
 
 <body class="antialiased">
@@ -66,6 +221,7 @@
                     </h1>
                 </div>
 
+                <!-- Desktop Nav -->
                 <nav class="hidden md:flex space-x-6 lg:space-x-8">
                     <a href="#inicio" class="nav-link font-medium text-slate-300 active">Inicio</a>
                     <a href="#ipu" class="nav-link font-medium text-slate-300">El Núcleo: IPU</a>
@@ -75,11 +231,13 @@
                     <a href="#desafios" class="nav-link font-medium text-slate-300">Futuro</a>
                 </nav>
 
+                <!-- Mobile Button -->
                 <button id="mobile-menu-button" class="md:hidden p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-700">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
             </div>
 
+            <!-- Mobile Nav -->
             <div id="mobile-menu" class="hidden md:hidden pb-4">
                 <a href="#inicio" class="nav-link-mobile block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700">Inicio</a>
                 <a href="#ipu" class="nav-link-mobile block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700">El Núcleo: IPU</a>
@@ -449,6 +607,191 @@
         </div>
     </footer>
 
-    <script src="pro_panel_ipu.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            /* ---------- Navegación ---------- */
+            const navLinks = document.querySelectorAll('.nav-link, .nav-link-mobile');
+            const sections = document.querySelectorAll('.content-section');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const mobileBtn = document.getElementById('mobile-menu-button');
+
+            function showSection(id) {
+                sections.forEach(s => s.classList.toggle('active', s.id === id));
+                navLinks.forEach(l => {
+                    const isActive = l.getAttribute('href') === `#${id}`;
+                    if (l.classList.contains('nav-link')) {
+                        l.classList.toggle('active', isActive);
+                    } else {
+                        l.classList.toggle('bg-slate-700', isActive);
+                    }
+                });
+                mobileMenu.classList.add('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            navLinks.forEach(l => l.addEventListener('click', e => {
+                e.preventDefault();
+                showSection(l.getAttribute('href').slice(1));
+            }));
+            mobileBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+
+            /* ---------- Componentes ---------- */
+            const componentData = {
+                inversor: {
+                    details: '<strong>Función:</strong> Convierte CC a CA.<br><strong>Eficiencia:</strong> Hasta 98 %.',
+                    efficiency: 98
+                },
+                controlador: {
+                    details: '<strong>Función:</strong> Protege la batería.<br><strong>Eficiencia:</strong> Hasta 99 %.',
+                    efficiency: 99
+                },
+                convertidor: {
+                    details: '<strong>Función:</strong> Ajusta voltaje CC.<br><strong>Eficiencia:</strong> Hasta 97 %.',
+                    efficiency: 97
+                }
+            };
+            const compBtns = document.querySelectorAll('.component-btn');
+            const compDetails = document.getElementById('component-details');
+            let effChart;
+
+            function updateCompView(key) {
+                compBtns.forEach(b => b.classList.toggle('bg-teal-500', b.dataset.component === key));
+                const d = componentData[key];
+                compDetails.innerHTML = d.details;
+                effChart && (effChart.data.labels = [key.charAt(0).toUpperCase() + key.slice(1)],
+                             effChart.data.datasets[0].data = [d.efficiency],
+                             effChart.update());
+            }
+
+            function createEffChart() {
+                const ctx = document.getElementById('efficiencyChart');
+                if (!ctx) return;
+                effChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: [], datasets: [{ label: 'Eficiencia (%)', data: [], backgroundColor: ['#0ea5e9'], borderWidth: 0, barThickness: 40 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                        scales: { x: { min: 85, max: 100, grid: { color: 'rgba(255,255,255,.1)' }, ticks: { color: '#94a3b8' } }, y: { display: false } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            compBtns.forEach(b => b.addEventListener('click', () => updateCompView(b.dataset.component)));
+
+            /* ---------- Baterías ---------- */
+            const batData = {
+                labels: ['LiFePO4', 'NMC', 'LTO', 'Ión-Sodio', 'Plomo-Ácido', 'Flujo'],
+                datasets: [
+                    { label: 'Densidad (Wh/kg)', data: [175, 220, 70, 150, 40, 28], backgroundColor: '#0d9488' },
+                    { label: 'Ciclos', data: [4500, 1500, 10000, 2000, 650, 12500], backgroundColor: '#f59e0b' },
+                    { label: 'Eficiencia (%)', data: [92, 90, 95, 90, 80, 78], backgroundColor: '#0ea5e9' }
+                ],
+                details: [
+                    { title: 'LiFePO4', text: 'Equilibrio ideal: alta seguridad y vida útil.' },
+                    { title: 'NMC', text: 'Alta densidad, menor estabilidad térmica.' },
+                    { title: 'LTO', text: 'Ciclos extremadamente largos, carga rápida.' },
+                    { title: 'Ión-Sodio', text: 'Bajo costo, densidad media.' },
+                    { title: 'Plomo-Ácido', text: 'Madura y barata, pero corta vida.' },
+                    { title: 'Flujo', text: 'Durabilidad extrema, baja densidad.' }
+                ]
+            };
+            const batDet = document.getElementById('battery-details');
+            let batChart;
+
+            function updateBatDetails(i) {
+                const d = batData.details[i];
+                batDet.innerHTML = `<h4 class="font-bold text-lg text-slate-200 mb-2">${d.title}</h4><p class="text-sm text-slate-400">${d.text}</p>`;
+            }
+
+            function createBatChart() {
+                const ctx = document.getElementById('batteryChart');
+                if (!ctx) return;
+                batChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: batData,
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.1)' }, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } },
+                        plugins: { legend: { labels: { color: '#94a3b8' } }, tooltip: { mode: 'index' } },
+                        onClick: (_, els) => els.length && updateBatDetails(els[0].index)
+                    }
+                });
+            }
+
+            /* ---------- Vida útil vs DoD ---------- */
+            const cycleData = {
+                labels: ['20%', '40%', '60%', '80%', '100%'],
+                datasets: [
+                    { label: 'LiFePO4', data: [10000, 8000, 6000, 4500, 3000], borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,.2)', tension: .3, fill: true },
+                    { label: 'NMC', data: [4000, 3000, 2000, 1500, 1000], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,.2)', tension: .3, fill: true },
+                    { label: 'LTO', data: [25000, 20000, 18000, 15000, 10000], borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,.2)', tension: .3, fill: true }
+                ]
+            };
+            function createCycleChart() {
+                const ctx = document.getElementById('cycleLifeChart');
+                if (!ctx) return;
+                new Chart(ctx, {
+                    type: 'line',
+                    data: cycleData,
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            x: { title: { display: true, text: 'Profundidad de Descarga', color: '#94a3b8' }, ticks: { color: '#94a3b8' } },
+                            y: { title: { display: true, text: 'Ciclos de Vida', color: '#94a3b8' }, ticks: { color: '#94a3b8' } }
+                        },
+                        plugins: { legend: { labels: { color: '#94a3b8' } } }
+                    }
+                });
+            }
+
+            /* ---------- Tooltips ---------- */
+            const tooltip = document.getElementById('tooltip');
+            document.querySelectorAll('.diagram-block').forEach(block => {
+                block.addEventListener('mouseenter', e => {
+                    tooltip.textContent = e.target.dataset.tooltip || '';
+                    tooltip.style.display = 'block';
+                    const r = e.target.getBoundingClientRect();
+                    tooltip.style.left = `${r.left}px`;
+                    tooltip.style.top = `${r.top - tooltip.offsetHeight - 8}px`;
+                });
+                block.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+            });
+
+            /* ---------- Pistón Animation ---------- */
+            const rod = document.getElementById('piston-rod');
+            const head = document.getElementById('piston-head');
+            const charge = document.getElementById('capacitor-charge');
+            const magnetic = document.getElementById('magnetic-field');
+            const sparkEl = document.getElementById('spark');
+            const wave = document.getElementById('energy-wave');
+            const level = document.getElementById('energy-level');
+            const capState = document.getElementById('capacitor-state');
+            const magState = document.getElementById('magnetic-state');
+
+            let step = 0;
+            function runAnimation() {
+                const steps = [
+                    () => { charge.style.height = '100%'; rod.style.top = '100px'; head.style.top = '170px'; level.style.width = '30%'; capState.textContent = 'Cargando...'; magState.textContent = 'Inactivo'; },
+                    () => { level.style.width = '100%'; capState.textContent = 'Carga completa (1000 V)'; },
+                    () => { charge.style.height = '50%'; rod.style.top = '50px'; head.style.top = '80px'; magnetic.style.opacity = '1'; level.style.width = '70%'; capState.textContent = 'Descargando...'; magState.textContent = 'Campo magnético creciendo'; },
+                    () => { magnetic.classList.add('magnetic-pulse'); level.style.width = '40%'; magState.textContent = 'Campo magnético máximo'; },
+                    () => { charge.style.height = '0%'; rod.style.top = '0px'; head.style.top = '30px'; magnetic.style.opacity = '0'; sparkEl.style.opacity = '1'; wave.style.opacity = '1'; wave.style.transform = 'scale(1.5)'; level.style.width = '150%'; capState.textContent = 'Descarga completa'; magState.textContent = 'Kickback inductivo!'; },
+                    () => { sparkEl.style.opacity = '0'; wave.style.opacity = '0'; wave.style.transform = 'scale(0)'; level.style.width = '0%'; capState.textContent = 'Preparando nuevo ciclo...'; magState.textContent = 'Campo colapsado'; }
+                ];
+                steps[step]();
+                step = (step + 1) % steps.length;
+            }
+
+            /* ---------- Init ---------- */
+            showSection('inicio');
+            createEffChart();
+            updateCompView('inversor');
+            createBatChart();
+            updateBatDetails(0);
+            createCycleChart();
+            if (rod) setInterval(runAnimation, 2000);
+        });
+    </script>
 </body>
 </html>
