@@ -51,39 +51,45 @@
     </script>
 
     <style>
-        :root {
-            --dark-matter: #0D1117;
-            --slate-800: #161B22;
-            --slate-700: #21262D;
-            --slate-400: #8B949E;
-            --slate-300: #C9D1D9;
-            --slate-200: #F0F6FC;
-            --atomic-blue: #58A6FF;
-            --quantum-teal: #39D3BB;
-            --energy-amber: #F1E05A;
-            --fusion-red: #FF7B72;
-            --plasma-purple: #BC8EFF;
-        }
+:root {
+    --dark-matter: #0D1117;
+    --slate-900: #10141a;
+    --slate-800: #161B22;
+    --slate-700: #21262D;
+    --slate-400: #8B949E;
+    --slate-300: #C9D1D9;
+    --slate-200: #F0F6FC;
+    --atomic-blue: #58A6FF;
+    --quantum-teal: #39D3BB;
+    --energy-amber: #F1E05A;
+    --fusion-red: #FF7B72;
+    --plasma-purple: #BC8EFF;
+    --galaxy-blue: #1F2937;
+    --star-white: #F9FAFB;
+    --nebula-pink: #EC4899;
+    --solar-orange: #F59E0B;
+}
 
-        ::selection {
-            background-color: var(--atomic-blue);
-            color: var(--dark-matter);
-        }
+::selection {
+    background-color: var(--atomic-blue);
+    color: var(--dark-matter);
+}
 
-        body {
-            background-color: var(--dark-matter);
-            color: var(--slate-200);
-            font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
+body {
+    background: linear-gradient(180deg, var(--slate-900) 0%, var(--dark-matter) 100%);
+    color: var(--slate-200);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+}
 
         .quantum-card {
-            background: linear-gradient(145deg, rgba(22, 27, 34, 0.4), rgba(13, 17, 23, 0.6));
-            backdrop-filter: blur(10px);
+            background: linear-gradient(145deg, rgba(31, 41, 55, 0.4), rgba(15, 20, 30, 0.6));
+            backdrop-filter: blur(12px);
             border: 1px solid var(--slate-700);
             border-radius: 1rem;
-            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), border-color 0.4s ease;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
@@ -116,9 +122,27 @@
             color: white;
         }
 
+        .nav-link.active,
+        .nav-link:hover {
+            color: var(--star-white);
+        }
+
         .nav-link.active::after,
         .nav-link:hover::after {
             width: 100%;
+        }
+
+        .quantum-glow {
+            animation: quantum-glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes quantum-glow {
+            from {
+                box-shadow: 0 0 8px var(--atomic-blue), 0 0 16px var(--atomic-blue), 0 0 24px var(--atomic-blue);
+            }
+            to {
+                box-shadow: 0 0 12px var(--atomic-blue), 0 0 24px var(--atomic-blue), 0 0 36px var(--atomic-blue);
+            }
         }
 
         .content-section {
@@ -302,6 +326,12 @@
         }
 
         /* Responsive Design */
+        @media (max-width: 1024px) {
+            .lg\\:grid-cols-5 {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 768px) {
             .nav-link {
                 display: none;
@@ -316,7 +346,16 @@
             }
 
             .text-4xl.md\\:text-5xl {
-                font-size: 2.25rem;
+                font-size: 2rem;
+            }
+
+            .text-lg {
+                font-size: 1rem;
+            }
+
+            .py-8.md\\:py-12 {
+                padding-top: 2rem;
+                padding-bottom: 2rem;
             }
         }
 
@@ -334,7 +373,7 @@
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 md:h-20">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-quantum-teal to-atomic-blue flex items-center justify-center">
+                    <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-quantum-teal to-atomic-blue flex items-center justify-center quantum-glow">
                         <i class="fas fa-atom text-white text-xl md:text-2xl"></i>
                     </div>
                     <h1 class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-quantum-teal to-atomic-blue">
@@ -753,7 +792,7 @@
     </footer>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
             const data = {
                 "componentData": {
                     "inversor": {
@@ -777,12 +816,12 @@
                         { "label": "Eficiencia (%)", "data": [92, 90, 95, 90, 80, 78], "backgroundColor": "#58A6FF" }
                     ],
                     "details": [
-                        { "title": "LiFePO4", "text": "Equilibrio ideal: alta seguridad y vida útil." },
-                        { "title": "NMC", "text": "Alta densidad, menor estabilidad térmica." },
-                        { "title": "LTO", "text": "Ciclos extremadamente largos, carga rápida." },
-                        { "title": "Ión-Sodio", "text": "Bajo costo, densidad media." },
-                        { "title": "Plomo-Ácido", "text": "Madura y barata, pero corta vida." },
-                        { "title": "Flujo", "text": "Durabilidad extrema, baja densidad." }
+                        { "title": "LiFePO4 (Litio-Ferrofosfato)", "text": "<strong>Ventajas:</strong> Muy segura, larga vida útil (más de 4000 ciclos), buena estabilidad térmica.<br><strong>Desventajas:</strong> Menor densidad energética que NMC." },
+                        { "title": "NMC (Níquel-Manganeso-Cobalto)", "text": "<strong>Ventajas:</strong> Alta densidad energética, comúnmente usada en vehículos eléctricos.<br><strong>Desventajas:</strong> Mayor costo y menor vida útil que LiFePO4." },
+                        { "title": "LTO (Titanato de Litio)", "text": "<strong>Ventajas:</strong> Vida útil extremadamente larga (más de 10,000 ciclos), carga y descarga muy rápidas.<br><strong>Desventajas:</strong> Baja densidad energética y alto costo." },
+                        { "title": "Ión-Sodio", "text": "<strong>Ventajas:</strong> Abundante y de bajo costo, buen rendimiento en bajas temperaturas.<br><strong>Desventajas:</strong> Menor densidad energética que las baterías de litio." },
+                        { "title": "Plomo-Ácido", "text": "<strong>Ventajas:</strong> Tecnología madura y de bajo costo.<br><strong>Desventajas:</strong> Corta vida útil, baja densidad energética, contiene materiales tóxicos." },
+                        { "title": "Batería de Flujo", "text": "<strong>Ventajas:</strong> Larga vida útil (más de 10,000 ciclos), escalabilidad independiente de potencia y energía.<br><strong>Desventajas:</strong> Baja densidad energética y complejidad del sistema." }
                     ]
                 },
                 "cycleData": {
@@ -958,20 +997,22 @@
                     }
                 });
 
+                let lastValue = 50;
                 setInterval(() => {
                     const now = new Date();
-                    const value = Math.random() * 100;
+                    const change = (Math.random() - 0.5) * 10;
+                    lastValue = Math.max(0, Math.min(100, lastValue + change));
 
                     powerOutputData.labels.push(now);
-                    powerOutputData.datasets[0].data.push(value);
+                    powerOutputData.datasets[0].data.push(lastValue);
 
-                    if (powerOutputData.labels.length > 20) {
+                    if (powerOutputData.labels.length > 30) {
                         powerOutputData.labels.shift();
                         powerOutputData.datasets[0].data.shift();
                     }
 
                     powerOutputChart.update();
-                }, 1000);
+                }, 1500);
             }
 
             /* ---------- Tooltips ---------- */
@@ -1080,6 +1121,6 @@
                 });
             }
         });
-    </script>
+</script>
 </body>
 </html>
