@@ -3,83 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Chosen Palette: Warm Neutral Harmony -->
-    <!-- Application Structure Plan: La aplicación está diseñada como una narrativa de inversión de una sola página. Comienza con un "porqué" (El Problema), seguido de un "cómo" (La Solución y la Tecnología), un "qué" (La Hoja de Ruta y el Mercado), y concluye con un "ahora qué" (La Inversión). Esta estructura guía al usuario lógicamente desde el problema hasta la llamada a la acción. Las interacciones clave incluyen: 1) Contadores animados para estadísticas de impacto. 2) Un diagrama CSS animado para explicar el "Pistón Atómico". 3) Una línea de tiempo interactiva y expandible para la hoja de ruta, que es más atractiva que una lista estática. 4) Gráficos dinámicos para datos financieros y de mercado, permitiendo una fácil absorción de la información cuantitativa. Este diseño fue elegido para transformar un informe denso en una experiencia de usuario convincente y fácil de navegar, ideal para comunicar una oportunidad de negocio. -->
-    <!-- Visualization & Content Choices: 
-        - Problema (Pérdida/Reducción): Goal: Informar -> Viz: Tarjetas con números grandes y animados. Justification: Capta la atención de inmediato y establece la magnitud del problema. Library: JS (Intersection Observer).
-        - Mecanismo "Pistón Atómico": Goal: Organizar/Explicar -> Viz: Diagrama animado con HTML/CSS. Justification: Ilustra el proceso de dos etapas de forma más clara que el texto estático.
-        - Mercado (TAM/SAM/SOM): Goal: Comparar -> Viz: Gráfico de barras (Chart.js). Justification: Visualiza claramente la escala del mercado y el objetivo.
-        - Hoja de Ruta: Goal: Organizar -> Viz: Línea de tiempo horizontal interactiva. Justification: Permite al usuario explorar las fases a su propio ritmo.
-        - Proyecciones Financieras: Goal: Cambio -> Viz: Gráfico de líneas combinado (Chart.js). Justification: Muestra la progresión de ingresos y márgenes a lo largo del tiempo.
-        - Uso de Fondos: Goal: Informar (Proporción) -> Viz: Gráfico de dona (Chart.js). Justification: Muestra la distribución del presupuesto de forma intuitiva.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <title>Hoja de Ruta Interactiva: Pistón Atómico (IPU)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'atomic-blue': '#0ea5e9',
+                        'energy-amber': '#f59e0b',
+                        'plasma-purple': '#8b5cf6',
+                        'quantum-teal': '#0d9488',
+                        'dark-matter': '#1e293b',
+                        'neutrino-gray': '#64748b',
+                        'fusion-red': '#ef4444',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'spin-slow': 'spin 3s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --color-primary: #A56E5A; /* Warm Taupe */
-            --color-secondary: #43403A; /* Dark Charcoal */
-            --color-accent: #D5B4A8; /* Soft Peach */
-            --color-background: #FDFCFB; /* Alabaster White */
-            --color-text: #5D5852; /* Muted Brown */
-            --color-text-strong: #43403A;
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
         }
-        body { font-family: 'Inter', sans-serif; background-color: var(--color-background); color: var(--color-text); }
-        .chart-container { position: relative; width: 100%; max-width: 700px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
-        @media (min-width: 768px) { .chart-container { height: 350px; } }
-
-        .nav-link {
+        .chart-container {
             position: relative;
-            transition: color 0.4s ease;
-            padding-bottom: 4px;
-        }
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            width: 0;
-            height: 2px;
-            bottom: 0;
-            left: 50%;
-            background-color: var(--color-primary);
-            transition: all 0.4s ease;
-        }
-        .nav-link:hover::after, .nav-link.active::after {
             width: 100%;
-            left: 0;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
         }
-        .nav-link.active { color: var(--color-primary); font-weight: 500; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+        
+        .nav-link {
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #0d9488;
+            border-bottom-color: #0d9488;
+        }
+        
+        .quantum-card {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+        .quantum-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(56, 189, 248, 0.4);
+        }
 
-        .piston-animation div { transition: all 0.5s ease-in-out; }
-        .phase-content { max-height: 0; overflow: hidden; transition: max-height 0.7s ease-in-out, padding 0.7s ease-in-out; }
-        .phase.active .phase-content { max-height: 500px; padding-top: 1rem; padding-bottom: 1rem; }
-        .phase.active .phase-icon { transform: rotate(45deg); }
-
-        [data-aos] {
+        .phase-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.7s ease-in-out, padding 0.7s ease-in-out, opacity 0.5s ease;
             opacity: 0;
-            transition-property: transform, opacity;
+        }
+        .phase.active .phase-content {
+            max-height: 500px;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            opacity: 1;
+        }
+        .phase.active .phase-icon {
+            transform: rotate(180deg);
+        }
+        .phase-header {
+            transition: background-color 0.3s;
+        }
+        .phase-header:hover {
+            background-color: rgba(30, 41, 59, 0.5);
+        }
+        .phase-icon {
+            transition: transform 0.5s ease;
+        }
+
+        .piston-chamber {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 200px;
+            background: linear-gradient(to right, #1e293b, #0f172a);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #334155;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            margin: auto;
+        }
+        .piston-rod {
+            position: absolute; width: 20px; height: 100px;
+            background: linear-gradient(to right, #94a3b8, #cbd5e1);
+            left: 50%; transform: translateX(-50%); top: 0; z-index: 2;
+            border-radius: 4px; box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+            transition: top 1s ease-in-out;
+        }
+        .piston-head {
+            position: absolute; width: 80px; height: 30px;
+            background: linear-gradient(to right, #f59e0b, #fbbf24);
+            left: 50%; transform: translateX(-50%); border-radius: 8px; z-index: 3;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.7);
+            transition: top 1s ease-in-out;
+        }
+        .capacitor-charge {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: linear-gradient(to top, rgba(14, 165, 233, 0.8), rgba(56, 189, 248, 0.2));
+            transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .magnetic-field {
+            position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            border: 2px dashed rgba(139, 92, 246, 0.5);
+            animation: pulse-slow 2s infinite; opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .spark {
+            position: absolute; width: 4px; height: 40px;
+            background: linear-gradient(to bottom, #fde047, #f59e0b, #ef4444);
+            top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(30deg);
+            opacity: 0; box-shadow: 0 0 20px #fde047; z-index: 4;
+            transition: opacity 0.2s ease;
+        }
+        .quantum-grid {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(30, 41, 59, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 41, 59, 0.2) 1px, transparent 1px);
+            background-size: 20px 20px; z-index: 0;
+        }
+        .quantum-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.3), transparent);
+            margin: 2rem 0;
         }
     </style>
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 </head>
-<body class="bg-[var(--color-background)]">
+<body>
 
-    <header id="navbar" class="bg-[var(--color-background)]/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm transition-all duration-300">
+    <header id="navbar" class="bg-slate-900/80 backdrop-blur-md shadow-lg sticky top-0 z-50 border-b border-slate-700">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <div class="flex-shrink-0">
-                    <h1 class="text-2xl font-bold text-[var(--color-primary)]">Pistón Atómico</h1>
+                <div class="flex-shrink-0 flex items-center">
+                     <div class="w-10 h-10 rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 flex items-center justify-center mr-3">
+                        <i class="fas fa-atom text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400">Pistón Atómico</h1>
                 </div>
                 <nav class="hidden md:block">
-                    <div class="ml-10 flex items-baseline space-x-8">
-                        <a href="#problema" class="nav-link px-1 py-2 text-sm font-medium text-[var(--color-text-strong)] hover:text-[var(--color-primary)]">El Problema</a>
-                        <a href="#solucion" class="nav-link px-1 py-2 text-sm font-medium text-[var(--color-text-strong)] hover:text-[var(--color-primary)]">La Solución</a>
-                        <a href="#mercado" class="nav-link px-1 py-2 text-sm font-medium text-[var(--color-text-strong)] hover:text-[var(--color-primary)]">Mercado y Hoja de Ruta</a>
-                        <a href="#inversion" class="nav-link px-1 py-2 text-sm font-medium text-[var(--color-text-strong)] hover:text-[var(--color-primary)]">La Inversión</a>
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#problema" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-300">El Problema</a>
+                        <a href="#solucion" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-300">La Solución</a>
+                        <a href="#mercado" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-300">Mercado y Hoja de Ruta</a>
+                        <a href="#inversion" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-300">La Inversión</a>
                     </div>
                 </nav>
             </div>
@@ -88,71 +176,83 @@
 
     <main class="container mx-auto px-4 sm:px-6 lg:px-8">
 
-        <section id="hero" class="text-center py-24 md:py-32">
-            <h1 class="text-4xl md:text-6xl font-black tracking-tighter text-[var(--color-secondary)]" data-aos="fade-up">Redefiniendo la Eficiencia Energética.</h1>
-            <p class="mt-6 max-w-3xl mx-auto text-lg md:text-xl text-[var(--color-text)]" data-aos="fade-up" data-aos-delay="200">Presentamos el <strong class="text-[var(--color-primary)]">Pistón Atómico</strong>, una tecnología disruptiva dentro de la Unidad de Potencia Inteligente (IPU) para optimizar la gestión de energía en sistemas fotovoltaicos.</p>
+        <section id="hero" class="text-center py-20 md:py-32">
+            <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white">Redefiniendo la Eficiencia Energética.</h1>
+            <p class="mt-6 max-w-3xl mx-auto text-lg md:text-xl text-slate-300">Presentamos el <strong class="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400">Pistón Atómico</strong>, una tecnología disruptiva dentro de la Unidad de Potencia Inteligente (IPU) para optimizar la gestión de energía.</p>
         </section>
 
-        <section id="problema" class="py-20 bg-white rounded-3xl shadow-subtle">
-            <div class="text-center px-6" data-aos="fade-up">
-                <h2 class="text-3xl font-bold text-center text-[var(--color-primary)] mb-4">El Talón de Aquiles de la Energía Solar</h2>
-                <p class="text-center max-w-3xl mx-auto text-lg text-[var(--color-text)] mb-16">La energía solar es intermitente y las baterías convencionales sufren al gestionar los picos de demanda. Esto genera ineficiencias críticas y costes ocultos.</p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center px-6">
-                <div class="bg-[var(--color-background)] p-8 rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-300" data-aos="fade-up" data-aos-delay="100">
-                    <div class="text-5xl font-extrabold text-[var(--color-primary)] mb-2 stat-counter" data-target="30">0%</div>
-                    <h3 class="font-bold text-lg text-[var(--color-secondary)]">Pérdida de Potencial</h3>
-                    <p class="text-[var(--color-text)] mt-2">De energía se pierde o desaprovecha por ineficiencias en la carga y descarga durante picos de demanda.</p>
+        <section id="problema" class="py-16">
+            <h2 class="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-red-500 mb-4">El Talón de Aquiles de la Energía Solar</h2>
+            <p class="text-center max-w-3xl mx-auto text-lg text-slate-300 mb-12">La energía solar es intermitente y las baterías convencionales sufren al gestionar los picos de demanda. Esto genera ineficiencias críticas y costes ocultos.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div class="quantum-card p-8">
+                    <i class="fas fa-battery-slash text-4xl text-red-500 mb-4"></i>
+                    <div class="text-5xl font-extrabold text-red-400 mb-2 stat-counter" data-target="30">0%</div>
+                    <h3 class="font-bold text-lg text-slate-200">Pérdida de Potencial</h3>
+                    <p class="text-slate-400 mt-2">De energía se pierde o desaprovecha por ineficiencias en la carga y descarga.</p>
                 </div>
-                <div class="bg-[var(--color-background)] p-8 rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-300" data-aos="fade-up" data-aos-delay="200">
-                    <div class="text-5xl font-extrabold text-[var(--color-primary)] mb-2 stat-counter" data-target="50">0%</div>
-                    <h3 class="font-bold text-lg text-[var(--color-secondary)]">Reducción de Vida Útil</h3>
-                    <p class="text-[var(--color-text)] mt-2">Sufren las baterías al ser sometidas a ciclos rápidos y profundos para cubrir los picos de potencia.</p>
+                <div class="quantum-card p-8">
+                    <i class="fas fa-chart-line-down text-4xl text-amber-500 mb-4"></i>
+                    <div class="text-5xl font-extrabold text-amber-400 mb-2 stat-counter" data-target="50">0%</div>
+                    <h3 class="font-bold text-lg text-slate-200">Reducción de Vida Útil</h3>
+                    <p class="text-slate-400 mt-2">Sufren las baterías al ser sometidas a ciclos rápidos y profundos no optimizados.</p>
                 </div>
-                <div class="bg-[var(--color-background)] p-8 rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-300" data-aos="fade-up" data-aos-delay="300">
-                    <div class="text-5xl font-extrabold text-[var(--color-primary)] mb-2 stat-counter" data-target="25">0%</div>
-                    <h3 class="font-bold text-lg text-[var(--color-secondary)]">Sobredimensionamiento</h3>
-                    <p class="text-[var(--color-text)] mt-2">Es el sobrecoste promedio en sistemas para compensar la falta de respuesta a picos de demanda.</p>
-                </div>
-            </div>
-        </section>
-
-        <section id="solucion" class="py-20 my-16">
-            <div class="text-center px-6" data-aos="fade-up">
-                <h2 class="text-3xl font-bold text-center text-[var(--color-primary)] mb-4">Nuestra Solución: El "Pistón Atómico"</h2>
-                <p class="text-center max-w-3xl mx-auto text-lg text-[var(--color-text)] mb-12">La IPU no es solo un controlador, es un gestor dinámico de energía. Su núcleo, el "Pistón Atómico", proporciona ráfagas de potencia masivas e instantáneas, protegiendo la batería principal y maximizando el rendimiento del sistema.</p>
-            </div>
-            <div class="piston-animation max-w-3xl mx-auto bg-white p-12 rounded-2xl shadow-subtle flex items-center justify-around" data-aos="zoom-in">
-                <div class="text-center">
-                    <div id="capacitor" class="w-28 h-28 bg-blue-100 border-4 border-blue-200 rounded-full flex items-center justify-center font-bold text-blue-800 transition-all duration-300">Capacitor</div>
-                    <p class="mt-4 font-semibold text-lg text-[var(--color-secondary)]">1. Descarga Capacitiva</p>
-                    <p class="text-sm text-[var(--color-text)]">Pulso de potencia instantáneo.</p>
-                </div>
-                <div id="arrow" class="text-6xl font-thin text-gray-300 opacity-0 transition-opacity duration-500">→</div>
-                <div class="text-center">
-                    <div id="inductor" class="w-28 h-28 bg-purple-100 border-4 border-purple-200 rounded-full flex items-center justify-center font-bold text-purple-800 transition-all duration-300">Inductor</div>
-                     <p class="mt-4 font-semibold text-lg text-[var(--color-secondary)]">2. Retroceso Inductivo</p>
-                     <p class="text-sm text-[var(--color-text)]">Amplificación del pulso.</p>
+                <div class="quantum-card p-8">
+                     <i class="fas fa-dollar-sign text-4xl text-yellow-500 mb-4"></i>
+                    <div class="text-5xl font-extrabold text-yellow-400 mb-2 stat-counter" data-target="25">0%</div>
+                    <h3 class="font-bold text-lg text-slate-200">Sobredimensionamiento</h3>
+                    <p class="text-slate-400 mt-2">Es el sobrecoste promedio en sistemas para compensar la falta de respuesta a picos.</p>
                 </div>
             </div>
         </section>
 
-        <section id="mercado" class="py-20 bg-white rounded-3xl shadow-subtle">
-            <div class="text-center px-6" data-aos="fade-up">
-                <h2 class="text-3xl font-bold text-center text-[var(--color-primary)] mb-4">Mercado y Hoja de Ruta</h2>
-                <p class="text-center max-w-3xl mx-auto text-lg text-[var(--color-text)] mb-12">Nos dirigimos a un mercado en plena expansión con una estrategia por fases, desde la validación de la tecnología hasta la captura de mercado y el licenciamiento.</p>
+        <section id="solucion" class="py-16 my-16">
+            <h2 class="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400 mb-4">Nuestra Solución: El "Pistón Atómico"</h2>
+            <p class="text-center max-w-3xl mx-auto text-lg text-slate-300 mb-12">La IPU no es solo un controlador, es un gestor dinámico de energía. Su núcleo, el "Pistón Atómico", proporciona ráfagas de potencia masivas e instantáneas, protegiendo la batería principal y maximizando el rendimiento del sistema.</p>
+            <div class="quantum-card p-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500 mb-4">Dinámica del Pistón</h3>
+                        <div class="piston-chamber">
+                            <div class="quantum-grid"></div>
+                            <div class="piston-rod" id="piston-rod"></div>
+                            <div class="piston-head" id="piston-head"></div>
+                            <div class="capacitor-charge" id="capacitor-charge"></div>
+                            <div class="magnetic-field" id="magnetic-field"></div>
+                            <div class="spark" id="spark"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-4 text-slate-300">
+                        <div>
+                            <h4 class="font-bold text-lg flex items-center"><i class="fas fa-bolt text-atomic-blue mr-3"></i>1. Carga y Descarga Capacitiva</h4>
+                            <p class="text-sm text-slate-400 pl-8">El capacitor se carga rápidamente y libera un pulso de potencia instantáneo para satisfacer la demanda inmediata sin estresar la batería principal.</p>
+                        </div>
+                         <div>
+                            <h4 class="font-bold text-lg flex items-center"><i class="fas fa-magnet text-plasma-purple mr-3"></i>2. Retroceso Inductivo</h4>
+                            <p class="text-sm text-slate-400 pl-8">Inmediatamente después, el inductor genera un "retroceso" de alto voltaje, amplificando el pulso inicial y entregando una ráfaga de energía masiva y eficiente.</p>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-lg">
+                            <p class="text-center font-semibold"><i class="fas fa-check-circle text-quantum-teal mr-2"></i>Resultado: Potencia instantánea, mayor eficiencia y protección de la batería.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </section>
+
+        <section id="mercado" class="py-16">
+            <h2 class="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 mb-4">Mercado y Hoja de Ruta</h2>
+            <p class="text-center max-w-3xl mx-auto text-lg text-slate-300 mb-12">Nos dirigimos a un mercado en plena expansión con una estrategia por fases, desde la validación de la tecnología hasta la captura de mercado y el licenciamiento.</p>
             
-            <div class="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start px-6">
-                <div class="lg:col-span-2 bg-[var(--color-background)] p-6 rounded-xl shadow-lg" data-aos="fade-right">
-                    <h3 class="text-xl font-bold text-center text-[var(--color-secondary)] mb-4">Tamaño del Mercado (Anual)</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+                <div class="lg:col-span-2 quantum-card p-6">
+                    <h3 class="text-xl font-bold text-center text-slate-200 mb-4">Tamaño del Mercado de Almacenamiento (Anual)</h3>
                     <div class="chart-container">
                         <canvas id="marketChart"></canvas>
                     </div>
                 </div>
 
-                <div class="lg:col-span-3 bg-[var(--color-background)] p-6 rounded-xl shadow-lg" data-aos="fade-left" data-aos-delay="200">
-                    <h3 class="text-xl font-bold text-center text-[var(--color-secondary)] mb-4">Hoja de Ruta Tecnológica</h3>
+                <div class="lg:col-span-3 quantum-card p-6">
+                    <h3 class="text-xl font-bold text-center text-slate-200 mb-4">Hoja de Ruta Tecnológica</h3>
                     <div id="roadmap" class="space-y-2">
                         <!-- Fases de la hoja de ruta se insertarán aquí -->
                     </div>
@@ -160,28 +260,26 @@
             </div>
         </section>
 
-        <section id="inversion" class="py-20">
-            <div class="text-center px-6" data-aos="fade-up">
-                <h2 class="text-3xl font-bold text-center text-[var(--color-primary)] mb-4">La Oportunidad de Inversión</h2>
-                 <p class="text-center max-w-3xl mx-auto text-lg text-[var(--color-text)] mb-12">Buscamos una inversión semilla para llevar nuestro Producto Mínimo Viable (MVP) a la producción y validación en campo. Las proyecciones se basan en una entrada conservadora al mercado, escalando hacia un modelo de licenciamiento de alto margen.</p>
-            </div>
+        <section id="inversion" class="py-16">
+            <h2 class="text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-green-400 mb-4">La Oportunidad de Inversión</h2>
+             <p class="text-center max-w-3xl mx-auto text-lg text-slate-300 mb-12">Buscamos una inversión semilla para llevar nuestro Producto Mínimo Viable (MVP) a la producción y validación en campo. Las proyecciones se basan en una entrada conservadora al mercado, escalando hacia un modelo de licenciamiento de alto margen.</p>
 
-            <div class="bg-white p-8 rounded-3xl shadow-subtle max-w-5xl mx-auto" data-aos="zoom-in-up">
-                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
-                    <div class="lg:col-span-3">
-                        <h3 class="text-xl font-bold text-center text-[var(--color-secondary)] mb-4">Proyecciones Financieras (3 Años)</h3>
+            <div class="quantum-card p-8 max-w-5xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-8">
+                    <div class="md:col-span-3">
+                        <h3 class="text-xl font-bold text-center text-slate-200 mb-4">Proyecciones Financieras (3 Años)</h3>
                         <div class="chart-container">
                             <canvas id="financialsChart"></canvas>
                         </div>
                     </div>
-                    <div class="lg:col-span-2 flex flex-col justify-center space-y-8">
-                        <div class="text-center">
-                            <h3 class="text-xl font-bold text-center text-[var(--color-secondary)] mb-4">Uso de los Fondos</h3>
-                            <div class="chart-container" style="height: 220px; max-height:250px;">
+                    <div class="md:col-span-2 flex flex-col justify-center">
+                        <div class="text-center mb-8">
+                            <h3 class="text-xl font-bold text-center text-slate-200 mb-4">Uso de los Fondos</h3>
+                            <div class="chart-container" style="height: 200px; max-height:250px;">
                                 <canvas id="fundsChart"></canvas>
                             </div>
                         </div>
-                         <div class="bg-[var(--color-primary)] text-white p-6 rounded-xl text-center shadow-lg transform hover:scale-105 transition-transform duration-300">
+                         <div class="bg-gradient-to-br from-quantum-teal to-atomic-blue text-white p-6 rounded-lg text-center shadow-lg shadow-teal-500/20">
                             <h3 class="text-lg font-bold">Inversión Semilla Requerida</h3>
                             <p class="text-4xl font-extrabold my-2">$250,000 USD</p>
                             <p class="text-sm opacity-90">Para finalizar MVP, certificaciones, producción inicial y proyectos piloto.</p>
@@ -193,48 +291,51 @@
 
     </main>
 
-    <footer class="bg-white mt-16 rounded-t-3xl shadow-subtle">
-        <div class="container mx-auto py-8 px-4 text-center text-[var(--color-text)]">
-            <p class="font-semibold">&copy; 2025 Pistón Atómico. Todos los derechos reservados.</p>
-            <p class="text-sm mt-2 opacity-80">Una demostración de aplicación web interactiva para la comunicación de estrategias de negocio.</p>
+    <footer class="bg-slate-900 mt-16 border-t border-slate-800">
+        <div class="container mx-auto py-6 px-4 text-center text-slate-400">
+            <p>&copy; 2025 Pistón Atómico. Todos los derechos reservados.</p>
+            <p class="text-sm mt-2">Una demostración de aplicación web interactiva para la comunicación de estrategias de negocio.</p>
         </div>
     </footer>
 
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    AOS.init({
-        duration: 800,
-        easing: 'ease-in-out',
-        once: true,
-        offset: 120,
-    });
 
-    const chartTooltipCallback = (tooltipItems) => {
-        let label = tooltipItems[0].dataset.label || '';
-        if (label) { label += ': '; }
-        label += tooltipItems[0].formattedValue;
-        return label;
+    const chartDefaultOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                labels: { color: '#e2e8f0' }
+            },
+            tooltip: {
+                backgroundColor: '#1e293b',
+                titleColor: '#e2e8f0',
+                bodyColor: '#cbd5e1',
+                borderColor: '#334155',
+                borderWidth: 1
+            }
+        },
+        scales: {
+            x: {
+                ticks: { color: '#94a3b8' },
+                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            },
+            y: {
+                ticks: { color: '#94a3b8' },
+                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            }
+        }
     };
-    
-    const tooltipTitleCallback = (tooltipItems) => {
-        return tooltipItems[0].label;
-    };
-    
-    const chartDefaultFont = { family: "Inter", size: 12, weight: "500" };
-    Chart.defaults.font.family = chartDefaultFont.family;
-    Chart.defaults.font.size = chartDefaultFont.size;
-    Chart.defaults.font.weight = chartDefaultFont.weight;
-    Chart.defaults.color = "var(--color-text)";
 
     const marketData = {
         labels: ['Mercado Global (TAM)', 'Sistemas Residenciales/Comerciales (SAM)', 'Nuestro Objetivo Inicial (SOM)'],
         datasets: [{
             label: 'Tamaño del Mercado (en miles de millones de USD)',
             data: [20, 8, 5],
-            backgroundColor: ['#7C6A62', '#A56E5A', '#D5B4A8'],
+            backgroundColor: ['#0d9488', '#0ea5e9', '#8b5cf6'],
             borderRadius: 5,
-            borderSkipped: false,
+            borderWidth: 0
         }]
     };
     const marketCtx = document.getElementById('marketChart')?.getContext('2d');
@@ -242,34 +343,13 @@ document.addEventListener('DOMContentLoaded', () => {
         new Chart(marketCtx, {
             type: 'bar',
             data: marketData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
+            options: { ...chartDefaultOptions,
                 indexAxis: 'y',
                 scales: {
-                    x: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'Miles de Millones de USD ($B)', color: 'var(--color-text-strong)' },
-                        grid: { display: false },
-                        ticks: { color: 'var(--color-text)' }
-                    },
-                    y: {
-                        grid: { display: false },
-                        ticks: { color: 'var(--color-text)' }
-                    }
+                    x: { ...chartDefaultOptions.scales.x, title: { display: true, text: 'Miles de Millones de USD ($B)', color: '#94a3b8' } },
+                    y: { ...chartDefaultOptions.scales.y, grid: { display: false } }
                 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'var(--color-secondary)',
-                        titleColor: 'var(--color-background)',
-                        bodyColor: 'var(--color-background)',
-                        callbacks: {
-                            label: (context) => `${context.dataset.label}: $${context.raw}B`,
-                            title: tooltipTitleCallback
-                        }
-                    }
-                }
+                plugins: { ...chartDefaultOptions.plugins, legend: { display: false } }
             }
         });
     }
@@ -280,76 +360,40 @@ document.addEventListener('DOMContentLoaded', () => {
             label: 'Ingresos (USD)',
             data: [500000, 1500000, 4500000],
             type: 'bar',
-            backgroundColor: 'rgba(213, 180, 168, 0.7)',
+            backgroundColor: 'rgba(14, 165, 233, 0.7)',
             yAxisID: 'y-ingresos',
             borderRadius: 5
         }, {
             label: 'Margen de Beneficio (%)',
             data: [15, 25, 45],
             type: 'line',
-            borderColor: 'var(--color-primary)',
-            backgroundColor: 'var(--color-primary)',
+            borderColor: '#0d9488',
+            backgroundColor: '#0d9488',
             yAxisID: 'y-margen',
-            tension: 0.4,
-            fill: false
+            tension: 0.3
         }]
     };
     const financialsCtx = document.getElementById('financialsChart')?.getContext('2d');
     if(financialsCtx) {
         new Chart(financialsCtx, {
             data: financialsData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
+            options: { ...chartDefaultOptions,
                 scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: 'var(--color-text)' }
-                    },
                     'y-ingresos': {
-                        type: 'linear',
-                        position: 'left',
-                        beginAtZero: true,
-                        title: { display: true, text: 'Ingresos (USD)', color: 'var(--color-text-strong)'},
-                        ticks: {
-                            color: 'var(--color-text)',
-                            callback: value => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short' }).format(value)
-                        }
+                        type: 'linear', position: 'left', beginAtZero: true,
+                        title: { display: true, text: 'Ingresos (USD)', color: '#94a3b8' },
+                        ticks: { color: '#94a3b8', callback: value => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short' }).format(value) },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
                     },
                     'y-margen': {
-                        type: 'linear',
-                        position: 'right',
-                        beginAtZero: true,
-                        max: 100,
+                        type: 'linear', position: 'right', beginAtZero: true, max: 100,
                         grid: { drawOnChartArea: false },
-                        title: { display: true, text: 'Margen (%)', color: 'var(--color-text-strong)' },
-                         ticks: {
-                            color: 'var(--color-text)',
-                            callback: value => `${value}%`
-                        }
-                    }
+                        title: { display: true, text: 'Margen (%)', color: '#94a3b8' },
+                        ticks: { color: '#94a3b8', callback: value => `${value}%` }
+                    },
+                     x: { ...chartDefaultOptions.scales.x }
                 },
-                plugins: {
-                    legend: { position: 'bottom', labels: { color: 'var(--color-text-strong)'} },
-                    tooltip: {
-                        backgroundColor: 'var(--color-secondary)',
-                        titleColor: 'var(--color-background)',
-                        bodyColor: 'var(--color-background)',
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) { label += ': '; }
-                                if (context.dataset.yAxisID === 'y-margen') {
-                                    label += context.parsed.y + '%';
-                                } else {
-                                     label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
-                                }
-                                return label;
-                            },
-                            title: tooltipTitleCallback
-                        }
-                    }
-                }
+                plugins: { ...chartDefaultOptions.plugins, legend: { position: 'bottom' } }
             }
         });
     }
@@ -358,10 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
         labels: ['I+D y Prototipado', 'Producción Inicial', 'Certificaciones', 'Marketing y Ventas'],
         datasets: [{
             data: [45, 25, 15, 15],
-            backgroundColor: ['#43403A', '#7C6A62', '#A56E5A', '#D5B4A8'],
+            backgroundColor: ['#0d9488', '#0ea5e9', '#8b5cf6', '#f59e0b'],
             hoverOffset: 8,
-            borderWidth: 0,
-            hoverBorderColor: 'var(--color-background)'
+            borderWidth: 0
         }]
     };
     const fundsCtx = document.getElementById('fundsChart')?.getContext('2d');
@@ -369,28 +412,10 @@ document.addEventListener('DOMContentLoaded', () => {
         new Chart(fundsCtx, {
             type: 'doughnut',
             data: fundsData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '60%',
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            color: 'var(--color-text-strong)',
-                            usePointStyle: true,
-                            boxWidth: 8
-                        }
-                    },
-                     tooltip: {
-                        backgroundColor: 'var(--color-secondary)',
-                        titleColor: 'var(--color-background)',
-                        bodyColor: 'var(--color-background)',
-                        callbacks: {
-                            label: (context) => `${context.label}: ${context.raw}%`,
-                        }
-                    }
+            options: { ...chartDefaultOptions,
+                 plugins: { ...chartDefaultOptions.plugins,
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (context) => `${context.label}: ${context.raw}%` } }
                 }
             }
         });
@@ -421,66 +446,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { threshold: 0.5 });
     statCounters.forEach(counter => observer.observe(counter));
     
-    const capacitorEl = document.getElementById('capacitor');
-    const inductorEl = document.getElementById('inductor');
-    const arrowEl = document.getElementById('arrow');
+    const capacitorChargeEl = document.getElementById('capacitor-charge');
+    const magneticFieldEl = document.getElementById('magnetic-field');
+    const sparkEl = document.getElementById('spark');
+    const pistonRodEl = document.getElementById('piston-rod');
+    const pistonHeadEl = document.getElementById('piston-head');
     
     function runPistonAnimation() {
-        // 1. Charge Capacitor
-        capacitorEl.style.transform = 'scale(1.1)';
-        capacitorEl.style.borderColor = '#60a5fa'; // Brighter border
-        capacitorEl.style.boxShadow = '0 0 25px rgba(96, 165, 250, 0.7)';
+        // Charge
+        capacitorChargeEl.style.height = '100%';
+        pistonRodEl.style.top = '100px';
+        pistonHeadEl.style.top = '170px';
+        sparkEl.style.opacity = '0';
+        magneticFieldEl.style.opacity = '0';
 
+        // Discharge
         setTimeout(() => {
-            // 2. Transfer energy
-            arrowEl.style.opacity = '1';
-            arrowEl.style.transform = 'scaleX(1.2)';
-            capacitorEl.style.transform = 'scale(1)';
-            capacitorEl.style.borderColor = '#93c5fd'; // Dim border
-            capacitorEl.style.boxShadow = 'none';
-        }, 700);
+            capacitorChargeEl.style.height = '0%';
+            pistonRodEl.style.top = '0px';
+            pistonHeadEl.style.top = '30px';
+            magneticFieldEl.style.opacity = '1';
+        }, 1500);
         
+        // Spark
         setTimeout(() => {
-            // 3. Energize Inductor
-            inductorEl.style.transform = 'scale(1.1)';
-            inductorEl.style.borderColor = '#c084fc'; // Brighter border
-            inductorEl.style.boxShadow = '0 0 25px rgba(192, 132, 252, 0.7)';
-        }, 1000);
-
-        setTimeout(() => {
-            // 4. Reset state
-            arrowEl.style.opacity = '0';
-            arrowEl.style.transform = 'scaleX(1)';
-            inductorEl.style.transform = 'scale(1)';
-            inductorEl.style.borderColor = '#d8b4fe'; // Dim border
-            inductorEl.style.boxShadow = 'none';
-        }, 2200);
+            sparkEl.style.opacity = '1';
+        }, 2000);
     }
-
-    const animationObserver = new IntersectionObserver((entries) => {
-        if(entries[0].isIntersecting) {
-            setInterval(runPistonAnimation, 3000);
-            runPistonAnimation();
-            animationObserver.unobserve(entries[0].target);
-        }
-    }, { threshold: 0.5 });
-
-    animationObserver.observe(document.querySelector('.piston-animation'));
+    setInterval(runPistonAnimation, 3500);
+    runPistonAnimation();
 
     const roadmapData = [
         {
             title: 'Fase 1 (Año 1): Producto Mínimo Viable (MVP)',
-            icon: '🔬',
             details: '<strong>Objetivo:</strong> Validar la tecnología de control y el algoritmo a bajo coste.<br><strong>Tecnología:</strong> Cargador solar unidireccional de ~500W.<br><strong>Hitos:</strong> Prototipo funcional, eficiencia >95%, validación de algoritmos.'
         },
         {
             title: 'Fase 2 (Año 2): IPU Comercial v1.0',
-            icon: '🚀',
             details: '<strong>Objetivo:</strong> Penetrar mercados residenciales y comerciales de alta gama.<br><strong>Tecnología:</strong> Sistema bidireccional con "Pistón Atómico" integrado.<br><strong>Hitos:</strong> Producción inicial, certificaciones, primeras ventas B2B.'
         },
         {
             title: 'Fase 3 (Año 3+): Plataforma IPU Avanzada',
-            icon: '🌐',
             details: '<strong>Objetivo:</strong> Escalar a través de licenciamiento de tecnología.<br><strong>Tecnología:</strong> Solución modular y escalable con IA para gestión predictiva.<br><strong>Hitos:</strong> Acuerdos de licenciamiento con grandes fabricantes.'
         }
     ];
@@ -488,23 +494,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const roadmapContainer = document.getElementById('roadmap');
     roadmapData.forEach((phase, index) => {
         const phaseEl = document.createElement('div');
-        phaseEl.className = 'phase relative pl-10 pb-8 border-l-2 border-[var(--color-accent)]';
+        phaseEl.className = 'phase border-b border-slate-700';
         phaseEl.innerHTML = `
-            <div class="absolute -left-4 top-0 w-8 h-8 bg-[var(--color-primary)] rounded-full flex items-center justify-center text-white font-bold">${phase.icon}</div>
-            <div class="phase-header cursor-pointer" data-aos="fade-left" data-aos-delay="${index * 100}">
-                <h4 class="font-bold text-lg text-[var(--color-secondary)]">${phase.title}</h4>
+            <div class="phase-header flex justify-between items-center cursor-pointer p-4 rounded-t-lg">
+                <h4 class="font-bold text-lg text-slate-200">${phase.title}</h4>
+                <div class="phase-icon text-2xl text-teal-400 transform"><i class="fas fa-chevron-down"></i></div>
             </div>
-            <div class="phase-content pt-2 text-[var(--color-text)]">
-                <p>${phase.details}</p>
+            <div class="phase-content px-4 text-slate-400">
+                <p class="text-sm">${phase.details}</p>
             </div>
         `;
         roadmapContainer.appendChild(phaseEl);
-        if(index === roadmapData.length - 1) {
-            phaseEl.classList.remove('border-l-2');
+    });
+
+    roadmapContainer.addEventListener('click', (e) => {
+        const header = e.target.closest('.phase-header');
+        if (header) {
+            const phase = header.parentElement;
+            const wasActive = phase.classList.contains('active');
+            
+            document.querySelectorAll('#roadmap .phase').forEach(p => p.classList.remove('active'));
+            
+            if (!wasActive) {
+                phase.classList.add('active');
+            }
         }
     });
 
-    // Nav scroll highlighting
     const navLinks = document.querySelectorAll('.nav-link');
     const sections = document.querySelectorAll('section');
 
