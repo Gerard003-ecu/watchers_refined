@@ -1077,7 +1077,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         sparkEl.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scale(1.5)`;
                         wave.style.opacity = '1';
                         wave.style.transform = 'scale(1.5)';
-                        level.style.width = '150%';
+                        level.style.width = '100%';
+                        level.style.background = 'linear-gradient(90deg, var(--fusion-red), var(--energy-amber))';
                         capState.textContent = 'Descarga Completa';
                         magState.textContent = '¡Pulso de Potencia!';
                     },
@@ -1086,6 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         wave.style.opacity = '0';
                         wave.style.transform = 'scale(0)';
                         level.style.width = '0%';
+                        level.style.background = 'linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple))';
                         capState.textContent = 'Iniciando Ciclo';
                         magState.textContent = 'Campo Colapsado';
                     }
