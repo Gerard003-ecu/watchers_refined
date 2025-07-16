@@ -6,7 +6,7 @@ del grafeno, como un sistema de osciladores acoplados. La malla interactúa
 con un campo vectorial externo (proveniente de la experiencia de campo
 unificada, ECU) que modula el acoplamiento entre los osciladores.
 Además, la malla genera influencias sobre dicho campo, basadas en
-la tasa de cambio del flujo del campo a través de ella, en una analogía
+la tasa de cambio del flujo del campo a través de ella, una analogía
 con la inducción electromagnética.
 
 Componentes Principales:
