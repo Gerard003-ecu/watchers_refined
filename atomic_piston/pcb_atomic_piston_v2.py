@@ -4,6 +4,7 @@ import os
 import sys
 import math
 import logging
+from itertools import combinations
 from skidl import Part, Net, generate_netlist, reset
 
 try:
@@ -23,48 +24,21 @@ except ImportError:
           "pcb_atomic_piston.py")
     sys.exit(1)
 
+# Import configuration
+try:
+    from .config import (BOARD_WIDTH, BOARD_HEIGHT, LAYER_CONFIG,
+                         FOOTPRINTS, PLACEMENTS)
+except ImportError:
+    print("Error: No se pudo importar el archivo de configuración 'config.py'.")
+    sys.exit(1)
+
+
 # Configuración de logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-
-# =============== CONFIGURACIÓN DE DISEÑO ===============
-BOARD_WIDTH = 150  # mm
-BOARD_HEIGHT = 100  # mm
-LAYER_CONFIG = {
-    'power_track_width': 3.0,  # mm
-    'signal_track_width': 0.3,  # mm
-    'thermal': {
-        'via_drill': 0.3,      # mm
-        'via_diameter': 0.6,    # mm
-        'via_count': 8,
-        'clearance': 0.5        # mm
-    },
-    'zones': {
-        'clearance': 0.5,      # mm
-        'min_width': 0.25       # mm
-    }
-}
-
-# Mapeo de componentes a footprints (actualizado para KiCad 7)
-FOOTPRINTS = {
-    'ESP32': 'Module:ESP32-WROOM-32_NoPins',
-    'MOSFET_POWER': 'Package_TO_SOT_THT:TO-247-3_Vertical',
-    'GATE_DRIVER': 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm',
-    'SUPERCAP': 'Capacitor_THT:CP_Radial_D25.0mm_P10.00mm',
-    'INDUCTOR_POWER': 'Inductor_THT:L_Toroid_D33.0mm_P17.30mm_Vertical',
-    'CONN_POWER': 'Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical',
-    'CONN_PV': 'Connector_Wire:SolderWire-1.5mm_1x02_P7.62mm_Drill1.5mm',
-    'RESISTOR_SHUNT':
-        'Resistor_THT:R_Axial_DIN0617_L17.0mm_D6.0mm_P22.86mm_Horizontal',
-    'BMS_IC': 'Package_SO:SOIC-16_3.9x9.9mm_P1.27mm',
-    'PRE_CHARGE_RES':
-        'Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Horizontal',
-    'STAR_POINT': 'TestPoint:TestPoint_Pad_D1.5mm'
-}
 
 
 # =============== CREACIÓN ESQUEMÁTICA ===============
@@ -227,24 +201,12 @@ def place_components(board):
     """Coloca componentes con orientaciones adecuadas."""
     logger.info("Colocando componentes en la placa...")
 
-    # Definir posiciones y rotaciones
-    placements = {
-        'ESP32': {'pos': (30, 50), 'rot': 0, 'side': 'top'},
-        'UCC21520': {'pos': (60, 50), 'rot': 90, 'side': 'top'},
-        'Q1': {'pos': (100, 25), 'rot': 180, 'side': 'top'},
-        'C1': {'pos': (125, 50), 'rot': 0, 'side': 'top'},
-        'L1': {'pos': (100, 75), 'rot': 0, 'side': 'top'},
-        'J1': {'pos': (140, 85), 'rot': 270, 'side': 'top'},
-        'R1': {'pos': (115, 40), 'rot': 0, 'side': 'top'},
-        'TP1': {'pos': (10, 10), 'rot': 0, 'side': 'top'}  # Punto estrella
-    }
-
     for module in board.GetModules():
         ref = module.GetReference()
         comp_type = module.GetValue()
 
         # Buscar colocación por referencia o tipo
-        placement = placements.get(ref) or placements.get(comp_type)
+        placement = PLACEMENTS.get(ref) or PLACEMENTS.get(comp_type)
         if placement:
             pos = wxPointMM(*placement['pos'])
             module.SetPosition(pos)
@@ -269,15 +231,15 @@ def route_critical_nets(board):
             continue
 
         # Conectar todos los pads de esta red
-        pads = net.Pads()
+        pads = list(net.Pads())
         if len(pads) < 2:
             continue
 
-        for i in range(len(pads) - 1):
+        for pad1, pad2 in combinations(pads, 2):
             create_track(
                 board,
-                pads[i].GetCenter(),
-                pads[i + 1].GetCenter(),
+                pad1.GetCenter(),
+                pad2.GetCenter(),
                 net,
                 power_width,
                 F_Cu
@@ -287,12 +249,15 @@ def route_critical_nets(board):
     for net_name in ["GPIO22_CTRL", "+3V3", "GND_DIGITAL"]:
         net = find_net(board, net_name)
         if net:
-            pads = net.Pads()
-            for i in range(len(pads) - 1):
+            pads = list(net.Pads())
+            if len(pads) < 2:
+                continue
+
+            for pad1, pad2 in combinations(pads, 2):
                 create_track(
                     board,
-                    pads[i].GetCenter(),
-                    pads[i + 1].GetCenter(),
+                    pad1.GetCenter(),
+                    pad2.GetCenter(),
                     net,
                     signal_width,
                     F_Cu
@@ -399,11 +364,10 @@ def add_silkscreen_labels(board):
 # =============== HERRAMIENTAS DE PCB ===============
 def find_net(board, net_name):
     """Encuentra una red por nombre."""
-    for net in board.GetNetsByName().values():
-        if net.GetNetname() == net_name:
-            return net
-    logger.warning(f"Red '{net_name}' no encontrada")
-    return None
+    net = board.FindNet(net_name)
+    if not net:
+        logger.warning(f"Red '{net_name}' no encontrada")
+    return net
 
 
 def find_component(board, reference):
@@ -478,7 +442,7 @@ def verify_design(board):
     critical_nets = ["PV+", "GND_POWER", "SWITCH_NODE"]
     for net_name in critical_nets:
         net = find_net(board, net_name)
-        if net and net.GetPadsCount() == 0:
+        if net and net.GetPadCount() == 0:
             errors.append(f"Red crítica '{net_name}' no tiene conexiones")
 
     # Verificar componentes colocados
