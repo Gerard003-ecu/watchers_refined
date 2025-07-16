@@ -1,8 +1,8 @@
 """Controlador Táctico para el Ecosistema de Watchers (Harmony Controller).
 
-Este módulo implementa el núcleo de control del sistema Harmony, diseñado para
+Este módulo implementa el núcleo de control del ecosistema watchers, diseñado para
 mantener un estado de equilibrio o "armonía" dentro de un ecosistema de
-componentes monitorizados denominados "watchers" y una entidad central de
+componentes monitorizados denominados "watcher_tools" y una entidad central de
 estado conocida como ECU (Estado de Campo Unificado).
 
 Funcionalidades Principales:
