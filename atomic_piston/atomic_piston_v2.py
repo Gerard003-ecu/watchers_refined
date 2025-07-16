@@ -32,7 +32,7 @@ class ControllerType(Enum):
 class AtomicPiston:
     """Simula una Unidad de Potencia Inteligente (IPU).
 
-    Representa un sistema físico de pistón atómico con una interfaz
+    Representa un sistema físico de un pistón atómico con una interfaz
     electrónica integrada, diseñado para sistemas fotovoltaicos.
 
     Attributes:
