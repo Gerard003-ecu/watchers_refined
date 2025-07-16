@@ -249,34 +249,69 @@ class AtomicPiston:
     def update_state(self, dt: float):
         """Actualiza el estado físico del pistón para un intervalo de tiempo.
 
+        Este método resuelve la ecuación diferencial del movimiento del pistón
+        utilizando la integración de Verlet, un método numérico estable para
+        sistemas de N-cuerpos.
+
+        La ecuación diferencial es:
+        m * d²x/dt² + F_friction(dx/dt) + k * x + ε * x³ = F_external(t)
+
+        Donde:
+        - m * d²x/dt² es el término de inercia.
+        - F_friction(dx/dt) es la fuerza de fricción (viscosa, Coulomb o Stribeck).
+        - k * x es la fuerza del resorte lineal (ley de Hooke).
+        - ε * x³ es la fuerza del resorte no lineal.
+        - F_external(t) es la suma de todas las fuerzas externas aplicadas.
+
         Args:
             dt: El intervalo de tiempo.
-
         """
         self.dt = dt
+
+        # Aplicar control de velocidad si está activo
         if self.target_speed != 0.0:
             control_force = self.speed_controller.update(
                 self.target_speed, self.velocity, dt
             )
             self.last_applied_force += control_force
+
+        # Calcular fuerzas internas
         spring_force = (
             -self.k * self.position - self.nonlinear_elasticity * self.position**3
         )
         friction_force = self.calculate_friction()
         self.friction_force_history.append(friction_force)
+
+        # Fuerza total = fuerzas externas + fuerzas internas
         total_force = self.last_applied_force + spring_force + friction_force
+
+        # Calcular aceleración (a = F/m)
         self.acceleration = total_force / self.m
+
+        # Integración de Verlet para calcular la nueva posición
+        # x(t+dt) = 2x(t) - x(t-dt) + a(t) * dt²
         new_position = (
             2 * self.position - self.previous_position + self.acceleration * (dt**2)
         )
+
+        # Actualizar velocidad
+        # v(t) ≈ [x(t+dt) - x(t-dt)] / (2*dt)
         self.velocity = (new_position - self.previous_position) / (2 * dt)
+
+        # Actualizar posiciones para la siguiente iteración
         self.previous_position = self.position
         self.position = new_position
+
+        # Limitar la posición para evitar saturación
         self.position = np.clip(
             self.position, -self.saturation_threshold, self.saturation_threshold
         )
+
+        # Actualizar estado electrónico y resetear fuerzas
         self.update_electronic_state()
         self.last_applied_force = 0.0
+
+        # Registrar historial para diagnóstico
         self.energy_history.append(self.stored_energy)
         self.efficiency_history.append(self.get_conversion_efficiency())
 
@@ -501,6 +536,76 @@ class AtomicPiston:
             phase.append(np.angle(H_electrical, deg=True))
         return {"frequencies": frequency_range, "magnitude": magnitude, "phase": phase}
 
+    def simulate_step_response(self, force_amplitude: float, duration: float, dt: float) -> dict:
+        """
+        Simula la respuesta del pistón a una fuerza escalón.
+
+        Aplica una fuerza constante y registra la evolución del estado del sistema.
+
+        Args:
+            force_amplitude: Magnitud de la fuerza a aplicar (en Newtons).
+            duration: Duración de la simulación (en segundos).
+            dt: Paso de tiempo para la simulación (en segundos).
+
+        Returns:
+            Un diccionario con las series temporales de posición, velocidad y aceleración.
+        """
+        self.reset()
+        time_series = np.arange(0, duration, dt)
+        position_history = []
+        velocity_history = []
+        acceleration_history = []
+
+        for t in time_series:
+            self.last_applied_force = force_amplitude
+            self.update_state(dt)
+            position_history.append(self.position)
+            velocity_history.append(self.velocity)
+            acceleration_history.append(self.acceleration)
+
+        return {
+            "time": time_series,
+            "position": position_history,
+            "velocity": velocity_history,
+            "acceleration": acceleration_history,
+        }
+
+    def simulate_impulse_response(self, impulse_magnitude: float, duration: float, dt: float) -> dict:
+        """
+        Simula la respuesta del pistón a una fuerza impulso.
+
+        Aplica una fuerza instantánea y registra la evolución del estado del sistema.
+
+        Args:
+            impulse_magnitude: Magnitud del impulso a aplicar (en N·s).
+            duration: Duración de la simulación (en segundos).
+            dt: Paso de tiempo para la simulación (en segundos).
+
+        Returns:
+            Un diccionario con las series temporales de posición, velocidad y aceleración.
+        """
+        self.reset()
+        time_series = np.arange(0, duration, dt)
+        position_history = []
+        velocity_history = []
+        acceleration_history = []
+
+        # Aplicar el impulso como un cambio instantáneo en la velocidad
+        self.velocity += impulse_magnitude / self.m
+
+        for t in time_series:
+            self.update_state(dt)
+            position_history.append(self.position)
+            velocity_history.append(self.velocity)
+            acceleration_history.append(self.acceleration)
+
+        return {
+            "time": time_series,
+            "position": position_history,
+            "velocity": velocity_history,
+            "acceleration": acceleration_history,
+        }
+
     def reset(self):
         """Reinicia el estado del pistón a sus condiciones iniciales."""
         self.position = 0.0
@@ -520,6 +625,31 @@ class AtomicPiston:
         self.speed_controller.reset()
         self.energy_controller.reset()
         logger.info("Estado del pistón reiniciado")
+
+    def get_differential_equation_terms(self) -> dict:
+        """
+        Devuelve los términos de la ecuación diferencial ordinaria de segundo
+        grado que gobierna el movimiento del pistón.
+
+        La ecuación es de la forma:
+        m * d²x/dt² + F_friction(dx/dt) + k * x + ε * x³ = F_external(t)
+
+        Returns:
+            Un diccionario con los componentes de la ecuación diferencial.
+        """
+        friction_force = self.calculate_friction()
+        spring_force = -self.k * self.position
+        nonlinear_spring_force = -self.nonlinear_elasticity * self.position**3
+        total_force = self.last_applied_force + spring_force + nonlinear_spring_force + friction_force
+
+        return {
+            "mass_term": self.m * self.acceleration,
+            "damping_force": friction_force,
+            "spring_force": spring_force,
+            "nonlinear_spring_force": nonlinear_spring_force,
+            "external_force": self.last_applied_force,
+            "total_force": total_force
+        }
 
 
 class PIDController:
