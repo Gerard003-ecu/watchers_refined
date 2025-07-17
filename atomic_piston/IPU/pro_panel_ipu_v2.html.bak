@@ -296,19 +296,19 @@ body {
     position: absolute;
     width: 26px;
     height: 150px;
-    background: linear-gradient(to right, 
-        #e2e8f0 0%, 
-        #cbd5e1 25%, 
-        #94a3b8 50%, 
-        #cbd5e1 75%, 
+    background: linear-gradient(to right,
+        #e2e8f0 0%,
+        #cbd5e1 25%,
+        #94a3b8 50%,
+        #cbd5e1 75%,
         #e2e8f0 100%);
     left: 50%;
     transform: translateX(-50%);
     top: 0;
     z-index: 2;
     border-radius: 10px;
-    box-shadow: 
-        0 0 15px rgba(251, 191, 36, 0.5), 
+    box-shadow:
+        0 0 15px rgba(251, 191, 36, 0.5),
         inset 0 4px 8px rgba(255,255,255,0.3),
         inset 0 -4px 8px rgba(0,0,0,0.3);
     transition: all 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
@@ -318,15 +318,15 @@ body {
     position: absolute;
     width: 110px;
     height: 45px;
-    background: 
+    background:
         linear-gradient(145deg, #fcd34d, #fbbf24, #f59e0b),
         radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5) 0%, transparent 40%);
     left: 50%;
     transform: translateX(-50%);
     border-radius: 0.9rem;
     z-index: 3;
-    box-shadow: 
-        0 0 25px rgba(251, 191, 36, 0.7), 
+    box-shadow:
+        0 0 25px rgba(251, 191, 36, 0.7),
         inset 0 4px 6px rgba(255,255,255,0.4),
         inset 0 -4px 6px rgba(0,0,0,0.3);
     transition: all 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
@@ -362,9 +362,9 @@ body {
     bottom: 0;
     left: 0;
     width: 100%;
-    background: linear-gradient(to top, 
-        hsla(212, 100%, 67%, 0.9) 0%, 
-        hsla(212, 100%, 67%, 0.7) 50%, 
+    background: linear-gradient(to top,
+        hsla(212, 100%, 67%, 0.9) 0%,
+        hsla(212, 100%, 67%, 0.7) 50%,
         hsla(212, 100%, 67%, 0) 100%);
     transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
     filter: blur(2px);
@@ -377,9 +377,9 @@ body {
     left: 0;
     width: 200%;
     height: 20px;
-    background: linear-gradient(to bottom, 
-        rgba(255,255,255,0.4) 0%, 
-        rgba(255,255,255,0.2) 50%, 
+    background: linear-gradient(to bottom,
+        rgba(255,255,255,0.4) 0%,
+        rgba(255,255,255,0.2) 50%,
         transparent 100%);
     animation: wave 8s linear infinite;
     border-radius: 50%;
@@ -464,9 +464,9 @@ body {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: radial-gradient(circle, 
-        hsla(52, 95%, 70%, 0.6) 0%, 
-        hsla(52, 95%, 70%, 0.3) 50%, 
+    background: radial-gradient(circle,
+        hsla(52, 95%, 70%, 0.6) 0%,
+        hsla(52, 95%, 70%, 0.3) 50%,
         transparent 75%);
     opacity: 0;
     transform: scale(0);
@@ -477,9 +477,9 @@ body {
 .heat-distortion {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle, 
-        rgba(255, 100, 0, 0.2) 0%, 
-        rgba(255, 100, 0, 0.1) 50%, 
+    background: radial-gradient(circle,
+        rgba(255, 100, 0, 0.2) 0%,
+        rgba(255, 100, 0, 0.1) 50%,
         transparent 100%);
     opacity: 0;
     filter: blur(10px);
@@ -1209,7 +1209,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 targetSection.style.opacity = '1';
                 targetSection.style.transform = 'translateY(0)';
-                
+
                 // Trigger staggered animations for elements
                 const animatedElements = targetSection.querySelectorAll('.animate-fadeInUp, .animate-slideInLeft, .animate-slideInRight, .animate-scaleIn');
                 animatedElements.forEach((el, index) => {
@@ -1249,14 +1249,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const size = Math.max(rect.width, rect.height);
         const x = event.clientX - rect.left - size / 2;
         const y = event.clientY - rect.top - size / 2;
-        
+
         ripple.style.width = ripple.style.height = size + 'px';
         ripple.style.left = x + 'px';
         ripple.style.top = y + 'px';
         ripple.classList.add('ripple-effect');
-        
+
         element.appendChild(ripple);
-        
+
         setTimeout(() => {
             ripple.remove();
         }, 600);
@@ -1278,36 +1278,36 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!ctx) return;
         effChart = new Chart(ctx, {
             type: 'bar',
-            data: { 
-                labels: [], 
-                datasets: [{ 
-                    label: 'Eficiencia (%)', 
-                    data: [], 
-                    backgroundColor: ['#58A6FF'], 
-                    borderWidth: 0, 
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Eficiencia (%)',
+                    data: [],
+                    backgroundColor: ['#58A6FF'],
+                    borderWidth: 0,
                     barThickness: 40,
                     borderRadius: 8,
                     borderSkipped: false
-                }] 
+                }]
             },
             options: {
-                responsive: true, 
-                maintainAspectRatio: false, 
+                responsive: true,
+                maintainAspectRatio: false,
                 indexAxis: 'y',
                 animation: {
                     duration: 1000,
                     easing: 'easeOutQuart'
                 },
-                scales: { 
-                    x: { 
-                        min: 85, 
-                        max: 100, 
-                        grid: { color: 'rgba(255,255,255,.1)' }, 
-                        ticks: { color: '#8B949E' } 
-                    }, 
-                    y: { display: false } 
+                scales: {
+                    x: {
+                        min: 85,
+                        max: 100,
+                        grid: { color: 'rgba(255,255,255,.1)' },
+                        ticks: { color: '#8B949E' }
+                    },
+                    y: { display: false }
                 },
-                plugins: { 
+                plugins: {
                     legend: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(22, 27, 34, 0.95)',
@@ -1328,113 +1328,73 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-/* - Enhanced Power Output Chart - */
-const { powerOutputData } = data;
-let powerOutputChart;
-function createPowerOutputChart() {
-  const ctx = document.getElementById('powerOutputChart');
-  if (!ctx) return;
-  powerOutputChart = new Chart(ctx, {
-    type: 'line',
-    data: powerOutputData,
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: 2000,
-        easing: 'easeOutQuart'
-      },
-      scales: {
-        x: {
-          type: 'time',
-          time: { unit: 'second' },
-          grid: { color: 'rgba(255,255,255,.1)' },
-          ticks: { color: '#8B949E' }
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(255,255,255,.1)' },
-          ticks: { color: '#8B949E' }
-        }
-      },
-      plugins: {
-        legend: {
-          labels: { color: '#8B949E' }
-        },
-        tooltip: {
-          backgroundColor: 'rgba(22, 27, 34, 0.95)',
-          titleColor: '#F0F6FC',
-          bodyColor: '#C9D1D9',
-          borderColor: '#21262D',
-          borderWidth: 1
-        },
-        // Efecto de sombra bajo la línea
-        annotation: {
-          annotations: [{
-            type: 'line',
-            yMin: 0,
-            yMax: 0,
-            borderColor: 'rgba(255, 123, 114, 0.5)',
-            borderWidth: 2
-          }]
-        }
-      }
+    /* ---------- Enhanced Battery Chart with Animations ---------- */
+    const { batteryData } = data;
+    const batDet = document.getElementById('battery-details');
+    let batChart;
+
+    function updateBatDetails(i) {
+        const d = batteryData.details[i];
+        batDet.style.opacity = '0';
+        setTimeout(() => {
+            batDet.innerHTML = `<h4 class="font-bold text-lg text-slate-200 mb-2">${d.title}</h4><p class="text-sm text-slate-400">${d.text}</p>`;
+            batDet.style.opacity = '1';
+        }, 200);
     }
-  });
-}                                                                                                                                           /* - Enhanced Battery Chart - */
-const { batteryData } = data;
-let batChart;
-function createBatChart() {
-  const ctx = document.getElementById('batteryChart');
-  if (!ctx || batChart) return;
-  batChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      ...batteryData,
-      datasets: batteryData.datasets.map(dataset => ({
-        ...dataset,
-        borderRadius: 8,
-        borderSkipped: false,
-        // Gradiente en barras
-        backgroundColor: ctx => {
-          const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
-          gradient.addColorStop(0, 'rgba(241,224,90,0.6)');
-          gradient.addColorStop(1, 'rgba(241,224,90,0.1)');
-          return gradient;
-        }
-      }))
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: 1500,
-        easing: 'easeOutQuart'
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(255,255,255,.1)' },
-          ticks: { color: '#8B949E' }
-        },
-        x: {
-          ticks: { color: '#8B949E' }
-        }
-      },
-      plugins: {
-        legend: { labels: { color: '#8B949E' } },
-        tooltip: {
-          mode: 'index',
-          backgroundColor: 'rgba(22, 27, 34, 0.95)',
-          titleColor: '#F0F6FC',
-          bodyColor: '#C9D1D9',
-          borderColor: '#21262D',
-          borderWidth: 1
-        }
-      }
+
+    function createBatChart() {
+        const ctx = document.getElementById('batteryChart');
+        if (!ctx) return;
+        batChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                ...batteryData,
+                datasets: batteryData.datasets.map(dataset => ({
+                    ...dataset,
+                    borderRadius: 6,
+                    borderSkipped: false
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1500,
+                    easing: 'easeOutQuart'
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,.1)' },
+                        ticks: { color: '#8B949E' }
+                    },
+                    x: {
+                        ticks: { color: '#8B949E' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#8B949E' }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                        titleColor: '#F0F6FC',
+                        bodyColor: '#C9D1D9',
+                        borderColor: '#21262D',
+                        borderWidth: 1
+                    }
+                },
+                onClick: (_, els) => {
+                    if (els.length) {
+                        updateBatDetails(els[0].index);
+                    }
+                }
+            }
+        });
     }
-  });
-}
+
+    /* ---------- Enhanced Cycle Life Chart ---------- */
     const { cycleData } = data;
     function createCycleChart() {
         const ctx = document.getElementById('cycleLifeChart');
@@ -1443,35 +1403,35 @@ function createBatChart() {
             type: 'line',
             data: cycleData,
             options: {
-                responsive: true, 
+                responsive: true,
                 maintainAspectRatio: false,
                 animation: {
                     duration: 2000,
                     easing: 'easeOutQuart'
                 },
                 scales: {
-                    x: { 
-                        title: { 
-                            display: true, 
-                            text: 'Profundidad de Descarga', 
-                            color: '#8B949E' 
-                        }, 
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Profundidad de Descarga',
+                            color: '#8B949E'
+                        },
                         ticks: { color: '#8B949E' },
                         grid: { color: 'rgba(255,255,255,.1)' }
                     },
-                    y: { 
-                        title: { 
-                            display: true, 
-                            text: 'Ciclos de Vida', 
-                            color: '#8B949E' 
-                        }, 
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Ciclos de Vida',
+                            color: '#8B949E'
+                        },
                         ticks: { color: '#8B949E' },
                         grid: { color: 'rgba(255,255,255,.1)' }
                     }
                 },
-                plugins: { 
-                    legend: { 
-                        labels: { color: '#8B949E' } 
+                plugins: {
+                    legend: {
+                        labels: { color: '#8B949E' }
                     },
                     tooltip: {
                         backgroundColor: 'rgba(22, 27, 34, 0.95)',
@@ -1485,6 +1445,80 @@ function createBatChart() {
         });
     }
 
+    /* ---------- Enhanced Power Output Chart ---------- */
+    const { powerOutputData } = data;
+    let powerOutputChart;
+
+    function createPowerOutputChart() {
+        const ctx = document.getElementById('powerOutputChart');
+        if (!ctx) return;
+
+        powerOutputChart = new Chart(ctx, {
+            type: 'line',
+            data: powerOutputData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 0 // Disable for real-time updates
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second'
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,.1)'
+                        },
+                        ticks: {
+                            color: '#8B949E'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255,255,255,.1)'
+                        },
+                        ticks: {
+                            color: '#8B949E'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#8B949E'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                        titleColor: '#F0F6FC',
+                        bodyColor: '#C9D1D9',
+                        borderColor: '#21262D',
+                        borderWidth: 1
+                    }
+                }
+            }
+        });
+
+        let lastValue = 50;
+        setInterval(() => {
+            const now = new Date();
+            const change = (Math.random() - 0.5) * 10;
+            lastValue = Math.max(0, Math.min(100, lastValue + change));
+
+            powerOutputData.labels.push(now);
+            powerOutputData.datasets[0].data.push(lastValue);
+
+            if (powerOutputData.labels.length > 30) {
+                powerOutputData.labels.shift();
+                powerOutputData.datasets[0].data.shift();
+            }
+
+            powerOutputChart.update('none');
+        }, 1500);
+    }
 
     /* ---------- Enhanced Tooltips ---------- */
     const tooltip = document.getElementById('tooltip');
@@ -1600,7 +1634,7 @@ function createBatChart() {
                 magnetic1.classList.remove('active');
                 magnetic2.classList.remove('active');
                 magnetic3.classList.remove('active');
-                
+
                 // Activate sparks with random delays
                 sparks.forEach((spark, i) => {
                     setTimeout(() => {
@@ -1609,7 +1643,7 @@ function createBatChart() {
                         setTimeout(() => spark.style.opacity = '0', 500);
                     }, i * 100);
                 });
-                
+
                 energyWave.style.opacity = '1';
                 energyWave.style.transform = 'scale(1.8)';
                 heatDistortion.style.opacity = '0.7';
@@ -1619,7 +1653,7 @@ function createBatChart() {
                 capState.style.color = '#FF7B72';
                 magState.textContent = '¡Pulso de Potencia Liberado!';
                 magState.style.color = '#FF7B72';
-                
+
                 // Activate particles
                 const particles = document.querySelectorAll('.energy-particle');
                 particles.forEach(p => {
@@ -1665,7 +1699,7 @@ function createBatChart() {
     updateBatDetails(0);
     createCycleChart();
     createPowerOutputChart();
-    
+
     if (rod) {
         setInterval(runAnimation, 2000);
     }
