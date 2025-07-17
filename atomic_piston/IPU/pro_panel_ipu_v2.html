@@ -1328,113 +1328,73 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-/* - Enhanced Power Output Chart - */
-const { powerOutputData } = data;
-let powerOutputChart;
-function createPowerOutputChart() {
-  const ctx = document.getElementById('powerOutputChart');
-  if (!ctx) return;
-  powerOutputChart = new Chart(ctx, {
-    type: 'line',
-    data: powerOutputData,
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: 2000,
-        easing: 'easeOutQuart'
-      },
-      scales: {
-        x: {
-          type: 'time',
-          time: { unit: 'second' },
-          grid: { color: 'rgba(255,255,255,.1)' },
-          ticks: { color: '#8B949E' }
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(255,255,255,.1)' },
-          ticks: { color: '#8B949E' }
-        }
-      },
-      plugins: {
-        legend: {
-          labels: { color: '#8B949E' }
-        },
-        tooltip: {
-          backgroundColor: 'rgba(22, 27, 34, 0.95)',
-          titleColor: '#F0F6FC',
-          bodyColor: '#C9D1D9',
-          borderColor: '#21262D',
-          borderWidth: 1
-        },
-        // Efecto de sombra bajo la línea
-        annotation: {
-          annotations: [{
-            type: 'line',
-            yMin: 0,
-            yMax: 0,
-            borderColor: 'rgba(255, 123, 114, 0.5)',
-            borderWidth: 2
-          }]
-        }
-      }
+    /* ---------- Enhanced Battery Chart with Animations ---------- */
+    const { batteryData } = data;
+    const batDet = document.getElementById('battery-details');
+    let batChart;
+
+    function updateBatDetails(i) {
+        const d = batteryData.details[i];
+        batDet.style.opacity = '0';
+        setTimeout(() => {
+            batDet.innerHTML = `<h4 class="font-bold text-lg text-slate-200 mb-2">${d.title}</h4><p class="text-sm text-slate-400">${d.text}</p>`;
+            batDet.style.opacity = '1';
+        }, 200);
     }
-  });
-}                                                                                                                                           /* - Enhanced Battery Chart - */
-const { batteryData } = data;
-let batChart;
-function createBatChart() {
-  const ctx = document.getElementById('batteryChart');
-  if (!ctx || batChart) return;
-  batChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      ...batteryData,
-      datasets: batteryData.datasets.map(dataset => ({
-        ...dataset,
-        borderRadius: 8,
-        borderSkipped: false,
-        // Gradiente en barras
-        backgroundColor: ctx => {
-          const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
-          gradient.addColorStop(0, 'rgba(241,224,90,0.6)');
-          gradient.addColorStop(1, 'rgba(241,224,90,0.1)');
-          return gradient;
-        }
-      }))
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: 1500,
-        easing: 'easeOutQuart'
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(255,255,255,.1)' },
-          ticks: { color: '#8B949E' }
-        },
-        x: {
-          ticks: { color: '#8B949E' }
-        }
-      },
-      plugins: {
-        legend: { labels: { color: '#8B949E' } },
-        tooltip: {
-          mode: 'index',
-          backgroundColor: 'rgba(22, 27, 34, 0.95)',
-          titleColor: '#F0F6FC',
-          bodyColor: '#C9D1D9',
-          borderColor: '#21262D',
-          borderWidth: 1
-        }
-      }
+
+    function createBatChart() {
+        const ctx = document.getElementById('batteryChart');
+        if (!ctx) return;
+        batChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                ...batteryData,
+                datasets: batteryData.datasets.map(dataset => ({
+                    ...dataset,
+                    borderRadius: 6,
+                    borderSkipped: false
+                }))
+            },
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1500,
+                    easing: 'easeOutQuart'
+                },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255,255,255,.1)' }, 
+                        ticks: { color: '#8B949E' } 
+                    }, 
+                    x: { 
+                        ticks: { color: '#8B949E' } 
+                    } 
+                },
+                plugins: { 
+                    legend: { 
+                        labels: { color: '#8B949E' } 
+                    }, 
+                    tooltip: { 
+                        mode: 'index',
+                        backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                        titleColor: '#F0F6FC',
+                        bodyColor: '#C9D1D9',
+                        borderColor: '#21262D',
+                        borderWidth: 1
+                    } 
+                },
+                onClick: (_, els) => {
+                    if (els.length) {
+                        updateBatDetails(els[0].index);
+                    }
+                }
+            }
+        });
     }
-  });
-}
+
+    /* ---------- Enhanced Cycle Life Chart ---------- */
     const { cycleData } = data;
     function createCycleChart() {
         const ctx = document.getElementById('cycleLifeChart');
@@ -1485,6 +1445,80 @@ function createBatChart() {
         });
     }
 
+    /* ---------- Enhanced Power Output Chart ---------- */
+    const { powerOutputData } = data;
+    let powerOutputChart;
+
+    function createPowerOutputChart() {
+        const ctx = document.getElementById('powerOutputChart');
+        if (!ctx) return;
+
+        powerOutputChart = new Chart(ctx, {
+            type: 'line',
+            data: powerOutputData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 0 // Disable for real-time updates
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second'
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,.1)'
+                        },
+                        ticks: {
+                            color: '#8B949E'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255,255,255,.1)'
+                        },
+                        ticks: {
+                            color: '#8B949E'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#8B949E'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                        titleColor: '#F0F6FC',
+                        bodyColor: '#C9D1D9',
+                        borderColor: '#21262D',
+                        borderWidth: 1
+                    }
+                }
+            }
+        });
+
+        let lastValue = 50;
+        setInterval(() => {
+            const now = new Date();
+            const change = (Math.random() - 0.5) * 10;
+            lastValue = Math.max(0, Math.min(100, lastValue + change));
+
+            powerOutputData.labels.push(now);
+            powerOutputData.datasets[0].data.push(lastValue);
+
+            if (powerOutputData.labels.length > 30) {
+                powerOutputData.labels.shift();
+                powerOutputData.datasets[0].data.shift();
+            }
+
+            powerOutputChart.update('none');
+        }, 1500);
+    }
 
     /* ---------- Enhanced Tooltips ---------- */
     const tooltip = document.getElementById('tooltip');
