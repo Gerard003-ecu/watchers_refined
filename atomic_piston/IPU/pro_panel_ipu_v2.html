@@ -40,7 +40,10 @@
                         'slideInLeft': 'slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards',
                         'slideInRight': 'slideInRight 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards',
                         'scaleIn': 'scaleIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards',
-                        'ripple': 'ripple 2s linear infinite'
+                        'ripple': 'ripple 2s linear infinite',
+                        'heatPulse': 'heatPulse 2s ease-in-out infinite',
+                        'bubble': 'bubble 4s ease-in infinite',
+                        'sparkFlash': 'sparkFlash 0.5s ease-out forwards'
                     },
                     keyframes: {
                         glow: {
@@ -76,6 +79,21 @@
                         ripple: {
                             '0%': { transform: 'scale(0)', opacity: '1' },
                             '100%': { transform: 'scale(4)', opacity: '0' }
+                        },
+                        heatPulse: {
+                            '0%, 100%': { opacity: '0.5', transform: 'scale(1)' },
+                            '50%': { opacity: '0.8', transform: 'scale(1.05)' }
+                        },
+                        bubble: {
+                            '0%': { transform: 'translateY(0) scale(0.2)', opacity: '0' },
+                            '10%': { opacity: '1' },
+                            '90%': { opacity: '1' },
+                            '100%': { transform: 'translateY(-50px) scale(1)', opacity: '0' }
+                        },
+                        sparkFlash: {
+                            '0%': { opacity: '0', transform: 'scale(0.5)' },
+                            '50%': { opacity: '1', transform: 'scale(1.2)' },
+                            '100%': { opacity: '0', transform: 'scale(1.5)' }
                         }
                     },
                     fontFamily: {
@@ -262,10 +280,11 @@ body {
     transition: all 0.2s ease;
 }
 
+/* ---------- Enhanced Piston Chamber ---------- */
 .piston-chamber {
     position: relative;
     width: 100%;
-    height: 220px;
+    height: 260px;
     background: radial-gradient(ellipse at bottom, #1e293b, #0f172a);
     border: 2px solid #334155;
     border-radius: 1rem;
@@ -275,29 +294,54 @@ body {
 
 .piston-rod {
     position: absolute;
-    width: 24px;
-    height: 130px;
-    background: linear-gradient(to right, #e2e8f0, #94a3b8, #e2e8f0);
+    width: 26px;
+    height: 150px;
+    background: linear-gradient(to right, 
+        #e2e8f0 0%, 
+        #cbd5e1 25%, 
+        #94a3b8 50%, 
+        #cbd5e1 75%, 
+        #e2e8f0 100%);
     left: 50%;
     transform: translateX(-50%);
     top: 0;
     z-index: 2;
-    border-radius: 8px;
-    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5), inset 0 2px 4px rgba(255,255,255,0.3);
+    border-radius: 10px;
+    box-shadow: 
+        0 0 15px rgba(251, 191, 36, 0.5), 
+        inset 0 4px 8px rgba(255,255,255,0.3),
+        inset 0 -4px 8px rgba(0,0,0,0.3);
     transition: all 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
 }
 
 .piston-head {
     position: absolute;
-    width: 100px;
-    height: 40px;
-    background: linear-gradient(145deg, #fbbf24, #f59e0b, #fbbf24);
+    width: 110px;
+    height: 45px;
+    background: 
+        linear-gradient(145deg, #fcd34d, #fbbf24, #f59e0b),
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5) 0%, transparent 40%);
     left: 50%;
     transform: translateX(-50%);
-    border-radius: 0.75rem;
+    border-radius: 0.9rem;
     z-index: 3;
-    box-shadow: 0 0 25px rgba(251, 191, 36, 0.7), inset 0 3px 3px rgba(255,255,255,0.3);
+    box-shadow: 
+        0 0 25px rgba(251, 191, 36, 0.7), 
+        inset 0 4px 6px rgba(255,255,255,0.4),
+        inset 0 -4px 6px rgba(0,0,0,0.3);
     transition: all 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    overflow: hidden;
+}
+
+.piston-head::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.5), transparent);
+    filter: blur(1px);
 }
 
 .piston-head::after {
@@ -306,10 +350,11 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 80%;
-    height: 60%;
+    width: 85%;
+    height: 65%;
     background: linear-gradient(145deg, rgba(255,255,255,0.3), transparent);
-    border-radius: 0.5rem;
+    border-radius: 0.6rem;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.4);
 }
 
 .capacitor-charge {
@@ -318,28 +363,79 @@ body {
     left: 0;
     width: 100%;
     background: linear-gradient(to top, 
-        hsla(212, 100%, 67%, 0.8) 0%, 
-        hsla(212, 100%, 67%, 0.6) 50%, 
+        hsla(212, 100%, 67%, 0.9) 0%, 
+        hsla(212, 100%, 67%, 0.7) 50%, 
         hsla(212, 100%, 67%, 0) 100%);
     transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-    filter: blur(3px);
+    filter: blur(2px);
+    overflow: hidden;
+}
+
+.wave-surface {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200%;
+    height: 20px;
+    background: linear-gradient(to bottom, 
+        rgba(255,255,255,0.4) 0%, 
+        rgba(255,255,255,0.2) 50%, 
+        transparent 100%);
+    animation: wave 8s linear infinite;
+    border-radius: 50%;
+}
+
+@keyframes wave {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.bubble {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    bottom: 0;
+    opacity: 0;
+    animation: bubble 4s ease-in infinite;
+    filter: blur(1px);
 }
 
 .magnetic-field {
     position: absolute;
-    width: 150%;
-    height: 150%;
-    top: -25%;
-    left: -25%;
+    width: 140%;
+    height: 140%;
+    top: -20%;
+    left: -20%;
     border-radius: 50%;
-    border: 3px dashed hsla(262, 83%, 68%, 0);
+    border: 2px dashed hsla(262, 83%, 68%, 0);
     opacity: 0;
     transition: all 0.5s ease-out;
-    animation: rotate 10s linear infinite;
+    animation: rotate 12s linear infinite;
+    z-index: 1;
+}
+
+.magnetic-field.ring-2 {
+    width: 180%;
+    height: 180%;
+    top: -40%;
+    left: -40%;
+    animation-delay: -4s;
+    z-index: 0;
+}
+
+.magnetic-field.ring-3 {
+    width: 220%;
+    height: 220%;
+    top: -60%;
+    left: -60%;
+    animation-delay: -8s;
+    z-index: -1;
 }
 
 .magnetic-field.active {
-    opacity: 1;
+    opacity: 0.7;
     border-color: hsla(262, 83%, 68%, 0.5);
     box-shadow: 0 0 20px hsla(262, 83%, 68%, 0.3);
 }
@@ -351,27 +447,55 @@ body {
 
 .spark {
     position: absolute;
-    width: 8px;
-    height: 80px;
+    width: 6px;
+    height: 30px;
     background: linear-gradient(to bottom, #ffffff, #fef08a, #ef4444);
     top: 50%;
     left: 50%;
     transform-origin: center;
     opacity: 0;
-    box-shadow: 0 0 35px 15px #ffffff, 0 0 60px 25px #fef08a, 0 0 85px 40px #ef4444;
+    box-shadow: 0 0 15px 5px #ffffff, 0 0 30px 10px #fef08a, 0 0 45px 20px #ef4444;
     z-index: 4;
-    transition: opacity 0.1s ease-in-out;
     border-radius: 50%;
+    transition: opacity 0.1s ease-in-out;
 }
 
 .energy-wave {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: radial-gradient(circle, hsla(52, 95%, 70%, 0.6) 0%, hsla(52, 95%, 70%, 0.3) 50%, transparent 75%);
+    background: radial-gradient(circle, 
+        hsla(52, 95%, 70%, 0.6) 0%, 
+        hsla(52, 95%, 70%, 0.3) 50%, 
+        transparent 75%);
     opacity: 0;
     transform: scale(0);
     transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1.5);
+    z-index: 5;
+}
+
+.heat-distortion {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, 
+        rgba(255, 100, 0, 0.2) 0%, 
+        rgba(255, 100, 0, 0.1) 50%, 
+        transparent 100%);
+    opacity: 0;
+    filter: blur(10px);
+    z-index: 6;
+    animation: heatPulse 2s ease-in-out infinite;
+}
+
+.energy-particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: #fef08a;
+    border-radius: 50%;
+    opacity: 0;
+    box-shadow: 0 0 10px #fef08a;
+    z-index: 7;
 }
 
 .energy-meter {
@@ -695,12 +819,21 @@ body {
                         <div class="piston-chamber">
                             <div class="piston-rod" id="piston-rod"></div>
                             <div class="piston-head" id="piston-head"></div>
-                            <div class="capacitor-charge" id="capacitor-charge"></div>
-                            <div class="inductor-coil">
-                                <div class="magnetic-field" id="magnetic-field"></div>
+                            <div class="capacitor-charge" id="capacitor-charge">
+                                <div class="wave-surface"></div>
+                                <!-- Bubbles will be generated dynamically -->
                             </div>
-                            <div class="spark" id="spark"></div>
+                            <div class="inductor-coil">
+                                <div class="magnetic-field ring-1" id="magnetic-field-1"></div>
+                                <div class="magnetic-field ring-2" id="magnetic-field-2"></div>
+                                <div class="magnetic-field ring-3" id="magnetic-field-3"></div>
+                            </div>
+                            <div id="sparks-container">
+                                <!-- Sparks will be generated dynamically -->
+                            </div>
                             <div class="energy-wave" id="energy-wave"></div>
+                            <div class="heat-distortion" id="heat-distortion"></div>
+                            <!-- Particles will be generated dynamically -->
                         </div>
 
                         <div class="energy-meter">
@@ -997,535 +1130,594 @@ body {
 
     <script>
 document.addEventListener('DOMContentLoaded', () => {
-            const data = {
-                "componentData": {
-                    "inversor": {
-                        "details": "<strong>Función:</strong> Convierte CC a CA.<br><strong>Eficiencia:</strong> Hasta 98 %.",
-                        "efficiency": 98
-                    },
-                    "controlador": {
-                        "details": "<strong>Función:</strong> Protege la batería.<br><strong>Eficiencia:</strong> Hasta 99 %.",
-                        "efficiency": 99
-                    },
-                    "convertidor": {
-                        "details": "<strong>Función:</strong> Ajusta voltaje CC.<br><strong>Eficiencia:</strong> Hasta 97 %.",
-                        "efficiency": 97
-                    }
-                },
-                "batteryData": {
-                    "labels": ["LiFePO4", "NMC", "LTO", "Ión-Sodio", "Plomo-Ácido", "Flujo"],
-                    "datasets": [
-                        { "label": "Densidad (Wh/kg)", "data": [175, 220, 70, 150, 40, 28], "backgroundColor": "#39D3BB" },
-                        { "label": "Ciclos", "data": [4500, 1500, 10000, 2000, 650, 12500], "backgroundColor": "#F1E05A" },
-                        { "label": "Eficiencia (%)", "data": [92, 90, 95, 90, 80, 78], "backgroundColor": "#58A6FF" }
-                    ],
-                    "details": [
-                        { "title": "LiFePO4 (Litio-Ferrofosfato)", "text": "<strong>Ventajas:</strong> Muy segura, larga vida útil (más de 4000 ciclos), buena estabilidad térmica.<br><strong>Desventajas:</strong> Menor densidad energética que NMC." },
-                        { "title": "NMC (Níquel-Manganeso-Cobalto)", "text": "<strong>Ventajas:</strong> Alta densidad energética, comúnmente usada en vehículos eléctricos.<br><strong>Desventajas:</strong> Mayor costo y menor vida útil que LiFePO4." },
-                        { "title": "LTO (Titanato de Litio)", "text": "<strong>Ventajas:</strong> Vida útil extremadamente larga (más de 10,000 ciclos), carga y descarga muy rápidas.<br><strong>Desventajas:</strong> Baja densidad energética y alto costo." },
-                        { "title": "Ión-Sodio", "text": "<strong>Ventajas:</strong> Abundante y de bajo costo, buen rendimiento en bajas temperaturas.<br><strong>Desventajas:</strong> Menor densidad energética que las baterías de litio." },
-                        { "title": "Plomo-Ácido", "text": "<strong>Ventajas:</strong> Tecnología madura y de bajo costo.<br><strong>Desventajas:</strong> Corta vida útil, baja densidad energética, contiene materiales tóxicos." },
-                        { "title": "Batería de Flujo", "text": "<strong>Ventajas:</strong> Larga vida útil (más de 10,000 ciclos), escalabilidad independiente de potencia y energía.<br><strong>Desventajas:</strong> Baja densidad energética y complejidad del sistema." }
-                    ]
-                },
-                "cycleData": {
-                    "labels": ["20%", "40%", "60%", "80%", "100%"],
-                    "datasets": [
-                        { "label": "LiFePO4", "data": [10000, 8000, 6000, 4500, 3000], "borderColor": "#39D3BB", "backgroundColor": "rgba(57,211,187,.2)", "tension": 0.3, "fill": true },
-                        { "label": "NMC", "data": [4000, 3000, 2000, 1500, 1000], "borderColor": "#F1E05A", "backgroundColor": "rgba(241,224,90,.2)", "tension": 0.3, "fill": true },
-                        { "label": "LTO", "data": [25000, 20000, 18000, 15000, 10000], "borderColor": "#58A6FF", "backgroundColor": "rgba(88,166,255,.2)", "tension": 0.3, "fill": true }
-                    ]
-                },
-                "powerOutputData": {
-                    "labels": [],
-                    "datasets": [
-                        {
-                            "label": "Potencia (kW)",
-                            "data": [],
-                            "borderColor": "#FF7B72",
-                            "backgroundColor": "rgba(255, 123, 114, 0.2)",
-                            "fill": true,
-                            "tension": 0.4
-                        }
-                    ]
+    const data = {
+        "componentData": {
+            "inversor": {
+                "details": "<strong>Función:</strong> Convierte CC a CA.<br><strong>Eficiencia:</strong> Hasta 98 %.",
+                "efficiency": 98
+            },
+            "controlador": {
+                "details": "<strong>Función:</strong> Protege la batería.<br><strong>Eficiencia:</strong> Hasta 99 %.",
+                "efficiency": 99
+            },
+            "convertidor": {
+                "details": "<strong>Función:</strong> Ajusta voltaje CC.<br><strong>Eficiencia:</strong> Hasta 97 %.",
+                "efficiency": 97
+            }
+        },
+        "batteryData": {
+            "labels": ["LiFePO4", "NMC", "LTO", "Ión-Sodio", "Plomo-Ácido", "Flujo"],
+            "datasets": [
+                { "label": "Densidad (Wh/kg)", "data": [175, 220, 70, 150, 40, 28], "backgroundColor": "#39D3BB" },
+                { "label": "Ciclos", "data": [4500, 1500, 10000, 2000, 650, 12500], "backgroundColor": "#F1E05A" },
+                { "label": "Eficiencia (%)", "data": [92, 90, 95, 90, 80, 78], "backgroundColor": "#58A6FF" }
+            ],
+            "details": [
+                { "title": "LiFePO4 (Litio-Ferrofosfato)", "text": "<strong>Ventajas:</strong> Muy segura, larga vida útil (más de 4000 ciclos), buena estabilidad térmica.<br><strong>Desventajas:</strong> Menor densidad energética que NMC." },
+                { "title": "NMC (Níquel-Manganeso-Cobalto)", "text": "<strong>Ventajas:</strong> Alta densidad energética, comúnmente usada en vehículos eléctricos.<br><strong>Desventajas:</strong> Mayor costo y menor vida útil que LiFePO4." },
+                { "title": "LTO (Titanato de Litio)", "text": "<strong>Ventajas:</strong> Vida útil extremadamente larga (más de 10,000 ciclos), carga y descarga muy rápidas.<br><strong>Desventajas:</strong> Baja densidad energética y alto costo." },
+                { "title": "Ión-Sodio", "text": "<strong>Ventajas:</strong> Abundante y de bajo costo, buen rendimiento en bajas temperaturas.<br><strong>Desventajas:</strong> Menor densidad energética que las baterías de litio." },
+                { "title": "Plomo-Ácido", "text": "<strong>Ventajas:</strong> Tecnología madura y de bajo costo.<br><strong>Desventajas:</strong> Corta vida útil, baja densidad energética, contiene materiales tóxicos." },
+                { "title": "Batería de Flujo", "text": "<strong>Ventajas:</strong> Larga vida útil (más de 10,000 ciclos), escalabilidad independiente de potencia y energía.<br><strong>Desventajas:</strong> Baja densidad energética y complejidad del sistema." }
+            ]
+        },
+        "cycleData": {
+            "labels": ["20%", "40%", "60%", "80%", "100%"],
+            "datasets": [
+                { "label": "LiFePO4", "data": [10000, 8000, 6000, 4500, 3000], "borderColor": "#39D3BB", "backgroundColor": "rgba(57,211,187,.2)", "tension": 0.3, "fill": true },
+                { "label": "NMC", "data": [4000, 3000, 2000, 1500, 1000], "borderColor": "#F1E05A", "backgroundColor": "rgba(241,224,90,.2)", "tension": 0.3, "fill": true },
+                { "label": "LTO", "data": [25000, 20000, 18000, 15000, 10000], "borderColor": "#58A6FF", "backgroundColor": "rgba(88,166,255,.2)", "tension": 0.3, "fill": true }
+            ]
+        },
+        "powerOutputData": {
+            "labels": [],
+            "datasets": [
+                {
+                    "label": "Potencia (kW)",
+                    "data": [],
+                    "borderColor": "#FF7B72",
+                    "backgroundColor": "rgba(255, 123, 114, 0.2)",
+                    "fill": true,
+                    "tension": 0.4
                 }
-            };
+            ]
+        }
+    };
 
-            /* ---------- Enhanced Navigation with Smooth Transitions ---------- */
-            const navLinks = document.querySelectorAll('.nav-link, .nav-link-mobile');
-            const sections = document.querySelectorAll('.content-section');
-            const mobileMenu = document.getElementById('mobile-menu');
-            const mobileBtn = document.getElementById('mobile-menu-button');
+    /* ---------- Enhanced Navigation with Smooth Transitions ---------- */
+    const navLinks = document.querySelectorAll('.nav-link, .nav-link-mobile');
+    const sections = document.querySelectorAll('.content-section');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const mobileBtn = document.getElementById('mobile-menu-button');
 
-            function showSection(id) {
-                // Hide all sections with fade out
-                sections.forEach(s => {
-                    if (s.classList.contains('active')) {
-                        s.style.opacity = '0';
-                        s.style.transform = 'translateY(30px)';
-                        setTimeout(() => {
-                            s.classList.remove('active');
-                        }, 300);
-                    }
-                });
-
-                // Show target section with fade in
+    function showSection(id) {
+        // Hide all sections with fade out
+        sections.forEach(s => {
+            if (s.classList.contains('active')) {
+                s.style.opacity = '0';
+                s.style.transform = 'translateY(30px)';
                 setTimeout(() => {
-                    const targetSection = document.getElementById(id);
-                    targetSection.classList.add('active');
-                    setTimeout(() => {
-                        targetSection.style.opacity = '1';
-                        targetSection.style.transform = 'translateY(0)';
-                        
-                        // Trigger staggered animations for elements
-                        const animatedElements = targetSection.querySelectorAll('.animate-fadeInUp, .animate-slideInLeft, .animate-slideInRight, .animate-scaleIn');
-                        animatedElements.forEach((el, index) => {
-                            el.style.animationDelay = `${index * 0.1}s`;
-                            el.style.animationFillMode = 'both';
-                        });
-                    }, 50);
+                    s.classList.remove('active');
                 }, 300);
-
-                navLinks.forEach(l => {
-                    const isActive = l.getAttribute('href') === `#${id}`;
-                    if (l.classList.contains('nav-link')) {
-                        l.classList.toggle('active', isActive);
-                    } else {
-                        l.classList.toggle('bg-slate-700', isActive);
-                    }
-                });
-                mobileMenu.classList.add('hidden');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
-
-            navLinks.forEach(l => l.addEventListener('click', e => {
-                e.preventDefault();
-                showSection(l.getAttribute('href').slice(1));
-            }));
-            mobileBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
-
-            /* ---------- Enhanced Components with Ripple Effects ---------- */
-            const { componentData } = data;
-            const compBtns = document.querySelectorAll('.component-btn');
-            const compDetails = document.getElementById('component-details');
-            let effChart;
-
-            function createRipple(event, element) {
-                const ripple = document.createElement('span');
-                const rect = element.getBoundingClientRect();
-                const size = Math.max(rect.width, rect.height);
-                const x = event.clientX - rect.left - size / 2;
-                const y = event.clientY - rect.top - size / 2;
-                
-                ripple.style.width = ripple.style.height = size + 'px';
-                ripple.style.left = x + 'px';
-                ripple.style.top = y + 'px';
-                ripple.classList.add('ripple-effect');
-                
-                element.appendChild(ripple);
-                
-                setTimeout(() => {
-                    ripple.remove();
-                }, 600);
-            }
-
-            function updateCompView(key) {
-                compBtns.forEach(b => b.classList.toggle('active', b.dataset.component === key));
-                const d = componentData[key];
-                compDetails.innerHTML = d.details;
-                if (effChart) {
-                    effChart.data.labels = [key.charAt(0).toUpperCase() + key.slice(1)];
-                    effChart.data.datasets[0].data = [d.efficiency];
-                    effChart.update('active');
-                }
-            }
-
-            function createEffChart() {
-                const ctx = document.getElementById('efficiencyChart');
-                if (!ctx) return;
-                effChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: { 
-                        labels: [], 
-                        datasets: [{ 
-                            label: 'Eficiencia (%)', 
-                            data: [], 
-                            backgroundColor: ['#58A6FF'], 
-                            borderWidth: 0, 
-                            barThickness: 40,
-                            borderRadius: 8,
-                            borderSkipped: false
-                        }] 
-                    },
-                    options: {
-                        responsive: true, 
-                        maintainAspectRatio: false, 
-                        indexAxis: 'y',
-                        animation: {
-                            duration: 1000,
-                            easing: 'easeOutQuart'
-                        },
-                        scales: { 
-                            x: { 
-                                min: 85, 
-                                max: 100, 
-                                grid: { color: 'rgba(255,255,255,.1)' }, 
-                                ticks: { color: '#8B949E' } 
-                            }, 
-                            y: { display: false } 
-                        },
-                        plugins: { 
-                            legend: { display: false },
-                            tooltip: {
-                                backgroundColor: 'rgba(22, 27, 34, 0.95)',
-                                titleColor: '#F0F6FC',
-                                bodyColor: '#C9D1D9',
-                                borderColor: '#21262D',
-                                borderWidth: 1
-                            }
-                        }
-                    }
-                });
-            }
-
-            compBtns.forEach(b => {
-                b.addEventListener('click', (e) => {
-                    createRipple(e, b);
-                    updateCompView(b.dataset.component);
-                });
-            });
-
-            /* ---------- Enhanced Battery Chart with Animations ---------- */
-            const { batteryData } = data;
-            const batDet = document.getElementById('battery-details');
-            let batChart;
-
-            function updateBatDetails(i) {
-                const d = batteryData.details[i];
-                batDet.style.opacity = '0';
-                setTimeout(() => {
-                    batDet.innerHTML = `<h4 class="font-bold text-lg text-slate-200 mb-2">${d.title}</h4><p class="text-sm text-slate-400">${d.text}</p>`;
-                    batDet.style.opacity = '1';
-                }, 200);
-            }
-
-            function createBatChart() {
-                const ctx = document.getElementById('batteryChart');
-                if (!ctx) return;
-                batChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        ...batteryData,
-                        datasets: batteryData.datasets.map(dataset => ({
-                            ...dataset,
-                            borderRadius: 6,
-                            borderSkipped: false
-                        }))
-                    },
-                    options: {
-                        responsive: true, 
-                        maintainAspectRatio: false,
-                        animation: {
-                            duration: 1500,
-                            easing: 'easeOutQuart'
-                        },
-                        scales: { 
-                            y: { 
-                                beginAtZero: true, 
-                                grid: { color: 'rgba(255,255,255,.1)' }, 
-                                ticks: { color: '#8B949E' } 
-                            }, 
-                            x: { 
-                                ticks: { color: '#8B949E' } 
-                            } 
-                        },
-                        plugins: { 
-                            legend: { 
-                                labels: { color: '#8B949E' } 
-                            }, 
-                            tooltip: { 
-                                mode: 'index',
-                                backgroundColor: 'rgba(22, 27, 34, 0.95)',
-                                titleColor: '#F0F6FC',
-                                bodyColor: '#C9D1D9',
-                                borderColor: '#21262D',
-                                borderWidth: 1
-                            } 
-                        },
-                        onClick: (_, els) => {
-                            if (els.length) {
-                                updateBatDetails(els[0].index);
-                            }
-                        }
-                    }
-                });
-            }
-
-            /* ---------- Enhanced Cycle Life Chart ---------- */
-            const { cycleData } = data;
-            function createCycleChart() {
-                const ctx = document.getElementById('cycleLifeChart');
-                if (!ctx) return;
-                new Chart(ctx, {
-                    type: 'line',
-                    data: cycleData,
-                    options: {
-                        responsive: true, 
-                        maintainAspectRatio: false,
-                        animation: {
-                            duration: 2000,
-                            easing: 'easeOutQuart'
-                        },
-                        scales: {
-                            x: { 
-                                title: { 
-                                    display: true, 
-                                    text: 'Profundidad de Descarga', 
-                                    color: '#8B949E' 
-                                }, 
-                                ticks: { color: '#8B949E' },
-                                grid: { color: 'rgba(255,255,255,.1)' }
-                            },
-                            y: { 
-                                title: { 
-                                    display: true, 
-                                    text: 'Ciclos de Vida', 
-                                    color: '#8B949E' 
-                                }, 
-                                ticks: { color: '#8B949E' },
-                                grid: { color: 'rgba(255,255,255,.1)' }
-                            }
-                        },
-                        plugins: { 
-                            legend: { 
-                                labels: { color: '#8B949E' } 
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(22, 27, 34, 0.95)',
-                                titleColor: '#F0F6FC',
-                                bodyColor: '#C9D1D9',
-                                borderColor: '#21262D',
-                                borderWidth: 1
-                            }
-                        }
-                    }
-                });
-            }
-
-            /* ---------- Enhanced Power Output Chart ---------- */
-            const { powerOutputData } = data;
-            let powerOutputChart;
-
-            function createPowerOutputChart() {
-                const ctx = document.getElementById('powerOutputChart');
-                if (!ctx) return;
-
-                powerOutputChart = new Chart(ctx, {
-                    type: 'line',
-                    data: powerOutputData,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: {
-                            duration: 0 // Disable for real-time updates
-                        },
-                        scales: {
-                            x: {
-                                type: 'time',
-                                time: {
-                                    unit: 'second'
-                                },
-                                grid: {
-                                    color: 'rgba(255,255,255,.1)'
-                                },
-                                ticks: {
-                                    color: '#8B949E'
-                                }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: 'rgba(255,255,255,.1)'
-                                },
-                                ticks: {
-                                    color: '#8B949E'
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                labels: {
-                                    color: '#8B949E'
-                                }
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(22, 27, 34, 0.95)',
-                                titleColor: '#F0F6FC',
-                                bodyColor: '#C9D1D9',
-                                borderColor: '#21262D',
-                                borderWidth: 1
-                            }
-                        }
-                    }
-                });
-
-                let lastValue = 50;
-                setInterval(() => {
-                    const now = new Date();
-                    const change = (Math.random() - 0.5) * 10;
-                    lastValue = Math.max(0, Math.min(100, lastValue + change));
-
-                    powerOutputData.labels.push(now);
-                    powerOutputData.datasets[0].data.push(lastValue);
-
-                    if (powerOutputData.labels.length > 30) {
-                        powerOutputData.labels.shift();
-                        powerOutputData.datasets[0].data.shift();
-                    }
-
-                    powerOutputChart.update('none');
-                }, 1500);
-            }
-
-            /* ---------- Enhanced Tooltips ---------- */
-            const tooltip = document.getElementById('tooltip');
-            document.querySelectorAll('.diagram-block').forEach(block => {
-                block.addEventListener('mouseenter', e => {
-                    tooltip.textContent = e.target.dataset.tooltip || '';
-                    tooltip.style.display = 'block';
-                    tooltip.style.opacity = '0';
-                    const r = e.target.getBoundingClientRect();
-                    tooltip.style.left = `${r.left}px`;
-                    tooltip.style.top = `${r.top - tooltip.offsetHeight - 8}px`;
-                    setTimeout(() => {
-                        tooltip.style.opacity = '1';
-                    }, 10);
-                });
-                block.addEventListener('mouseleave', () => {
-                    tooltip.style.opacity = '0';
-                    setTimeout(() => {
-                        tooltip.style.display = 'none';
-                    }, 200);
-                });
-            });
-
-            /* ---------- Enhanced Piston Animation ---------- */
-            const rod = document.getElementById('piston-rod');
-            const head = document.getElementById('piston-head');
-            const charge = document.getElementById('capacitor-charge');
-            const magnetic = document.getElementById('magnetic-field');
-            const sparkEl = document.getElementById('spark');
-            const wave = document.getElementById('energy-wave');
-            const level = document.getElementById('energy-level');
-            const capState = document.getElementById('capacitor-state');
-            const magState = document.getElementById('magnetic-state');
-
-            let step = 0;
-            function runAnimation() {
-                const steps = [
-                    () => { // Charging
-                        charge.style.height = '100%';
-                        rod.style.top = '110px';
-                        head.style.top = '180px';
-                        level.style.width = '30%';
-                        capState.textContent = 'Cargando Capacitor';
-                        capState.style.color = '#F1E05A';
-                        magState.textContent = 'Inactivo';
-                        magState.style.color = '#8B949E';
-                        magnetic.classList.remove('active');
-                    },
-                    () => { // Full Charge
-                        level.style.width = '100%';
-                        capState.textContent = 'Capacitor Lleno (1000V)';
-                        capState.style.color = '#39D3BB';
-                    },
-                    () => { // Discharging
-                        charge.style.height = '40%';
-                        rod.style.top = '60px';
-                        head.style.top = '90px';
-                        magnetic.classList.add('active');
-                        level.style.width = '65%';
-                        capState.textContent = 'Descargando en Inductor';
-                        capState.style.color = '#58A6FF';
-                        magState.textContent = 'Campo Magnético en Expansión';
-                        magState.style.color = '#BC8EFF';
-                    },
-                    () => { // Max Field
-                        level.style.width = '40%';
-                        magState.textContent = 'Campo Magnético Máximo';
-                        magState.style.color = '#BC8EFF';
-                    },
-                    () => { // Pulse
-                        charge.style.height = '0%';
-                        rod.style.top = '10px';
-                        head.style.top = '40px';
-                        magnetic.classList.remove('active');
-                        sparkEl.style.opacity = '1';
-                        sparkEl.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scale(1.8)`;
-                        wave.style.opacity = '1';
-                        wave.style.transform = 'scale(1.8)';
-                        level.style.width = '100%';
-                        level.style.background = 'linear-gradient(90deg, #ef4444, #fef08a)';
-                        capState.textContent = 'Descarga Completa';
-                        capState.style.color = '#FF7B72';
-                        magState.textContent = '¡Pulso de Potencia Liberado!';
-                        magState.style.color = '#FF7B72';
-                    },
-                    () => { // Reset
-                        sparkEl.style.opacity = '0';
-                        wave.style.opacity = '0';
-                        wave.style.transform = 'scale(0)';
-                        level.style.width = '0%';
-                        level.style.background = 'linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple), var(--quantum-teal))';
-                        capState.textContent = 'Iniciando Nuevo Ciclo';
-                        capState.style.color = '#8B949E';
-                        magState.textContent = 'Campo Colapsado';
-                        magState.style.color = '#8B949E';
-                    }
-                ];
-                steps[step]();
-                step = (step + 1) % steps.length;
-            }
-
-            /* ---------- Parallax Effect ---------- */
-            function updateParallax() {
-                const scrolled = window.pageYOffset;
-                const parallaxBg = document.querySelector('.parallax-bg');
-                if (parallaxBg) {
-                    parallaxBg.style.transform = `translateY(${scrolled * 0.5}px)`;
-                }
-            }
-
-            window.addEventListener('scroll', updateParallax);
-
-            /* ---------- Initialize Everything ---------- */
-            showSection('inicio');
-            createEffChart();
-            updateCompView('inversor');
-            createBatChart();
-            updateBatDetails(0);
-            createCycleChart();
-            createPowerOutputChart();
-            
-            if (rod) {
-                setInterval(runAnimation, 2000);
-            }
-
-            // Add CSS for ripple effect
-            const style = document.createElement('style');
-            style.textContent = `
-                .ripple-effect {
-                    position: absolute;
-                    border-radius: 50%;
-                    background: rgba(88, 166, 255, 0.3);
-                    transform: scale(0);
-                    animation: ripple 0.6s linear;
-                    pointer-events: none;
-                }
-            `;
-            document.head.appendChild(style);
         });
+
+        // Show target section with fade in
+        setTimeout(() => {
+            const targetSection = document.getElementById(id);
+            targetSection.classList.add('active');
+            setTimeout(() => {
+                targetSection.style.opacity = '1';
+                targetSection.style.transform = 'translateY(0)';
+                
+                // Trigger staggered animations for elements
+                const animatedElements = targetSection.querySelectorAll('.animate-fadeInUp, .animate-slideInLeft, .animate-slideInRight, .animate-scaleIn');
+                animatedElements.forEach((el, index) => {
+                    el.style.animationDelay = `${index * 0.1}s`;
+                    el.style.animationFillMode = 'both';
+                });
+            }, 50);
+        }, 300);
+
+        navLinks.forEach(l => {
+            const isActive = l.getAttribute('href') === `#${id}`;
+            if (l.classList.contains('nav-link')) {
+                l.classList.toggle('active', isActive);
+            } else {
+                l.classList.toggle('bg-slate-700', isActive);
+            }
+        });
+        mobileMenu.classList.add('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    navLinks.forEach(l => l.addEventListener('click', e => {
+        e.preventDefault();
+        showSection(l.getAttribute('href').slice(1));
+    }));
+    mobileBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+
+    /* ---------- Enhanced Components with Ripple Effects ---------- */
+    const { componentData } = data;
+    const compBtns = document.querySelectorAll('.component-btn');
+    const compDetails = document.getElementById('component-details');
+    let effChart;
+
+    function createRipple(event, element) {
+        const ripple = document.createElement('span');
+        const rect = element.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        const x = event.clientX - rect.left - size / 2;
+        const y = event.clientY - rect.top - size / 2;
+        
+        ripple.style.width = ripple.style.height = size + 'px';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        ripple.classList.add('ripple-effect');
+        
+        element.appendChild(ripple);
+        
+        setTimeout(() => {
+            ripple.remove();
+        }, 600);
+    }
+
+    function updateCompView(key) {
+        compBtns.forEach(b => b.classList.toggle('active', b.dataset.component === key));
+        const d = componentData[key];
+        compDetails.innerHTML = d.details;
+        if (effChart) {
+            effChart.data.labels = [key.charAt(0).toUpperCase() + key.slice(1)];
+            effChart.data.datasets[0].data = [d.efficiency];
+            effChart.update('active');
+        }
+    }
+
+    function createEffChart() {
+        const ctx = document.getElementById('efficiencyChart');
+        if (!ctx) return;
+        effChart = new Chart(ctx, {
+            type: 'bar',
+            data: { 
+                labels: [], 
+                datasets: [{ 
+                    label: 'Eficiencia (%)', 
+                    data: [], 
+                    backgroundColor: ['#58A6FF'], 
+                    borderWidth: 0, 
+                    barThickness: 40,
+                    borderRadius: 8,
+                    borderSkipped: false
+                }] 
+            },
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false, 
+                indexAxis: 'y',
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                },
+                scales: { 
+                    x: { 
+                        min: 85, 
+                        max: 100, 
+                        grid: { color: 'rgba(255,255,255,.1)' }, 
+                        ticks: { color: '#8B949E' } 
+                    }, 
+                    y: { display: false } 
+                },
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                        titleColor: '#F0F6FC',
+                        bodyColor: '#C9D1D9',
+                        borderColor: '#21262D',
+                        borderWidth: 1
+                    }
+                }
+            }
+        });
+    }
+
+    compBtns.forEach(b => {
+        b.addEventListener('click', (e) => {
+            createRipple(e, b);
+            updateCompView(b.dataset.component);
+        });
+    });
+
+    /* ---------- Enhanced Battery Chart with Animations ---------- */
+    const { batteryData } = data;
+    const batDet = document.getElementById('battery-details');
+    let batChart;
+
+    function updateBatDetails(i) {
+        const d = batteryData.details[i];
+        batDet.style.opacity = '0';
+        setTimeout(() => {
+            batDet.innerHTML = `<h4 class="font-bold text-lg text-slate-200 mb-2">${d.title}</h4><p class="text-sm text-slate-400">${d.text}</p>`;
+            batDet.style.opacity = '1';
+        }, 200);
+    }
+
+    function createBatChart() {
+        const ctx = document.getElementById('batteryChart');
+        if (!ctx) return;
+        batChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                ...batteryData,
+                datasets: batteryData.datasets.map(dataset => ({
+                    ...dataset,
+                    borderRadius: 6,
+                    borderSkipped: false
+                }))
+            },
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1500,
+                    easing: 'easeOutQuart'
+                },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255,255,255,.1)' }, 
+                        ticks: { color: '#8B949E' } 
+                    }, 
+                    x: { 
+                        ticks: { color: '#8B949E' } 
+                    } 
+                },
+                plugins: { 
+                    legend: { 
+                        labels: { color: '#8B949E' } 
+                    }, 
+                    tooltip: { 
+                        mode: 'index',
+                        backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                        titleColor: '#F0F6FC',
+                        bodyColor: '#C9D1D9',
+                        borderColor: '#21262D',
+                        borderWidth: 1
+                    } 
+                },
+                onClick: (_, els) => {
+                    if (els.length) {
+                        updateBatDetails(els[0].index);
+                    }
+                }
+            }
+        });
+    }
+
+    /* ---------- Enhanced Cycle Life Chart ---------- */
+    const { cycleData } = data;
+    function createCycleChart() {
+        const ctx = document.getElementById('cycleLifeChart');
+        if (!ctx) return;
+        new Chart(ctx, {
+            type: 'line',
+            data: cycleData,
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 2000,
+                    easing: 'easeOutQuart'
+                },
+                scales: {
+                    x: { 
+                        title: { 
+                            display: true, 
+                            text: 'Profundidad de Descarga', 
+                            color: '#8B949E' 
+                        }, 
+                        ticks: { color: '#8B949E' },
+                        grid: { color: 'rgba(255,255,255,.1)' }
+                    },
+                    y: { 
+                        title: { 
+                            display: true, 
+                            text: 'Ciclos de Vida', 
+                            color: '#8B949E' 
+                        }, 
+                        ticks: { color: '#8B949E' },
+                        grid: { color: 'rgba(255,255,255,.1)' }
+                    }
+                },
+                plugins: { 
+                    legend: { 
+                        labels: { color: '#8B949E' } 
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                        titleColor: '#F0F6FC',
+                        bodyColor: '#C9D1D9',
+                        borderColor: '#21262D',
+                        borderWidth: 1
+                    }
+                }
+            }
+        });
+    }
+
+    /* ---------- Enhanced Power Output Chart ---------- */
+    const { powerOutputData } = data;
+    let powerOutputChart;
+
+    function createPowerOutputChart() {
+        const ctx = document.getElementById('powerOutputChart');
+        if (!ctx) return;
+
+        powerOutputChart = new Chart(ctx, {
+            type: 'line',
+            data: powerOutputData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 0 // Disable for real-time updates
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second'
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,.1)'
+                        },
+                        ticks: {
+                            color: '#8B949E'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255,255,255,.1)'
+                        },
+                        ticks: {
+                            color: '#8B949E'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#8B949E'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                        titleColor: '#F0F6FC',
+                        bodyColor: '#C9D1D9',
+                        borderColor: '#21262D',
+                        borderWidth: 1
+                    }
+                }
+            }
+        });
+
+        let lastValue = 50;
+        setInterval(() => {
+            const now = new Date();
+            const change = (Math.random() - 0.5) * 10;
+            lastValue = Math.max(0, Math.min(100, lastValue + change));
+
+            powerOutputData.labels.push(now);
+            powerOutputData.datasets[0].data.push(lastValue);
+
+            if (powerOutputData.labels.length > 30) {
+                powerOutputData.labels.shift();
+                powerOutputData.datasets[0].data.shift();
+            }
+
+            powerOutputChart.update('none');
+        }, 1500);
+    }
+
+    /* ---------- Enhanced Tooltips ---------- */
+    const tooltip = document.getElementById('tooltip');
+    document.querySelectorAll('.diagram-block').forEach(block => {
+        block.addEventListener('mouseenter', e => {
+            tooltip.textContent = e.target.dataset.tooltip || '';
+            tooltip.style.display = 'block';
+            tooltip.style.opacity = '0';
+            const r = e.target.getBoundingClientRect();
+            tooltip.style.left = `${r.left}px`;
+            tooltip.style.top = `${r.top - tooltip.offsetHeight - 8}px`;
+            setTimeout(() => {
+                tooltip.style.opacity = '1';
+            }, 10);
+        });
+        block.addEventListener('mouseleave', () => {
+            tooltip.style.opacity = '0';
+            setTimeout(() => {
+                tooltip.style.display = 'none';
+            }, 200);
+        });
+    });
+
+    /* ---------- Enhanced Piston Animation ---------- */
+    const rod = document.getElementById('piston-rod');
+    const head = document.getElementById('piston-head');
+    const charge = document.getElementById('capacitor-charge');
+    const magnetic1 = document.getElementById('magnetic-field-1');
+    const magnetic2 = document.getElementById('magnetic-field-2');
+    const magnetic3 = document.getElementById('magnetic-field-3');
+    const sparksContainer = document.getElementById('sparks-container');
+    const energyWave = document.getElementById('energy-wave');
+    const heatDistortion = document.getElementById('heat-distortion');
+    const level = document.getElementById('energy-level');
+    const capState = document.getElementById('capacitor-state');
+    const magState = document.getElementById('magnetic-state');
+
+    // Create bubbles
+    const chargeContainer = document.querySelector('.capacitor-charge');
+    for (let i = 0; i < 15; i++) {
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.style.left = `${Math.random() * 100}%`;
+        bubble.style.animationDelay = `${Math.random() * 3}s`;
+        chargeContainer.appendChild(bubble);
+    }
+
+    // Create sparks
+    const sparks = [];
+    for (let i = 0; i < 8; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'spark';
+        spark.style.transform = `rotate(${i * 45}deg)`;
+        sparksContainer.appendChild(spark);
+        sparks.push(spark);
+    }
+
+    // Create energy particles
+    for (let i = 0; i < 20; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'energy-particle';
+        particle.style.opacity = '0';
+        document.querySelector('.piston-chamber').appendChild(particle);
+    }
+
+    let step = 0;
+    function runAnimation() {
+        const steps = [
+            () => { // Charging
+                charge.style.height = '100%';
+                rod.style.top = '150px';
+                head.style.top = '200px';
+                level.style.width = '30%';
+                capState.textContent = 'Cargando Capacitor';
+                capState.style.color = '#F1E05A';
+                magState.textContent = 'Inactivo';
+                magState.style.color = '#8B949E';
+                magnetic1.classList.remove('active');
+                magnetic2.classList.remove('active');
+                magnetic3.classList.remove('active');
+                sparks.forEach(s => s.style.opacity = '0');
+                energyWave.style.opacity = '0';
+                heatDistortion.style.opacity = '0';
+                document.querySelectorAll('.energy-particle').forEach(p => p.style.opacity = '0');
+            },
+            () => { // Full Charge
+                level.style.width = '100%';
+                capState.textContent = 'Capacitor Lleno (1000V)';
+                capState.style.color = '#39D3BB';
+            },
+            () => { // Discharging
+                charge.style.height = '40%';
+                rod.style.top = '80px';
+                head.style.top = '120px';
+                magnetic1.classList.add('active');
+                magnetic2.classList.add('active');
+                magnetic3.classList.add('active');
+                level.style.width = '65%';
+                capState.textContent = 'Descargando en Inductor';
+                capState.style.color = '#58A6FF';
+                magState.textContent = 'Campo Magnético en Expansión';
+                magState.style.color = '#BC8EFF';
+            },
+            () => { // Max Field
+                level.style.width = '40%';
+                magState.textContent = 'Campo Magnético Máximo';
+                magState.style.color = '#BC8EFF';
+            },
+            () => { // Pulse
+                charge.style.height = '0%';
+                rod.style.top = '20px';
+                head.style.top = '50px';
+                magnetic1.classList.remove('active');
+                magnetic2.classList.remove('active');
+                magnetic3.classList.remove('active');
+                
+                // Activate sparks with random delays
+                sparks.forEach((spark, i) => {
+                    setTimeout(() => {
+                        spark.style.opacity = '1';
+                        spark.style.animation = 'sparkFlash 0.5s ease-out forwards';
+                        setTimeout(() => spark.style.opacity = '0', 500);
+                    }, i * 100);
+                });
+                
+                energyWave.style.opacity = '1';
+                energyWave.style.transform = 'scale(1.8)';
+                heatDistortion.style.opacity = '0.7';
+                level.style.width = '100%';
+                level.style.background = 'linear-gradient(90deg, #ef4444, #fef08a)';
+                capState.textContent = 'Descarga Completa';
+                capState.style.color = '#FF7B72';
+                magState.textContent = '¡Pulso de Potencia Liberado!';
+                magState.style.color = '#FF7B72';
+                
+                // Activate particles
+                const particles = document.querySelectorAll('.energy-particle');
+                particles.forEach(p => {
+                    p.style.left = `${50 + (Math.random() - 0.5) * 60}%`;
+                    p.style.top = `${50 + (Math.random() - 0.5) * 60}%`;
+                    p.style.opacity = '1';
+                    p.style.animation = `particle ${1 + Math.random() * 2}s linear forwards`;
+                });
+            },
+            () => { // Reset
+                energyWave.style.opacity = '0';
+                energyWave.style.transform = 'scale(0)';
+                heatDistortion.style.opacity = '0';
+                level.style.width = '0%';
+                level.style.background = 'linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple), var(--quantum-teal))';
+                capState.textContent = 'Iniciando Nuevo Ciclo';
+                capState.style.color = '#8B949E';
+                magState.textContent = 'Campo Colapsado';
+                magState.style.color = '#8B949E';
+                document.querySelectorAll('.energy-particle').forEach(p => p.style.opacity = '0');
+            }
+        ];
+        steps[step]();
+        step = (step + 1) % steps.length;
+    }
+
+    /* ---------- Parallax Effect ---------- */
+    function updateParallax() {
+        const scrolled = window.pageYOffset;
+        const parallaxBg = document.querySelector('.parallax-bg');
+        if (parallaxBg) {
+            parallaxBg.style.transform = `translateY(${scrolled * 0.5}px)`;
+        }
+    }
+
+    window.addEventListener('scroll', updateParallax);
+
+    /* ---------- Initialize Everything ---------- */
+    showSection('inicio');
+    createEffChart();
+    updateCompView('inversor');
+    createBatChart();
+    updateBatDetails(0);
+    createCycleChart();
+    createPowerOutputChart();
+    
+    if (rod) {
+        setInterval(runAnimation, 2000);
+    }
+
+    // Add CSS for ripple effect
+    const style = document.createElement('style');
+    style.textContent = `
+        .ripple-effect {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(88, 166, 255, 0.3);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            pointer-events: none;
+        }
+    `;
+    document.head.appendChild(style);
+});
 </script>
 </body>
 </html>
-
