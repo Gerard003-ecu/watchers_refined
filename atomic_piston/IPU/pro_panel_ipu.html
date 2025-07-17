@@ -186,43 +186,43 @@ body {
             transition: opacity 0.2s ease;
         }
 
-        .piston-chamber {
-            position: relative;
-            width: 100%;
-            height: 220px;
-            background: radial-gradient(ellipse at bottom, #161B22, #0D1117);
-            border: 1px solid var(--slate-700);
-            border-radius: 0.75rem;
-            overflow: hidden;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 15px rgba(88, 166, 255, 0.1);
-        }
+.piston-chamber {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    background: radial-gradient(ellipse at bottom, #1e293b, #0f172a);
+    border: 2px solid #334155;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.6), 0 0 20px rgba(59, 130, 246, 0.2);
+}
 
-        .piston-rod {
-            position: absolute;
-            width: 22px;
-            height: 120px;
-            background: linear-gradient(to right, #C9D1D9, #8B949E);
-            left: 50%;
-            transform: translateX(-50%);
-            top: 0;
-            z-index: 2;
-            border-radius: 6px;
-            box-shadow: 0 0 12px rgba(241, 224, 90, 0.4);
-            transition: top 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+.piston-rod {
+    position: absolute;
+    width: 24px;
+    height: 130px;
+    background: linear-gradient(to right, #e2e8f0, #94a3b8);
+    left: 50%;
+    transform: translateX(-50%);
+    top: 0;
+    z-index: 2;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+    transition: top 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
 
-        .piston-head {
-            position: absolute;
-            width: 90px;
-            height: 35px;
-            background: linear-gradient(145deg, var(--energy-amber), #F1E05A);
-            left: 50%;
-            transform: translateX(-50%);
-            border-radius: 0.5rem;
-            z-index: 3;
-            box-shadow: 0 0 20px rgba(241, 224, 90, 0.6), inset 0 2px 2px rgba(255,255,255,0.2);
-            transition: top 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+.piston-head {
+    position: absolute;
+    width: 100px;
+    height: 40px;
+    background: linear-gradient(145deg, #fbbf24, #f59e0b);
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 0.75rem;
+    z-index: 3;
+    box-shadow: 0 0 25px rgba(251, 191, 36, 0.7), inset 0 3px 3px rgba(255,255,255,0.3);
+    transition: top 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
 
         .capacitor-charge {
             position: absolute;
@@ -257,29 +257,29 @@ body {
             to { transform: rotate(360deg); }
         }
 
-        .spark {
-            position: absolute;
-            width: 6px;
-            height: 60px;
-            background: white;
-            top: 50%;
-            left: 50%;
-            transform-origin: center;
-            opacity: 0;
-            box-shadow: 0 0 30px 10px white, 0 0 50px 20px var(--energy-amber), 0 0 70px 30px var(--fusion-red);
-            z-index: 4;
-            transition: opacity 0.1s ease;
-        }
+.spark {
+    position: absolute;
+    width: 8px;
+    height: 80px;
+    background: #ffffff;
+    top: 50%;
+    left: 50%;
+    transform-origin: center;
+    opacity: 0;
+    box-shadow: 0 0 35px 15px #ffffff, 0 0 60px 25px #fef08a, 0 0 85px 40px #ef4444;
+    z-index: 4;
+    transition: opacity 0.1s ease-in-out;
+}
 
-        .energy-wave {
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            background: radial-gradient(circle, hsla(54, 83%, 66%, 0.5) 0%, transparent 70%);
-            opacity: 0;
-            transform: scale(0);
-            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
-        }
+.energy-wave {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, hsla(52, 95%, 70%, 0.6) 0%, transparent 75%);
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1.5);
+}
 
         .energy-meter {
             position: relative;
@@ -1039,62 +1039,62 @@ document.addEventListener('DOMContentLoaded', () => {
             const capState = document.getElementById('capacitor-state');
             const magState = document.getElementById('magnetic-state');
 
-            let step = 0;
-            function runAnimation() {
-                const steps = [
-                    () => { // Carga
-                        charge.style.height = '100%';
-                        rod.style.top = '100px';
-                        head.style.top = '170px';
-                        level.style.width = '30%';
-                        capState.textContent = 'Cargando Capacitor';
-                        magState.textContent = 'Inactivo';
-                        magnetic.classList.remove('active');
-                    },
-                    () => { // Carga completa
-                        level.style.width = '100%';
-                        capState.textContent = 'Capacitor Lleno (1000V)';
-                    },
-                    () => { // Descarga
-                        charge.style.height = '50%';
-                        rod.style.top = '50px';
-                        head.style.top = '80px';
-                        magnetic.classList.add('active');
-                        level.style.width = '70%';
-                        capState.textContent = 'Descargando en Inductor';
-                        magState.textContent = 'Campo Magnético Creciendo';
-                    },
-                    () => { // Campo máximo
-                        level.style.width = '40%';
-                        magState.textContent = 'Campo Magnético Máximo';
-                    },
-                    () => { // Pulso
-                        charge.style.height = '0%';
-                        rod.style.top = '0px';
-                        head.style.top = '30px';
-                        magnetic.classList.remove('active');
-                        sparkEl.style.opacity = '1';
-                        sparkEl.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scale(1.5)`;
-                        wave.style.opacity = '1';
-                        wave.style.transform = 'scale(1.5)';
-                        level.style.width = '100%';
-                        level.style.background = 'linear-gradient(90deg, var(--fusion-red), var(--energy-amber))';
-                        capState.textContent = 'Descarga Completa';
-                        magState.textContent = '¡Pulso de Potencia!';
-                    },
-                    () => { // Reset
-                        sparkEl.style.opacity = '0';
-                        wave.style.opacity = '0';
-                        wave.style.transform = 'scale(0)';
-                        level.style.width = '0%';
-                        level.style.background = 'linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple))';
-                        capState.textContent = 'Iniciando Ciclo';
-                        magState.textContent = 'Campo Colapsado';
-                    }
-                ];
-                steps[step]();
-                step = (step + 1) % steps.length;
-            }
+let step = 0;
+function runAnimation() {
+    const steps = [
+        () => { // Charging
+            charge.style.height = '100%';
+            rod.style.top = '110px';
+            head.style.top = '180px';
+            level.style.width = '30%';
+            capState.textContent = 'Cargando Capacitor';
+            magState.textContent = 'Inactivo';
+            magnetic.classList.remove('active');
+        },
+        () => { // Full Charge
+            level.style.width = '100%';
+            capState.textContent = 'Capacitor Lleno (1000V)';
+        },
+        () => { // Discharging
+            charge.style.height = '40%';
+            rod.style.top = '60px';
+            head.style.top = '90px';
+            magnetic.classList.add('active');
+            level.style.width = '65%';
+            capState.textContent = 'Descargando en Inductor';
+            magState.textContent = 'Campo Magnético en Expansión';
+        },
+        () => { // Max Field
+            level.style.width = '40%';
+            magState.textContent = 'Campo Magnético Máximo';
+        },
+        () => { // Pulse
+            charge.style.height = '0%';
+            rod.style.top = '10px';
+            head.style.top = '40px';
+            magnetic.classList.remove('active');
+            sparkEl.style.opacity = '1';
+            sparkEl.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scale(1.8)`;
+            wave.style.opacity = '1';
+            wave.style.transform = 'scale(1.8)';
+            level.style.width = '100%';
+            level.style.background = 'linear-gradient(90deg, #ef4444, #fef08a)';
+            capState.textContent = 'Descarga Completa';
+            magState.textContent = '¡Pulso de Potencia Liberado!';
+        },
+        () => { // Reset
+            sparkEl.style.opacity = '0';
+            wave.style.opacity = '0';
+            wave.style.transform = 'scale(0)';
+            level.style.width = '0%';
+            level.style.background = 'linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple))';
+            capState.textContent = 'Iniciando Nuevo Ciclo';
+            magState.textContent = 'Campo Colapsado';
+        }
+    ];
+    steps[step]();
+    step = (step + 1) % steps.length;
+}
 
             /* ---------- Init ---------- */
             showSection('inicio');
