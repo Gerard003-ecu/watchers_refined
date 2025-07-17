@@ -285,10 +285,7 @@ body {
     position: relative;
     width: 100%;
     height: 260px;
-    background: radial-gradient(ellipse at bottom, #1e293b, #0f172a),
-                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-    background-size: 100% 100%, 20px 20px, 20px 20px;
+    background: radial-gradient(ellipse at bottom, #1e293b, #0f172a);
     border: 2px solid #334155;
     border-radius: 1rem;
     overflow: hidden;
@@ -299,40 +296,40 @@ body {
     position: absolute;
     width: 26px;
     height: 150px;
-    background: linear-gradient(to right,
-        #e2e8f0 0%,
-        #cbd5e1 25%,
-        #94a3b8 50%,
-        #cbd5e1 75%,
+    background: linear-gradient(to right, 
+        #e2e8f0 0%, 
+        #cbd5e1 25%, 
+        #94a3b8 50%, 
+        #cbd5e1 75%, 
         #e2e8f0 100%);
     left: 50%;
     transform: translateX(-50%);
     top: 0;
     z-index: 2;
     border-radius: 10px;
-    box-shadow:
-        0 0 15px rgba(251, 191, 36, 0.5),
+    box-shadow: 
+        0 0 15px rgba(251, 191, 36, 0.5), 
         inset 0 4px 8px rgba(255,255,255,0.3),
         inset 0 -4px 8px rgba(0,0,0,0.3);
-    transition: top 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), box-shadow 0.5s ease-in-out;
+    transition: all 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
 }
 
 .piston-head {
     position: absolute;
     width: 110px;
     height: 45px;
-    background:
+    background: 
         linear-gradient(145deg, #fcd34d, #fbbf24, #f59e0b),
         radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5) 0%, transparent 40%);
     left: 50%;
     transform: translateX(-50%);
     border-radius: 0.9rem;
     z-index: 3;
-    box-shadow:
-        0 0 25px rgba(251, 191, 36, 0.7),
+    box-shadow: 
+        0 0 25px rgba(251, 191, 36, 0.7), 
         inset 0 4px 6px rgba(255,255,255,0.4),
         inset 0 -4px 6px rgba(0,0,0,0.3);
-    transition: top 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), box-shadow 0.5s ease-in-out;
+    transition: all 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
     overflow: hidden;
 }
 
@@ -360,34 +357,18 @@ body {
     box-shadow: inset 0 2px 4px rgba(255,255,255,0.4);
 }
 
-.piston-rod::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent);
-    animation: shimmer 3s infinite;
-}
-
 .capacitor-charge {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    background: linear-gradient(to top,
-        hsla(212, 100%, 67%, 0.9) 0%,
-        hsla(212, 100%, 67%, 0.7) 50%,
+    background: linear-gradient(to top, 
+        hsla(212, 100%, 67%, 0.9) 0%, 
+        hsla(212, 100%, 67%, 0.7) 50%, 
         hsla(212, 100%, 67%, 0) 100%);
-    transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s ease-in-out;
+    transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
     filter: blur(2px);
     overflow: hidden;
-    box-shadow: 0 0 10px hsla(212, 100%, 67%, 0);
-}
-
-.capacitor-charge.charging {
-    box-shadow: 0 0 20px hsla(212, 100%, 67%, 0.8);
 }
 
 .wave-surface {
@@ -430,17 +411,9 @@ body {
     border-radius: 50%;
     border: 2px dashed hsla(262, 83%, 68%, 0);
     opacity: 0;
-    transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: all 0.5s ease-out;
     animation: rotate 12s linear infinite;
     z-index: 1;
-    transform: scale(0.8);
-}
-
-.magnetic-field.active {
-    opacity: 0.7;
-    border-color: hsla(262, 83%, 68%, 0.5);
-    box-shadow: 0 0 20px hsla(262, 83%, 68%, 0.3);
-    transform: scale(1);
 }
 
 .magnetic-field.ring-2 {
@@ -489,36 +462,29 @@ body {
 
 .energy-wave {
     position: absolute;
-    inset: -20px;
+    inset: 0;
     border-radius: 50%;
-    background: radial-gradient(circle,
-        hsla(52, 95%, 70%, 0.8) 0%,
-        hsla(52, 95%, 70%, 0.4) 40%,
-        transparent 70%);
+    background: radial-gradient(circle, 
+        hsla(52, 95%, 70%, 0.6) 0%, 
+        hsla(52, 95%, 70%, 0.3) 50%, 
+        transparent 75%);
     opacity: 0;
     transform: scale(0);
-    transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1.5);
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1.5);
     z-index: 5;
 }
 
 .heat-distortion {
     position: absolute;
-    inset: -20px;
-    background: radial-gradient(circle,
-        rgba(255, 100, 0, 0.3) 0%,
-        rgba(255, 100, 0, 0.15) 50%,
+    inset: 0;
+    background: radial-gradient(circle, 
+        rgba(255, 100, 0, 0.2) 0%, 
+        rgba(255, 100, 0, 0.1) 50%, 
         transparent 100%);
     opacity: 0;
-    filter: blur(15px);
+    filter: blur(10px);
     z-index: 6;
-    animation: heatPulse 1.5s ease-in-out infinite;
-    transform: scale(1);
-    transition: opacity 0.5s ease, transform 0.5s ease;
-}
-
-.heat-distortion.active {
-    opacity: 1;
-    transform: scale(1.2);
+    animation: heatPulse 2s ease-in-out infinite;
 }
 
 .energy-particle {
@@ -886,12 +852,6 @@ body {
                                 <h4 class="font-semibold text-slate-200 mb-1">Campo Magnético</h4>
                                 <div id="magnetic-state">Inactivo</div>
                             </div>
-                        </div>
-
-                        <div class="flex justify-center gap-4 mt-4">
-                            <button id="play-button" class="component-btn bg-slate-800 px-4 py-2 rounded-full text-sm font-medium ripple"><i class="fas fa-play"></i></button>
-                            <button id="pause-button" class="component-btn bg-slate-800 px-4 py-2 rounded-full text-sm font-medium ripple"><i class="fas fa-pause"></i></button>
-                            <button id="reset-button" class="component-btn bg-slate-800 px-4 py-2 rounded-full text-sm font-medium ripple"><i class="fas fa-undo"></i></button>
                         </div>
                     </div>
                 </div>
@@ -1625,12 +1585,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let step = 0;
-    let animationInterval;
-
     function runAnimation() {
         const steps = [
             () => { // Charging
-                charge.classList.add('charging');
                 charge.style.height = '100%';
                 rod.style.top = '150px';
                 head.style.top = '200px';
@@ -1653,7 +1610,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 capState.style.color = '#39D3BB';
             },
             () => { // Discharging
-                charge.classList.remove('charging');
                 charge.style.height = '40%';
                 rod.style.top = '80px';
                 head.style.top = '120px';
@@ -1690,7 +1646,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 energyWave.style.opacity = '1';
                 energyWave.style.transform = 'scale(1.8)';
-                heatDistortion.classList.add('active');
+                heatDistortion.style.opacity = '0.7';
                 level.style.width = '100%';
                 level.style.background = 'linear-gradient(90deg, #ef4444, #fef08a)';
                 capState.textContent = 'Descarga Completa';
@@ -1710,7 +1666,7 @@ document.addEventListener('DOMContentLoaded', () => {
             () => { // Reset
                 energyWave.style.opacity = '0';
                 energyWave.style.transform = 'scale(0)';
-                heatDistortion.classList.remove('active');
+                heatDistortion.style.opacity = '0';
                 level.style.width = '0%';
                 level.style.background = 'linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple), var(--quantum-teal))';
                 capState.textContent = 'Iniciando Nuevo Ciclo';
@@ -1723,27 +1679,6 @@ document.addEventListener('DOMContentLoaded', () => {
         steps[step]();
         step = (step + 1) % steps.length;
     }
-
-    function playAnimation() {
-        if (!animationInterval) {
-            animationInterval = setInterval(runAnimation, 1800);
-        }
-    }
-
-    function pauseAnimation() {
-        clearInterval(animationInterval);
-        animationInterval = null;
-    }
-
-    function resetAnimation() {
-        pauseAnimation();
-        step = 0;
-        runAnimation();
-    }
-
-    document.getElementById('play-button').addEventListener('click', playAnimation);
-    document.getElementById('pause-button').addEventListener('click', pauseAnimation);
-    document.getElementById('reset-button').addEventListener('click', resetAnimation);
 
     /* ---------- Parallax Effect ---------- */
     function updateParallax() {
@@ -1766,7 +1701,7 @@ document.addEventListener('DOMContentLoaded', () => {
     createPowerOutputChart();
     
     if (rod) {
-        playAnimation();
+        setInterval(runAnimation, 2000);
     }
 
     // Add CSS for ripple effect
