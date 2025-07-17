@@ -186,158 +186,120 @@ body {
             transition: opacity 0.2s ease;
         }
 
-.quantum-card {
-    perspective: 1000px;
-    transform-style: preserve-3d;
-}
+        .piston-chamber {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            background: radial-gradient(ellipse at bottom, #161B22, #0D1117);
+            border: 1px solid var(--slate-700);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 15px rgba(88, 166, 255, 0.1);
+        }
 
-.piston-chamber {
-    transform: rotateX(15deg) rotateY(-5deg);
-    transition: transform 0.3s ease;
-}
+        .piston-rod {
+            position: absolute;
+            width: 22px;
+            height: 120px;
+            background: linear-gradient(to right, #C9D1D9, #8B949E);
+            left: 50%;
+            transform: translateX(-50%);
+            top: 0;
+            z-index: 2;
+            border-radius: 6px;
+            box-shadow: 0 0 12px rgba(241, 224, 90, 0.4);
+            transition: top 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-.quantum-card:hover .piston-chamber {
-    transform: rotateX(5deg) rotateY(0deg);
-}
+        .piston-head {
+            position: absolute;
+            width: 90px;
+            height: 35px;
+            background: linear-gradient(145deg, var(--energy-amber), #F1E05A);
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 0.5rem;
+            z-index: 3;
+            box-shadow: 0 0 20px rgba(241, 224, 90, 0.6), inset 0 2px 2px rgba(255,255,255,0.2);
+            transition: top 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-.piston-rod {
-    background: linear-gradient(135deg,
-            #c0c0c0 0%,
-            #808080 25%,
-            #e8e8e8 50%,
-            #a0a0a0 75%,
-            #d0d0d0 100%);
-    box-shadow:
-        0 0 20px rgba(255, 255, 255, 0.1),
-        inset 0 0 10px rgba(0, 0, 0, 0.3);
-    position: relative;
-    overflow: hidden;
-}
+        .capacitor-charge {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, hsla(212, 100%, 67%, 0.8), hsla(212, 100%, 67%, 0));
+            transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: blur(5px);
+        }
 
-.piston-rod::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(45deg,
-            transparent 30%,
-            rgba(255, 255, 255, 0.5) 50%,
-            transparent 70%);
-    animation: metal-shine 3s infinite;
-}
+        .magnetic-field {
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            top: -25%;
+            left: -25%;
+            border-radius: 50%;
+            border: 3px dashed hsla(262, 83%, 68%, 0);
+            opacity: 0;
+            transition: all 0.5s ease-out;
+            animation: rotate 10s linear infinite;
+        }
 
-@keyframes metal-shine {
-    0% {
-        transform: translateX(-100%) translateY(-100%);
-    }
+        .magnetic-field.active {
+            opacity: 1;
+            border-color: hsla(262, 83%, 68%, 0.5);
+        }
 
-    100% {
-        transform: translateX(100%) translateY(100%);
-    }
-}
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
 
-.capacitor-charge {
-    background: radial-gradient(circle,
-            rgba(0, 255, 255, 0.8) 0%,
-            rgba(0, 150, 255, 0.4) 40%,
-            transparent 70%);
-    box-shadow:
-        0 0 30px #00ffff,
-        inset 0 0 30px rgba(0, 255, 255, 0.5);
-    animation: plasma-pulse 2s ease-in-out infinite alternate;
-}
+        .spark {
+            position: absolute;
+            width: 6px;
+            height: 60px;
+            background: white;
+            top: 50%;
+            left: 50%;
+            transform-origin: center;
+            opacity: 0;
+            box-shadow: 0 0 30px 10px white, 0 0 50px 20px var(--energy-amber), 0 0 70px 30px var(--fusion-red);
+            z-index: 4;
+            transition: opacity 0.1s ease;
+        }
 
-@keyframes plasma-pulse {
-    0% {
-        transform: scale(0.8);
-        opacity: 0.6;
-    }
+        .energy-wave {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle, hsla(54, 83%, 66%, 0.5) 0%, transparent 70%);
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        }
 
-    100% {
-        transform: scale(1.2);
-        opacity: 1;
-    }
-}
+        .energy-meter {
+            position: relative;
+            height: 24px;
+            background-color: var(--slate-800);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 1.5rem;
+            border: 1px solid var(--slate-700);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
 
-.spark {
-    position: relative;
-    overflow: visible;
-}
-
-.spark::before,
-.spark::after {
-    content: '';
-    position: absolute;
-    width: 1px;
-    height: 20px;
-    background: linear-gradient(to bottom, #ffffff, #00ffff);
-    box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
-    animation: lightning 0.1s ease-in-out infinite alternate;
-}
-
-.spark::after {
-    transform: rotate(90deg);
-    animation-delay: 0.05s;
-}
-
-@keyframes lightning {
-    0% {
-        opacity: 0;
-        transform: scaleY(0);
-    }
-
-    100% {
-        opacity: 1;
-        transform: scaleY(1);
-    }
-}
-
-.energy-meter {
-    position: relative;
-    background: linear-gradient(to right,
-            #ff0000 0%,
-            #ff8800 25%,
-            #ffff00 50%,
-            #88ff00 75%,
-            #00ff00 100%);
-    height: 8px;
-    border-radius: 4px;
-    overflow: hidden;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-}
-
-.energy-level {
-    height: 100%;
-    background: rgba(255, 255, 255, 0.3);
-    position: relative;
-    transition: width 0.3s ease;
-}
-
-.energy-level::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: -4px;
-    width: 2px;
-    height: 16px;
-    background: #ffffff;
-    box-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff;
-    animation: laser-scan 2s ease-in-out infinite;
-}
-
-@keyframes laser-scan {
-
-    0%,
-    100% {
-        opacity: 0.5;
-    }
-
-    50% {
-        opacity: 1;
-    }
-}
+        .energy-level {
+            height: 100%;
+            background: linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple));
+            width: 0%;
+            transition: width 0.5s ease-out;
+            border-radius: 12px;
+            box-shadow: 0 0 10px var(--atomic-blue), 0 0 20px var(--plasma-purple);
+        }
 
         .component-btn {
             transition: all 0.3s ease;
@@ -362,47 +324,6 @@ body {
             transform: scale(1.05);
             box-shadow: 0 0 20px rgba(88, 166, 255, 0.3);
         }
-
-.quantum-card:hover .piston-head {
-    transform: translateY(-5px);
-    filter: brightness(1.2);
-    transition: all 0.3s ease;
-}
-
-.quantum-card:hover .capacitor-charge {
-    animation-duration: 0.5s;
-}
-
-.grid>div {
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.grid>div:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(0, 255, 255, 0.3);
-}
-
-@keyframes float {
-    0% {
-        transform: translateY(0) translateX(0) scale(0);
-        opacity: 0;
-    }
-
-    10% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    90% {
-        opacity: 1;
-    }
-
-    100% {
-        transform: translateY(-100px) translateX(50px) scale(0);
-        opacity: 0;
-    }
-}
 
         /* Responsive Design */
         @media (max-width: 1024px) {
@@ -567,46 +488,32 @@ body {
                         Dinámica del Pistón
                     </h3>
                     <div class="space-y-6">
-                        <div class="piston-chamber relative w-full max-w-md mx-auto h-56 bg-slate-900/50 rounded-lg overflow-hidden border border-slate-700 shadow-inner">
-                            <div class="quantum-grid absolute inset-0"></div>
-
-                            <div class="particle-trail absolute inset-0 z-10" id="magnetic-field"></div>
-
+                        <div class="piston-chamber">
                             <div class="piston-rod" id="piston-rod"></div>
                             <div class="piston-head" id="piston-head"></div>
                             <div class="capacitor-charge" id="capacitor-charge"></div>
                             <div class="inductor-coil">
+                                <div class="magnetic-field" id="magnetic-field"></div>
                             </div>
                             <div class="spark" id="spark"></div>
-                            <div class="energy-wave">
-                                <svg viewBox="0 0 200 50" class="w-full h-8">
-                                    <defs>
-                                        <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                            <stop offset="0%" style="stop-color:#ff0080;stop-opacity:0" />
-                                            <stop offset="50%" style="stop-color:#ff0080;stop-opacity:1" />
-                                            <stop offset="100%" style="stop-color:#ff0080;stop-opacity:0" />
-                                        </linearGradient>
-                                    </defs>
-                                    <path id="energy-path" stroke="url(#waveGradient)" stroke-width="2" fill="none" />
-                                </svg>
-                            </div>
+                            <div class="energy-wave" id="energy-wave"></div>
                         </div>
 
                         <div class="energy-meter">
-                            <div id="energy-level" class="energy-level"></div>
+                            <div class="energy-level" id="energy-level"></div>
                         </div>
-                        <div class="meter-labels flex justify-between text-xs text-slate-400 -mt-1">
+                        <div class="meter-labels flex justify-between text-xs text-slate-400">
                             <span>0 V</span><span>250 V</span><span>500 V</span><span>750 V</span><span>1000 V</span>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4 mt-4 text-sm">
                             <div class="bg-slate-800/50 p-3 rounded-lg">
-                                <h4 class="font-semibold text-slate-200 mb-1 flex items-center"><i class="fas fa-battery-half mr-2 text-atomic-blue"></i>Capacitor</h4>
-                                <div id="capacitor-state" class="text-slate-300">Iniciando...</div>
+                                <h4 class="font-semibold text-slate-200 mb-1">Estado del Capacitor</h4>
+                                <div id="capacitor-state">Cargando...</div>
                             </div>
                             <div class="bg-slate-800/50 p-3 rounded-lg">
-                                <h4 class="font-semibold text-slate-200 mb-1 flex items-center"><i class="fas fa-magnet mr-2 text-plasma-purple"></i>Inductor</h4>
-                                <div id="magnetic-state" class="text-slate-300">Inactivo</div>
+                                <h4 class="font-semibold text-slate-200 mb-1">Campo Magnético</h4>
+                                <div id="magnetic-state">Inactivo</div>
                             </div>
                         </div>
                     </div>
@@ -1122,90 +1029,71 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             /* ---------- Pistón Animation ---------- */
-            const pistonRod = document.getElementById('piston-rod');
-            const pistonHead = document.getElementById('piston-head');
-            const capacitorCharge = document.getElementById('capacitor-charge');
-            const magneticField = document.getElementById('magnetic-field');
-            const spark = document.getElementById('spark');
-            const energyWave = document.getElementById('energy-wave');
-            const energyLevel = document.getElementById('energy-level');
-            const capacitorState = document.getElementById('capacitor-state');
-            const magneticState = document.getElementById('magnetic-state');
-            const particleTrail = document.querySelector('.particle-trail');
+            const rod = document.getElementById('piston-rod');
+            const head = document.getElementById('piston-head');
+            const charge = document.getElementById('capacitor-charge');
+            const magnetic = document.getElementById('magnetic-field');
+            const sparkEl = document.getElementById('spark');
+            const wave = document.getElementById('energy-wave');
+            const level = document.getElementById('energy-level');
+            const capState = document.getElementById('capacitor-state');
+            const magState = document.getElementById('magnetic-state');
 
-            function createMagneticParticles() {
-                const magneticField = document.getElementById('magnetic-field');
-                for (let i = 0; i < 20; i++) {
-                    const particle = document.createElement('div');
-                    particle.className = 'magnetic-particle';
-                    particle.style.cssText = `
-                position: absolute;
-                width: 2px;
-                height: 2px;
-                background: #00ff88;
-                border-radius: 50%;
-                animation: float ${2 + Math.random() * 3}s linear infinite;
-                animation-delay: ${Math.random() * 2}s;
-                left: ${Math.random() * 100}%;
-                top: ${Math.random() * 100}%;
-                `;
-                    magneticField.appendChild(particle);
-                }
-            }
-
-            function animateEnergyWave() {
-                const path = document.getElementById('energy-path');
-                const amplitude = 10;
-                const frequency = 0.02;
-                let phase = 0;
-
-                function updateWave() {
-                    let d = 'M 0 25';
-                    for (let x = 0; x <= 200; x += 2) {
-                        const y = 25 + amplitude * Math.sin(frequency * x + phase);
-                        d += `L ${x} ${y}`;
+            let step = 0;
+            function runAnimation() {
+                const steps = [
+                    () => { // Carga
+                        charge.style.height = '100%';
+                        rod.style.top = '100px';
+                        head.style.top = '170px';
+                        level.style.width = '30%';
+                        capState.textContent = 'Cargando Capacitor';
+                        magState.textContent = 'Inactivo';
+                        magnetic.classList.remove('active');
+                    },
+                    () => { // Carga completa
+                        level.style.width = '100%';
+                        capState.textContent = 'Capacitor Lleno (1000V)';
+                    },
+                    () => { // Descarga
+                        charge.style.height = '50%';
+                        rod.style.top = '50px';
+                        head.style.top = '80px';
+                        magnetic.classList.add('active');
+                        level.style.width = '70%';
+                        capState.textContent = 'Descargando en Inductor';
+                        magState.textContent = 'Campo Magnético Creciendo';
+                    },
+                    () => { // Campo máximo
+                        level.style.width = '40%';
+                        magState.textContent = 'Campo Magnético Máximo';
+                    },
+                    () => { // Pulso
+                        charge.style.height = '0%';
+                        rod.style.top = '0px';
+                        head.style.top = '30px';
+                        magnetic.classList.remove('active');
+                        sparkEl.style.opacity = '1';
+                        sparkEl.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scale(1.5)`;
+                        wave.style.opacity = '1';
+                        wave.style.transform = 'scale(1.5)';
+                        level.style.width = '100%';
+                        level.style.background = 'linear-gradient(90deg, var(--fusion-red), var(--energy-amber))';
+                        capState.textContent = 'Descarga Completa';
+                        magState.textContent = '¡Pulso de Potencia!';
+                    },
+                    () => { // Reset
+                        sparkEl.style.opacity = '0';
+                        wave.style.opacity = '0';
+                        wave.style.transform = 'scale(0)';
+                        level.style.width = '0%';
+                        level.style.background = 'linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple))';
+                        capState.textContent = 'Iniciando Ciclo';
+                        magState.textContent = 'Campo Colapsado';
                     }
-                    path.setAttribute('d', d);
-                    phase += 0.1;
-                    requestAnimationFrame(updateWave);
-                }
-                updateWave();
-            }
-
-            // --- Lógica principal de la animación ---
-            function runPistonAnimation() {
-                // Estado 1: CARGANDO
-                capacitorState.textContent = 'Cargando...';
-                magneticState.textContent = 'Inactivo';
-                capacitorCharge.style.height = '100%';
-                energyLevel.style.width = '100%';
-                pistonHead.style.top = 'calc(100% - 25px)';
-                pistonRod.style.top = '100%';
-
-
-                // Estado 2: DESCARGA Y KICKBACK
-                setTimeout(() => {
-                    capacitorState.textContent = 'Pulso de Potencia!';
-                    magneticState.textContent = 'Campo Energizado';
-                    capacitorCharge.style.height = '0%';
-                    energyLevel.style.width = '20%';
-                    pistonHead.style.top = '0px';
-                    pistonRod.style.top = '-120px';
-                    magneticField.style.opacity = '1';
-
-                    // Efecto de chispa y onda de energía
-                    spark.style.opacity = '1';
-                    spark.style.transform = 'scale(1)';
-                }, 2500);
-
-                // Estado 3: REINICIO
-                setTimeout(() => {
-                    capacitorState.textContent = 'Reiniciando Ciclo';
-                    magneticState.textContent = 'Inactivo';
-                    magneticField.style.opacity = '0';
-                    spark.style.opacity = '0';
-                    spark.style.transform = 'scale(0)';
-                }, 3000);
+                ];
+                steps[step]();
+                step = (step + 1) % steps.length;
             }
 
             /* ---------- Init ---------- */
@@ -1216,11 +1104,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateBatDetails(0);
             createCycleChart();
             createPowerOutputChart();
-            if (pistonRod) {
-                createMagneticParticles();
-                animateEnergyWave();
-                runPistonAnimation();
-                setInterval(runPistonAnimation, 4500);
+            if (rod) {
+                setInterval(runAnimation, 2000);
 
                 document.querySelectorAll('.diagram-block').forEach(block => {
                     block.addEventListener('mouseenter', () => {
@@ -1235,21 +1120,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     block.addEventListener('mouseleave', () => {
                         tooltip.style.display = 'none';
                     });
-                });
-
-                document.addEventListener('DOMContentLoaded', function() {
-                    createMagneticParticles();
-                    animateEnergyWave();
-
-                    // Piston animation
-                    const pistonHead = document.getElementById('piston-head');
-                    let position = 0;
-                    function animatePiston() {
-                        position = Math.sin(Date.now() * 0.002) * 20;
-                        pistonHead.style.transform = `translateY(${position}px)`;
-                        requestAnimationFrame(animatePiston);
-                    }
-                    animatePiston();
                 });
             }
         });
