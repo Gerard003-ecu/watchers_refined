@@ -1521,8 +1521,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 magState.textContent = 'Inactivo';
                 magState.style.color = '#8B949E';
                 [energyRing1, energyRing2, energyRing3].forEach(ring => {
+                    ring.style.transition = 'all 0s'; // Sin transición al resetear
                     ring.style.opacity = '0';
-                    ring.style.transform = 'scale(0)';
+                    ring.style.transform = 'scale(0)'; // Reiniciar a escala cero
                 });
                 [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.remove('active'));
                 energyBurst.style.opacity = '0';
@@ -1542,12 +1543,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 capState.style.color = '#58A6FF';
                 magState.textContent = 'Campo Energético en Expansión';
                 magState.style.color = '#BC8EFF';
+
+                // --- AJUSTE CLAVE AQUÍ ---
+                // Hacemos que los anillos empiecen pequeños y se expandan
+                energyRing1.style.transition = 'all 1.2s cubic-bezier(0.23, 1, 0.32, 1)';
                 energyRing1.style.opacity = '1';
-                energyRing1.style.transform = 'scale(1)';
+                energyRing1.style.transform = 'scale(2.5)'; // Expansión final
+
+                energyRing2.style.transition = 'all 1.2s cubic-bezier(0.23, 1, 0.32, 1) 0.2s'; // Retraso
                 energyRing2.style.opacity = '0.7';
-                energyRing2.style.transform = 'scale(1.5)';
+                energyRing2.style.transform = 'scale(3.5)';
+
+                energyRing3.style.transition = 'all 1.2s cubic-bezier(0.23, 1, 0.32, 1) 0.4s'; // Retraso
                 energyRing3.style.opacity = '0.4';
-                energyRing3.style.transform = 'scale(2)';
+                energyRing3.style.transform = 'scale(4.5)';
+
                 [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.add('active'));
             },
             () => { // Max Field
