@@ -15,26 +15,51 @@
             theme: {
                 extend: {
                     colors: {
-                        'atomic-blue': '#0ea5e9',
-                        'energy-amber': '#f59e0b',
-                        'plasma-purple': '#8b5cf6',
-                        'quantum-teal': '#0d9488',
-                        'dark-matter': '#1e293b',
-                        'neutrino-gray': '#64748b',
-                        'fusion-red': '#ef4444',
+                        'atomic-blue': '#58A6FF',
+                        'energy-amber': '#F1E05A',
+                        'plasma-purple': '#BC8EFF',
+                        'quantum-teal': '#39D3BB',
+                        'dark-matter': '#0D1117',
+                        'neutrino-gray': '#8B949E',
+                        'fusion-red': '#FF7B72',
+                        'quantum-green': '#238636'
                     },
                     animation: {
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'spin-slow': 'spin 3s linear infinite',
+                        'pulse-slow': 'pulse 2.5s cubic-bezier(.4,0,.6,1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px 0px rgba(88,166,255,.4)' },
+                            '100%': { boxShadow: '0 0 5px 4px rgba(88,166,255,0)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
                     }
                 }
             }
-        }
+        };
     </script>
     <style>
+        :root {
+            --dark-matter: #0D1117;
+            --slate-900: #10141a;
+            --slate-800: #161B22;
+            --slate-700: #21262D;
+            --slate-400: #8B949E;
+            --atomic-blue: #58A6FF;
+            --quantum-teal: #39D3BB;
+        }
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background: linear-gradient(180deg, var(--slate-900) 0%, var(--dark-matter) 100%);
             color: #e2e8f0;
         }
         .chart-container {
@@ -49,25 +74,29 @@
         @media (min-width: 768px) { .chart-container { height: 350px; } }
         
         .nav-link {
-            transition: all 0.3s;
+            position: relative;
+            transition: all 0.3s ease;
+            padding: 0.5rem 0;
             border-bottom: 2px solid transparent;
         }
         .nav-link.active, .nav-link:hover {
-            color: #0d9488;
-            border-bottom-color: #0d9488;
+            color: white;
+            text-shadow: 0 0 10px rgba(88, 166, 255, 0.5);
+            border-bottom-color: var(--atomic-blue);
         }
         
         .quantum-card {
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            border-radius: 16px;
-            transition: all 0.3s ease;
+            background: linear-gradient(145deg, rgba(31, 41, 55, 0.4), rgba(15, 20, 30, 0.6));
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--slate-700);
+            border-radius: 1rem;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         .quantum-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 25px rgba(0, 0, 0, 0.3);
-            border-color: rgba(56, 189, 248, 0.4);
+            transform: translateY(-8px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 15px rgba(88, 166, 255, 0.1);
+            border-color: var(--atomic-blue);
         }
 
         .phase-content {
@@ -98,55 +127,96 @@
         .piston-chamber {
             position: relative;
             width: 100%;
-            max-width: 400px;
-            height: 200px;
-            background: linear-gradient(to right, #1e293b, #0f172a);
-            border-radius: 8px;
-            overflow: hidden;
+            height: 260px;
+            background: radial-gradient(ellipse at bottom, #1e293b, #0f172a);
             border: 2px solid #334155;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
-            margin: auto;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.6), 0 0 20px rgba(59, 130, 246, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        .piston-rod {
-            position: absolute; width: 20px; height: 100px;
-            background: linear-gradient(to right, #94a3b8, #cbd5e1);
-            left: 50%; transform: translateX(-50%); top: 0; z-index: 2;
-            border-radius: 4px; box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-            transition: top 1s ease-in-out;
+
+        #energy-core {
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, var(--atomic-blue), transparent);
+            border-radius: 50%;
+            position: absolute;
+            z-index: 10;
+            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            transform: scale(0);
+            box-shadow: 0 0 15px 5px var(--atomic-blue), 0 0 30px 10px rgba(88, 166, 255, 0.5);
         }
-        .piston-head {
-            position: absolute; width: 80px; height: 30px;
-            background: linear-gradient(to right, #f59e0b, #fbbf24);
-            left: 50%; transform: translateX(-50%); border-radius: 8px; z-index: 3;
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.7);
-            transition: top 1s ease-in-out;
+
+        .energy-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid var(--plasma-purple);
+            opacity: 0;
+            transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+            transform: scale(0);
+            box-shadow: 0 0 10px var(--plasma-purple);
         }
-        .capacitor-charge {
-            position: absolute; bottom: 0; left: 0; width: 100%;
-            background: linear-gradient(to top, rgba(14, 165, 233, 0.8), rgba(56, 189, 248, 0.2));
-            transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+        #energy-burst {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 10%, var(--energy-amber) 40%, transparent 70%);
+            border-radius: 50%;
+            transform: scale(0);
+            opacity: 0;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            z-index: 20;
         }
+
         .magnetic-field {
-            position: absolute; width: 100%; height: 100%; border-radius: 50%;
-            border: 2px dashed rgba(139, 92, 246, 0.5);
-            animation: pulse-slow 2s infinite; opacity: 0;
-            transition: opacity 0.5s ease;
+            position: absolute;
+            width: 140%;
+            height: 140%;
+            top: -20%;
+            left: -20%;
+            border-radius: 50%;
+            border: 2px dashed hsla(262, 83%, 68%, 0);
+            opacity: 0;
+            transition: all 0.5s ease-out;
+            animation: rotate 12s linear infinite;
+            z-index: 5;
         }
-        .spark {
-            position: absolute; width: 4px; height: 40px;
-            background: linear-gradient(to bottom, #fde047, #f59e0b, #ef4444);
-            top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(30deg);
-            opacity: 0; box-shadow: 0 0 20px #fde047; z-index: 4;
-            transition: opacity 0.2s ease;
+
+        .magnetic-field.ring-2 {
+            width: 180%;
+            height: 180%;
+            top: -40%;
+            left: -40%;
+            animation-delay: -4s;
         }
-        .quantum-grid {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: linear-gradient(rgba(30, 41, 59, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 41, 59, 0.2) 1px, transparent 1px);
-            background-size: 20px 20px; z-index: 0;
+
+        .magnetic-field.ring-3 {
+            width: 220%;
+            height: 220%;
+            top: -60%;
+            left: -60%;
+            animation-delay: -8s;
         }
+
+        .magnetic-field.active {
+            opacity: 0.7;
+            border-color: hsla(262, 83%, 68%, 0.5);
+            box-shadow: 0 0 20px hsla(262, 83%, 68%, 0.3);
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         .quantum-divider {
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.3), transparent);
+            background: linear-gradient(90deg, transparent, rgba(88, 166, 255, 0.3), transparent);
             margin: 2rem 0;
         }
     </style>
@@ -214,12 +284,14 @@
                     <div>
                         <h3 class="text-xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500 mb-4">Dinámica del Pistón</h3>
                         <div class="piston-chamber">
-                            <div class="quantum-grid"></div>
-                            <div class="piston-rod" id="piston-rod"></div>
-                            <div class="piston-head" id="piston-head"></div>
-                            <div class="capacitor-charge" id="capacitor-charge"></div>
-                            <div class="magnetic-field" id="magnetic-field"></div>
-                            <div class="spark" id="spark"></div>
+                            <div id="energy-core"></div>
+                            <div class="energy-ring" id="energy-ring-1"></div>
+                            <div class="energy-ring" id="energy-ring-2"></div>
+                            <div class="energy-ring" id="energy-ring-3"></div>
+                            <div id="energy-burst"></div>
+                            <div class="magnetic-field" id="magnetic-field-1"></div>
+                            <div class="magnetic-field ring-2" id="magnetic-field-2"></div>
+                            <div class="magnetic-field ring-3" id="magnetic-field-3"></div>
                         </div>
                     </div>
                     <div class="space-y-4 text-slate-300">
@@ -306,24 +378,26 @@ document.addEventListener('DOMContentLoaded', () => {
         maintainAspectRatio: false,
         plugins: {
             legend: {
-                labels: { color: '#e2e8f0' }
+                labels: { color: '#C9D1D9' }
             },
             tooltip: {
-                backgroundColor: '#1e293b',
-                titleColor: '#e2e8f0',
-                bodyColor: '#cbd5e1',
-                borderColor: '#334155',
-                borderWidth: 1
+                backgroundColor: 'rgba(22, 27, 34, 0.95)',
+                titleColor: '#F0F6FC',
+                bodyColor: '#C9D1D9',
+                borderColor: '#21262D',
+                borderWidth: 1,
+                padding: 10,
+                cornerRadius: 8
             }
         },
         scales: {
             x: {
-                ticks: { color: '#94a3b8' },
-                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                ticks: { color: '#8B949E' },
+                grid: { color: 'rgba(255, 255, 255, 0.07)' }
             },
             y: {
-                ticks: { color: '#94a3b8' },
-                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                ticks: { color: '#8B949E' },
+                grid: { color: 'rgba(255, 255, 255, 0.07)' }
             }
         }
     };
@@ -446,35 +520,71 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { threshold: 0.5 });
     statCounters.forEach(counter => observer.observe(counter));
     
-    const capacitorChargeEl = document.getElementById('capacitor-charge');
-    const magneticFieldEl = document.getElementById('magnetic-field');
-    const sparkEl = document.getElementById('spark');
-    const pistonRodEl = document.getElementById('piston-rod');
-    const pistonHeadEl = document.getElementById('piston-head');
-    
-    function runPistonAnimation() {
-        // Charge
-        capacitorChargeEl.style.height = '100%';
-        pistonRodEl.style.top = '100px';
-        pistonHeadEl.style.top = '170px';
-        sparkEl.style.opacity = '0';
-        magneticFieldEl.style.opacity = '0';
+    const energyCore = document.getElementById('energy-core');
+    const energyRing1 = document.getElementById('energy-ring-1');
+    const energyRing2 = document.getElementById('energy-ring-2');
+    const energyRing3 = document.getElementById('energy-ring-3');
+    const energyBurst = document.getElementById('energy-burst');
+    const magneticField1 = document.getElementById('magnetic-field-1');
+    const magneticField2 = document.getElementById('magnetic-field-2');
+    const magneticField3 = document.getElementById('magnetic-field-3');
 
-        // Discharge
-        setTimeout(() => {
-            capacitorChargeEl.style.height = '0%';
-            pistonRodEl.style.top = '0px';
-            pistonHeadEl.style.top = '30px';
-            magneticFieldEl.style.opacity = '1';
-        }, 1500);
-        
-        // Spark
-        setTimeout(() => {
-            sparkEl.style.opacity = '1';
-        }, 2000);
+    let step = 0;
+    function runPistonAnimation() {
+        const steps = [
+            () => { // Charging
+                energyCore.style.opacity = '1';
+                energyCore.style.transform = 'scale(1)';
+                [energyRing1, energyRing2, energyRing3].forEach(ring => {
+                    ring.style.transition = 'all 0s';
+                    ring.style.opacity = '0';
+                    ring.style.transform = 'scale(0)';
+                });
+                [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.remove('active'));
+                energyBurst.style.opacity = '0';
+                energyBurst.style.transform = 'scale(0)';
+            },
+            () => { // Full Charge
+                energyCore.style.transform = 'scale(1.5)';
+            },
+            () => { // Discharging
+                energyCore.style.transform = 'scale(1.2)';
+                energyRing1.style.transition = 'all 1.2s cubic-bezier(0.23, 1, 0.32, 1)';
+                energyRing1.style.opacity = '1';
+                energyRing1.style.transform = 'scale(2.5)';
+                energyRing2.style.transition = 'all 1.2s cubic-bezier(0.23, 1, 0.32, 1) 0.2s';
+                energyRing2.style.opacity = '0.7';
+                energyRing2.style.transform = 'scale(3.5)';
+                energyRing3.style.transition = 'all 1.2s cubic-bezier(0.23, 1, 0.32, 1) 0.4s';
+                energyRing3.style.opacity = '0.4';
+                energyRing3.style.transform = 'scale(4.5)';
+                [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.add('active'));
+            },
+            () => {}, // Max Field (simplified)
+            () => { // Pulse
+                energyCore.style.opacity = '0';
+                energyCore.style.transform = 'scale(0)';
+                [energyRing1, energyRing2, energyRing3].forEach(ring => {
+                    ring.style.opacity = '0';
+                    ring.style.transform = 'scale(0)';
+                });
+                [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.remove('active'));
+                energyBurst.style.opacity = '1';
+                energyBurst.style.transform = 'scale(2)';
+            },
+            () => { // Reset
+                energyBurst.style.opacity = '0';
+                energyBurst.style.transform = 'scale(0)';
+            }
+        ];
+        steps[step]();
+        step = (step + 1) % steps.length;
     }
-    setInterval(runPistonAnimation, 3500);
-    runPistonAnimation();
+
+    if (energyCore) {
+        setInterval(runPistonAnimation, 2000);
+        runPistonAnimation();
+    }
 
     const roadmapData = [
         {
