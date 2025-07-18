@@ -1601,7 +1601,8 @@ document.addEventListener('DOMContentLoaded', () => {
     createCycleChart();
     createPowerOutputChart();
     
-    if (rod) {
+    const energyCore = document.getElementById('energy-core');
+    if (energyCore) {
         setInterval(runAnimation, 2000);
     }
 
