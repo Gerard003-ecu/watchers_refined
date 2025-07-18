@@ -370,11 +370,12 @@ body {
     top: -20%;
     left: -20%;
     border-radius: 50%;
-    border: 2px dashed hsla(262, 83%, 68%, 0);
+    /* Usaremos un color coherente con el inductor */
+    border: 2px dashed hsla(262, 83%, 68%, 0); /* plasma-purple, initially invisible */
     opacity: 0;
     transition: all 0.5s ease-out;
     animation: rotate 12s linear infinite;
-    z-index: 1;
+    z-index: 5; /* Aseguramos que esté por encima del núcleo pero debajo del burst */
 }
 
 .magnetic-field.ring-2 {
@@ -383,7 +384,6 @@ body {
     top: -40%;
     left: -40%;
     animation-delay: -4s;
-    z-index: 0;
 }
 
 .magnetic-field.ring-3 {
@@ -392,9 +392,9 @@ body {
     top: -60%;
     left: -60%;
     animation-delay: -8s;
-    z-index: -1;
 }
 
+/* La clase 'active' controlará la visibilidad y el brillo */
 .magnetic-field.active {
     opacity: 0.7;
     border-color: hsla(262, 83%, 68%, 0.5);
@@ -773,14 +773,12 @@ body {
                             <div class="energy-ring" id="energy-ring-2"></div>
                             <div class="energy-ring" id="energy-ring-3"></div>
                             <div id="energy-burst"></div>
+                            <div class="magnetic-field" id="magnetic-field-1"></div>
+                            <div class="magnetic-field ring-2" id="magnetic-field-2"></div>
+                            <div class="magnetic-field ring-3" id="magnetic-field-3"></div>
                             <div class="capacitor-charge" id="capacitor-charge">
                                 <div class="wave-surface"></div>
                                 <!-- Bubbles will be generated dynamically -->
-                            </div>
-                            <div class="inductor-coil">
-                                <div class="magnetic-field ring-1" id="magnetic-field-1"></div>
-                                <div class="magnetic-field ring-2" id="magnetic-field-2"></div>
-                                <div class="magnetic-field ring-3" id="magnetic-field-3"></div>
                             </div>
                             <div id="sparks-container">
                                 <!-- Sparks will be generated dynamically -->
@@ -1502,6 +1500,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const energyRing2 = document.getElementById('energy-ring-2');
     const energyRing3 = document.getElementById('energy-ring-3');
     const energyBurst = document.getElementById('energy-burst');
+    const magneticField1 = document.getElementById('magnetic-field-1');
+    const magneticField2 = document.getElementById('magnetic-field-2');
+    const magneticField3 = document.getElementById('magnetic-field-3');
     const charge = document.getElementById('capacitor-charge');
     const level = document.getElementById('energy-level');
     const capState = document.getElementById('capacitor-state');
@@ -1523,6 +1524,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ring.style.opacity = '0';
                     ring.style.transform = 'scale(0)';
                 });
+                [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.remove('active'));
                 energyBurst.style.opacity = '0';
                 energyBurst.style.transform = 'scale(0)';
             },
@@ -1546,6 +1548,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 energyRing2.style.transform = 'scale(1.5)';
                 energyRing3.style.opacity = '0.4';
                 energyRing3.style.transform = 'scale(2)';
+                [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.add('active'));
             },
             () => { // Max Field
                 level.style.width = '40%';
@@ -1559,6 +1562,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ring.style.opacity = '0';
                     ring.style.transform = 'scale(0)';
                 });
+                [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.remove('active'));
                 energyBurst.style.opacity = '1';
                 energyBurst.style.transform = 'scale(2)';
                 level.style.width = '100%';
