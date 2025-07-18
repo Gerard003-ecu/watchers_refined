@@ -472,8 +472,10 @@ body {
 .energy-level {
     height: 100%;
     background: linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple), var(--quantum-teal));
-    width: 0%;
-    transition: width 0.5s ease-out;
+    width: 100%;
+    transition: transform 0.5s ease-out;
+    transform: scaleX(0);
+    transform-origin: left center;
     border-radius: 12px;
     box-shadow: 0 0 10px var(--atomic-blue), 0 0 20px var(--plasma-purple);
     position: relative;
@@ -1496,113 +1498,89 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ---------- Enhanced Piston Animation ---------- */
     const energyCore = document.getElementById('energy-core');
     const energyBurst = document.getElementById('energy-burst');
-    const magneticField1 = document.getElementById('magnetic-field-1');
-    const magneticField2 = document.getElementById('magnetic-field-2');
-    const magneticField3 = document.getElementById('magnetic-field-3');
+    const magneticFields = [
+        document.getElementById('magnetic-field-1'),
+        document.getElementById('magnetic-field-2'),
+        document.getElementById('magnetic-field-3')
+    ];
     const charge = document.getElementById('capacitor-charge');
     const level = document.getElementById('energy-level');
     const capState = document.getElementById('capacitor-state');
     const magState = document.getElementById('magnetic-state');
     const pistonChamber = document.querySelector('.piston-chamber');
-    const particles = [];
-    const numParticles = 150;
-
-    function createParticles() {
-        for (let i = 0; i < numParticles; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'energy-particle';
-            pistonChamber.appendChild(particle);
-            particles.push({
-                element: particle,
-                angle: Math.random() * 360,
-                radius: Math.random() * 100 + 50,
-                speed: Math.random() * 0.5 + 0.2,
-                size: Math.random() * 3 + 1
-            });
-        }
-    }
 
     let step = 0;
-    let animationFrameId;
-
-    function animateParticles() {
-        const radius = 100 - (step * 15);
-        particles.forEach(p => {
-            p.angle += p.speed;
-            const x = Math.cos(p.angle * Math.PI / 180) * (p.radius * radius / 100);
-            const y = Math.sin(p.angle * Math.PI / 180) * (p.radius * radius / 100);
-            p.element.style.transform = `translate(${x}px, ${y}px) scale(${p.size / 3})`;
-        });
-        animationFrameId = requestAnimationFrame(animateParticles);
-    }
 
     function runAnimation() {
         const steps = [
-            () => { // Charging
-                if(animationFrameId) cancelAnimationFrame(animationFrameId);
+            () => { // 1. Charging
                 energyCore.style.opacity = '1';
                 energyCore.style.transform = 'scale(0.5)';
                 charge.style.transform = 'scaleY(1)';
-                level.style.width = '30%';
-                capState.textContent = 'Cargando Núcleo';
-                capState.style.color = '#F1E05A';
+                level.style.transform = 'scaleX(0.3)';
+                capState.textContent = 'Cargando Núcleo...';
+                capState.style.color = 'var(--energy-amber)';
                 magState.textContent = 'Inactivo';
-                magState.style.color = '#8B949E';
-                particles.forEach(p => {
-                    p.element.style.opacity = Math.random();
-                    p.radius = Math.random() * 100 + 50;
-                });
-                animateParticles();
+                magState.style.color = 'var(--neutrino-gray)';
+                magneticFields.forEach(f => f.classList.remove('active'));
+                energyBurst.style.opacity = '0';
+                energyBurst.style.transform = 'scale(0)';
             },
-            () => { // Full Charge
+            () => { // 2. Full Charge
                 energyCore.style.transform = 'scale(1.5)';
-                level.style.width = '100%';
-                capState.textContent = 'Núcleo Cargado (1000V)';
-                capState.style.color = '#39D3BB';
+                level.style.transform = 'scaleX(1)';
+                capState.textContent = 'Capacitor al Máximo (1000V)';
+                capState.style.color = 'var(--quantum-teal)';
             },
-            () => { // Discharging
+            () => { // 3. Transfer to Inductor
                 energyCore.style.transform = 'scale(1.2)';
                 charge.style.transform = 'scaleY(0.4)';
-                level.style.width = '65%';
+                level.style.transform = 'scaleX(0.65)';
                 capState.textContent = 'Transfiriendo a Inductor';
-                capState.style.color = '#58A6FF';
-                magState.textContent = 'Campo Energético en Expansión';
-                magState.style.color = '#BC8EFF';
-                particles.forEach(p => p.speed = Math.random() * 2 + 1);
+                capState.style.color = 'var(--atomic-blue)';
+                magState.textContent = 'Generando Campo Magnético';
+                magState.style.color = 'var(--plasma-purple)';
+                magneticFields.forEach(f => f.classList.add('active'));
             },
-            () => { // Max Field
-                level.style.width = '40%';
-                magState.textContent = 'Campo Energético Máximo';
+            () => { // 4. Max Magnetic Field
+                level.style.transform = 'scaleX(0.4)';
+                magState.textContent = 'Campo Magnético Máximo';
+                magState.style.color = 'var(--plasma-purple)';
             },
-            () => { // Pulse
-                if(animationFrameId) cancelAnimationFrame(animationFrameId);
+            () => { // 5. Power Pulse
                 energyCore.style.opacity = '0';
                 energyCore.style.transform = 'scale(0)';
                 charge.style.transform = 'scaleY(0)';
+                magneticFields.forEach(f => f.classList.remove('active'));
+
+                energyBurst.style.transition = 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
                 energyBurst.style.opacity = '1';
                 energyBurst.style.transform = 'scale(2.5)';
-                level.style.width = '100%';
-                level.style.background = 'linear-gradient(90deg, #ef4444, #fef08a)';
+
+                level.style.transform = 'scaleX(1)';
+                level.style.background = 'linear-gradient(90deg, var(--fusion-red), var(--energy-amber))';
+
                 capState.textContent = 'Descarga Completa';
-                capState.style.color = '#FF7B72';
+                capState.style.color = 'var(--fusion-red)';
                 magState.textContent = '¡Pulso de Potencia Liberado!';
-                magState.style.color = '#FF7B72';
-                particles.forEach(p => {
-                    const angle = Math.random() * 360;
-                    const radius = Math.random() * 500 + 200;
-                    const x = Math.cos(angle * Math.PI / 180) * radius;
-                    const y = Math.sin(angle * Math.PI / 180) * radius;
-                    p.element.style.transform = `translate(${x}px, ${y}px) scale(0)`;
-                    p.element.style.opacity = '0';
-                });
+                magState.style.color = 'var(--fusion-red)';
             },
-            () => { // Reset
+            () => { // 6. Reset
+                energyBurst.style.transition = 'opacity 0.5s ease-out';
                 energyBurst.style.opacity = '0';
-                energyBurst.style.transform = 'scale(0)';
-                level.style.width = '0%';
+
+                level.style.transition = 'transform 0.5s ease-out, background 1s linear';
+                level.style.transform = 'scaleX(0)';
                 level.style.background = 'linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple), var(--quantum-teal))';
+
                 capState.textContent = 'Iniciando Nuevo Ciclo';
+                capState.style.color = 'var(--neutrino-gray)';
                 magState.textContent = 'Campo Colapsado';
+
+                // Pre-warm the transitions for the next cycle
+                setTimeout(() => {
+                    level.style.transition = 'transform 0.5s ease-out';
+                }, 1000);
             }
         ];
         steps[step]();
