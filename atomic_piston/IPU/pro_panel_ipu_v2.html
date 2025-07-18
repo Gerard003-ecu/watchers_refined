@@ -297,14 +297,13 @@ body {
     box-shadow: 0 0 20px 8px var(--atomic-blue), 0 0 40px 15px rgba(88, 166, 255, 0.5);
 }
 
-.energy-ring {
+.energy-particle {
     position: absolute;
+    width: 4px;
+    height: 4px;
+    background: radial-gradient(circle, var(--energy-amber) 0%, transparent 80%);
     border-radius: 50%;
-    border: 2px solid var(--plasma-purple);
-    opacity: 0;
-    transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
-    transform: scale(0);
-    box-shadow: 0 0 10px var(--plasma-purple);
+    transition: all 0.5s ease-in-out;
 }
 
 #energy-burst {
@@ -1498,9 +1497,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- Enhanced Piston Animation ---------- */
     const energyCore = document.getElementById('energy-core');
-    const energyRing1 = document.getElementById('energy-ring-1');
-    const energyRing2 = document.getElementById('energy-ring-2');
-    const energyRing3 = document.getElementById('energy-ring-3');
     const energyBurst = document.getElementById('energy-burst');
     const magneticField1 = document.getElementById('magnetic-field-1');
     const magneticField2 = document.getElementById('magnetic-field-2');
@@ -1509,27 +1505,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const level = document.getElementById('energy-level');
     const capState = document.getElementById('capacitor-state');
     const magState = document.getElementById('magnetic-state');
+    const pistonChamber = document.querySelector('.piston-chamber');
+    const particles = [];
+    const numParticles = 150;
+
+    function createParticles() {
+        for (let i = 0; i < numParticles; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'energy-particle';
+            pistonChamber.appendChild(particle);
+            particles.push({
+                element: particle,
+                angle: Math.random() * 360,
+                radius: Math.random() * 100 + 50,
+                speed: Math.random() * 0.5 + 0.2,
+                size: Math.random() * 3 + 1
+            });
+        }
+    }
 
     let step = 0;
+    let animationFrameId;
+
+    function animateParticles() {
+        const radius = 100 - (step * 15);
+        particles.forEach(p => {
+            p.angle += p.speed;
+            const x = Math.cos(p.angle * Math.PI / 180) * (p.radius * radius / 100);
+            const y = Math.sin(p.angle * Math.PI / 180) * (p.radius * radius / 100);
+            p.element.style.transform = `translate(${x}px, ${y}px) scale(${p.size / 3})`;
+        });
+        animationFrameId = requestAnimationFrame(animateParticles);
+    }
+
     function runAnimation() {
         const steps = [
             () => { // Charging
+                if(animationFrameId) cancelAnimationFrame(animationFrameId);
                 energyCore.style.opacity = '1';
-                energyCore.style.transform = 'scale(1)';
+                energyCore.style.transform = 'scale(0.5)';
                 charge.style.transform = 'scaleY(1)';
                 level.style.width = '30%';
                 capState.textContent = 'Cargando Núcleo';
                 capState.style.color = '#F1E05A';
                 magState.textContent = 'Inactivo';
                 magState.style.color = '#8B949E';
-                [energyRing1, energyRing2, energyRing3].forEach(ring => {
-                    ring.style.transition = 'all 0s'; // Sin transición al resetear
-                    ring.style.opacity = '0';
-                    ring.style.transform = 'scale(0)'; // Reiniciar a escala cero
+                particles.forEach(p => {
+                    p.element.style.opacity = Math.random();
+                    p.radius = Math.random() * 100 + 50;
                 });
-                [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.remove('active'));
-                energyBurst.style.opacity = '0';
-                energyBurst.style.transform = 'scale(0)';
+                animateParticles();
             },
             () => { // Full Charge
                 energyCore.style.transform = 'scale(1.5)';
@@ -1545,44 +1570,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 capState.style.color = '#58A6FF';
                 magState.textContent = 'Campo Energético en Expansión';
                 magState.style.color = '#BC8EFF';
-
-                // --- AJUSTE CLAVE AQUÍ ---
-                // Hacemos que los anillos empiecen pequeños y se expandan
-                energyRing1.style.transition = 'all 1.2s cubic-bezier(0.23, 1, 0.32, 1)';
-                energyRing1.style.opacity = '1';
-                energyRing1.style.transform = 'scale(2.5)'; // Expansión final
-
-                energyRing2.style.transition = 'all 1.2s cubic-bezier(0.23, 1, 0.32, 1) 0.2s'; // Retraso
-                energyRing2.style.opacity = '0.7';
-                energyRing2.style.transform = 'scale(3.5)';
-
-                energyRing3.style.transition = 'all 1.2s cubic-bezier(0.23, 1, 0.32, 1) 0.4s'; // Retraso
-                energyRing3.style.opacity = '0.4';
-                energyRing3.style.transform = 'scale(4.5)';
-
-                [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.add('active'));
+                particles.forEach(p => p.speed = Math.random() * 2 + 1);
             },
             () => { // Max Field
                 level.style.width = '40%';
                 magState.textContent = 'Campo Energético Máximo';
             },
             () => { // Pulse
+                if(animationFrameId) cancelAnimationFrame(animationFrameId);
                 energyCore.style.opacity = '0';
                 energyCore.style.transform = 'scale(0)';
                 charge.style.transform = 'scaleY(0)';
-                [energyRing1, energyRing2, energyRing3].forEach(ring => {
-                    ring.style.opacity = '0';
-                    ring.style.transform = 'scale(0)';
-                });
-                [magneticField1, magneticField2, magneticField3].forEach(field => field.classList.remove('active'));
                 energyBurst.style.opacity = '1';
-                energyBurst.style.transform = 'scale(2)';
+                energyBurst.style.transform = 'scale(2.5)';
                 level.style.width = '100%';
                 level.style.background = 'linear-gradient(90deg, #ef4444, #fef08a)';
                 capState.textContent = 'Descarga Completa';
                 capState.style.color = '#FF7B72';
                 magState.textContent = '¡Pulso de Potencia Liberado!';
                 magState.style.color = '#FF7B72';
+                particles.forEach(p => {
+                    const angle = Math.random() * 360;
+                    const radius = Math.random() * 500 + 200;
+                    const x = Math.cos(angle * Math.PI / 180) * radius;
+                    const y = Math.sin(angle * Math.PI / 180) * radius;
+                    p.element.style.transform = `translate(${x}px, ${y}px) scale(0)`;
+                    p.element.style.opacity = '0';
+                });
             },
             () => { // Reset
                 energyBurst.style.opacity = '0';
@@ -1617,8 +1631,10 @@ document.addEventListener('DOMContentLoaded', () => {
     createCycleChart();
     createPowerOutputChart();
     
-    if (document.getElementById('energy-core')) {
+    if (pistonChamber) {
+        createParticles();
         setInterval(runAnimation, 2000);
+        runAnimation();
     }
 
     // Add CSS for ripple effect
