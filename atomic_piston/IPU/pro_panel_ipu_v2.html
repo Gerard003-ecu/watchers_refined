@@ -297,11 +297,14 @@ body {
 
 .energy-particle {
     position: absolute;
-    width: 4px;
-    height: 4px;
-    background: radial-gradient(circle, var(--energy-amber) 0%, transparent 80%);
+    width: 6px;
+    height: 6px;
+    background: radial-gradient(circle, var(--energy-amber) 0%, transparent 70%);
     border-radius: 50%;
-    transition: all 0.5s ease-in-out;
+    transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    transform: scale(0);
+    box-shadow: 0 0 8px var(--energy-amber);
 }
 
 #energy-burst {
@@ -1508,12 +1511,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const capState = document.getElementById('capacitor-state');
     const magState = document.getElementById('magnetic-state');
     const pistonChamber = document.querySelector('.piston-chamber');
+    const particles = [];
+    const numParticles = 150;
+
+    function createParticles() {
+        for (let i = 0; i < numParticles; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'energy-particle';
+            pistonChamber.appendChild(particle);
+            particles.push({
+                element: particle,
+                angle: Math.random() * 360,
+                radius: Math.random() * 100 + 50,
+                speed: Math.random() * 0.5 + 0.2,
+                size: Math.random() * 3 + 1
+            });
+        }
+    }
 
     let step = 0;
+    let animationFrameId;
+
+    function animateParticles() {
+        const radius = 100 - (step * 15);
+        particles.forEach(p => {
+            p.angle += p.speed;
+            const x = Math.cos(p.angle * Math.PI / 180) * (p.radius * radius / 100);
+            const y = Math.sin(p.angle * Math.PI / 180) * (p.radius * radius / 100);
+            p.element.style.transform = `translate(${x}px, ${y}px) scale(${p.size / 3})`;
+        });
+        animationFrameId = requestAnimationFrame(animateParticles);
+    }
 
     function runAnimation() {
         const steps = [
             () => { // 1. Charging
+                if(animationFrameId) cancelAnimationFrame(animationFrameId);
                 energyCore.style.opacity = '1';
                 energyCore.style.transform = 'scale(0.5)';
                 charge.style.transform = 'scaleY(1)';
@@ -1525,6 +1558,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 magneticFields.forEach(f => f.classList.remove('active'));
                 energyBurst.style.opacity = '0';
                 energyBurst.style.transform = 'scale(0)';
+                particles.forEach(p => {
+                    p.element.style.opacity = Math.random();
+                    p.radius = Math.random() * 100 + 50;
+                });
+                animateParticles();
             },
             () => { // 2. Full Charge
                 energyCore.style.transform = 'scale(1.5)';
@@ -1541,6 +1579,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 magState.textContent = 'Generando Campo Magnético';
                 magState.style.color = 'var(--plasma-purple)';
                 magneticFields.forEach(f => f.classList.add('active'));
+                particles.forEach(p => p.speed = Math.random() * 2 + 1);
             },
             () => { // 4. Max Magnetic Field
                 level.style.transform = 'scaleX(0.4)';
@@ -1548,6 +1587,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 magState.style.color = 'var(--plasma-purple)';
             },
             () => { // 5. Power Pulse
+                if(animationFrameId) cancelAnimationFrame(animationFrameId);
                 energyCore.style.opacity = '0';
                 energyCore.style.transform = 'scale(0)';
                 charge.style.transform = 'scaleY(0)';
@@ -1564,6 +1604,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 capState.style.color = 'var(--fusion-red)';
                 magState.textContent = '¡Pulso de Potencia Liberado!';
                 magState.style.color = 'var(--fusion-red)';
+                particles.forEach(p => {
+                    const angle = Math.random() * 360;
+                    const radius = Math.random() * 500 + 200;
+                    const x = Math.cos(angle * Math.PI / 180) * radius;
+                    const y = Math.sin(angle * Math.PI / 180) * radius;
+                    p.element.style.transform = `translate(${x}px, ${y}px) scale(0)`;
+                    p.element.style.opacity = '0';
+                });
             },
             () => { // 6. Reset
                 energyBurst.style.transition = 'opacity 0.5s ease-out';
