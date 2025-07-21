@@ -424,9 +424,13 @@ def run_phase_sync_task(
     integral = 0
     last_error = 0
 
-    control_interval = 1.0  # 1 segundo por ciclo de control
+    control_interval = pid_gains.get('control_interval', 1.0)  # 1 segundo por ciclo de control
 
     while not stop_event.is_set():
+        # 0. Comprobar si la tarea ha sido abortada
+        if stop_event.is_set():
+            break
+
         # 1. Comprobar timeout
         if time.time() - start_time > timeout:
             logger.warning("[%s] Timeout alcanzado (%.1fs).", task_id, timeout)
