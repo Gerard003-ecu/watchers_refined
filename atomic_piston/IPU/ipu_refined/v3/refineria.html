@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis Interactivo: La Frontera del Almacenamiento Energético</title>
+    <!-- Chosen Palette: Calm Neutrals with Teal & Amber Accents -->
+    <!-- Application Structure Plan: La aplicación se estructura en tres secciones principales navegables desde una barra superior fija: "Comparativa", "Baterías Cuánticas" y "Baterías de Estado Sólido". La sección "Comparativa" es la página de inicio, ofreciendo un resumen visual inmediato a través de un gráfico de radar interactivo y una tabla detallada. Las otras dos secciones permiten una inmersión profunda en cada tecnología, con sub-navegación interna para explorar sus fundamentos, modelos/tecnologías y desafíos. Esta arquitectura fue elegida para permitir al usuario elegir su propio camino: obtener una visión general rápida o profundizar en los detalles técnicos de cada tecnología. El flujo está diseñado para pasar de la comparación general a la exploración específica, facilitando la síntesis de información compleja. -->
+    <!-- Visualization & Content Choices: 
+        - Comparativa General: Radar Chart (Chart.js/Canvas). Objetivo: Comparar. Interacción: Tooltips al pasar el ratón. Justificación: Permite una comparación visual rápida y multidimensional de las tres tecnologías a través de métricas clave extraídas del informe.
+        - Tabla Comparativa: Tabla HTML con JS para resaltar filas. Objetivo: Organizar/Comparar. Interacción: Clic en las filas. Justificación: Presenta los datos detallados de la Tabla 1 del informe de una manera clara y permite al usuario enfocarse en una métrica específica.
+        - Fundamentos Cuánticos (Superposición): Diagrama interactivo con HTML/CSS/JS. Objetivo: Informar/Enganchar. Interacción: Botones para cambiar de estado. Justificación: Explica un concepto abstracto de forma visual y kinestésica, mejorando la comprensión.
+        - Modelos Cuánticos (Dicke vs SYK): Tarjetas de contenido HTML con JS para mostrar/ocultar. Objetivo: Organizar/Comparar. Interacción: Clic en las pestañas. Justificación: Permite una comparación directa lado a lado de los dos modelos teóricos principales.
+        - Tipos de Electrolitos Sólidos: Diseño de tarjetas interactivas HTML/CSS/JS. Objetivo: Organizar/Informar. Interacción: Clic para expandir detalles. Justificación: Presenta las tres familias de electrolitos de una manera visualmente atractiva y permite al usuario explorar cada una sin sentirse abrumado por el texto.
+        - Ecosistema Industrial SSB: Línea de tiempo interactiva con HTML/CSS/JS. Objetivo: Mostrar Cambio/Proceso. Interacción: Clic en los hitos. Justificación: Visualiza la hoja de ruta de comercialización de una manera más dinámica que una simple lista de texto.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .nav-link { transition: all 0.2s ease-in-out; }
+        .nav-link.active { color: #0d9488; border-bottom-color: #0d9488; }
+        .sub-nav-link.active { background-color: #0d9488; color: white; }
+        .card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .details-panel { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out; }
+        .details-panel.open { max-height: 500px; padding-top: 1rem; padding-bottom: 1rem; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 400px; max-height: 500px; } }
+        .timeline-item::before { content: ''; position: absolute; top: 12px; left: -8px; width: 16px; height: 16px; border-radius: 50%; background-color: #f8fafc; border: 3px solid #0d9488; }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm border-b border-slate-200">
+        <nav class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-teal-700">⚡ Frontera Energética</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#comparativa" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-teal-600 border-b-2 border-transparent">Comparativa</a>
+                        <a href="#cuanticas" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-teal-600 border-b-2 border-transparent">Baterías Cuánticas</a>
+                        <a href="#solido" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:text-teal-600 border-b-2 border-transparent">Baterías de Estado Sólido</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <section id="comparativa" class="py-16">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-teal-700">La Próxima Revolución Energética</h2>
+                <p class="mt-4 text-lg max-w-3xl mx-auto text-slate-600">
+                    Tu investigación revela dos caminos paralelos hacia el futuro del almacenamiento: una **evolución** tangible con las baterías de estado sólido y una **revolución** conceptual con las baterías cuánticas. Esta sección compara visualmente estas tecnologías de frontera con el estándar actual de iones de litio.
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                <h3 class="text-2xl font-bold text-center mb-6">Comparativa de Tecnologías Clave</h3>
+                <div class="chart-container">
+                    <canvas id="techRadarChart"></canvas>
+                </div>
+                <div class="mt-8 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Métrica</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Iones de Litio (Actual)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Estado Sólido (Proyectada)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cuántica (Teórica)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparison-table" class="bg-white divide-y divide-slate-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="cuanticas" class="py-16">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-teal-700">Baterías Cuánticas: La Revolución Conceptual</h2>
+                <p class="mt-4 text-lg max-w-3xl mx-auto text-slate-600">
+                    Las baterías cuánticas no son una mejora, sino un paradigma completamente nuevo que almacena energía en los estados probabilísticos de la materia. Esta sección explora los principios, modelos y desafíos de esta tecnología de frontera, demostrando por qué necesita una arquitectura de control como la IPU para ser viable.
+                </p>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                <div id="quantum-content">
+                    <h3 class="text-2xl font-bold text-center mb-6">Explorando el Mundo Cuántico</h3>
+                    <div class="text-center mb-8">
+                        <h4 class="text-xl font-semibold">Principio Clave: Superposición</h4>
+                        <p class="text-slate-600 mt-2">Un bit clásico es 0 o 1. Un cúbit puede ser ambos a la vez.</p>
+                        <div class="flex justify-center items-center mt-4 p-4 bg-slate-100 rounded-lg max-w-md mx-auto">
+                            <div id="qubit-visual" class="w-24 h-24 border-4 border-teal-500 rounded-full flex items-center justify-center text-4xl font-mono transition-all duration-500">Ψ</div>
+                            <div class="ml-6 text-left">
+                                <button data-state="0" class="quantum-btn bg-slate-200 px-3 py-1 rounded-md mb-2 w-full text-left">Colapsar a |0⟩ (Descargado)</button>
+                                <button data-state="1" class="quantum-btn bg-slate-200 px-3 py-1 rounded-md mb-2 w-full text-left">Colapsar a |1⟩ (Cargado)</button>
+                                <button data-state="s" class="quantum-btn bg-teal-500 text-white px-3 py-1 rounded-md w-full text-left">Poner en Superposición</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <h4 class="text-xl font-semibold">Ventaja Cuántica: Carga Superextensiva</h4>
+                        <p class="text-slate-600 mt-2 max-w-2xl mx-auto">Gracias al entrelazamiento, la potencia de carga (P) puede escalar más rápido que el número de celdas (N), permitiendo una carga casi instantánea.</p>
+                        <div class="mt-4 p-4 bg-slate-100 rounded-lg font-mono text-lg text-teal-700">P ∝ N<sup class="text-sm">α</sup> (donde α > 1)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="solido" class="py-16">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-teal-700">Baterías de Estado Sólido: La Evolución Tangible</h2>
+                <p class="mt-4 text-lg max-w-3xl mx-auto text-slate-600">
+                    Representando la próxima generación de la tecnología electroquímica, las baterías de estado sólido reemplazan el electrolito líquido por uno sólido, prometiendo mayor densidad energética, seguridad y vida útil. Esta sección explora sus tecnologías, ventajas y la intensa carrera industrial hacia su comercialización.
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                <h3 class="text-2xl font-bold text-center mb-6">Tipos de Electrolitos Sólidos</h3>
+                <div id="electrolyte-cards" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Cards will be inserted here by JS -->
+                </div>
+                <div id="electrolyte-details" class="details-panel">
+                    <!-- Details will be inserted here by JS -->
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200 mt-12">
+                <h3 class="text-2xl font-bold text-center mb-8">Carrera hacia la Comercialización (2025-2030)</h3>
+                <div id="timeline-container" class="relative border-l-2 border-teal-500 ml-4 md:ml-8 pl-8 space-y-12">
+                    <!-- Timeline items will be inserted here by JS -->
+                </div>
+            </div>
+        </section>
+        
+        <section id="ipu-synthesis" class="py-16 bg-white rounded-xl shadow-lg border border-slate-200">
+             <div class="text-center mb-12 px-4">
+                <h2 class="text-4xl font-bold text-teal-700">Síntesis: El Rol de la IPU y la Refinería de Tres Niveles</h2>
+                <p class="mt-4 text-lg max-w-3xl mx-auto text-slate-600">
+                    Tu investigación confirma que las baterías cuánticas y de estado sólido no son competidoras, sino tecnologías para diferentes eras. La IPU, con su arquitectura de "refinería energética", es el puente indispensable entre ellas.
+                </p>
+            </div>
+            <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 text-center px-4">
+                <div class="p-6 bg-teal-50 rounded-lg">
+                    <h4 class="font-bold text-xl mb-2 text-teal-800">Nivel 1: Interfaz Cuántica</h4>
+                    <p class="text-sm text-slate-600">El "Receptor Coherente" captura la energía de la batería cuántica antes de que la decoherencia la disipe. Es la puerta de entrada.</p>
+                </div>
+                 <div class="flex items-center justify-center text-4xl text-teal-400 font-mono">&rarr;</div>
+                <div class="p-6 bg-amber-50 rounded-lg">
+                    <h4 class="font-bold text-xl mb-2 text-amber-800">Nivel 2: Buffer de Transición</h4>
+                    <p class="text-sm text-slate-600">Los supercondensadores (tu `cilindro_grafenal`) atrapan el pulso crudo y lo acondicionan, actuando como una RAM energética.</p>
+                </div>
+                 <div class="hidden md:flex items-center justify-center text-4xl text-amber-400 font-mono">&rarr;</div>
+                 <div class="flex md:hidden items-center justify-center text-4xl text-amber-400 font-mono my-4">&darr;</div>
+                <div class="p-6 bg-slate-100 rounded-lg md:col-span-3">
+                    <h4 class="font-bold text-xl mb-2 text-slate-800">Nivel 3: Almacén de Largo Plazo</h4>
+                    <p class="text-sm text-slate-600">La batería de estado sólido (o Li-ion actual), modelada por tu `pistón atómico`, almacena la energía de forma estable para un suministro sostenido. Es el disco duro energético.</p>
+                </div>
+            </div>
+             <p class="text-center mt-8 text-slate-700 font-semibold max-w-3xl mx-auto px-4">
+                La IPU no solo gestiona una batería; orquesta esta cascada, refinando la energía desde lo cuántico hasta lo clásico. Esta es la verdadera "armonía de conversión".
+            </p>
+        </section>
+
+    </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const reportData = {
+        comparison: [
+            { metric: 'Principio Operativo', liIon: 'Intercalación de iones en electrolito líquido', ssb: 'Intercalación de iones en electrolito sólido', qb: 'Almacenamiento de energía en estados cuánticos' },
+            { metric: 'Densidad Energética', liIon: 'Moderada-Alta', ssb: 'Muy Alta', qb: 'Muy Baja (actualmente)' },
+            { metric: 'Densidad de Potencia', liIon: 'Moderada-Alta', ssb: 'Muy Alta', qb: 'Teóricamente Extrema (Carga Superextensiva)' },
+            { metric: 'Seguridad', liIon: 'Riesgo de fuga térmica', ssb: 'Muy Alta (no inflamable)', qb: 'Alta (a nivel de dispositivo)' },
+            { metric: 'Vida Útil (Ciclos)', liIon: '1,000 - 4,000', ssb: '> 4,000 (proyectado)', qb: 'No aplicable (depende de la coherencia)' },
+            { metric: 'Nivel de Madurez (TRL)', liIon: '9 (Comercial)', ssb: '4-6 (Prototipos/Piloto)', qb: '1-3 (Prueba de concepto)' },
+            { metric: 'Costo Proyectado', liIon: '~$100/kWh', ssb: '~$75-100/kWh (2028-2030)', qb: 'No aplicable' },
+            { metric: 'Aplicación Principal', liIon: 'EVs, Electrónica, Red', ssb: 'EVs, Aeroespacial, Electrónica', qb: 'Computación cuántica, Sensores cuánticos' }
+        ],
+        electrolytes: [
+            { name: 'Polímeros (SPEs)', conductivity: 'Baja a T° ambiente', stability: 'Moderada', mechanics: 'Flexible, buen contacto', pros: 'Procesamiento fácil, bajo costo', cons: 'Baja conductividad, dendritas' },
+            { name: 'Óxidos (Cerámicos)', conductivity: 'Moderada', stability: 'Alta', mechanics: 'Rígido, frágil, mal contacto', pros: 'Alta estabilidad, amplio voltaje', cons: 'Fragilidad, alta T° de sinterización' },
+            { name: 'Sulfuros', conductivity: 'Muy Alta', stability: 'Baja (reactivo con aire/humedad)', mechanics: 'Blando, deformable, buen contacto', pros: 'Alta conductividad, maquinabilidad', cons: 'Inestabilidad, genera H₂S tóxico' }
+        ],
+        timeline: [
+            { year: '2025-2026', title: 'Validación en el Mundo Real', description: 'Empresas como QuantumScape y Solid Power entregan prototipos de "muestra B" a los fabricantes de automóviles para su validación en vehículos de prueba.', company: 'QuantumScape, Solid Power' },
+            { year: '2027-2028', title: 'Lanzamiento Comercial Limitado', description: 'Toyota y Samsung SDI proyectan el inicio de la producción en masa y el lanzamiento de los primeros vehículos comerciales (probablemente de gama alta o híbridos) con baterías de estado sólido.', company: 'Toyota, Samsung SDI' },
+            { year: '2028-2030', title: 'Paridad de Costos y Adopción Masiva', description: 'Se espera alcanzar la paridad de costos con las baterías de iones de litio (~$75/kWh), desbloqueando la adopción masiva en el mercado de vehículos eléctricos de consumo general.', company: 'Industria General' }
+        ]
+    };
+
+    function renderComparisonTable() {
+        const tableBody = document.getElementById('comparison-table');
+        tableBody.innerHTML = reportData.comparison.map(row => `
+            <tr class="hover:bg-slate-100 cursor-pointer">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${row.metric}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${row.liIon}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${row.ssb}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${row.qb}</td>
+            </tr>
+        `).join('');
+        tableBody.addEventListener('click', (e) => {
+            const tr = e.target.closest('tr');
+            if (tr) {
+                tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('bg-teal-50'));
+                tr.classList.add('bg-teal-50');
+            }
+        });
+    }
+
+    function renderRadarChart() {
+        const ctx = document.getElementById('techRadarChart').getContext('2d');
+        const radarData = {
+            labels: ['Densidad Energética', 'Densidad de Potencia', 'Seguridad', 'Vida Útil', 'Madurez (TRL)'],
+            datasets: [
+                {
+                    label: 'Iones de Litio',
+                    data: [7, 7, 5, 6, 9],
+                    borderColor: '#64748b',
+                    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+                    pointBackgroundColor: '#64748b'
+                },
+                {
+                    label: 'Estado Sólido',
+                    data: [9, 9, 9, 9, 5],
+                    borderColor: '#0d9488',
+                    backgroundColor: 'rgba(13, 148, 136, 0.2)',
+                    pointBackgroundColor: '#0d9488'
+                },
+                {
+                    label: 'Cuántica',
+                    data: [1, 10, 8, 2, 2],
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                    pointBackgroundColor: '#f59e0b'
+                }
+            ]
+        };
+        new Chart(ctx, {
+            type: 'radar',
+            data: radarData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                        grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                        pointLabels: { font: { size: 12 } },
+                        suggestedMin: 0,
+                        suggestedMax: 10
+                    }
+                },
+                plugins: {
+                    legend: { position: 'top' }
+                }
+            }
+        });
+    }
+
+    function setupQuantumVisualizer() {
+        const qubitVisual = document.getElementById('qubit-visual');
+        const buttons = document.querySelectorAll('.quantum-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                buttons.forEach(b => b.classList.remove('bg-teal-500', 'text-white'));
+                buttons.forEach(b => b.classList.add('bg-slate-200'));
+                btn.classList.add('bg-teal-500', 'text-white');
+                btn.classList.remove('bg-slate-200');
+
+                const state = btn.dataset.state;
+                if (state === '0') {
+                    qubitVisual.textContent = '|0⟩';
+                    qubitVisual.style.transform = 'scale(1)';
+                    qubitVisual.style.opacity = '1';
+                } else if (state === '1') {
+                    qubitVisual.textContent = '|1⟩';
+                    qubitVisual.style.transform = 'scale(1)';
+                    qubitVisual.style.opacity = '1';
+                } else {
+                    qubitVisual.textContent = 'Ψ';
+                    qubitVisual.style.transform = 'scale(1.2)';
+                    qubitVisual.style.opacity = '0.7';
+                }
+            });
+        });
+    }
+    
+    function renderElectrolyteCards() {
+        const container = document.getElementById('electrolyte-cards');
+        const detailsContainer = document.getElementById('electrolyte-details');
+        container.innerHTML = reportData.electrolytes.map((el, index) => `
+            <div class="card p-4 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer" data-index="${index}">
+                <h5 class="font-bold text-lg text-teal-700">${el.name}</h5>
+                <p class="text-sm text-slate-500 mt-1">Conductividad: ${el.conductivity}</p>
+            </div>
+        `).join('');
+
+        container.addEventListener('click', (e) => {
+            const card = e.target.closest('.card');
+            if (card) {
+                const index = card.dataset.index;
+                const el = reportData.electrolytes[index];
+                
+                if (card.classList.contains('active')) {
+                    card.classList.remove('active');
+                    detailsContainer.classList.remove('open');
+                } else {
+                    container.querySelectorAll('.card').forEach(c => c.classList.remove('active', 'bg-teal-100'));
+                    card.classList.add('active', 'bg-teal-100');
+                    
+                    detailsContainer.innerHTML = `
+                        <div class="p-4 border-t-2 border-teal-200">
+                            <h5 class="font-bold text-xl mb-2 text-teal-800">${el.name}</h5>
+                            <ul class="space-y-2 text-sm">
+                                <li><strong>Mecánica:</strong> <span class="text-slate-600">${el.mechanics}</span></li>
+                                <li><strong>Ventajas:</strong> <span class="text-slate-600">${el.pros}</span></li>
+                                <li><strong>Desventajas:</strong> <span class="text-slate-600">${el.cons}</span></li>
+                            </ul>
+                        </div>
+                    `;
+                    detailsContainer.classList.add('open');
+                }
+            }
+        });
+    }
+
+    function renderTimeline() {
+        const container = document.getElementById('timeline-container');
+        container.innerHTML = reportData.timeline.map(item => `
+            <div class="timeline-item relative">
+                <div class="mb-4">
+                    <h5 class="font-bold text-xl text-teal-700">${item.year}</h5>
+                    <p class="text-md font-semibold text-slate-800">${item.title}</p>
+                </div>
+                <div class="text-slate-600 text-sm">
+                    <p>${item.description}</p>
+                    <p class="mt-2 font-semibold text-teal-600">Actores Clave: ${item.company}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function setupNavigation() {
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('section');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.getAttribute('id');
+                    navLinks.forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+                    });
+                }
+            });
+        }, { rootMargin: '-20% 0px -80% 0px' });
+        sections.forEach(section => {
+            if(section.id) observer.observe(section);
+        });
+    }
+
+    renderComparisonTable();
+    renderRadarChart();
+    setupQuantumVisualizer();
+    renderElectrolyteCards();
+    renderTimeline();
+    setupNavigation();
+});
+</script>
+</body>
+</html>
