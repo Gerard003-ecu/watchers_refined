@@ -513,6 +513,62 @@ class TestHarmonyControllerAPI(unittest.TestCase):
         self.mock_pid_reset.assert_called_once()
 
 
+# --- Tests de Pytest para la API de Tareas ---
+import pytest
+import time
+
+@pytest.fixture
+def client():
+    """Configura el cliente de prueba de Flask para pytest."""
+    harmony_controller.app.config['TESTING'] = True
+    with harmony_controller.app.test_client() as client:
+        yield client
+
+def test_start_phase_sync_task_api_no_hang(client):
+    """
+    Verifica que el endpoint /tasks/phase_sync inicia una tarea
+    y no cuelga el test.
+    """
+    # Mockear las dependencias para que la tarea se complete
+    mock_get_field = mock.Mock(side_effect=[
+        np.array([1+1j]),  # Primera lectura, error grande
+        np.array([np.exp(0.8j)]), # Segunda lectura, más cerca del objetivo
+        np.array([np.exp(0.89j)]), # Tercera lectura, casi allí
+        np.array([np.exp(0.9j)]) # Cuarta lectura, dentro de la tolerancia
+    ])
+    with mock.patch('control.harmony_controller.get_field_from_ecu', new=mock_get_field), \
+         mock.patch('control.harmony_controller.apply_influence_to_ecu') as mock_apply, \
+         mock.patch('control.harmony_controller.task_manager.update_task_status', wraps=harmony_controller.task_manager.update_task_status) as mock_update_status, \
+         mock.patch('threading.Event.wait'): # Mockeamos wait para que no espere
+
+        payload = {
+            "target_phase": 0.9,
+            "region": "test_region",
+            "pid_gains": {"p": 0.1, "i": 0.01, "d": 0.05},
+            "tolerance": 0.01, # Tolerancia baja para que la tarea se complete rápido
+            "timeout": 3
+        }
+
+        response = client.post('/tasks/phase_sync', json=payload)
+
+        assert response.status_code == 202
+        data = response.get_json()
+        assert data['status'] == 'success'
+        task_id = data['task_id']
+        assert task_id is not None
+
+        # Esperar un poco para que la tarea tenga tiempo de ejecutarse y terminar
+        time.sleep(2.5)
+
+        # Verificar que la tarea se completó (o al menos no sigue corriendo)
+        status = harmony_controller.task_manager.get_task_status(task_id)
+        assert status == "completed"
+
+        # Verificar que la función de aplicar influencia fue llamada
+        assert mock_apply.called
+        # Verificar que el estado se actualizó a "completed"
+        mock_update_status.assert_called_with(task_id, "completed")
+
 if __name__ == '__main__':
     unittest.main()
 
