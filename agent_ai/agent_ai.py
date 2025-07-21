@@ -30,9 +30,9 @@ import time
 from typing import Any, Dict, List, Optional
 
 # Third-party imports
-from flask import Flask, jsonify, request
 import numpy as np
 import requests
+from flask import Flask, jsonify, request
 
 # Local application imports
 from agent_ai.utils.logger import get_logger
@@ -57,9 +57,11 @@ HARMONY_CONTROLLER_REGISTER_URL_ENV = (
     "HARMONY_CONTROLLER_REGISTER_URL"
 )
 AGENT_AI_ECU_URL_ENV = "AGENT_AI_ECU_URL"
+AGENT_AI_ECU_FIELD_VECTOR_URL_ENV = "AGENT_AI_ECU_FIELD_VECTOR_URL"
 AGENT_AI_MALLA_URL_ENV = "AGENT_AI_MALLA_URL"
 DEFAULT_HC_URL = "http://harmony_controller:7000"
 DEFAULT_ECU_URL = "http://ecu:8000"
+DEFAULT_ECU_FIELD_VECTOR_URL = "http://ecu:8000/api/ecu/field_vector"
 DEFAULT_MALLA_URL = "http://malla_watcher:5001"
 STRATEGIC_LOOP_INTERVAL = float(
     os.environ.get("AA_INTERVAL", 5.0)
@@ -155,6 +157,13 @@ class AgentAI:
 
         ecu_url = os.environ.get(AGENT_AI_ECU_URL_ENV)
         self.central_urls["ecu"] = ecu_url if ecu_url else DEFAULT_ECU_URL
+
+        ecu_field_vector_url = os.environ.get(AGENT_AI_ECU_FIELD_VECTOR_URL_ENV)
+        self.central_urls["ecu_field_vector"] = (
+            ecu_field_vector_url
+            if ecu_field_vector_url
+            else DEFAULT_ECU_FIELD_VECTOR_URL
+        )
 
         malla_url = os.environ.get(AGENT_AI_MALLA_URL_ENV)
         self.central_urls["malla_watcher"] = (
@@ -285,6 +294,40 @@ class AgentAI:
                 if setpoint_changed:
                     self._send_setpoint_to_harmony(self.target_setpoint_vector)
 
+                # --- Lógica de Coherencia Cuántica ---
+                field_vector = self._get_ecu_field_vector()
+                if field_vector is not None:
+                    # Suponemos que operamos sobre la primera capa por simplicidad
+                    coherence, dominant_phase = self.calculate_coherence(
+                        field_vector[0]
+                    )
+                    logger.info(
+                        "Coherencia Capa 0: %.3f, Fase Dominante: %.3f rad",
+                        coherencia,
+                        dominant_phase,
+                    )
+
+                    # Decisión estratégica basada en la coherencia
+                    if coherence < 0.8:
+                        logger.warning(
+                            "Coherencia (%.3f) por debajo del umbral. "
+                            "Iniciando maniobra de sincronización de fase para reforzar la fase dominante.",
+                            coherencia,
+                        )
+                        # Delegar a Harmony Controller, usando la fase dominante actual como objetivo
+                        self._delegate_phase_synchronization_task(
+                            region_identifier="capa_0", target_phase=dominant_phase
+                        )
+                    elif coherence > 0.95: # Si la coherencia ya es alta, intentamos resonar
+                        logger.info(
+                            "Coherencia alta (%.3f). Intentando maniobra de resonancia.",
+                            coherencia,
+                        )
+                        resonant_frequency = self.find_resonant_frequency("capa_0")
+                        if resonant_frequency is not None:
+                            self._delegate_resonance_task("capa_0", resonant_frequency)
+
+
             except BaseException as e:
                 if isinstance(e, (SystemExit, KeyboardInterrupt)):
                     logger.info(
@@ -337,6 +380,210 @@ class AgentAI:
             MAX_RETRIES,
         )
         return None
+
+    def _get_ecu_field_vector(self) -> Optional[np.ndarray]:
+        """Obtiene el campo vectorial complejo completo de la ECU."""
+        ecu_url = self.central_urls.get(
+            "ecu_field_vector", DEFAULT_ECU_FIELD_VECTOR_URL
+        )
+        for attempt in range(MAX_RETRIES):
+            try:
+                response = requests.get(ecu_url, timeout=REQUESTS_TIMEOUT)
+                response.raise_for_status()
+                data = response.json()
+                if data.get("status") == "success" and "field_vector" in data:
+                    # La ECU devuelve [real, imag], necesitamos convertirlo a complejo
+                    field_data = data["field_vector"]
+                    complex_field = np.array(field_data, dtype=float)
+                    # El array es (capas, filas, cols, 2), lo convertimos a (capas, filas, cols) de tipo complejo
+                    complex_field = complex_field[..., 0] + 1j * complex_field[..., 1]
+                    logger.debug("Campo vectorial complejo recibido de ECU.")
+                    return complex_field
+            except Exception as e:
+                logger.error(
+                    "Error al obtener campo vectorial de ECU (intento %s): %s",
+                    attempt + 1, e
+                )
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(BASE_RETRY_DELAY * (2 ** attempt))
+        logger.error(
+            "No se pudo obtener el campo vectorial de ECU tras %s intentos.",
+            MAX_RETRIES
+        )
+        return None
+
+    def calculate_coherence(self, region: np.ndarray) -> tuple[float, float]:
+        """
+        Calcula la coherencia y la fase dominante de una región del campo.
+
+        Args:
+            region (np.ndarray): Un array de números complejos que representa
+                                 una sección del campo_q.
+
+        Returns:
+            tuple[float, float]: Una tupla conteniendo:
+                - coherencia (float): Magnitud del vector de fase promedio (0 a 1).
+                - fase_dominante (float): Ángulo del vector de fase promedio (en radianes).
+        """
+        if region.size == 0:
+            return 0.0, 0.0
+
+        # Normalizar cada vector a la fase pura (proyectar en el círculo unitario)
+        # Se evita la división por cero si hay magnitudes nulas.
+        magnitudes = np.abs(region)
+        non_zero_magnitudes = magnitudes > 1e-9
+        phases = np.zeros_like(region, dtype=np.complex128)
+        phases[non_zero_magnitudes] = region[non_zero_magnitudes] / magnitudes[non_zero_magnitudes]
+
+        # Calcular el vector de fase promedio solo sobre los elementos no nulos
+        non_zero_phases = phases[non_zero_magnitudes]
+        if non_zero_phases.size == 0:
+            return 0.0, 0.0
+        mean_phase_vector = np.mean(non_zero_phases)
+
+        # La coherencia es la magnitud del vector promedio
+        coherence = float(np.abs(mean_phase_vector))
+
+        # La fase dominante es el ángulo del vector promedio
+        dominant_phase = float(np.angle(mean_phase_vector))
+
+        return coherence, dominant_phase
+
+    def _delegate_phase_synchronization_task(
+        self, region_identifier: str, target_phase: float
+    ):
+        """
+        Delega una tarea de sincronización de fase a Harmony Controller.
+
+        Esta función envía una solicitud a un endpoint especializado en Harmony
+        Controller para que inicie un bucle de control PID enfocado en la fase.
+
+        **Descripción para Harmony Controller:**
+        Al recibir esta solicitud, Harmony Controller debe:
+        1. Instanciar o reconfigurar un controlador PID para la fase.
+        2. Setpoint (SP): `target_phase` (la fase objetivo en radianes).
+        3. Process Variable (PV): La 'fase dominante' actual de la `region_identifier`,
+           que deberá leer periódicamente de `matriz_ecu`.
+        4. Control Output: El resultado del PID será un escalar. Este escalar debe
+           ser usado para construir un vector de influencia complejo. Por ejemplo,
+           `influencia = complex(magnitud_fija, pid_output)`, donde `magnitud_fija`
+           es un valor pequeño y `pid_output` ajusta la fase de la influencia
+           para corregir el error de fase en la región.
+        5. Esta influencia compleja se debe enviar a `matriz_ecu.aplicar_influencia()`.
+        """
+        task_url = f"{self.central_urls['harmony_controller']}/api/tasks/phase_sync"
+        payload = {
+            "region_identifier": region_identifier,
+            "target_phase": target_phase,
+            "task_type": "phase_synchronization",
+        }
+
+        logger.info(
+            "Delegando tarea de sincronización para '%s' a fase %.3f rad a HC...",
+            region_identifier,
+            target_phase,
+        )
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                response = requests.post(
+                    task_url, json=payload, timeout=REQUESTS_TIMEOUT
+                )
+                response.raise_for_status()
+                logger.info(
+                    "Tarea de sincronización de fase delegada exitosamente a HC."
+                )
+                return
+            except Exception as e:
+                logger.error(
+                    "Error al delegar tarea a HC (intento %s/%s): %s",
+                    attempt + 1,
+                    MAX_RETRIES,
+                    e,
+                )
+                if attempt < MAX_RETRIES - 1:
+                    delay = BASE_RETRY_DELAY * (2 ** attempt)
+                    time.sleep(delay)
+        logger.error(
+            "No se pudo delegar la tarea de sincronización de fase a HC tras %s intentos.",
+            MAX_RETRIES,
+        )
+
+    def find_resonant_frequency(self, region_identifier: str) -> Optional[float]:
+        """
+        Determina la frecuencia de resonancia para una región dada.
+
+        En una implementación real, esto debería consultar a `matriz_ecu` para
+        obtener el parámetro `alpha` de la capa correspondiente.
+        Por ahora, simularemos este proceso. La frecuencia de resonancia es
+        directamente proporcional a alpha.
+
+        Args:
+            region_identifier (str): El identificador de la región (ej. "capa_0").
+
+        Returns:
+            Optional[float]: La frecuencia de resonancia (alpha), o None si no se puede determinar.
+        """
+        # Simulación: En un caso real, esto sería una llamada API a la ECU.
+        # Por ejemplo: `self._get_ecu_parameter(region_identifier, 'alpha')`
+        # Asumimos un `alpha` de 0.5 para la capa 0 como en el default de matriz_ecu.
+        if region_identifier == "capa_0":
+            alpha = 0.5
+            logger.info(
+                "Frecuencia de resonancia (alpha) para '%s' es %.3f.",
+                region_identifier,
+                alpha,
+            )
+            return alpha
+        logger.warning(
+            "No se pudo determinar la frecuencia de resonancia para '%s'.",
+            region_identifier,
+        )
+        return None
+
+    def _delegate_resonance_task(
+        self, region_identifier: str, resonant_frequency: float
+    ):
+        """
+        Delega una tarea de excitación por resonancia a Harmony Controller.
+        """
+        task_url = f"{self.central_urls['harmony_controller']}/api/tasks/resonance"
+        payload = {
+            "region_identifier": region_identifier,
+            "resonant_frequency": resonant_frequency,
+            "task_type": "resonance_excitation",
+        }
+
+        logger.info(
+            "Delegando tarea de resonancia para '%s' a frecuencia %.3f Hz a HC...",
+            region_identifier,
+            resonant_frequency,
+        )
+
+        # La lógica de envío es idéntica a la de sincronización de fase
+        for attempt in range(MAX_RETRIES):
+            try:
+                response = requests.post(
+                    task_url, json=payload, timeout=REQUESTS_TIMEOUT
+                )
+                response.raise_for_status()
+                logger.info("Tarea de resonancia delegada exitosamente a HC.")
+                return
+            except Exception as e:
+                logger.error(
+                    "Error al delegar tarea de resonancia a HC (intento %s/%s): %s",
+                    attempt + 1,
+                    MAX_RETRIES,
+                    e,
+                )
+                if attempt < MAX_RETRIES - 1:
+                    delay = BASE_RETRY_DELAY * (2 ** attempt)
+                    time.sleep(delay)
+        logger.error(
+            "No se pudo delegar la tarea de resonancia a HC tras %s intentos.",
+            MAX_RETRIES,
+        )
+
 
     def _determine_harmony_setpoint(
         self,
