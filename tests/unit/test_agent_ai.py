@@ -1610,6 +1610,51 @@ class TestAgentAI(unittest.TestCase):
         self.assertNotIn("naturaleza_auxiliar", mod_central)
         self.assertEqual(mod_central["estado_salud"], "error_timeout")
 
+    # --- Tests para Nuevas Funcionalidades de Coherencia ---
+    def test_calculate_coherence(
+        self, mock_get_logger, mock_validate, mock_check_deps, mock_requests
+    ):
+        """
+        Verifica la lógica de cálculo de coherencia y fase dominante.
+        """
+        # Caso 1: Campo perfectamente coherente
+        coherent_field = np.array([1+0j, 2+0j, 3+0j], dtype=np.complex128)
+        coherence, phase = self.agent.calculate_coherence(coherent_field)
+        self.assertAlmostEqual(coherence, 1.0, places=7)
+        self.assertAlmostEqual(phase, 0.0, places=7)
+
+        # Caso 2: Campo con fase coherente a PI/4
+        coherent_field_pi4 = np.array([1+1j, 2+2j], dtype=np.complex128)
+        coherence, phase = self.agent.calculate_coherence(coherent_field_pi4)
+        self.assertAlmostEqual(coherence, 1.0, places=7)
+        self.assertAlmostEqual(phase, np.pi/4, places=7)
+
+        # Caso 3: Dos clusters opuestos (coherencia cero)
+        opposed_field = np.array([1+0j, -1+0j], dtype=np.complex128)
+        coherence, phase = self.agent.calculate_coherence(opposed_field)
+        self.assertAlmostEqual(coherence, 0.0, places=7)
+        # La fase es inestable/arbitraria, pero a menudo será pi o 0
+        # dependiendo de pequeñas imprecisiones. No la testeamos aquí.
+
+        # Caso 4: Campo aleatorio (coherencia cercana a cero)
+        np.random.seed(42)
+        random_angles = np.random.uniform(0, 2 * np.pi, 1000)
+        random_field = np.exp(1j * random_angles)
+        coherence, phase = self.agent.calculate_coherence(random_field)
+        self.assertLess(coherence, 0.1)
+
+        # Caso 5: Campo vacío
+        empty_field = np.array([], dtype=np.complex128)
+        coherence, phase = self.agent.calculate_coherence(empty_field)
+        self.assertAlmostEqual(coherence, 0.0, places=7)
+        self.assertAlmostEqual(phase, 0.0, places=7)
+
+        # Caso 6: Campo con magnitudes cero
+        mixed_field = np.array([1+0j, 0+0j, 2+0j], dtype=np.complex128)
+        coherence, phase = self.agent.calculate_coherence(mixed_field)
+        self.assertAlmostEqual(coherence, 1.0, places=7)
+        self.assertAlmostEqual(phase, 0.0, places=7)
+
 
 if __name__ == "__main__":
     unittest.main()

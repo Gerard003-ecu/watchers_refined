@@ -28,6 +28,7 @@ import requests
 import numpy as np
 import os
 import json
+import uuid
 from flask import Flask, jsonify, request
 from typing import Dict, List, Any, Optional
 
@@ -278,6 +279,264 @@ class HarmonyControllerState:
 
 
 controller_state = HarmonyControllerState()
+
+
+# --- Task Management ---
+class TaskManager:
+    """Gestiona tareas de larga duración en hilos separados."""
+
+    def __init__(self):
+        self.tasks: Dict[str, Dict[str, Any]] = {}
+        self.lock = threading.Lock()
+
+    def start_task(self, target_func, args_tuple: tuple) -> str:
+        """Inicia una nueva tarea en un hilo."""
+        task_id = str(uuid.uuid4())
+        stop_event = threading.Event()
+
+        thread = threading.Thread(
+            target=target_func,
+            args=(task_id, stop_event) + args_tuple,
+            daemon=True,
+            name=f"Task-{target_func.__name__}-{task_id[:8]}",
+        )
+
+        with self.lock:
+            self.tasks[task_id] = {
+                "thread": thread,
+                "status": "running",
+                "stop_event": stop_event,
+            }
+
+        thread.start()
+        logger.info("Iniciada tarea '%s' (%s)", task_id, target_func.__name__)
+        return task_id
+
+    def get_task_status(self, task_id: str) -> str:
+        """Devuelve el estado de una tarea."""
+        with self.lock:
+            task = self.tasks.get(task_id)
+            if not task:
+                return "not_found"
+
+            if task["status"] == "running" and not task["thread"].is_alive():
+                # El hilo terminó por su cuenta (completado, fallido, etc.)
+                # La función de la tarea es responsable de establecer el estado final.
+                # Si no lo hizo, lo marcamos como "unknown_completed".
+                if self.tasks[task_id].get("final_status"):
+                    task["status"] = self.tasks[task_id]["final_status"]
+                else:
+                    task["status"] = "unknown_completed"
+
+
+            return task["status"]
+
+    def update_task_status(self, task_id: str, status: str):
+        """Actualiza el estado de una tarea. Llamado por la propia tarea."""
+        with self.lock:
+            if task_id in self.tasks:
+                self.tasks[task_id]["status"] = status
+                # Guardamos el estado final por si se consulta después de que el hilo muera
+                self.tasks[task_id]["final_status"] = status
+                logger.info("Estado de la tarea '%s' actualizado a: %s", task_id, status)
+
+
+    def abort_task(self, task_id: str) -> str:
+        """Solicita la detención de una tarea en ejecución."""
+        with self.lock:
+            task = self.tasks.get(task_id)
+            if not task:
+                return "not_found"
+            if task["status"] != "running":
+                return "not_running"
+
+            task["stop_event"].set()
+            self.update_task_status(task_id, "aborting")
+            logger.info("Enviada señal de aborto a la tarea '%s'", task_id)
+            return "abort_sent"
+
+task_manager = TaskManager()
+
+
+# --- Placeholders y Utilitidades para Tareas ---
+
+def get_field_from_ecu(region: str) -> Optional[np.ndarray]:
+    """
+    Placeholder para obtener el campo de números complejos de la ECU para una región.
+    En una implementación real, esto haría una llamada a la API de matriz_ecu.
+    """
+    logger.info("[TASK_UTIL] Solicitando campo de la ECU para la región: %s", region)
+    # Simulación: Devolvemos un campo aleatorio de 10x10
+    # con una fase dominante alrededor de 1.0 radianes para pruebas.
+    rng = np.random.default_rng()
+    base_angles = rng.normal(loc=1.0, scale=0.5, size=(10, 10))
+    magnitudes = rng.uniform(0.8, 1.2, size=(10, 10))
+    return magnitudes * np.exp(1j * base_angles)
+
+def apply_influence_to_ecu(region: str, vector: complex):
+    """
+    Placeholder para aplicar una influencia (un vector complejo) a la ECU.
+    En una implementación real, esto haría una llamada a la API de matriz_ecu.
+    """
+    logger.info(
+        "[TASK_UTIL] Aplicando influencia a la región '%s': vector=%s",
+        region,
+        f"{vector.real:.3f}{vector.imag:+.3f}j"
+    )
+    # No hace nada más que loguear.
+    pass
+
+def calculate_dominant_phase(field: np.ndarray) -> float:
+    """
+    Calcula el ángulo (en radianes) de la suma de todos los vectores complejos
+    en un campo. Esto representa la "fase dominante" del campo.
+    """
+    if field.size == 0:
+        return 0.0
+
+    # Sumar todos los vectores complejos
+    sum_vector = np.sum(field)
+
+    # Calcular el ángulo del vector resultante
+    # np.angle devuelve el ángulo en el rango [-pi, pi]
+    return float(np.angle(sum_vector))
+
+
+def run_phase_sync_task(
+    task_id: str,
+    stop_event: threading.Event,
+    target_phase: float,
+    region: str,
+    pid_gains: Dict[str, float],
+    tolerance: float,
+    timeout: float,
+):
+    """Lógica de la tarea para la sincronización de fase."""
+    logger.info(
+        "[%s] Iniciando tarea de sincronización de fase para la región '%s' "
+        "hacia %.3f rad.",
+        task_id, region, target_phase
+    )
+    start_time = time.time()
+
+    # PID simple para esta tarea
+    p, i, d = pid_gains.get('p', 0.5), pid_gains.get('i', 0.1), pid_gains.get('d', 0.02)
+    integral = 0
+    last_error = 0
+
+    control_interval = pid_gains.get('control_interval', 1.0)  # 1 segundo por ciclo de control
+
+    while not stop_event.is_set():
+        # 0. Comprobar si la tarea ha sido abortada
+        if stop_event.is_set():
+            break
+
+        # 1. Comprobar timeout
+        if time.time() - start_time > timeout:
+            logger.warning("[%s] Timeout alcanzado (%.1fs).", task_id, timeout)
+            task_manager.update_task_status(task_id, "timed_out")
+            return
+
+        # 2. Obtener estado actual
+        field = get_field_from_ecu(region)
+        if field is None:
+            logger.error("[%s] No se pudo obtener el campo de la ECU. Reintentando...", task_id)
+            time.sleep(control_interval)
+            continue
+
+        # 3. Calcular fase actual y error
+        current_phase = calculate_dominant_phase(field)
+        error = target_phase - current_phase
+
+        # Manejar el salto de -pi a pi
+        if error > np.pi:
+            error -= 2 * np.pi
+        elif error < -np.pi:
+            error += 2 * np.pi
+
+        # 4. Comprobar condición de éxito
+        if abs(error) < tolerance:
+            logger.info(
+                "[%s] Sincronización de fase completada. Error %.4f < Tol %.4f.",
+                task_id, abs(error), tolerance
+            )
+            task_manager.update_task_status(task_id, "completed")
+            return
+
+        # 5. Calcular salida del PID
+        integral += error * control_interval
+        derivative = (error - last_error) / control_interval
+        last_error = error
+
+        control_output = (p * error) + (i * integral) + (d * derivative)
+
+        # 6. Aplicar influencia
+        # La influencia es un vector complejo. Usamos la salida del control
+        # para ajustar la fase de una influencia de magnitud constante.
+        influence_vector = 1.0 * np.exp(1j * control_output)
+        apply_influence_to_ecu(region, influence_vector)
+
+        logger.debug(
+            "[%s] Fase actual: %.3f, Error: %.3f, Salida PID: %.3f",
+            task_id, current_phase, error, control_output
+        )
+
+        # 7. Esperar
+        stop_event.wait(control_interval)
+
+    logger.info("[%s] La tarea de sincronización de fase fue abortada.", task_id)
+    task_manager.update_task_status(task_id, "aborted")
+
+
+def run_resonance_task(
+    task_id: str,
+    stop_event: threading.Event,
+    frequency: float,
+    amplitude: float,
+    duration: float,
+    region: str,
+):
+    """Lógica de la tarea para la amplificación por resonancia."""
+    logger.info(
+        "[%s] Iniciando tarea de resonancia en '%s' (Freq: %.2f Hz, Amp: %.2f, Dur: %.1fs)",
+        task_id, region, frequency, amplitude, duration
+    )
+    start_time = time.time()
+
+    if frequency <= 0:
+        logger.error("[%s] La frecuencia debe ser positiva.", task_id)
+        task_manager.update_task_status(task_id, "failed")
+        return
+
+    pulse_interval = 1.0 / frequency
+    next_pulse_time = start_time
+
+    while not stop_event.is_set():
+        current_time = time.time()
+
+        # 1. Comprobar fin de la duración
+        if current_time - start_time >= duration:
+            logger.info("[%s] Duración de la resonancia completada.", task_id)
+            task_manager.update_task_status(task_id, "completed")
+            return
+
+        # 2. Aplicar pulso si es el momento
+        if current_time >= next_pulse_time:
+            # Aplicar un pulso con la amplitud y una fase constante (e.g., 0)
+            influence_vector = complex(amplitude, 0)
+            apply_influence_to_ecu(region, influence_vector)
+            logger.debug("[%s] Pulso de resonancia aplicado.", task_id)
+
+            # Calcular el momento del siguiente pulso
+            next_pulse_time += pulse_interval
+
+        # 3. Esperar un breve momento para no saturar la CPU
+        # La espera debe ser mucho más corta que el intervalo de pulso
+        sleep_time = min(pulse_interval / 10, 0.05)
+        stop_event.wait(sleep_time)
+
+    logger.info("[%s] La tarea de resonancia fue abortada.", task_id)
+    task_manager.update_task_status(task_id, "aborted")
 
 
 def get_ecu_state() -> Optional[List[List[float]]]:
@@ -813,6 +1072,79 @@ def reset_pid():
         return jsonify({
             "status": "error", "message": "Error interno del servidor."
         }), 500
+
+
+@app.route("/tasks/phase_sync", methods=["POST"])
+def start_phase_sync_task():
+    """Inicia una tarea de sincronización de fase."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "Payload JSON vacío."}), 400
+
+    required = ["target_phase", "region", "pid_gains", "tolerance", "timeout"]
+    if not all(k in data for k in required):
+        return jsonify({"status": "error", "message": "Faltan parámetros requeridos."}), 400
+
+    try:
+        task_id = task_manager.start_task(
+            run_phase_sync_task,
+            (
+                float(data["target_phase"]),
+                str(data["region"]),
+                dict(data["pid_gains"]),
+                float(data["tolerance"]),
+                float(data["timeout"]),
+            ),
+        )
+        return jsonify({"status": "success", "task_id": task_id}), 202
+    except (ValueError, TypeError) as e:
+        return jsonify({"status": "error", "message": f"Parámetros inválidos: {e}"}), 400
+
+
+@app.route("/tasks/resonate", methods=["POST"])
+def start_resonance_task():
+    """Inicia una tarea de resonancia."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "Payload JSON vacío."}), 400
+
+    required = ["frequency", "amplitude", "duration", "region"]
+    if not all(k in data for k in required):
+        return jsonify({"status": "error", "message": "Faltan parámetros requeridos."}), 400
+
+    try:
+        task_id = task_manager.start_task(
+            run_resonance_task,
+            (
+                float(data["frequency"]),
+                float(data["amplitude"]),
+                float(data["duration"]),
+                str(data["region"]),
+            ),
+        )
+        return jsonify({"status": "success", "task_id": task_id}), 202
+    except (ValueError, TypeError) as e:
+        return jsonify({"status": "error", "message": f"Parámetros inválidos: {e}"}), 400
+
+
+@app.route("/tasks/status/<task_id>", methods=["GET"])
+def get_task_status_api(task_id: str):
+    """Devuelve el estado de una tarea específica."""
+    status = task_manager.get_task_status(task_id)
+    if status == "not_found":
+        return jsonify({"status": "error", "message": "Tarea no encontrada."}), 404
+    return jsonify({"status": "success", "task_id": task_id, "task_status": status}), 200
+
+
+@app.route("/tasks/abort/<task_id>", methods=["POST"])
+def abort_task_api(task_id: str):
+    """Solicita la detención de una tarea en ejecución."""
+    result = task_manager.abort_task(task_id)
+    if result == "not_found":
+        return jsonify({"status": "error", "message": "Tarea no encontrada."}), 404
+    if result == "not_running":
+        return jsonify({"status": "success", "message": "La tarea no estaba en ejecución."}), 200
+    return jsonify({"status": "success", "message": "Señal de aborto enviada."}), 200
 
 
 def main():
