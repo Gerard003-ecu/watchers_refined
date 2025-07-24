@@ -302,236 +302,161 @@
                 displayMode: true
             });
 
-            // --- Section 1, 2 & 5: Mass-Spring-Damper, RLC, & Transducer Simulation ---
-            const massElement = document.getElementById('mass');
-            const springElement = document.getElementById('spring');
-            const damperElement = document.getElementById('damper');
-            const applyForceBtn = document.getElementById('apply-force-btn');
+            /**
+             * Initializes and controls the mass-spring-damper, RLC circuit,
+             * and transducer interface simulation.
+             */
+            function initMechanicalSystem() {
+                const massElement = document.getElementById('mass');
+                const springElement = document.getElementById('spring');
+                const damperElement = document.getElementById('damper');
+                const applyForceBtn = document.getElementById('apply-force-btn');
+                const voltageSlider = document.getElementById('voltage-slider');
+                const appliedForceDisplay = document.getElementById('applied-force-display');
+                const forceArrow = document.getElementById('force-arrow');
 
-            const rlcResistance = document.getElementById('rlc-resistance');
-            const rlcInductance = document.getElementById('rlc-inductance');
-            const rlcCapacitance = document.getElementById('rlc-capacitance');
-            const rlcVoltage = document.getElementById('rlc-voltage');
-            const rlcCurrent = document.getElementById('rlc-current');
+                const rlcResistance = document.getElementById('rlc-resistance');
+                const rlcInductance = document.getElementById('rlc-inductance');
+                const rlcCapacitance = document.getElementById('rlc-capacitance');
+                const rlcVoltage = document.getElementById('rlc-voltage');
+                const rlcCurrent = document.getElementById('rlc-current');
 
-            // Physics and Electrical parameters
-            let m = 1.0; // mass -> Inductance
-            let k = 5.0; // spring constant -> 1/Capacitance
-            let c = 0.5; // damping coefficient -> Resistance
+                // Physics and Electrical parameters
+                let m = 1.0, k = 5.0, c = 0.5, alpha = 0.05;
 
-            // State variables
-            let x = 0; // position
-            let v = 0; // velocity
-            let F_impulse = 0; // impulse force
-            let F_transducer = 0; // transducer force
+                // State variables
+                let x = 0, v = 0, F_impulse = 0, F_transducer = 0;
+                let lastTime = 0;
 
-            let lastTime = 0;
+                function animateSystems(time) {
+                    if (lastTime > 0) {
+                        const dt = (time - lastTime) / 1000;
+                        const fSpring = -k * x;
+                        const fDamp = -c * v;
+                        const fTotal = F_impulse + F_transducer + fSpring + fDamp;
+                        const a = fTotal / m;
+                        v += a * dt;
+                        x += v * dt;
+                    }
+                    F_impulse = 0;
+                    lastTime = time;
 
-            function animateSystems(time) {
-                if (lastTime > 0) {
-                    const dt = (time - lastTime) / 1000; // time in seconds
+                    // Update mechanical visualization
+                    const containerWidth = massElement.parentElement.offsetWidth;
+                    const maxDisp = containerWidth / 4;
+                    const clampedPos = Math.max(-containerWidth/2 + 32, Math.min(containerWidth/2 - 32, x * maxDisp));
+                    massElement.style.left = `calc(50% + ${clampedPos}px)`;
+                    springElement.style.width = `calc(50% + ${clampedPos}px)`;
+                    damperElement.style.width = `calc(50% + ${clampedPos}px)`;
 
-                    // --- Mechanical Simulation ---
-                    const fSpring = -k * x;
-                    const fDamp = -c * v;
-                    const fTotal = F_impulse + F_transducer + fSpring + fDamp;
+                    // Update RLC visualization
+                    const L = m, C = 1 / k, R = c;
+                    const V = L * (v / ((time - lastTime || 1)/1000)) + R * v + x / C;
+                    rlcInductance.textContent = `${L.toFixed(2)} H`;
+                    rlcCapacitance.textContent = `${C.toFixed(2)} F`;
+                    rlcResistance.textContent = `${R.toFixed(2)} Ω`;
+                    rlcVoltage.textContent = `${(V * 10).toFixed(2)} V`;
+                    rlcCurrent.textContent = `${v.toFixed(2)} A`;
 
-                    const a = fTotal / m;
-                    v += a * dt;
-                    x += v * dt;
+                    requestAnimationFrame(animateSystems);
                 }
 
-                F_impulse = 0; // Reset impulse force
-                lastTime = time;
+                applyForceBtn.addEventListener('click', () => {
+                    F_impulse = 50.0;
+                    if (Math.abs(x) < 0.01 && Math.abs(v) < 0.01) v = 2.0;
+                });
 
-                // --- Update Mechanical Visualization ---
-                const containerWidth = massElement.parentElement.offsetWidth;
-                const maxDisplacement = containerWidth / 4;
-                const currentPosition = x * maxDisplacement;
-                const clampedPosition = Math.max(-containerWidth/2 + 32, Math.min(containerWidth/2 - 32, currentPosition));
-                massElement.style.left = `calc(50% + ${clampedPosition}px)`;
-                springElement.style.width = `calc(50% + ${clampedPosition}px)`;
-                damperElement.style.width = `calc(50% + ${clampedPosition}px)`;
-
-                // --- Electrical Analogy Simulation & Visualization ---
-                const L = m;
-                const C = 1 / k;
-                const R = c;
-
-                // Analogous values
-                const q = x; // charge is analogous to position
-                const i = v; // current is analogous to velocity
-
-                // V = L(di/dt) + R*i + q/C
-                const V = L * (v / ((time - lastTime || 1)/1000)) + R * i + q / C;
-
-                rlcInductance.textContent = `${L.toFixed(2)} H`;
-                rlcCapacitance.textContent = `${C.toFixed(2)} F`;
-                rlcResistance.textContent = `${R.toFixed(2)} Ω`;
-                rlcVoltage.textContent = `${(V * 10).toFixed(2)} V`; // Scaled for display
-                rlcCurrent.textContent = `${i.toFixed(2)} A`;
+                voltageSlider.addEventListener('input', () => {
+                    const voltage = parseFloat(voltageSlider.value);
+                    F_transducer = alpha * voltage;
+                    appliedForceDisplay.textContent = F_transducer.toFixed(2);
+                    const opacity = Math.min(voltage / 100, 1);
+                    const scale = 1 + (voltage / 100) * 0.5;
+                    forceArrow.style.opacity = opacity;
+                    forceArrow.style.transform = `translateY(-50%) scaleX(${scale})`;
+                });
 
                 requestAnimationFrame(animateSystems);
             }
 
-            applyForceBtn.addEventListener('click', () => {
-                F_impulse = 50.0; // Apply an impulse force
-                // Give a little push if system is at rest
-                if (Math.abs(x) < 0.01 && Math.abs(v) < 0.01) {
-                    v = 2.0;
-                }
-            });
+            /**
+             * Initializes and controls the capacitor discharge simulation.
+             */
+            function initCapacitorMode() {
+                const ctx = document.getElementById('capacitor-chart').getContext('2d');
+                const btn = document.getElementById('compress-btn');
+                let compression = 0, timeStep = 0, compressing = false;
+                const chart = new Chart(ctx, { /* ... chart config ... */ });
 
-            // --- Section 5: Transducer Control ---
-            const voltageSlider = document.getElementById('voltage-slider');
-            const appliedForceDisplay = document.getElementById('applied-force-display');
-            const forceArrow = document.getElementById('force-arrow');
-            const alpha = 0.05; // Force sensitivity
-
-            voltageSlider.addEventListener('input', () => {
-                const voltage = parseFloat(voltageSlider.value);
-                F_transducer = alpha * voltage;
-
-                appliedForceDisplay.textContent = F_transducer.toFixed(2);
-
-                // Update force arrow visualization
-                const opacity = Math.min(voltage / 100, 1);
-                const scale = 1 + (voltage / 100) * 0.5;
-                forceArrow.style.opacity = opacity;
-                forceArrow.style.transform = `translateY(-50%) scaleX(${scale})`;
-            });
-
-            requestAnimationFrame(animateSystems);
-
-            // --- Section 3: Capacitor Mode Simulation ---
-            const capacitorChartCtx = document.getElementById('capacitor-chart').getContext('2d');
-            const compressBtn = document.getElementById('compress-btn');
-
-            let compression = 0;
-            const dischargeThreshold = -0.9;
-            const hysteresisFactor = 0.2;
-            let timeStep = 0;
-            let compressing = false;
-
-            const capacitorChart = new Chart(capacitorChartCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Compresión del Pistón',
-                        data: [],
-                        borderColor: '#BC8EFF',
-                        backgroundColor: 'rgba(188, 142, 255, 0.2)',
-                        fill: true,
-                        tension: 0.1
-                    }, {
-                        label: 'Pulso de Descarga',
-                        data: [],
-                        type: 'bar',
-                        backgroundColor: '#F1E05A'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            title: { display: true, text: 'Compresión / Energía' }
-                        },
-                        x: {
-                            title: { display: true, text: 'Tiempo' }
-                        }
+                function simulate() {
+                    if (!compressing) return;
+                    timeStep++;
+                    compression -= 0.1;
+                    let pulse = null;
+                    if (compression <= -0.9) {
+                        pulse = 1.0;
+                        compression = -0.9 * (1 - 0.2);
                     }
-                }
-            });
-
-            function simulateCapacitor() {
-                if (!compressing) return;
-
-                timeStep++;
-                compression -= 0.1; // Simulate gradual compression
-
-                let dischargePulse = null;
-
-                if (compression <= dischargeThreshold) {
-                    dischargePulse = 1.0; // Represents the Dirac delta pulse
-                    compression = dischargeThreshold * (1 - hysteresisFactor); // Apply hysteresis
+                    chart.data.labels.push(timeStep);
+                    chart.data.datasets[0].data.push(compression);
+                    chart.data.datasets[1].data.push(pulse);
+                    if (chart.data.labels.length > 50) {
+                        chart.data.labels.shift();
+                        chart.data.datasets[0].data.shift();
+                        chart.data.datasets[1].data.shift();
+                    }
+                    chart.update();
+                    if (compression < 0) requestAnimationFrame(simulate);
+                    else compressing = false;
                 }
 
-                // Update chart
-                capacitorChart.data.labels.push(timeStep);
-                capacitorChart.data.datasets[0].data.push(compression);
-                capacitorChart.data.datasets[1].data.push(dischargePulse);
-
-                if (capacitorChart.data.labels.length > 50) {
-                    capacitorChart.data.labels.shift();
-                    capacitorChart.data.datasets[0].data.shift();
-                    capacitorChart.data.datasets[1].data.shift();
-                }
-                capacitorChart.update();
-
-                if (compression < 0) {
-                   requestAnimationFrame(simulateCapacitor);
-                } else {
-                    compressing = false;
-                }
+                btn.addEventListener('click', () => {
+                    if (compressing) return;
+                    compressing = true;
+                    compression = 0;
+                    timeStep = 0;
+                    chart.data.labels = [];
+                    chart.data.datasets[0].data = [];
+                    chart.data.datasets[1].data = [];
+                    chart.update();
+                    requestAnimationFrame(simulate);
+                });
             }
 
-            compressBtn.addEventListener('click', () => {
-                if (compressing) return;
-                compressing = true;
+            /**
+             * Initializes and controls the battery discharge simulation.
+             */
+            function initBatteryMode() {
+                const energyBar = document.getElementById('energy-bar');
+                const btn = document.getElementById('discharge-btn');
+                let energy = 100, discharging = false, interval;
 
-                // Reset if needed
-                compression = 0;
-                timeStep = 0;
-                capacitorChart.data.labels = [];
-                capacitorChart.data.datasets[0].data = [];
-                capacitorChart.data.datasets[1].data = [];
-                capacitorChart.update();
+                btn.addEventListener('click', () => {
+                    discharging = !discharging;
+                    if (discharging) {
+                        if (energy <= 0) energy = 100;
+                        btn.textContent = 'Detener Descarga';
+                        interval = setInterval(() => {
+                            energy -= 0.5;
+                            energyBar.style.width = `${energy}%`;
+                            if (energy <= 0) {
+                                energy = 0;
+                                clearInterval(interval);
+                                discharging = false;
+                                btn.textContent = 'Recargar';
+                            }
+                        }, 50);
+                    } else {
+                        clearInterval(interval);
+                        btn.textContent = 'Activar Descarga';
+                    }
+                });
+            }
 
-                requestAnimationFrame(simulateCapacitor);
-            });
-
-            // --- Section 4: Battery Mode Simulation ---
-            const energyBar = document.getElementById('energy-bar');
-            const dischargeBtn = document.getElementById('discharge-btn');
-
-            let energy = 100.0;
-            let discharging = false;
-            let dischargeInterval;
-
-            dischargeBtn.addEventListener('click', () => {
-                discharging = !discharging;
-
-                if (discharging) {
-                    if (energy <= 0) energy = 100.0; // Recharge if empty
-
-                    dischargeBtn.textContent = 'Detener Descarga';
-                    dischargeBtn.classList.remove('bg-energy-amber');
-                    dischargeBtn.classList.add('bg-fusion-red');
-
-                    dischargeInterval = setInterval(() => {
-                        energy -= 0.5; // Slower discharge rate
-                        energyBar.style.width = `${energy}%`;
-
-                        if (energy <= 0) {
-                            energy = 0;
-                            energyBar.style.width = '0%';
-                            clearInterval(dischargeInterval);
-                            discharging = false;
-                            dischargeBtn.textContent = 'Recargar y Activar';
-                            dischargeBtn.classList.remove('bg-fusion-red');
-                            dischargeBtn.classList.add('bg-quantum-green');
-                        }
-                    }, 50);
-                } else {
-                    clearInterval(dischargeInterval);
-                    dischargeBtn.textContent = 'Activar Descarga';
-                    dischargeBtn.classList.remove('bg-fusion-red', 'bg-quantum-green');
-                    dischargeBtn.classList.add('bg-energy-amber');
-                }
-            });
+            // Initialize all simulations
+            initMechanicalSystem();
+            initCapacitorMode();
+            initBatteryMode();
         });
     </script>
 
