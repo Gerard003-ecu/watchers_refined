@@ -386,7 +386,33 @@
                 const ctx = document.getElementById('capacitor-chart').getContext('2d');
                 const btn = document.getElementById('compress-btn');
                 let compression = 0, timeStep = 0, compressing = false;
-                const chart = new Chart(ctx, { /* ... chart config ... */ });
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Compresión del Pistón',
+                            data: [],
+                            borderColor: '#BC8EFF',
+                            backgroundColor: 'rgba(188, 142, 255, 0.2)',
+                            fill: true,
+                            tension: 0.1
+                        }, {
+                            label: 'Pulso de Descarga',
+                            data: [],
+                            type: 'bar',
+                            backgroundColor: '#F1E05A'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: false, title: { display: true, text: 'Compresión / Energía' } },
+                            x: { title: { display: true, text: 'Tiempo' } }
+                        }
+                    }
+                });
 
                 function simulate() {
                     if (!compressing) return;
