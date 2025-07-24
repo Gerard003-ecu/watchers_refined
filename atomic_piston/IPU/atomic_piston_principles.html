@@ -1,505 +1,192 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Principios del Pistón Atómico - White Paper Técnico</title>
-
-    <!-- Tailwind & Icons -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=JetBrains+Mono:wght@400..600&display=swap" rel="stylesheet">
-
-    <!-- KaTeX for Math Rendering -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css" integrity="sha384-Xi8rHCmBmhbuyyhbI88391ZKP2dmfnOl4rT9ZfRI76E" crossorigin="anonymous">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js" integrity="sha384-X/XCfMm41YSis/zmddXhX72ihOCFDxDYUPm_bAroSYNXjoe63U4LvyT2stIHO5fT" crossorigin="anonymous"></script>
-
-    <!-- Chart.js for Visualizations -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Tailwind Config -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'atomic-blue': '#58A6FF',
-                        'energy-amber': '#F1E05A',
-                        'plasma-purple': '#BC8EFF',
-                        'quantum-teal': '#39D3BB',
-                        'dark-matter': '#0D1117',
-                        'slate-900': '#10141a',
-                        'slate-800': '#161B22',
-                        'slate-700': '#21262D',
-                        'slate-400': '#8B949E',
-                        'slate-200': '#F0F6FC',
-                        'fusion-red': '#FF7B72',
-                        'quantum-green': '#238636'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace']
-                    }
-                }
-            }
-        };
-    </script>
-
-    <style>
-        body {
-            background-color: var(--dark-matter);
-            color: var(--slate-200);
-            font-family: 'Inter', sans-serif;
-        }
-        .quantum-card {
-            background: linear-gradient(145deg, rgba(31, 41, 55, 0.4), rgba(15, 20, 30, 0.6));
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--slate-700);
-            border-radius: 1rem;
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
-            position: relative;
-            overflow: hidden;
-        }
-        .quantum-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 30px rgba(88, 166, 255, 0.1);
-            border-color: var(--atomic-blue);
-        }
-        .katex-display {
-            padding: 1rem;
-            background-color: var(--slate-800);
-            border-radius: 0.5rem;
-            border: 1px solid var(--slate-700);
-            overflow-x: auto;
-        }
-    </style>
+  <meta charset="UTF-8"/>
+  <title>Atomic Piston Playground</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root {
+      --bg: #111827;
+      --card: #1f2937;
+      --accent: #3b82f6;
+      --text: #e5e7eb;
+    }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    header { text-align: center; padding: 2rem 1rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; padding: 1rem; }
+    .card { background: var(--card); border-radius: 8px; padding: 1.2rem; display: flex; flex-direction: column; }
+    h3 { margin-top: 0; color: var(--accent); }
+    label { margin: .3rem 0 .1rem; font-size: .9rem; }
+    input[type=range] { width: 100%; }
+    button { margin-top: .5rem; padding: .5rem 1rem; border: none; border-radius: 4px; background: var(--accent); color: #fff; cursor: pointer; }
+    .output { flex: 1; font-family: monospace; overflow: auto; max-height: 180px; background: #0003; padding: .5rem; border-radius: 4px; margin-top: .5rem; }
+  </style>
 </head>
-<body class="bg-dark-matter text-slate-200 antialiased">
+<body>
+<header>
+  <h1><i class="fas fa-cog"></i> Atomic Piston Playground</h1>
+  <p>Interactive demonstrations powered by <code>atomic_piston_v2.py</code> (server-side)</p>
+</header>
 
-    <!-- Header -->
-    <header class="bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-700">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-quantum-teal to-atomic-blue flex items-center justify-center">
-                    <i class="fas fa-atom text-white text-2xl"></i>
-                </div>
-                <h1 class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-quantum-teal to-atomic-blue">
-                    Pistón Atómico
-                </h1>
-            </div>
-        </div>
-    </header>
+<section class="grid">
+  <!-- 1. Circuit Equivalent -->
+  <div class="card">
+    <h3>Circuit Equivalent</h3>
+    <label>Capacitance (F)</label>
+    <input type="range" min="0.1" max="10" step="0.1" value="1" id="cap"/>
+    <label>Inductance (H)</label>
+    <input type="range" min="0.1" max="10" step="0.1" value="1" id="ind"/>
+    <label>Resistance (Ω)</label>
+    <input type="range" min="0.1" max="100" step="1" value="10" id="res"/>
+    <button onclick="calcCircuit()">Compute</button>
+    <div id="circuit-out" class="output"></div>
+  </div>
 
-    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <!-- Main Title -->
-        <div class="text-center mb-16">
-            <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
-                Los Principios Físicos de la Unidad de Potencia Inteligente (IPU)
-            </h2>
-            <p class="max-w-3xl mx-auto text-lg text-slate-400">
-                Un desglose del modelo físico-matemático que impulsa la simulación del "Pistón Atómico".
-            </p>
-        </div>
+  <!-- 2. Capacitor Mode -->
+  <div class="card">
+    <h3>Capacitor Discharge</h3>
+    <button onclick="fireCapacitor()">Trigger Pulse</button>
+    <div id="capacitor-out" class="output"></div>
+  </div>
 
-        <!-- Section 1: Mass-Spring-Damper -->
-        <section id="mass-spring-damper" class="mb-20">
-            <div class="quantum-card p-6 md:p-8">
-                <h3 class="text-2xl font-bold text-atomic-blue mb-4">1. El Modelo Físico Fundamental (Masa-Resorte-Amortiguador)</h3>
-                <p class="text-slate-400 mb-6">
-                    El corazón del pistón se modela como un oscilador armónico amortiguado. Este sistema es la base para describir cómo la energía se almacena (en el resorte) y se disipa (por el amortiguador). La ecuación diferencial de segundo orden gobierna el movimiento del sistema bajo una fuerza externa F(t).
-                </p>
-                <div class="text-center mb-6">
-                    <div id="eq-mass-spring" class="text-2xl"></div>
-                </div>
-                <div class="relative h-64 bg-slate-900 rounded-lg overflow-hidden border border-slate-700 p-4">
-                    <div id="force-arrow" class="absolute top-1/2 -translate-y-1/2 text-fusion-red text-4xl" style="left: 10px; opacity: 0; transition: opacity 0.3s;">
-                        <i class="fas fa-long-arrow-alt-right"></i>
-                    </div>
-                    <div id="mass" class="absolute top-1/2 left-1/2 w-16 h-16 bg-atomic-blue rounded-md shadow-lg" style="transform: translate(-50%, -50%);"></div>
-                    <div id="spring" class="absolute top-1/2 h-2 bg-quantum-teal" style="left: 0; transform: translateY(-50%);"></div>
-                    <div id="damper" class="absolute top-1/2 mt-4 h-4 bg-fusion-red/50" style="left: 0; transform: translateY(-50%);"></div>
-                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2">
-                        <button id="apply-force-btn" class="px-4 py-2 bg-quantum-teal text-white font-semibold rounded-lg hover:bg-quantum-teal/80 transition">Aplicar Fuerza de Impulso</button>
-                    </div>
-                </div>
-            </div>
-        </section>
+  <!-- 3. Battery Mode -->
+  <div class="card">
+    <h3>Battery Mode</h3>
+    <label>Discharge Rate (%/s)</label>
+    <input type="range" min="1" max="10" value="5" id="bat-rate"/>
+    <button onclick="toggleBattery()">Start / Stop</button>
+    <div id="battery-out" class="output"></div>
+  </div>
 
-        <!-- Section 2: RLC Circuit -->
-        <section id="rlc-circuit" class="mb-20">
-            <div class="quantum-card p-6 md:p-8">
-                <h3 class="text-2xl font-bold text-quantum-teal mb-4">2. El Circuito Eléctrico Equivalente (Analogía RLC)</h3>
-                <p class="text-slate-400 mb-6">
-                    Existe una poderosa analogía entre los sistemas mecánicos y los circuitos eléctricos. Cada componente mecánico del pistón tiene un correspondiente eléctrico, lo que nos permite analizar y diseñar el sistema desde una perspectiva de ingeniería eléctrica.
-                </p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <h4 class="font-semibold text-lg text-slate-300 mb-2">Correspondencias:</h4>
-                        <ul class="text-slate-400 space-y-2">
-                            <li><span class="font-mono text-energy-amber">Masa (m)</span> ↔ <span class="font-mono text-energy-amber">Inductancia (L)</span></li>
-                            <li><span class="font-mono text-energy-amber">Rigidez (k)</span> ↔ <span class="font-mono text-energy-amber">Elastancia (1/C)</span></li>
-                            <li><span class="font-mono text-energy-amber">Amortiguación (c)</span> ↔ <span class="font-mono text-energy-amber">Resistencia (R)</span></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-lg text-slate-300 mb-2">Ecuación del Circuito RLC:</h4>
-                        <div id="eq-rlc" class="text-2xl"></div>
-                    </div>
-                </div>
-                <div class="mt-8 p-4 bg-slate-900 rounded-lg border border-slate-700">
-                    <div class="flex items-center justify-around text-center">
-                        <!-- Resistor -->
-                        <div class="flex flex-col items-center">
-                            <span class="font-mono text-sm text-fusion-red">R</span>
-                            <div class="w-16 h-8 border-y-2 border-fusion-red flex items-center justify-center">
-                                <i class="fas fa-arrows-alt-h text-fusion-red"></i>
-                            </div>
-                            <span id="rlc-resistance" class="font-mono text-sm text-slate-400 mt-1">0.0 Ω</span>
-                        </div>
-                        <!-- Inductor -->
-                        <div class="flex flex-col items-center">
-                            <span class="font-mono text-sm text-atomic-blue">L</span>
-                            <div class="w-16 h-8 flex items-center justify-center">
-                                <i class="fas fa-wave-square text-3xl text-atomic-blue"></i>
-                            </div>
-                            <span id="rlc-inductance" class="font-mono text-sm text-slate-400 mt-1">0.0 H</span>
-                        </div>
-                        <!-- Capacitor -->
-                        <div class="flex flex-col items-center">
-                            <span class="font-mono text-sm text-quantum-teal">C</span>
-                            <div class="w-16 h-8 flex items-center justify-center text-quantum-teal">
-                                <div class="w-1 h-8 bg-current"></div>
-                                <div class="w-4"></div>
-                                <div class="w-1 h-8 bg-current"></div>
-                            </div>
-                            <span id="rlc-capacitance" class="font-mono text-sm text-slate-400 mt-1">0.0 F</span>
-                        </div>
-                    </div>
-                    <div class="mt-4 text-center">
-                         <p class="text-slate-300">Voltaje: <span id="rlc-voltage" class="font-mono text-energy-amber">0.00 V</span></p>
-                         <p class="text-slate-300">Corriente: <span id="rlc-current" class="font-mono text-energy-amber">0.00 A</span></p>
-                    </div>
-                </div>
-            </div>
-        </section>
+  <!-- 4. Step Response -->
+  <div class="card">
+    <h3>Step Response</h3>
+    <label>Force (N)</label>
+    <input type="range" min="0" max="50" value="10" id="step-force"/>
+    <label>Duration (s)</label>
+    <input type="range" min="0.5" max="10" step="0.5" value="2" id="step-dur"/>
+    <button onclick="runStep()">Simulate</button>
+    <canvas id="step-canvas" width="300" height="180"></canvas>
+  </div>
 
-        <!-- Section 3: Capacitor Mode -->
-        <section id="capacitor-mode" class="mb-20">
-            <div class="quantum-card p-6 md:p-8">
-                <h3 class="text-2xl font-bold text-plasma-purple mb-4">3. Modo Capacitor (Descarga de Pulso Rápido)</h3>
-                <p class="text-slate-400 mb-6">
-                    En este modo, la energía potencial se acumula mediante la compresión del pistón. Al cruzar un umbral predefinido, la energía se libera en un pulso rápido y potente. Se utiliza un mecanismo de histéresis para evitar oscilaciones no deseadas (rebotes) justo después de la descarga.
-                </p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <h4 class="font-semibold text-lg text-slate-300 mb-2">Condición de Descarga:</h4>
-                        <div id="eq-capacitor-discharge" class="text-xl"></div>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-lg text-slate-300 mb-2">Rebote de Histéresis:</h4>
-                        <div id="eq-capacitor-hysteresis" class="text-xl"></div>
-                    </div>
-                </div>
-                <div class="mt-8 p-4 bg-slate-900 rounded-lg border border-slate-700">
-                    <div class="h-80">
-                        <canvas id="capacitor-chart"></canvas>
-                    </div>
-                    <div class="text-center mt-4">
-                        <button id="compress-btn" class="px-4 py-2 bg-plasma-purple text-white font-semibold rounded-lg hover:bg-plasma-purple/80 transition">Comprimir Pistón</button>
-                    </div>
-                </div>
-            </div>
-        </section>
+  <!-- 5. Impulse Response -->
+  <div class="card">
+    <h3>Impulse Response</h3>
+    <label>Impulse (N·s)</label>
+    <input type="range" min="0" max="5" step="0.1" value="1" id="impulse-mag"/>
+    <button onclick="runImpulse()">Simulate</button>
+    <canvas id="impulse-canvas" width="300" height="180"></canvas>
+  </div>
 
-        <!-- Section 4: Battery Mode -->
-        <section id="battery-mode" class="mb-20">
-            <div class="quantum-card p-6 md:p-8">
-                <h3 class="text-2xl font-bold text-energy-amber mb-4">4. Modo Batería (Descarga Sostenida)</h3>
-                <p class="text-slate-400 mb-6">
-                    A diferencia del pulso instantáneo, el modo batería permite una descarga de energía controlada y continua. Mientras haya energía almacenada, se libera a una tasa constante, ideal para aplicaciones que requieren una fuente de alimentación estable en el tiempo.
-                </p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <h4 class="font-semibold text-lg text-slate-300 mb-2">Potencia de Salida:</h4>
-                        <div id="eq-battery-power" class="text-xl"></div>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-lg text-slate-300 mb-2">Energía Restante:</h4>
-                        <div id="eq-battery-energy" class="text-xl"></div>
-                    </div>
-                </div>
-                <div class="mt-8 p-4 bg-slate-900 rounded-lg border border-slate-700">
-                    <div class="w-full bg-slate-700 rounded-full h-8_">
-                        <div id="energy-bar" class="bg-energy-amber h-8 rounded-full" style="width: 100%;"></div>
-                    </div>
-                    <div class="text-center mt-4">
-                        <button id="discharge-btn" class="px-4 py-2 bg-energy-amber text-slate-900 font-semibold rounded-lg hover:bg-energy-amber/80 transition">Activar Descarga</button>
-                    </div>
-                </div>
-            </div>
-        </section>
+  <!-- 6. Bode Plot -->
+  <div class="card">
+    <h3>Bode Plot</h3>
+    <label>Start Freq (Hz)</label>
+    <input type="range" min="0.01" max="1" step="0.01" value="0.1" id="bode-start"/>
+    <label>End Freq (Hz)</label>
+    <input type="range" min="1" max="100" step="1" value="10" id="bode-end"/>
+    <button onclick="drawBode()">Generate</button>
+    <canvas id="bode-canvas" width="300" height="180"></canvas>
+  </div>
+</section>
 
-        <!-- Section 5: Transducer Interface -->
-        <section id="transducer-interface" class="mb-20">
-            <div class="quantum-card p-6 md:p-8">
-                <h3 class="text-2xl font-bold text-fusion-red mb-4">5. Interfaz de Transducción (Conversión Electromecánica)</h3>
-                <p class="text-slate-400 mb-6">
-                    El transductor es el puente entre el mundo eléctrico y el mecánico. Convierte una señal eléctrica de entrada (voltaje) en una fuerza mecánica que actúa sobre el pistón. La relación se modela comúnmente como una simple proporcionalidad lineal, definida por un coeficiente de sensibilidad.
-                </p>
-                <div class="text-center mb-6">
-                    <div id="eq-transducer" class="text-2xl"></div>
-                </div>
-                <div class="mt-8 p-4 bg-slate-900 rounded-lg border border-slate-700">
-                    <div class="flex flex-col items-center">
-                        <label for="voltage-slider" class="mb-2 text-slate-300">Voltaje de Entrada (V)</label>
-                        <input id="voltage-slider" type="range" min="0" max="100" value="0" class="w-1/2">
-                        <p class="mt-2 font-mono text-energy-amber">Fuerza Aplicada: <span id="applied-force-display">0.00</span> N</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
+<script>
+/* ---------- Helper: call backend ---------- */
+async function api(method, params = {}) {
+  const url = `/api/${method}?${new URLSearchParams(params)}`;
+  const r = await fetch(url);
+  return r.json();
+}
 
-    <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-400 mt-12 border-t border-slate-800">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm">
-            <p>&copy; 2024 - White Paper Técnico del Pistón Atómico.</p>
-        </div>
-    </footer>
+/* ---------- 1. Circuit Equivalent ---------- */
+function calcCircuit() {
+  const C = document.getElementById('cap').value;
+  const L = document.getElementById('ind').value;
+  const R = document.getElementById('res').value;
+  api('circuit', {C, L, R}).then(res => {
+    document.getElementById('circuit-out').textContent =
+      `Resonant freq: ${res.f0.toFixed(2)} Hz\nQ factor: ${res.Q.toFixed(2)}`;
+  });
+}
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Render Math Equations with KaTeX
-            katex.render('m \\frac{d^2x}{dt^2} + c \\frac{dx}{dt} + kx = F(t)', document.getElementById('eq-mass-spring'), {
-                throwOnError: false,
-                displayMode: true
-            });
-            katex.render('L \\frac{d^2q}{dt^2} + R \\frac{dq}{dt} + \\frac{1}{C}q = V(t)', document.getElementById('eq-rlc'), {
-                throwOnError: false,
-                displayMode: true
-            });
-            katex.render('P_{salida} = \\delta(t) E_{almacenada}', document.getElementById('eq-capacitor-discharge'), {
-                throwOnError: false,
-                displayMode: true
-            });
-            katex.render('x(t^+) = x_{umbral}(1-h)', document.getElementById('eq-capacitor-hysteresis'), {
-                throwOnError: false,
-                displayMode: true
-            });
-            katex.render('P_{salida}(t) = P_{tasa}', document.getElementById('eq-battery-power'), {
-                throwOnError: false,
-                displayMode: true
-            });
-            katex.render('\\frac{dE}{dt} = -P_{tasa}', document.getElementById('eq-battery-energy'), {
-                throwOnError: false,
-                displayMode: true
-            });
-            katex.render('F_{aplicada} = \\alpha V_{entrada}', document.getElementById('eq-transducer'), {
-                throwOnError: false,
-                displayMode: true
-            });
+/* ---------- 2. Capacitor Mode ---------- */
+function fireCapacitor() {
+  api('capacitor_fire').then(res => {
+    document.getElementById('capacitor-out').textContent =
+      `Pulse amplitude: ${res.amplitude.toFixed(2)} m\nDuration: ${res.duration.toFixed(3)} s`;
+  });
+}
 
-            /**
-             * Initializes and controls the mass-spring-damper, RLC circuit,
-             * and transducer interface simulation.
-             */
-            function initMechanicalSystem() {
-                const massElement = document.getElementById('mass');
-                const springElement = document.getElementById('spring');
-                const damperElement = document.getElementById('damper');
-                const applyForceBtn = document.getElementById('apply-force-btn');
-                const voltageSlider = document.getElementById('voltage-slider');
-                const appliedForceDisplay = document.getElementById('applied-force-display');
-                const forceArrow = document.getElementById('force-arrow');
+/* ---------- 3. Battery Mode ---------- */
+let batteryInterval = null;
+function toggleBattery() {
+  const btn = event.target;
+  if (batteryInterval) {
+    clearInterval(batteryInterval);
+    batteryInterval = null;
+    btn.textContent = 'Start';
+    api('battery_stop');
+  } else {
+    const rate = document.getElementById('bat-rate').value;
+    api('battery_start', {rate});
+    batteryInterval = setInterval(() => {
+      api('battery_status').then(res => {
+        document.getElementById('battery-out').textContent =
+          `Discharging: ${res.remaining.toFixed(2)} % left`;
+      });
+    }, 1000);
+    btn.textContent = 'Stop';
+  }
+}
 
-                const rlcResistance = document.getElementById('rlc-resistance');
-                const rlcInductance = document.getElementById('rlc-inductance');
-                const rlcCapacitance = document.getElementById('rlc-capacitance');
-                const rlcVoltage = document.getElementById('rlc-voltage');
-                const rlcCurrent = document.getElementById('rlc-current');
+/* ---------- 4. Step Response ---------- */
+async function runStep() {
+  const force = document.getElementById('step-force').value;
+  const dur  = document.getElementById('step-dur').value;
+  const data = await api('step', {force, duration: dur, dt: 0.01});
+  drawTimePlot('step-canvas', data.time, data.position, 'Position (m)');
+}
 
-                // Physics and Electrical parameters
-                let m = 1.0, k = 5.0, c = 0.5, alpha = 0.05;
+/* ---------- 5. Impulse Response ---------- */
+async function runImpulse() {
+  const mag = document.getElementById('impulse-mag').value;
+  const data = await api('impulse', {magnitude: mag, duration: 5, dt: 0.01});
+  drawTimePlot('impulse-canvas', data.time, data.position, 'Position (m)');
+}
 
-                // State variables
-                let x = 0, v = 0, F_impulse = 0, F_transducer = 0;
-                let lastTime = 0;
+/* ---------- 6. Bode Plot ---------- */
+async function drawBode() {
+  const f0 = parseFloat(document.getElementById('bode-start').value);
+  const f1 = parseFloat(document.getElementById('bode-end').value);
+  const freq = [];
+  for (let f = f0; f <= f1; f *= 1.2) freq.push(f);
+  const data = await api('bode', {freq});
+  drawBodePlot('bode-canvas', data.frequencies, data.magnitude, data.phase);
+}
 
-                function animateSystems(time) {
-                    if (lastTime > 0) {
-                        const dt = (time - lastTime) / 1000;
-                        const fSpring = -k * x;
-                        const fDamp = -c * v;
-                        const fTotal = F_impulse + F_transducer + fSpring + fDamp;
-                        const a = fTotal / m;
-                        v += a * dt;
-                        x += v * dt;
-                    }
-                    F_impulse = 0;
-                    lastTime = time;
+/* ---------- Canvas helpers ---------- */
+function drawTimePlot(canvasId, t, y, yLabel) {
+  const cvs = document.getElementById(canvasId);
+  const ctx = cvs.getContext('2d');
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  ctx.strokeStyle='#3b82f6';
+  ctx.beginPath();
+  const dx = cvs.width / t.length;
+  const scale = cvs.height / (Math.max(...y) - Math.min(...y) || 1);
+  y.forEach((v,i)=>ctx.lineTo(i*dx, cvs.height/2 - v*scale));
+  ctx.stroke();
+}
 
-                    // Update mechanical visualization
-                    const containerWidth = massElement.parentElement.offsetWidth;
-                    const maxDisp = containerWidth / 4;
-                    const clampedPos = Math.max(-containerWidth/2 + 32, Math.min(containerWidth/2 - 32, x * maxDisp));
-                    massElement.style.left = `calc(50% + ${clampedPos}px)`;
-                    springElement.style.width = `calc(50% + ${clampedPos}px)`;
-                    damperElement.style.width = `calc(50% + ${clampedPos}px)`;
-
-                    // Update RLC visualization
-                    const L = m, C = 1 / k, R = c;
-                    const V = L * (v / ((time - lastTime || 1)/1000)) + R * v + x / C;
-                    rlcInductance.textContent = `${L.toFixed(2)} H`;
-                    rlcCapacitance.textContent = `${C.toFixed(2)} F`;
-                    rlcResistance.textContent = `${R.toFixed(2)} Ω`;
-                    rlcVoltage.textContent = `${(V * 10).toFixed(2)} V`;
-                    rlcCurrent.textContent = `${v.toFixed(2)} A`;
-
-                    requestAnimationFrame(animateSystems);
-                }
-
-                applyForceBtn.addEventListener('click', () => {
-                    F_impulse = 50.0;
-                    if (Math.abs(x) < 0.01 && Math.abs(v) < 0.01) v = 2.0;
-                });
-
-                voltageSlider.addEventListener('input', () => {
-                    const voltage = parseFloat(voltageSlider.value);
-                    F_transducer = alpha * voltage;
-                    appliedForceDisplay.textContent = F_transducer.toFixed(2);
-                    const opacity = Math.min(voltage / 100, 1);
-                    const scale = 1 + (voltage / 100) * 0.5;
-                    forceArrow.style.opacity = opacity;
-                    forceArrow.style.transform = `translateY(-50%) scaleX(${scale})`;
-                });
-
-                requestAnimationFrame(animateSystems);
-            }
-
-            /**
-             * Initializes and controls the capacitor discharge simulation.
-             */
-            function initCapacitorMode() {
-                const ctx = document.getElementById('capacitor-chart').getContext('2d');
-                const btn = document.getElementById('compress-btn');
-                let compression = 0, timeStep = 0, compressing = false;
-                // FIX: Completed the Chart.js configuration object.
-                const chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: 'Compresión del Pistón',
-                            data: [],
-                            borderColor: '#BC8EFF',
-                            backgroundColor: 'rgba(188, 142, 255, 0.2)',
-                            fill: true,
-                            tension: 0.4,
-                            yAxisID: 'y'
-                        }, {
-                            label: 'Pulso de Descarga',
-                            data: [],
-                            type: 'bar',
-                            backgroundColor: '#F1E05A',
-                            yAxisID: 'y1'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                type: 'linear',
-                                display: true,
-                                position: 'left',
-                                title: { display: true, text: 'Compresión' }
-                            },
-                            y1: {
-                                type: 'linear',
-                                display: true,
-                                position: 'right',
-                                title: { display: true, text: 'Descarga' },
-                                grid: { drawOnChartArea: false }
-                            },
-                            x: { title: { display: true, text: 'Tiempo' } }
-                        }
-                    }
-                });
-
-                function simulate() {
-                    if (!compressing) return;
-                    timeStep++;
-                    compression -= 0.1;
-                    let pulse = null;
-                    if (compression <= -0.9) {
-                        pulse = 1.0;
-                        compression = -0.9 * (1 - 0.2);
-                    }
-                    chart.data.labels.push(timeStep);
-                    chart.data.datasets[0].data.push(compression);
-                    chart.data.datasets[1].data.push(pulse);
-                    if (chart.data.labels.length > 50) {
-                        chart.data.labels.shift();
-                        chart.data.datasets[0].data.shift();
-                        chart.data.datasets[1].data.shift();
-                    }
-                    chart.update();
-                    if (compression < 0) requestAnimationFrame(simulate);
-                    else compressing = false;
-                }
-
-                btn.addEventListener('click', () => {
-                    if (compressing) return;
-                    compressing = true;
-                    compression = 0;
-                    timeStep = 0;
-                    chart.data.labels = [];
-                    chart.data.datasets[0].data = [];
-                    chart.data.datasets[1].data = [];
-                    chart.update();
-                    requestAnimationFrame(simulate);
-                });
-            }
-
-            /**
-             * Initializes and controls the battery discharge simulation.
-             */
-            function initBatteryMode() {
-                const energyBar = document.getElementById('energy-bar');
-                const btn = document.getElementById('discharge-btn');
-                let energy = 100, discharging = false, interval;
-
-                btn.addEventListener('click', () => {
-                    discharging = !discharging;
-                    if (discharging) {
-                        if (energy <= 0) energy = 100;
-                        btn.textContent = 'Detener Descarga';
-                        interval = setInterval(() => {
-                            energy -= 0.5;
-                            energyBar.style.width = `${energy}%`;
-                            if (energy <= 0) {
-                                energy = 0;
-                                clearInterval(interval);
-                                discharging = false;
-                                btn.textContent = 'Recargar';
-                            }
-                        }, 50);
-                    } else {
-                        clearInterval(interval);
-                        btn.textContent = 'Activar Descarga';
-                    }
-                });
-            }
-
-            // Initialize all simulations
-            initMechanicalSystem();
-            initCapacitorMode();
-            initBatteryMode();
-        });
-    </script>
-
+function drawBodePlot(canvasId, f, mag, phase) {
+  const cvs = document.getElementById(canvasId);
+  const ctx = cvs.getContext('2d');
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  ctx.strokeStyle='#3b82f6';
+  ctx.beginPath();
+  const dx = cvs.width / f.length;
+  mag.forEach((v,i)=>ctx.lineTo(i*dx, cvs.height - (v+60)*1.5));
+  ctx.stroke();
+}
+</script>
 </body>
 </html>
