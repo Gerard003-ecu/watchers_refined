@@ -386,6 +386,7 @@
                 const ctx = document.getElementById('capacitor-chart').getContext('2d');
                 const btn = document.getElementById('compress-btn');
                 let compression = 0, timeStep = 0, compressing = false;
+                // FIX: Completed the Chart.js configuration object.
                 const chart = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -396,19 +397,33 @@
                             borderColor: '#BC8EFF',
                             backgroundColor: 'rgba(188, 142, 255, 0.2)',
                             fill: true,
-                            tension: 0.1
+                            tension: 0.4,
+                            yAxisID: 'y'
                         }, {
                             label: 'Pulso de Descarga',
                             data: [],
                             type: 'bar',
-                            backgroundColor: '#F1E05A'
+                            backgroundColor: '#F1E05A',
+                            yAxisID: 'y1'
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            y: { beginAtZero: false, title: { display: true, text: 'Compresión / Energía' } },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Compresión' }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'Descarga' },
+                                grid: { drawOnChartArea: false }
+                            },
                             x: { title: { display: true, text: 'Tiempo' } }
                         }
                     }
