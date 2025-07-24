@@ -321,27 +321,28 @@
                 const rlcVoltage = document.getElementById('rlc-voltage');
                 const rlcCurrent = document.getElementById('rlc-current');
 
-                // Physics and Electrical parameters
-                let m = 1.0, k = 5.0, c = 0.5, alpha = 0.05;
-
-                // State variables
-                let x = 0, v = 0, F_impulse = 0, F_transducer = 0;
+                // Parámetros físicos
+                const m = 1.0, k = 5.0, c = 0.5, alpha = 0.05;
+                let x = 0, v = 0, a = 0; // Estado inicial
+                let F_impulse = 0, F_transducer = 0;
                 let lastTime = 0;
 
                 function animateSystems(time) {
-                    if (lastTime > 0) {
-                        const dt = (time - lastTime) / 1000;
-                        const fSpring = -k * x;
-                        const fDamp = -c * v;
-                        const fTotal = F_impulse + F_transducer + fSpring + fDamp;
-                        const a = fTotal / m;
-                        v += a * dt;
-                        x += v * dt;
-                    }
-                    F_impulse = 0;
+                    if (!lastTime) lastTime = time;
+                    const dt = Math.min(0.1, (time - lastTime) / 1000); // Prevenir dt grandes
+
+                    // Cálculos de física
+                    const fSpring = -k * x;
+                    const fDamp = -c * v;
+                    const fTotal = F_impulse + F_transducer + fSpring + fDamp;
+                    a = fTotal / m;  // Almacenar aceleración para RLC
+                    v += a * dt;
+                    x += v * dt;
+
+                    F_impulse = 0;  // Resetear fuerza de impulso
                     lastTime = time;
 
-                    // Update mechanical visualization
+                    // Actualizar visualización mecánica
                     const containerWidth = massElement.parentElement.offsetWidth;
                     const maxDisp = containerWidth / 4;
                     const clampedPos = Math.max(-containerWidth/2 + 32, Math.min(containerWidth/2 - 32, x * maxDisp));
@@ -349,13 +350,13 @@
                     springElement.style.width = `calc(50% + ${clampedPos}px)`;
                     damperElement.style.width = `calc(50% + ${clampedPos}px)`;
 
-                    // Update RLC visualization
+                    // Actualizar visualización RLC (usando aceleración real)
                     const L = m, C = 1 / k, R = c;
-                    const V = L * (v / ((time - lastTime || 1)/1000)) + R * v + x / C;
+                    const V = L * a + R * v + (1/C) * x;  // Corregido: usar aceleración
                     rlcInductance.textContent = `${L.toFixed(2)} H`;
                     rlcCapacitance.textContent = `${C.toFixed(2)} F`;
                     rlcResistance.textContent = `${R.toFixed(2)} Ω`;
-                    rlcVoltage.textContent = `${(V * 10).toFixed(2)} V`;
+                    rlcVoltage.textContent = `${V.toFixed(2)} V`;
                     rlcCurrent.textContent = `${v.toFixed(2)} A`;
 
                     requestAnimationFrame(animateSystems);
@@ -363,6 +364,7 @@
 
                 applyForceBtn.addEventListener('click', () => {
                     F_impulse = 50.0;
+                    // Dar un pequeño empujón inicial si está en reposo
                     if (Math.abs(x) < 0.01 && Math.abs(v) < 0.01) v = 2.0;
                 });
 
@@ -370,12 +372,15 @@
                     const voltage = parseFloat(voltageSlider.value);
                     F_transducer = alpha * voltage;
                     appliedForceDisplay.textContent = F_transducer.toFixed(2);
+
+                    // Animación de flecha de fuerza
                     const opacity = Math.min(voltage / 100, 1);
                     const scale = 1 + (voltage / 100) * 0.5;
                     forceArrow.style.opacity = opacity;
                     forceArrow.style.transform = `translateY(-50%) scaleX(${scale})`;
                 });
 
+                // Iniciar bucle de animación
                 requestAnimationFrame(animateSystems);
             }
 
@@ -386,28 +391,85 @@
                 const ctx = document.getElementById('capacitor-chart').getContext('2d');
                 const btn = document.getElementById('compress-btn');
                 let compression = 0, timeStep = 0, compressing = false;
-                const chart = new Chart(ctx, { /* ... chart config ... */ });
+
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Compresión del Pistón',
+                            data: [],
+                            borderColor: '#BC8EFF',
+                            backgroundColor: 'rgba(188, 142, 255, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                        }, {
+                            label: 'Pulso de Descarga',
+                            data: [],
+                            borderColor: '#F1E05A',
+                            backgroundColor: 'rgba(241, 224, 90, 0.5)',
+                            borderWidth: 2,
+                            stepped: true,
+                            fill: true,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                display: false,
+                            },
+                            y: {
+                                beginAtZero: true,
+                                suggestedMin: -1.2,
+                                suggestedMax: 1.2,
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#8B949E'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#F0F6FC'
+                                }
+                            }
+                        }
+                    }
+                });
 
                 function simulate() {
                     if (!compressing) return;
                     timeStep++;
-                    compression -= 0.1;
+                    compression += 0.05;
+
                     let pulse = null;
-                    if (compression <= -0.9) {
+                    if (compression >= 1) {
                         pulse = 1.0;
-                        compression = -0.9 * (1 - 0.2);
+                        compression = 1 * (1 - 0.4);
                     }
+
                     chart.data.labels.push(timeStep);
                     chart.data.datasets[0].data.push(compression);
                     chart.data.datasets[1].data.push(pulse);
-                    if (chart.data.labels.length > 50) {
+
+                    if (chart.data.labels.length > 100) {
                         chart.data.labels.shift();
                         chart.data.datasets[0].data.shift();
                         chart.data.datasets[1].data.shift();
                     }
                     chart.update();
-                    if (compression < 0) requestAnimationFrame(simulate);
-                    else compressing = false;
+
+                    if (compression < 1) {
+                        requestAnimationFrame(simulate);
+                    } else {
+                        compressing = false;
+                    }
                 }
 
                 btn.addEventListener('click', () => {
@@ -429,26 +491,36 @@
             function initBatteryMode() {
                 const energyBar = document.getElementById('energy-bar');
                 const btn = document.getElementById('discharge-btn');
-                let energy = 100, discharging = false, interval;
+                let energy = 100, discharging = false, lastTime = 0;
+
+                function discharge(time) {
+                    if (!discharging) return;
+
+                    if (!lastTime) lastTime = time;
+                    const dt = (time - lastTime) / 1000;
+                    lastTime = time;
+
+                    energy = Math.max(0, energy - dt * 20);
+                    energyBar.style.width = `${energy}%`;
+
+                    if (energy > 0) {
+                        requestAnimationFrame(discharge);
+                    } else {
+                        discharging = false;
+                        btn.textContent = 'Recargar';
+                    }
+                }
 
                 btn.addEventListener('click', () => {
-                    discharging = !discharging;
                     if (discharging) {
-                        if (energy <= 0) energy = 100;
-                        btn.textContent = 'Detener Descarga';
-                        interval = setInterval(() => {
-                            energy -= 0.5;
-                            energyBar.style.width = `${energy}%`;
-                            if (energy <= 0) {
-                                energy = 0;
-                                clearInterval(interval);
-                                discharging = false;
-                                btn.textContent = 'Recargar';
-                            }
-                        }, 50);
-                    } else {
-                        clearInterval(interval);
+                        discharging = false;
                         btn.textContent = 'Activar Descarga';
+                    } else {
+                        if (energy <= 0) energy = 100;
+                        discharging = true;
+                        lastTime = 0;
+                        btn.textContent = 'Detener Descarga';
+                        requestAnimationFrame(discharge);
                     }
                 });
             }
