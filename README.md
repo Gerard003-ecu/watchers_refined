@@ -93,15 +93,23 @@ Una simulación perfecta es raramente interesante. Nuestro sistema, al igual que
 -   **Analogía de Defectos:** Las advertencias que a veces genera `verify_connectivity()` sobre celdas con menos de 6 vecinos no son errores, sino análogos de **defectos cristalinos** en un material real, como **vacancias** (un átomo faltante) o **dislocaciones** (una imperfección en la red).
 -   **Propiedades Emergentes:** Estos "defectos" en nuestro metamaterial digital son cruciales. Al igual que en el grafeno real, pueden alterar drásticamente las propiedades locales de propagación de ondas (señales), creando barreras, canales preferenciales o puntos de dispersión. Esto permite diseñar o estudiar mallas con propiedades de transporte de información altamente personalizadas, simplemente introduciendo "defectos" de manera controlada.
 
-#### Patrones de Voronoi para la Integridad Digital
+#### Las `Cells` como Átomos y Celdas de Voronoi
 
-Para garantizar la integridad y optimizar las interacciones espaciales, `Malla Watcher` utiliza teselación de Voronoi a través del método `compute_voronoi_neighbors()`. Este método:
+Cada `Cell` en nuestra malla no es simplemente un punto, sino el **"sitio" o "semilla" de una celda de Voronoi**. Un diagrama de Voronoi es una teselación del espacio que divide un plano en regiones basadas en la proximidad a un conjunto de sitios. Cada región, o celda de Voronoi, contiene todos los puntos del espacio que están más cerca de su sitio que de cualquier otro.
 
-1.  Proyecta la malla 3D en un plano 2D.
-2.  Calcula los polígonos de Voronoi para cada nodo.
-3.  Asigna como vecinos a todas las celdas que comparten una arista de Voronoi.
+*   **Mapeo a nuestro código:**
+    *   En una red hexagonal perfecta, la celda de Voronoi de cada `Cell` es, de hecho, un **hexágono regular**. Esto representa un "átomo" con su área de influencia perfectamente definida y equilibrada.
+    *   El "estado" de una `Cell` (`amplitude`, `velocity`, `q_vector`) puede ser interpretado como una propiedad promedio sobre toda su región de Voronoi, representando el estado electrónico local en esa área de influencia.
 
-Esto proporciona una definición de vecindad más robusta, especialmente en los bordes y en mallas con irregularidades, garantizando que las influencias se propaguen de manera físicamente coherente.
+#### Integridad Estructural y Defectos a través de Voronoi
+
+La integridad estructural de nuestro metamaterial digital puede ser analizada rigurosamente a través de la regularidad de su diagrama de Voronoi. El método `compute_voronoi_neighbors()` nos proporciona esta herramienta de análisis.
+
+*   **Mapeo a nuestro código:**
+    *   Las advertencias sobre celdas con conectividad imperfecta (menos de 6 vecinos) se manifiestan en el diagrama de Voronoi como **celdas de forma irregular** (pentágonos, heptágonos, etc.).
+    *   Esto es directamente análogo a los **defectos cristalinos** en el grafeno real, como los famosos **defectos de Stone-Wales**, que se describen teóricamente como la aparición de pares de pentágonos y heptágonos en la red hexagonal.
+
+En conclusión, el análisis de Voronoi nos proporciona una herramienta matemática rigurosa para cuantificar la "salud" o la "calidad" de nuestra estructura digital. Una estructura con celdas de Voronoi muy uniformes y hexagonales es "cristalina" y de alta calidad, mientras que una con muchas irregularidades es "amorfa" o defectuosa, con implicaciones directas en cómo las señales se propagan a través de ella.
 
 ### 🌌 Matriz ECU (El Campo de Interacción)
 
