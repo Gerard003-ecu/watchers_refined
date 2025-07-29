@@ -63,13 +63,35 @@ Donde:
 - `D`: **Coeficiente de amortiguación local**, controlado por la clase `Electron`. Representa la disipación de energía.
 - `C`: **Coeficiente de acoplamiento** con los osciladores vecinos `j`, controlado por la clase `PhosWave`. Este coeficiente es modulado por el campo local de la ECU, creando una interacción rica entre la malla y su entorno.
 
-#### Integración de `cilindro_grafenal`
+#### `cilindro_grafenal`: Un Metamaterial Digital Programable
 
-La estructura física de la malla es generada y mantenida por el script `cilindro_grafenal.py`, que contiene la clase `HexCylindricalMesh`. Sus responsabilidades clave son:
+El módulo `cilindro_grafenal` y su clase `HexCylindricalMesh` no deben ser vistos como una simple estructura de datos, sino como un **metamaterial digital**: un sustrato programable cuyas propiedades estructurales y dinámicas están inspiradas directamente en la física de la materia condensada de materiales avanzados como el grafeno y los nanotubos de carbono.
 
-- **`__init__(...)`**: Construye la malla hexagonal sobre una superficie cilíndrica, calculando las posiciones de cada `Cell` en coordenadas axiales y cilíndricas.
-- **`get_neighbor_cells(q, r)`**: Identifica los vecinos directos de una celda en la topología hexagonal, fundamental para la ecuación de acoplamiento.
-- **`verify_connectivity()`**: Realiza una auditoría de la integridad estructural de la malla, asegurando que no haya celdas aisladas y que la mayoría tenga una conectividad ideal (6 vecinos).
+##### 1. La Malla Hexagonal como Red Cristalina
+
+La estructura fundamental de nuestra malla, un patrón de panal de abejas de nodos interconectados, es una representación directa de la **red cristalina del grafeno**. En el material real, cada nodo es un átomo de carbono con hibridación sp², la disposición que le confiere sus extraordinarias propiedades.
+
+-   **Analogía en el código:** El parámetro `hex_size` de nuestro constructor es el análogo digital de la **constante de red** del grafeno, definiendo la escala fundamental de la estructura.
+
+##### 2. Las `Cells` como Átomos y Orbitales Cuánticos
+
+Cada `Cell` individual en la malla es más que un punto en una grilla; es el análogo de un **átomo de carbono** en la red.
+
+-   **Estado de la `Cell`:** Los atributos de una `Cell` (`amplitude`, `velocity`, `q_vector`) son una representación abstracta del **estado electrónico local** de ese átomo. Específicamente, se inspiran en los **orbitales π** del grafeno, que se deslocalizan a través de la red y son responsables de su excepcional conductividad eléctrica. El estado de nuestras `Cells` dicta cómo la "energía" o la "información" se propaga a través de nuestro metamaterial digital.
+
+##### 3. El Enrollado del Cilindro y la Quiralidad Digital
+
+El proceso de generar la malla como una estructura cilíndrica es análogo a enrollar una hoja de grafeno 2D para formar un **nanotubo de carbono**.
+
+-   **Quiralidad:** En los nanotubos reales, el ángulo en el que se enrolla la hoja (el **ángulo quiral**) es un parámetro crítico que determina si el nanotubo se comporta como un metal (conductor) o un semiconductor.
+-   **Mapeo a nuestro código:** Los parámetros `radius` y `circumference_segments_target` de nuestro constructor son los análogos que controlan la **"quiralidad" de nuestro cilindro digital**. Al variar estos parámetros, creamos diferentes geometrías de enrollado. Esto abre la puerta a que, en futuras simulaciones, diferentes "quiralidades" de `HexCylindricalMesh` exhiban propiedades de "conductividad de señal" drásticamente diferentes, comportándose como "nanotubos metálicos" (permitiendo que las señales se propaguen libremente) o "nanotubos semiconductores" (permitiendo la propagación solo bajo ciertas condiciones).
+
+##### 4. Defectos y Propiedades Emergentes
+
+Una simulación perfecta es raramente interesante. Nuestro sistema, al igual que los materiales reales, no es perfecto.
+
+-   **Analogía de Defectos:** Las advertencias que a veces genera `verify_connectivity()` sobre celdas con menos de 6 vecinos no son errores, sino análogos de **defectos cristalinos** en un material real, como **vacancias** (un átomo faltante) o **dislocaciones** (una imperfección en la red).
+-   **Propiedades Emergentes:** Estos "defectos" en nuestro metamaterial digital son cruciales. Al igual que en el grafeno real, pueden alterar drásticamente las propiedades locales de propagación de ondas (señales), creando barreras, canales preferenciales o puntos de dispersión. Esto permite diseñar o estudiar mallas con propiedades de transporte de información altamente personalizadas, simplemente introduciendo "defectos" de manera controlada.
 
 #### Patrones de Voronoi para la Integridad Digital
 
