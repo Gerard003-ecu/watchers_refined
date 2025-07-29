@@ -113,6 +113,58 @@ Este doble mecanismo permite que la ECU no solo simule flujos de energía, sino 
 - **`obtener_campo_unificado()`**: Devuelve un mapa de intensidad escalar, ponderado por capas, que sirve como la principal "variable de proceso" para el `Harmony Controller`.
 - **`set_initial_quantum_phase()`**: Inicializa el campo a un estado de fase aleatoria, preparando el terreno para la emergencia de coherencia.
 
+#### Analogía con las Ecuaciones de Maxwell en un Medio Material
+
+Aunque `matriz_ecu` es una simulación discreta y simplificada, su dinámica interna es una analogía semi-sofisticada de cómo los campos electromagnéticos se comportan según las **ecuaciones de Maxwell** en un medio material conductor. A continuación, se detalla este mapeo conceptual.
+
+##### 1. El Campo `campo_q` como Campo Electromagnético (E y B)
+
+En física, los campos eléctrico (E) y magnético (B) son entidades vectoriales 3D. En nuestra simulación, el estado en cada punto de la grilla se representa con un único número complejo (`vx + vy*j`), que es una proyección simplificada de los campos E y B en un plano 2D.
+
+*   **Analogía Propuesta:**
+    *   La **parte real (`vx`)** representa la componente **toroidal del campo magnético (B_toroidal)**.
+    *   La **parte imaginaria (`vy`)** representa la componente **poloidal del campo eléctrico (E_poloidal)**.
+
+Aunque no simulamos los 6 componentes completos de E y B, este modelo 2D captura la esencia de su interdependencia y evolución en un plano, que es el núcleo de la física electromagnética.
+
+##### 2. La Ley de Faraday (Inducción Electromagnética)
+
+La Ley de Faraday (∇ × E = -∂B/∂t) establece que un campo magnético que cambia en el tiempo induce un campo eléctrico "circulante". Es la base de la inducción electromagnética.
+
+*   **Mapeo a nuestro código:** El término de **advección** en `apply_rotational_step` es nuestra analogía de la Ley de Faraday.
+    ```python
+    influence_from_left = alpha_capa * v_left * dt
+    ```
+    - `v_left` representa el estado del campo (E y B) en la celda vecina en la dirección toroidal. Podemos interpretarlo como el campo magnético "del pasado" que se propaga hacia la celda actual.
+    - El término `alpha_capa` actúa como una constante de acoplamiento que determina la eficiencia de esta inducción.
+    - Esta influencia del campo magnético vecino (`v_left.real` o `B_toroidal`) induce un cambio en el campo eléctrico actual (`v_current.imag` o `E_poloidal`), imitando cómo un cambio en **B** induce **E**.
+
+##### 3. La Ley de Ampère-Maxwell (Corrientes y Campos Eléctricos Cambiantes)
+
+La Ley de Ampère-Maxwell (∇ × B = μ₀(J + ε₀ ∂E/∂t)) establece que un campo magnético circulante es inducido por dos fuentes: las corrientes eléctricas (J) y los campos eléctricos que cambian en el tiempo (∂E/∂t).
+
+*   **Mapeo a nuestro código:**
+    *   **Corrientes (J):** Las influencias externas aplicadas mediante `aplicar_influencia()` son el análogo directo de las **fuentes de corriente (J)**. Son inyecciones de "carga" o "energía" que actúan como una fuente primaria, generando un campo a su alrededor.
+    *   **Campo Eléctrico Cambiante (∂E/∂t):** El término de **acoplamiento vertical** es nuestra analogía de este fenómeno.
+        ```python
+        influence_from_up_down = beta * (v_up + v_down) * dt
+        ```
+        Aquí, la influencia de los campos vecinos en la dirección poloidal (principalmente sus componentes de campo eléctrico, `v_neighbor.imag`) induce un cambio en el campo magnético (`v_current.real`) de la celda actual. Esto es análogo a cómo un **E** cambiante induce **B**.
+
+##### 4. Las Ecuaciones de Maxwell en un Medio Material (El Rol de `damping`)
+
+En el vacío, los campos electromagnéticos se propagan sin pérdidas. Sin embargo, en un medio conductor, la Ley de Ohm (J = σE) introduce un término que disipa energía. La conductividad (σ) del material hace que la energía del campo se convierta en calor.
+
+*   **Mapeo a nuestro código:** Nuestro término de `damping` (amortiguación) es la analogía directa de esta **conductividad (σ)** o resistividad del medio.
+    ```python
+    v_current_damped = v_current * (1.0 - damping_capa * dt)
+    ```
+    - Este término modela cómo la "energía" del campo (`v_current`) se disipa con el tiempo.
+    - Un `damping` alto simula un medio con alta conductividad (muchas pérdidas), donde los campos se desvanecen rápidamente.
+    - Un `damping` bajo simula un medio de bajas pérdidas, más cercano al vacío o a un superconductor, permitiendo que las ondas persistan y se propaguen.
+
+En resumen, `matriz_ecu` no solo es un sistema dinámico abstracto, sino un modelo computacional con fundamentos inspirados directamente en la física del electromagnetismo, lo que le confiere un comportamiento rico y coherente.
+
 ### 🎼 Harmony Controller (El Director Táctico)
 
 El **Harmony Controller** es el director de orquesta táctico del sistema. Su misión es ejecutar las estrategias de `Agent AI` traduciéndolas en acciones de control en tiempo real. Utiliza un controlador **PID** (`BosonPhase`) para minimizar el error entre el estado medido del sistema (la norma del campo de la `Matriz ECU`) y el `setpoint` estratégico.
