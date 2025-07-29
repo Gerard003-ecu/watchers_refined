@@ -1,205 +1,112 @@
-# watchers
+# Watchers: Un Ecosistema para la Armonización de Energía Inteligente
 
-¡Bienvenido al ecosistema **Watchers**!
+## Visión del Proyecto
 
-"Código Claro, Equipos Eficientes. Herramienta para armonizar código y optimizar entornos de desarrollo."
+La visión central de **Watchers** es **armonizar el lenguaje de máquina para hacer la comunicación entre aplicaciones y entornos más intuitiva y objetiva**. Buscamos trascender las implementaciones tradicionales para crear sistemas que no solo se comuniquen, sino que se comprendan a un nivel fundamental. Nuestra primera aplicación práctica de esta visión es la creación de **sistemas de gestión de energía más eficientes, resilientes e inteligentes**, sentando las bases para un futuro energético autónomo y sostenible.
 
-############################################################################
-########################Propósito de watchers###############################
-############################################################################
+## Componentes Clave del Ecosistema
 
-Es la armonización del lenguaje de máquina para hacer de la comunicación, de apps y entornos de desarrollo, un canal más intuitivo y objetivo para el ser humanno. Una frontera al alcance de los sentidos. 
+El ecosistema Watchers se organiza en una jerarquía clara, donde cada componente cumple un rol específico, desde la estrategia de alto nivel hasta la ejecución física.
 
-Mapa Mental de Comunicación del Ecosistema Watchers
+### 🧠 Agent AI (El Estratega)
 
-Este mapa describe la arquitectura de comunicación jerárquica y los flujos de datos dentro del ecosistema "watchers", diseñada para ser coherente, escalable y objetiva.
+**Agent AI** es el cerebro de alto nivel del sistema. Su función es tomar decisiones estratégicas basadas en el estado general del ecosistema y los objetivos a largo plazo. No se ocupa de la microgestión, sino de definir la "intención" del sistema.
 
-Analogía Central: Mente, Cuerpo y Entorno
+- **Gestión Estratégica:** En su nueva capacidad, Agent AI gestiona conceptos avanzados como la **"fase cuántica"** y la **"resonancia"** del sistema. Estos no son parámetros de control directo, sino objetivos estratégicos que buscan una coherencia y eficiencia energética a un nivel superior, similar a cómo un director de orquesta busca la armonía perfecta en lugar de controlar cada nota individualmente.
 
-    Capa Estratégica (agent_ai): La Mente. Define los objetivos y la intención a largo plazo. No se ocupa de la mecánica, sino del "porqué".
+### ⚙️ Harmony Controller (El Táctico)
 
-    Capa Táctica (harmony_controller): El Sistema Nervioso Autónomo. Traduce la intención en comandos concretos y mantiene el equilibrio (homeostasis) del sistema mediante bucles de control.
+El **Harmony Controller** es el ejecutor de bajo nivel que traduce las directivas estratégicas de Agent AI en acciones concretas. Funciona como el sistema nervioso, manteniendo el equilibrio en tiempo real.
 
-    Capa Física (matriz_ecu, malla_watcher): El Cuerpo y su Entorno. El mundo físico simulado donde las acciones tienen lugar y generan retroalimentación.
+- **Ejecución Táctica:** Utiliza bucles de control PID y otros mecanismos para ajustar el comportamiento de los componentes físicos. Ahora, su función se ha expandido para implementar **"tareas tácticas cuánticas"**, como la sincronización de fase y la búsqueda de resonancia, asegurando que las órdenes del Estratega se manifiesten de manera precisa en el entorno.
 
-1. ◈ Capa Estratégica (La Mente)
+### 🌐 Matriz ECU (El Entorno Simulado)
 
-    agent_ai (El Orquestador Central)
+La **Matriz ECU (Energy Correlation Unit)** es el gemelo digital del entorno físico. Es un campo de simulación donde las decisiones y acciones se prueban y modelan antes de afectar al mundo real.
 
-        Rol Principal: Cerebro estratégico del ecosistema. Define el objetivo de armonía (target_setpoint_vector) basado en una estrategia global (ej: "rendimiento", "estabilidad"), en la composición actual del sistema y en señales externas.
+- **Dinámica de Campo Toroidal:** Modela el entorno como un **campo toroidal**, representando flujos de energía y sus interacciones.
+- **Fase Cuántica Local:** Su nueva capacidad más importante es la **"fase cuántica local"**. Esto permite que la simulación no solo refleje estados estáticos, sino que capture dinámicas complejas y comportamientos emergentes, haciendo que el gemelo digital sea mucho más rico y predictivo.
 
-        Comunicaciones Clave:
+### 🏛️ Config Agent (El Arquitecto / MCP)
 
-            [SALIDA] ➔ harmony_controller
+**Config Agent** es el guardián de la integridad y la coherencia del sistema. Su rol ha evolucionado de un simple validador de archivos a un verdadero arquitecto del sistema.
 
-                Acción: Define el Objetivo Estratégico.
+- **Model Context Protocol (MCP):** A través del MCP, Config Agent no solo valida la sintaxis de los archivos de configuración, sino que **construye un modelo conceptual del sistema**. Entiende las relaciones, dependencias y roles de cada componente.
+- **Matriz de Interacción Central (MIC):** La MIC es la herramienta principal del MCP. Es una representación formal de la topología de comunicación, definiendo qué servicios pueden hablar entre sí, con qué propósito y bajo qué condiciones. Garantiza que la arquitectura sea robusta, segura y escalable.
 
-                Endpoint: POST /api/harmony/setpoint
+### ⚡ IPU (La Manifestación Física)
 
-                Payload: { "setpoint_vector": [x, y, ...] }
+La **IPU (Intelligent Power Unit)** es el primer producto de hardware del ecosistema Watchers. Es la materialización de nuestra visión en un dispositivo físico.
 
-                Propósito: Comunicar el estado deseado que la capa táctica debe alcanzar.
+- **El Cerebro Energético:** La IPU no es un simple convertidor de potencia. Es un **"Cerebro Energético"**: una unidad autónoma que ejecuta una versión embebida de todo el ecosistema Watchers. Cada IPU contiene su propio gemelo digital (Matriz ECU) y su propia inteligencia (Agent AI y Harmony Controller), permitiéndole realizar una gestión de energía predictiva, autoconsciente y optimizada localmente, mientras se coordina con el ecosistema global.
 
-            [SALIDA] ➔ harmony_controller
+## Arquitectura del Sistema
 
-                Acción: Notifica sobre un watcher_tool saludable y listo para ser controlado.
+El siguiente diagrama ilustra la jerarquía y el flujo de comunicación entre los componentes clave del ecosistema Watchers:
 
-                Endpoint: POST /api/harmony/register_tool
+```mermaid
+graph TD
+    subgraph "Capa Estratégica"
+        A[🧠 Agent AI]
+    end
 
-                Payload: { "nombre", "url", "aporta_a", "naturaleza_auxiliar" }
+    subgraph "Capa Táctica"
+        B[⚙️ Harmony Controller]
+    end
 
-                Propósito: Integrar dinámicamente nuevas capacidades en el bucle de control táctico.
+    subgraph "Capa de Simulación"
+        C[🌐 Matriz ECU]
+    end
 
-            [ENTRADA] ↞ Cualquier Watcher Tool
+    subgraph "Capa de Integridad"
+        D[🏛️ Config Agent]
+    end
 
-                Acción: Registro inicial de un módulo en el ecosistema.
+    subgraph "Capa Física"
+        E[⚡ IPU]
+    end
 
-                Endpoint: POST /api/register
+    A -- 1. Define Objetivo Estratégico <br> (Fase y Resonancia) --> B
+    B -- 2. Envía Comandos Tácticos <br> (Control PID) --> C
+    C -- 3. Mide Estado del Campo <br> (Feedback) --> B
+    D -- 4. Construye Modelo del Sistema <br> (Informa a) --> A
+    A -- 5. Despliega Configuración Estratégica --> E
+    E -- 6. Ejecuta Ecosistema Embebido <br> (Autogestión) --> E
+```
 
-                Payload: { "nombre", "url", "url_salud", "tipo", "aporta_a", ... }
+## ¿Cómo Empezar?
 
-                Propósito: Punto de entrada único y universal para todos los módulos, permitiendo el descubrimiento y la validación de salud.
+Para poner en marcha el ecosistema de Watchers, necesitarás el siguiente software:
 
-            [ENTRADA] ↞ harmony_controller
+- **Podman & podman-compose:** Para la gestión de contenedores.
+- **Python 3.10+:** El lenguaje principal del proyecto.
+- **pip-tools:** Para la gestión de dependencias de Python.
 
-                Acción: Monitoreo del estado táctico.
+## Instalación y Configuración
 
-                Endpoint: GET /api/harmony/state
+Sigue estos pasos para configurar tu entorno de desarrollo:
 
-                Payload: Estado completo de harmony_controller (PID, last_measurement, etc.).
+1.  **Clona el repositorio:**
+    ```bash
+    git clone https://github.com/tu-usuario/watchers.git
+    cd watchers
+    ```
 
-                Propósito: Recolectar información para la toma de decisiones estratégicas.
+2.  **Crea y activa el entorno virtual:**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate
+    ```
 
-2. ◈ Capa Táctica (El Sistema Nervioso)
-
-    harmony_controller (El Controlador de Armonía)
-
-        Rol Principal: Ingeniero de control. Implementa un bucle de control (PID) para llevar el estado medido del sistema hacia el setpoint definido por agent_ai. Traduce el "qué" estratégico en el "cómo" táctico.
-
-        Comunicaciones Clave:
-
-            [SALIDA] ➔ malla_watcher (y otros watcher_tools)
-
-                Acción: Envía una Señal de Control Táctico.
-
-                Endpoint: POST /api/control
-
-                Payload: { "control_signal": valor_pid_ponderado }
-
-                Propósito: Ajustar los parámetros internos de los watcher_tools para influir en la física del sistema. La señal se adapta según la "naturaleza" del tool (potenciador, reductor, modulador).
-
-            [ENTRADA] ↞ matriz_ecu
-
-                Acción: Mide el Estado del Sistema.
-
-                Endpoint: GET /api/ecu
-
-                Payload: { "estado_campo_unificado": [...] }
-
-                Propósito: Obtener la variable de proceso (current_measurement) para el cálculo del error en el controlador PID. Es el "sentido" principal del sistema.
-
-3. ◈ Capa Física (El Entorno y los Actores)
-
-Este es el nivel donde las "leyes de la física" del ecosistema operan y donde se produce la interacción más fundamental.
-
-    matriz_ecu (El Entorno - Campo Toroidal)
-
-        Rol Principal: Simula el espacio, el "campo unificado" donde existen e interactúan los watchers. Tiene su propia dinámica interna.
-
-        Comunicaciones Clave:
-
-            [RESPUESTA A PETICIÓN] ➔ malla_watcher
-
-                Acción: Provee el Campo Vectorial completo.
-
-                Endpoint: GET /api/ecu/field_vector
-
-                Payload: { "field_vector": [...] }
-
-                Propósito: Permitir que malla_watcher "sienta" la estructura detallada del campo en cada punto para modular su propia dinámica.
-
-            [ENTRADA] ↞ malla_watcher
-
-                Acción: Recibe una Influencia Inducida.
-
-                Endpoint: POST /api/ecu/influence
-
-                Payload: { "vector": [dPhi/dt, 0.0], ... }
-
-                Propósito: Simular la "Ley de Inducción de Faraday". La malla influye de vuelta en el campo que la atraviesa, creando un bucle de retroalimentación simbiótico.
-
-    malla_watcher (El Actor Principal - Malla de Grafeno)
-
-        Rol Principal: Un actor que co-evoluciona con el entorno. Su estado interno (osciladores) es modulado por el campo de matriz_ecu, y a su vez, influye en ese mismo campo.
-
-        Comunicaciones Clave:
-
-            [SALIDA] ➔ matriz_ecu
-
-                Acción: Obtiene el Entorno Vectorial.
-
-                Endpoint: GET /api/ecu/field_vector
-
-                Propósito: "Leer" el campo vectorial de matriz_ecu para modular el acoplamiento de sus osciladores internos.
-
-            [ENTRADA] ↞ harmony_controller
-
-                Acción: Recibe la Señal de Control Táctico.
-
-                Endpoint: POST /api/control
-
-                Payload: { "control_signal": valor }
-
-                Propósito: Ajustar sus parámetros base (amortiguación D y acoplamiento C) según las directivas del controlador táctico.
-
-4. ◈ Módulos Auxiliares (Plug-and-Play)
-
-    watcher_tool_auxiliar (Ej: benzwatcher, watcher_focus)
-
-        Rol Principal: Especialistas que se acoplan a los componentes centrales (matriz_ecu o malla_watcher) para ampliar o refinar sus capacidades.
-
-        Flujo de Integración Típico:
-
-            Registro: Se registra en agent_ai al iniciar.
-
-            Notificación: agent_ai valida su salud y lo notifica a harmony_controller, indicando a quién apoya (aporta_a) y cuál es su naturaleza_auxiliar.
-
-            Control: harmony_controller comienza a enviarle señales de control.
-
-            Acción: El watcher_tool utiliza la señal de control para ejecutar su lógica específica, interactuando directamente (vía API) con el componente central al que está asociado.
-
-## Propósito
-
-El objetivo principal de **Watchers** es facilitar la integración y el monitoreo de sistemas complejos. Entre sus funciones destacan:
-- **Orquestación y Control:** Agent AI se encarga de coordinar y ajustar dinámicamente los módulos, garantizando la coherencia del sistema.
-- **Validación y Configuración:** Config Agent y Watcher Security supervisan la integridad de la infraestructura, validan configuraciones y ajustan dependencias para mantener un entorno óptimo.
-- **Interfaz y Supervisión:** El Dashboard (junto con el cogniboard) ofrece una interfaz gráfica intuitiva que permite a los usuarios monitorear el estado global y realizar ajustes cuando sea necesario.
-- **Extensibilidad:** La arquitectura "plug and play" permite integrar nuevos módulos (watcher_tool) como herramientas especializadas (por ejemplo, un editor de texto inteligente o una hoja de cálculo inteligente) sin alterar la lógica central.
-
-## Propuesta de Valor
-
-- **Automatización:** Minimiza la intervención del usuario mediante procesos automáticos que validan y corrigen configuraciones.
-- **Seguridad y Robustez:** Gracias a un sistema inmunológico adaptativo y un volumen de control (cogniboard), se garantiza una operación estable y segura.
-- **Escalabilidad:** La arquitectura modular permite agregar nuevos módulos y funcionalidades sin comprometer la integridad del sistema.
-- **Lenguaje de Marca:** Inspirado en estructuras hexagonales (benceno y grafeno), Watchers ofrece una representación visual y conceptual única para el control de flujos y estados.
-
-## Arquitectura General
-
-El ecosistema **Watchers** está compuesto por varios módulos interconectados:
-
-- **Agent AI:** Núcleo operativo que registra módulos, distribuye comandos y aplica mecanismos de validación.
-- **Config Agent:** Realiza la validación de la infraestructura (Dockerfiles, docker-compose, dependencias) y envía señales correctivas.
-- **Watcher Security:** Funciona como un sistema inmunológico adaptativo, verificando y ajustando configuraciones y dependencias.
-- **Cogniboard (Control Volume):** Supervisa y aplica control PID para mantener la estabilidad y el equilibrio del sistema.
-- **Dashboard:** Proporciona una interfaz gráfica para monitoreo y control, mostrando el estado global y permitiendo la interacción con el ecosistema.
-- **Módulos Específicos:** Incluyen watchers_wave, watcher_focus, optical_controller, ECU, etc., que aportan funcionalidades especializadas y se integran de manera plug and play.
-- **BenzWatcher:** Simula la reacción catalítica inspirada en el benceno para ajustar y modular las señales de control.
-
-Para más detalles sobre la arquitectura, consulta el documento [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Empezar
-
-1. Clona el repositorio.
-2. Revisa el archivo `requirements.in` y compílalo con:
-   ```bash
-   pip-compile requirements.in
+3.  **Instala las herramientas de desarrollo:**
+    ```bash
+    pip install pip-tools
+    ```
+
+4.  **Compila e instala las dependencias:**
+    ```bash
+    pip-compile requirements-dev.in
+    pip install -r requirements-dev.txt
+    ```
+
+Ahora estás listo para explorar y contribuir al ecosistema Watchers. ¡Bienvenido!
