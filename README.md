@@ -1,4 +1,4 @@
-# Watchers: Un Ecosistema para la Armonización de Energía Inteligente
+# Watchers: Un Ecosistema para la armonización de energía inteligente
 
 ## Visión del Proyecto
 
@@ -22,7 +22,7 @@ El **Harmony Controller** es el ejecutor de bajo nivel que traduce las directiva
 
 ### 🌐 Matriz ECU (El Entorno Simulado)
 
-La **Matriz ECU (Energy Correlation Unit)** es el gemelo digital del entorno físico. Es un campo de simulación donde las decisiones y acciones se prueban y modelan antes de afectar al mundo real.
+La **Matriz ECU (Experiencia de campo unificado)** es el gemelo digital del entorno físico. Es un campo de simulación donde las decisiones y acciones se prueban y modelan antes de afectar al mundo real.
 
 - **Dinámica de Campo Toroidal:** Modela el entorno como un **campo toroidal**, representando flujos de energía y sus interacciones.
 - **Fase Cuántica Local:** Su nueva capacidad más importante es la **"fase cuántica local"**. Esto permite que la simulación no solo refleje estados estáticos, sino que capture dinámicas complejas y comportamientos emergentes, haciendo que el gemelo digital sea mucho más rico y predictivo.
