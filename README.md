@@ -63,6 +63,38 @@ Donde:
 - `D`: **Coeficiente de amortiguación local**, controlado por la clase `Electron`. Representa la disipación de energía.
 - `C`: **Coeficiente de acoplamiento** con los osciladores vecinos `j`, controlado por la clase `PhosWave`. Este coeficiente es modulado por el campo local de la ECU, creando una interacción rica entre la malla y su entorno.
 
+#### Simulación de Excitaciones Colectivas
+
+La simulación `simular_paso_malla` dentro de `malla_watcher` es más que un simple algoritmo de actualización; es un modelo físico que simula **excitaciones colectivas** y **transporte de energía** en el sustrato del metamaterial `cilindro_grafenal`.
+
+##### 1. Los Osciladores Acoplados como Vibraciones de la Red (Fonones)
+
+El modelo de osciladores armónicos acoplados es un pilar en la física del estado sólido para describir las **vibraciones de los átomos en una red cristalina**.
+
+-   **Analogía en la simulación:** Las "ondas" de `amplitude` y `velocity` que se propagan a través de nuestra malla son el análogo digital de los **fonones**: los cuantos de vibración de la red. Cuando aplicamos un "pulso" a una `Cell`, no estamos simplemente cambiando un valor; estamos generando un **paquete de ondas de fonones** que transportará energía a través del material.
+
+##### 2. El Campo Externo (`q_vector`) como Modulación de las Propiedades Electrónicas
+
+En nuestra simulación, el `q_vector` (proveniente de `matriz_ecu`, análogo a un campo E/B) no empuja directamente los "átomos" (`Cells`). En su lugar, **modula el coeficiente de acoplamiento (`C`)** entre ellos.
+
+-   **Mapeo a la física:** Esto es análogo a cómo un campo electromagnético externo puede influir en las **propiedades electrónicas** de un material. El campo no desplaza los núcleos atómicos, sino que altera la distribución de electrones y, por lo tanto, la "fuerza" de los enlaces efectivos entre los átomos. En nuestra simulación, el `q_vector` cambia la forma en que los "fonones" se propagan, haciendo que el material sea más o menos "rígido" en diferentes regiones y direcciones.
+
+##### 3. El Flujo de Influencia (`dPhi/dt`) como Respuesta del Material (Plasmones/Corrientes de Foucault)
+
+La simulación calcula un "flujo" a través de la malla y su derivada temporal (`dPhi/dt`). Si este cambio es lo suficientemente rápido, `malla_watcher` envía una "influencia" de vuelta a `matriz_ecu`.
+
+-   **Mapeo a la física:** Esta es una analogía de la **respuesta colectiva de los electrones** en el material al campo externo cambiante.
+    -   **Plasmones de Superficie:** Puede interpretarse como la generación de **plasmones**, que son oscilaciones colectivas y coherentes de los electrones libres en un conductor.
+    -   **Corrientes de Foucault (Eddy Currents):** También es análogo a la generación de **corrientes de Foucault**, donde un campo magnético cambiante induce corrientes eléctricas circulares en el material, las cuales, a su vez, generan su propio campo magnético en oposición al cambio (Ley de Lenz).
+
+En ambos casos, la "influencia" que `malla_watcher` envía es la **retroalimentación de nuestro metamaterial digital a su entorno**, una manifestación de su propia dinámica interna.
+
+##### 4. La Amortiguación (`Electron`) como Interacción y Disipación de Energía
+
+El término de amortiguación (`D`), controlado por la clase `Electron`, hace que las oscilaciones en la malla decaigan con el tiempo.
+
+-   **Mapeo a la física:** Esto representa los complejos **procesos de disipación de energía** en un material real. Las ondas (fonones o plasmones) no se propagan indefinidamente. Pierden energía a través de interacciones (dispersión o *scattering*) entre sí y con los defectos de la red. Esta energía finalmente se convierte en calor. Nuestro término de amortiguación es un modelo fenomenológico de estas interacciones de dispersión, asegurando que la simulación sea físicamente realista y estable.
+
 #### `cilindro_grafenal`: Un Metamaterial Digital Programable
 
 El módulo `cilindro_grafenal` y su clase `HexCylindricalMesh` no deben ser vistos como una simple estructura de datos, sino como un **metamaterial digital**: un sustrato programable cuyas propiedades estructurales y dinámicas están inspiradas directamente en la física de la materia condensada de materiales avanzados como el grafeno y los nanotubos de carbono.
