@@ -49,15 +49,39 @@ if not logging.getLogger("matriz_ecu").hasHandlers():
     )
 logger = logging.getLogger("matriz_ecu")
 
+# --- Funciones Auxiliares para Configuración ---
+def get_env_int(var_name: str, default: int) -> int:
+    """Obtiene una variable de entorno como entero con fallback y logging."""
+    try:
+        return int(os.environ.get(var_name, str(default)))
+    except (ValueError, TypeError):
+        logger.warning(
+            f"Valor inválido para variable de entorno '{var_name}'. "
+            f"Usando valor por defecto: {default}"
+        )
+        return default
+
+
+def get_env_float(var_name: str, default: float) -> float:
+    """Obtiene una variable de entorno como float con fallback y logging."""
+    try:
+        return float(os.environ.get(var_name, str(default)))
+    except (ValueError, TypeError):
+        logger.warning(
+            f"Valor inválido para variable de entorno '{var_name}'. "
+            f"Usando valor por defecto: {default}"
+        )
+        return default
+
+
 # --- Constantes Configurables para el Campo Toroidal ---
-# --- Constantes Configurables ---
-NUM_CAPAS = int(os.environ.get("ECU_NUM_CAPAS", 3))
-NUM_FILAS = int(os.environ.get("ECU_NUM_FILAS", 4))
-NUM_COLUMNAS = int(os.environ.get("ECU_NUM_COLUMNAS", 5))
-DEFAULT_ALPHA_VALUE = 0.5
-DEFAULT_DAMPING_VALUE = 0.05
-SIMULATION_INTERVAL = float(os.environ.get("ECU_SIM_INTERVAL", 1.0))
-BETA_COUPLING = float(os.environ.get("ECU_BETA_COUPLING", 0.1))
+NUM_CAPAS = get_env_int("ECU_NUM_CAPAS", 3)
+NUM_FILAS = get_env_int("ECU_NUM_FILAS", 4)
+NUM_COLUMNAS = get_env_int("ECU_NUM_COLUMNAS", 5)
+DEFAULT_ALPHA_VALUE = get_env_float("ECU_DEFAULT_ALPHA", 0.5)
+DEFAULT_DAMPING_VALUE = get_env_float("ECU_DEFAULT_DAMPING", 0.05)
+SIMULATION_INTERVAL = get_env_float("ECU_SIM_INTERVAL", 1.0)
+BETA_COUPLING = get_env_float("ECU_BETA_COUPLING", 0.1)
 
 
 class ToroidalField:
@@ -203,22 +227,17 @@ class ToroidalField:
             )
             return False
 
-    def get_neighbors(self, row: int, col: int) -> list[tuple[int, int]]:
+    def get_neighbors(self, row: int, col: int) -> List[Tuple[int, int]]:
         """
         Obtiene las coordenadas (row, col) de los 4 vecinos directos
         (arriba, abajo, izquierda, derecha) de un nodo, aplicando
-        conectividad toroidal en la dimensión de columna.
+        conectividad toroidal.
         """
-        neighbors = []
-        up_row = (row - 1) % self.num_rows
-        neighbors.append((up_row, col))
-        down_row = (row + 1) % self.num_rows
-        neighbors.append((down_row, col))
-        left_col = (col - 1) % self.num_cols
-        neighbors.append((row, left_col))
-        right_col = (col + 1) % self.num_cols
-        neighbors.append((row, right_col))
-        return neighbors
+        # Versión NumPy-like, aunque para 4 vecinos la diferencia es mínima.
+        # Muestra un estilo de código más vectorizado.
+        rows = np.array([row - 1, row + 1, row, row]) % self.num_rows
+        cols = np.array([col, col, col - 1, col + 1]) % self.num_cols
+        return list(zip(rows, cols))
 
     def calcular_gradiente_adaptativo(self) -> np.ndarray:
         """
@@ -278,7 +297,7 @@ class ToroidalField:
     def apply_rotational_step(self, dt: float, beta: float):
         """
         Aplica un paso de simulación (método numérico discreto) para la
-        dinámica del campo vectorial toroidal.
+        dinámica del campo vectorial toroidal de forma vectorizada.
 
         Esta dinámica simula:
         1. Advección/Rotación en la dirección toroidal (columnas),
@@ -286,45 +305,33 @@ class ToroidalField:
         2. Acoplamiento/Transporte vertical (entre filas),
            controlado por `beta`.
         3. Disipación/Decaimiento local, controlada por `damping` (por capa).
-
-        Aproxima la evolución del campo vectorial V según una ecuación tipo:
-        dV/dt ≈ - alpha * dV/d(toroidal_angle) + beta_up * V_up +
-                beta_down * V_down - damping * V
-        (Esta es una simplificación conceptual de la PDE subyacente).
-
-        Args:
-            dt (float): Paso de tiempo de la simulación.
-            beta (float): Coeficiente de acoplamiento vertical global.
         """
         if beta < 0:
-            logger.warning("El factor beta (acoplamiento vertical) "
-                           "debería ser no negativo.")
+            logger.warning(
+                "El factor beta (acoplamiento vertical) debería ser no negativo."
+            )
 
         with self.lock:
-            next_campo = [np.copy(capa) for capa in self.campo_q]
+            next_campo = []
+            # Pre-calcular arrays de alphas y dampings para broadcasting
+            alphas_array = np.array(self.alphas)[:, np.newaxis, np.newaxis]
+            dampings_array = np.array(self.dampings)[:, np.newaxis, np.newaxis]
+
             for capa_idx in range(self.num_capas):
-                alpha_capa = self.alphas[capa_idx]
-                damping_capa = self.dampings[capa_idx]
-                for r in range(self.num_rows):
-                    for c in range(self.num_cols):
-                        v_curr = self.campo_q[capa_idx][r, c]
-                        v_left = self.campo_q[capa_idx][
-                            r, (c - 1) % self.num_cols
-                        ]
-                        v_up = self.campo_q[capa_idx][
-                            (r - 1) % self.num_rows, c
-                        ]
-                        v_down = self.campo_q[capa_idx][
-                            (r + 1) % self.num_rows, c
-                        ]
+                capa_actual = self.campo_q[capa_idx]
 
-                        damped = v_curr * (1.0 - damping_capa * dt)
-                        advected = alpha_capa * v_left * dt
-                        coupled = beta * (v_up + v_down) * dt
+                # Vecindad con condiciones toroidales usando np.roll
+                v_left = np.roll(capa_actual, shift=1, axis=1)
+                v_up = np.roll(capa_actual, shift=1, axis=0)
+                v_down = np.roll(capa_actual, shift=-1, axis=0)
 
-                        next_campo[capa_idx][r, c] = (
-                            damped + advected + coupled
-                        )
+                # Cálculo vectorizado para toda la capa
+                damped = capa_actual * (1.0 - dampings_array[capa_idx] * dt)
+                advected = alphas_array[capa_idx] * v_left * dt
+                coupled = beta * (v_up + v_down) * dt
+
+                next_campo.append(damped + advected + coupled)
+
             self.campo_q = next_campo
 
     def set_initial_quantum_phase(self, seed: Optional[int] = None):
@@ -349,7 +356,8 @@ class ToroidalField:
 
     def apply_quantum_step(self, dt: float):
         """
-        Aplica un paso de evolución cuántica discreta al campo.
+        Aplica un paso de evolución cuántica discreta al campo de forma
+        vectorizada.
 
         Este método simula la evolución de la fase de cada estado cuántico
         en la grilla bajo un Hamiltoniano simple. La evolución sigue la
@@ -362,15 +370,24 @@ class ToroidalField:
             dt (float): El paso de tiempo para la evolución.
         """
         with self.lock:
-            for capa_idx in range(self.num_capas):
-                alpha = self.alphas[capa_idx]
-                phase_change = np.exp(-1j * alpha * dt)
-                self.campo_q[capa_idx] *= phase_change
+            # Convertir alphas a array NumPy para broadcasting
+            alphas_array = np.array(self.alphas)  # Shape (num_capas,)
+            # Calcular el cambio de fase para todas las capas a la vez
+            # np.newaxis agrega dimensiones para que se broadcastee
+            # con las dimensiones (rows, cols)
+            phase_changes = np.exp(
+                -1j * alphas_array[:, np.newaxis, np.newaxis] * dt
+            )
+
+            # Aplicar el cambio de fase a todas las capas
+            # Esto funciona porque campo_q es una lista de arrays 2D
+            for i in range(self.num_capas):
+                self.campo_q[i] *= phase_changes[i]
 
 
 # --- Instancia Global y Lógica de Simulación ---
-campo_toroidal_global = ToroidalField(NUM_CAPAS, NUM_FILAS, NUM_COLUMNAS)
-stop_event = threading.Event()
+# La instancia `campo_toroidal_global` y el evento `stop_event`
+# fueron eliminados por ser redundantes o no utilizados.
 try:
     # Usar las constantes globales para la instancia del servicio
     campo_toroidal_global_servicio = ToroidalField(
@@ -385,11 +402,11 @@ try:
         "confinamiento global (servicio)..."
     )
     campo_toroidal_global_servicio.aplicar_influencia(
-        capa=0, row=1, col=2, vector=np.array([1.0, 0.5]),
+        capa=0, row=1, col=2, vector=complex(1.0, 0.5),
         nombre_watcher="watcher_init_1"
     )
     campo_toroidal_global_servicio.aplicar_influencia(
-        capa=2, row=3, col=0, vector=np.array([0.2, -0.1]),
+        capa=2, row=3, col=0, vector=complex(0.2, -0.1),
         nombre_watcher="watcher_init_2"
     )
     logger.info("Influencias iniciales aplicadas al campo global (servicio).")
@@ -565,13 +582,23 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
 
     vector_data = data.get("vector")
     vector_complex = None
-    if isinstance(vector_data, list) and len(vector_data) == 2:
-        try:
-            vector_complex = complex(float(vector_data[0]), float(vector_data[1]))
-        except (ValueError, TypeError):
-            type_errors.append("Campo 'vector' debe contener números.")
-    elif 'vector' in data:
-        type_errors.append("Campo 'vector' debe ser lista de 2 números")
+    # Esta validación es más específica y robusta que la anterior.
+    # Se ejecuta solo si 'vector' pasó la validación de tipo 'list'.
+    if isinstance(vector_data, list):
+        if len(vector_data) == 2:
+            try:
+                vector_complex = complex(float(vector_data[0]), float(vector_data[1]))
+            except (ValueError, TypeError) as e:
+                logger.debug(f"Error convirtiendo vector {vector_data}: {e}")
+                type_errors.append(
+                    "Elementos del campo 'vector' deben ser números (float, int)."
+                )
+        else:
+            type_errors.append(
+                "Campo 'vector' debe ser una lista de exactamente 2 elementos."
+            )
+    # El caso en que 'vector' no es una lista ya está cubierto por la
+    # validación de tipos anterior.
 
     if type_errors:
         msg = "errores de tipo en json: " + "; ".join(type_errors).lower()
