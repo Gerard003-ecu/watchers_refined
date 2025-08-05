@@ -340,35 +340,46 @@ class AtomicPiston:
             raise ValueError("El paso de tiempo (dt) debe ser un valor positivo.")
         self.dt = dt
 
-        # Aplicar control de velocidad si está activo
+        # 1. SUMA DE FUERZAS EXTERNAS Y DE CONTROL
+        # F_externa(t) en la ecuación diferencial.
+        external_force = self.last_applied_force
         if self.target_speed != 0.0:
             control_force = self.speed_controller.update(
                 self.target_speed, self.velocity, dt
             )
-            self.last_applied_force += control_force
+            external_force += control_force
 
-        # Calcular fuerzas internas (resorte) y la fuerza impulsora neta
+        # 2. FUERZAS INTERNAS DEPENDIENTES DE LA POSICIÓN (RESORTE)
+        # Términos k*x y ε*x³ en la ecuación.
         spring_force = (
             -self.k * self.position - self.nonlinear_elasticity * self.position**3
         )
-        driving_force = self.last_applied_force + spring_force
 
-        # Calcular la fricción basada en la fuerza impulsora (para la fricción estática)
-        friction_force = self.calculate_friction(driving_force)
+        # 3. FUERZA DE FRICCIÓN (dependiente de la velocidad y la fuerza motriz)
+        # El término F_fricción(dx/dt) en la ecuación.
+        # Para la fricción estática, necesitamos saber si las otras fuerzas
+        # son suficientes para superar el umbral estático.
+        driving_force_for_friction = external_force + spring_force
+        friction_force = self.calculate_friction(driving_force_for_friction)
         self.friction_force_history.append(friction_force)
 
-        # Fuerza total = suma de todas las fuerzas
-        total_force = driving_force + friction_force
+        # 4. FUERZA NETA SOBRE EL PISTÓN
+        # Reorganizando la ecuación: F_neta = F_externa - (F_fricción + F_resorte)
+        # O más directamente: F_neta = F_externa + F_resorte + F_fricción
+        # (recordando que F_resorte y F_fricción ya tienen el signo correcto).
+        total_force = external_force + spring_force + friction_force
 
-        # Calcular aceleración (a = F/m)
+        # 5. CÁLCULO DE LA ACELERACIÓN (a = F_neta / m)
+        # Este es el término d²x/dt² de la ecuación.
         self.acceleration = total_force / self.m
 
-        # Integración de Verlet para la nueva posición: x(t+dt) = 2x(t) - x(t-dt) + a(t)dt²
+        # 6. INTEGRACIÓN NUMÉRICA (Verlet) para encontrar la nueva posición y velocidad.
+        # x(t+dt) = 2x(t) - x(t-dt) + a(t)dt²
         new_position = (
             2 * self.position - self.previous_position + self.acceleration * (dt**2)
         )
 
-        # Actualizar velocidad: v(t) ≈ [x(t+dt) - x(t-dt)] / (2*dt)
+        # v(t) ≈ [x(t+dt) - x(t-dt)] / (2*dt)
         self.velocity = (new_position - self.previous_position) / (2 * dt)
 
         # Actualizar posiciones para la siguiente iteración
