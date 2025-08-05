@@ -9,6 +9,12 @@ from typing import List, Optional, Dict, Tuple, Any
 # --- Configuración del Logging ---
 logger = logging.getLogger(__name__)  # Usar __name__ para logger
 
+try:
+    from scipy.spatial import cKDTree
+except ImportError:
+    logger.warning("Scipy no está instalado. El rendimiento de la búsqueda de vecinos en Z se verá afectado.")
+    cKDTree = None
+
 # Ejemplo de configuración básica
 # si se ejecuta directamente o para pruebas:
 # if not logger.hasHandlers():
@@ -216,10 +222,13 @@ class HexCylindricalMesh:
         self.max_z: float = 0.0
         self.total_height_approx: float = 0.0
         self.previous_flux: float = 0.0
+        self._z_periodic_tree = None
+        self._z_periodic_cell_list = None
 
         self._initialize_mesh()
         if self.cells:
             self._calculate_z_bounds()
+            self._build_z_periodic_lookup()
             self.verify_connectivity()
         else:
             logger.error("¡La inicialización de la malla no generó celdas!")
@@ -302,7 +311,9 @@ class HexCylindricalMesh:
         logger.debug(f"Celda inicial ({start_q},{start_r}) añadida.")
 
         cells_added_count = 0
-        # Fix for original Line 577 E502 (and E501)
+        # Se calcula un límite máximo de iteraciones para el BFS para evitar
+        # bucles infinitos en casos de configuraciones de malla inesperadas.
+        # El cálculo se basa en el área aproximada de la malla.
         max_bfs_iter_calc = (
             self.circumference_segments_actual *
             (self.height_segments + 4) * 10
@@ -320,9 +331,10 @@ class HexCylindricalMesh:
             q, r = queue.popleft()
             axial_key = (q, r)
 
-            q_for_x_flat = q % self.circumference_segments_actual
-            if q_for_x_flat < 0:
-                q_for_x_flat += self.circumference_segments_actual
+            # La coordenada q se envuelve para manejar la periodicidad
+            # circunferencial. Esto asegura que la malla se conecte
+            # correctamente alrededor del cilindro.
+            q_for_x_flat = self._wrap_q(q)
 
             x_flat_unwrapped, y_flat_unwrapped = axial_to_cartesian_flat(
                 q, r, self.hex_size
@@ -331,6 +343,12 @@ class HexCylindricalMesh:
                 x_flat_unwrapped, y_flat_unwrapped, self.radius
             )
 
+            # Se definen dos rangos de altura (Z):
+            # 1. `strict_min/max_z`: El área "oficial" de la malla. Solo las
+            #    celdas aquí se añaden permanentemente.
+            # 2. `explore_margin_z`: Un área extendida. El BFS puede explorar
+            #    vecinos en esta zona para asegurar que no se omitan celdas
+            #    cerca de los bordes estrictos.
             is_within_strict_z = (
                 strict_min_z - EPSILON <= cyl_z_calc <= strict_max_z + EPSILON
             )
@@ -339,9 +357,12 @@ class HexCylindricalMesh:
                 and (cyl_z_calc <= strict_max_z + height_margin + EPSILON)
             )
 
+            # Si una celda está fuera incluso del margen de exploración, se
+            # ignora y no se expande desde ella.
             if not is_within_explore_margin_z:
                 continue
 
+            # Si la celda está dentro del rango estricto, se añade a la malla.
             if is_within_strict_z:
                 if axial_key not in self.cells:
                     self.cells[axial_key] = Cell(
@@ -474,10 +495,13 @@ class HexCylindricalMesh:
                 cells_with_few_neighbors += 1
 
             if actual_neighbor_count > 6:
-                logger.error(
-                    f"  ERROR: Celda ({cell.q_axial},{cell.r_axial}) tiene "
-                    f"{actual_neighbor_count} vecinos (>6). Indica error."
+                error_msg = (
+                    f"Celda ({cell.q_axial},{cell.r_axial}) tiene "
+                    f"{actual_neighbor_count} vecinos (>6). Esto indica un "
+                    "error fundamental en la topología de la malla."
                 )
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
 
         result_dict = dict(sorted(neighbor_counts.items()))
         logger.info(
@@ -538,8 +562,9 @@ class HexCylindricalMesh:
             r: La coordenada axial 'r' de la celda central.
 
         Returns:
-            Una lista de tuplas, donde cada tupla contiene las coordenadas
-            (q, r) de un vecino teórico.
+            Una lista de 6 tuplas, donde cada tupla contiene las coordenadas
+            (q, r) de un vecino teórico. El orden es estándar, comenzando desde
+            el vecino en la dirección +q y moviéndose en sentido horario.
         """
         axial_directions = [
             (q + 1, r + 0),  # Derecha
@@ -603,74 +628,87 @@ class HexCylindricalMesh:
 
         return neighbor_cells
 
-    def _find_closest_z_neighbor(  # Line 402
+    def _wrap_q(self, q: int) -> int:
+        """Envuelve una coordenada q al rango de la circunferencia."""
+        q_wrapped = q % self.circumference_segments_actual
+        if q_wrapped < 0:
+            q_wrapped += self.circumference_segments_actual
+        return q_wrapped
+
+    def _build_z_periodic_lookup(self):
+        """Construye el árbol cKDTree para búsquedas periódicas rápidas en Z.
+
+        Este método se llama una vez después de la inicialización de la malla.
+        Crea una estructura de datos (un cKDTree de Scipy) que mapea las
+        coordenadas (q_envuelta, z) a cada celda. Esto permite una búsqueda
+        muy eficiente (logarítmica) de vecinos en la dirección Z periódica,
+        evitando la necesidad de iterar sobre todas las celdas en cada búsqueda.
+        """
+        if not self.periodic_z or not self.cells or cKDTree is None:
+            self._z_periodic_tree = None
+            self._z_periodic_cell_list = None
+            return
+
+        points = []
+        cells = []
+        for cell in self.cells.values():
+            q_wrapped = self._wrap_q(cell.q_axial)
+            points.append([q_wrapped, cell.z])
+            cells.append(cell)
+
+        self._z_periodic_cell_list = cells
+        if points:
+            self._z_periodic_tree = cKDTree(points)
+            logger.info(f"Árbol cKDTree para búsqueda en Z construido con {len(points)} puntos.")
+        else:
+            self._z_periodic_tree = None
+
+    def _find_closest_z_neighbor(
             self,
             target_q_original: int,
             target_z_theoretical: float
     ) -> Optional[Cell]:
-        """Busca una celda existente que corresponda a un vecino envuelto en Z.
+        """Busca una celda vecina envuelta en Z usando un cKDTree para eficiencia.
 
-        Este método se utiliza cuando `periodic_z` es True. Dada una coordenada
-        'q' axial original de un vecino teórico y su coordenada 'z' teórica
-        (que podría estar fuera de los límites `min_z`, `max_z` de la malla),
-        intenta encontrar una celda existente en la malla que tenga la misma
-        coordenada 'q' (o su equivalente envuelto circunferencialmente) y una
-        coordenada 'z' que, al considerar la periodicidad en altura, sea la más
-        cercana a `target_z_theoretical`.
+        Este método se utiliza cuando `periodic_z` es True. Gracias al cKDTree
+        precalculado, encuentra rápidamente la celda más cercana en el espacio
+        (q_envuelta, z), considerando la periodicidad en altura.
 
         Args:
-            target_q_original: La coordenada axial 'q' original del vecino
-                teórico que se está buscando.
-            target_z_theoretical: La coordenada 'z' teórica (altura) del
-                vecino que se está buscando. Esta 'z' podría estar fuera de los
-                límites actuales de la malla si el vecino es una envoltura
-                periódica.
+            target_q_original: Coordenada 'q' axial del vecino teórico.
+            target_z_theoretical: Coordenada 'z' teórica del vecino.
 
         Returns:
-            La instancia de `Cell` que mejor coincide como un vecino envuelto
-            en Z, o `None` si no se encuentra ninguna coincidencia adecuada
-            dentro de una tolerancia.
+            La `Cell` que mejor coincide, o `None` si no se encuentra.
         """
-        best_match: Optional[Cell] = None
-        min_dz_abs_effective = float('inf')
-
-        target_q_wrapped = (
-            target_q_original % self.circumference_segments_actual
-        )
-        if target_q_wrapped < 0:
-            target_q_wrapped += self.circumference_segments_actual
-
-        if self.max_z - self.min_z <= EPSILON:
+        if not self._z_periodic_tree or not self._z_periodic_cell_list:
             return None
 
+        target_q_wrapped = self._wrap_q(target_q_original)
         actual_mesh_height = self.max_z - self.min_z
+        if actual_mesh_height <= EPSILON:
+            return None
 
-        for cell_candidate in self.cells.values():
-            candidate_q_wrapped = (
-                cell_candidate.q_axial % self.circumference_segments_actual
-            )
-            if candidate_q_wrapped < 0:
-                candidate_q_wrapped += self.circumference_segments_actual
+        # Consultar el árbol en tres posiciones Z para simular la periodicidad
+        query_points = [
+            [target_q_wrapped, target_z_theoretical],
+            [target_q_wrapped, target_z_theoretical + actual_mesh_height],
+            [target_q_wrapped, target_z_theoretical - actual_mesh_height]
+        ]
 
-            if candidate_q_wrapped != target_q_wrapped:
-                continue
+        distances, indices = self._z_periodic_tree.query(query_points, k=1)
 
-            dz1 = abs(cell_candidate.z - target_z_theoretical)
-            dz2 = abs(cell_candidate.z -
-                      (target_z_theoretical + actual_mesh_height))
-            dz3 = abs(cell_candidate.z -
-                      (target_z_theoretical - actual_mesh_height))
+        # Encontrar la mejor coincidencia de las tres consultas
+        best_dist = min(distances)
+        best_idx_pos = np.argmin(distances)
+        best_cell_idx = indices[best_idx_pos]
 
-            effective_dz = min(dz1, dz2, dz3)
-            z_match_tolerance = self.hex_size * 0.75
+        # Verificar si la coincidencia está dentro de la tolerancia
+        z_match_tolerance = self.hex_size * 0.75
+        if best_dist < z_match_tolerance:
+            return self._z_periodic_cell_list[best_cell_idx]
 
-            # Line 452
-            if (effective_dz < min_dz_abs_effective and
-                    effective_dz < z_match_tolerance):
-                min_dz_abs_effective = effective_dz
-                best_match = cell_candidate
-
-        return best_match
+        return None
 
     def get_all_cells(self) -> List[Cell]:
         """Retorna una lista con todas las instancias de `Cell` en la malla.
