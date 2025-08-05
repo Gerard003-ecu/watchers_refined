@@ -7,6 +7,12 @@ y la dinámica de los watchers dentro de él.
 El campo es un campo vectorial 2D en una grilla 3D toroidal, donde cada punto
 almacena un vector [vx, vy] que representa componentes de la densidad de flujo
 magnético (B).
+La interpretación exacta de vx y vy en términos de direcciones físicas
+(toroidal, poloidal, radial) se puede definir conceptualmente por analogía.
+Por ejemplo:
+vx es la componente toroidal de B.
+vy es la componente poloidal (vertical) de B.
+La dimensión de la "capa" podría representar la dirección radial.
 
 Proporciona una API REST para:
 - Obtener el estado unificado del campo.
