@@ -63,8 +63,8 @@ def mock_requests_post():
 def mock_mesh():
     """Fixture: Crea un mock de HexCylindricalMesh con celdas."""
     mesh = MagicMock(spec=HexCylindricalMesh)
-    cell1 = Cell(cyl_radius=5, cyl_theta=0, cyl_z=0, q_axial=0, r_axial=0)
-    cell2 = Cell(cyl_radius=5, cyl_theta=1, cyl_z=1, q_axial=1, r_axial=0)
+    cell1 = Cell(r=5, theta=0, z=0, q_axial=0, r_axial=0)
+    cell2 = Cell(r=5, theta=1, z=1, q_axial=1, r_axial=0)
     mesh.cells = {(0, 0): cell1, (1, 0): cell2}
     mesh.get_all_cells.return_value = [cell1, cell2]
     mesh.previous_flux = 0.0
@@ -179,12 +179,9 @@ def reset_globals():
 
     # Configurar mock_mesh
     mock_mesh.cells = {
-        (0, 0): Cell(cyl_radius=5.0, cyl_theta=0.0, cyl_z=0.0, q_axial=0,
-                     r_axial=0),
-        (1, 0): Cell(cyl_radius=5.0, cyl_theta=0.5, cyl_z=0.0, q_axial=1,
-                     r_axial=0),
-        (0, 1): Cell(cyl_radius=5.0, cyl_theta=0.0, cyl_z=1.0, q_axial=0,
-                     r_axial=1),
+        (0, 0): Cell(r=5.0, theta=0.0, z=0.0, q_axial=0, r_axial=0),
+        (1, 0): Cell(r=5.0, theta=0.5, z=0.0, q_axial=1, r_axial=0),
+        (0, 1): Cell(r=5.0, theta=0.0, z=1.0, q_axial=0, r_axial=1),
     }
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
     mock_mesh.get_cell.side_effect = lambda q, r: mock_mesh.cells.get((q, r))
@@ -334,16 +331,16 @@ def mock_malla_sim():
     Fixture: Configura una pequeña malla mockeada para simulación.
     """
     cell_center = Cell(
-        5.0, 0.0, 0.0, 0, 0, amplitude=10.0, velocity=0.0,
-        q_vector=np.array([0.1, 0.2])
+        r=5.0, theta=0.0, z=0.0, q_axial=0, r_axial=0, amplitude=10.0,
+        velocity=0.0, q_vector=np.array([0.1, 0.2])
     )
     cell_neighbor1 = Cell(
-        5.0, 0.5, 0.0, 1, 0, amplitude=0.0, velocity=0.0,
-        q_vector=np.array([-0.1, -0.2])
+        r=5.0, theta=0.5, z=0.0, q_axial=1, r_axial=0, amplitude=0.0,
+        velocity=0.0, q_vector=np.array([-0.1, -0.2])
     )
     cell_neighbor2 = Cell(
-        5.0, -0.5, 0.0, -1, 0, amplitude=0.0, velocity=0.0,
-        q_vector=np.array([0.0, 0.0])
+        r=5.0, theta=-0.5, z=0.0, q_axial=-1, r_axial=0, amplitude=0.0,
+        velocity=0.0, q_vector=np.array([0.0, 0.0])
     )
 
     mock_mesh = MagicMock(spec=HexCylindricalMesh)
@@ -513,13 +510,13 @@ def test_calculate_flux():
     )
     mesh.cells.clear()
     cell1 = Cell(
-        cyl_radius=1.0, cyl_theta=0.0, cyl_z=0.0, q_axial=0, r_axial=0,
+        r=1.0, theta=0.0, z=0.0, q_axial=0, r_axial=0,
         q_vector=np.array([1.0, 2.0]))
     cell2 = Cell(
-        cyl_radius=1.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=1, r_axial=0,
+        r=1.0, theta=np.pi, z=0.0, q_axial=1, r_axial=0,
         q_vector=np.array([-0.5, 3.0]))
     cell3 = Cell(
-        cyl_radius=1.0, cyl_theta=0.0, cyl_z=1.0, q_axial=0, r_axial=1,
+        r=1.0, theta=0.0, z=1.0, q_axial=0, r_axial=1,
         q_vector=np.array([0.0, -1.5]))
     mesh.cells[(0, 0)] = cell1
     mesh.cells[(1, 0)] = cell2
@@ -535,47 +532,52 @@ def test_calculate_flux():
     assert calculate_flux(mesh_empty) == pytest.approx(0.0)
 
 
-def test_dphi_dt_calculation(mock_malla_sim):
-    """Test: Cálculo de dPhi/dt en simulation_loop."""
+def test_map_cylinder_to_torus_coords_raises_exception(mock_malla_map):
+    """Test: map_cylinder_to_torus_coords raises ValueError on invalid dims."""
+    mock_mesh, _, _, _ = mock_malla_map
+    # Add a dummy cell to pass the first check in the function
+    mock_mesh.cells = {(0, 0): Cell(r=1, theta=1, z=1, q_axial=0, r_axial=0)}
+    cell = Cell(r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20)
+
+    # Patch TORUS_NUM_CAPAS to an invalid value
+    with patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_CAPAS", 0):
+        with pytest.raises(ValueError, match="Dimensiones del toroide inválidas"):
+            map_cylinder_to_torus_coords(cell)
+
+    # Patch malla_cilindrica_global to None
+    with patch("watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", None):
+        with pytest.raises(ValueError, match="Malla no inicializada"):
+            map_cylinder_to_torus_coords(cell)
+
+
+def test_simulation_loop_logic(mock_malla_sim):
+    """Test: El bucle de simulación refactorizado llama a sus helpers."""
     (
-        cell_center,
-        cell_neighbor1,
-        cell_neighbor2,
-        mock_mesh,
-        mock_resonador,
-        mock_electron,
-        dt,
+        _, _, _, mock_mesh, _, _, dt
     ) = mock_malla_sim
 
-    # Define patchers individually
+    # Mockear los helpers y funciones llamadas dentro del bucle
     with (
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.calculate_flux")  # noqa: E501
-        as mock_calculate_flux,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.fetch_and_apply_torus_field"),  # noqa: E501
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.simular_paso_malla"),  # noqa: E501
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.update_aggregate_state"),  # noqa: E501
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.send_influence_to_torus")  # noqa: E501
-        as mock_send_influence,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.stop_simulation_event")  # noqa: E501
-        as mock_stop_event
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.fetch_and_apply_torus_field") as mock_fetch,
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher._calculate_flux_change") as mock_calc_flux,
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.simular_paso_malla") as mock_sim_step,
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.update_aggregate_state") as mock_update_state,
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher._send_influence_if_needed") as mock_send_influence,
+        patch("watchers.watchers_tools.malla_watcher.malla_watcher.stop_simulation_event") as mock_stop_event
     ):
-
-        mock_mesh.previous_flux = 10.0
-        mock_calculate_flux.return_value = 15.0
+        # Simular una sola ejecución del bucle
         mock_stop_event.is_set.side_effect = [False, True]
-        mock_stop_event.wait.return_value = None
+        mock_calc_flux.return_value = 5.0  # Un valor de ejemplo para dphi_dt
 
-        with patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", dt  # noqa: E501
-        ):
-            simulation_loop()
+        # Ejecutar el bucle
+        simulation_loop()
 
-        expected_dphi_dt_step1 = (15.0 - 10.0) / dt
-        assert mock_mesh.previous_flux == pytest.approx(15.0)
-        mock_calculate_flux.assert_called_once_with(mock_mesh)
-        mock_send_influence.assert_called_once_with(
-            pytest.approx(expected_dphi_dt_step1)
-        )
+        # Verificar que todas las funciones principales fueron llamadas una vez
+        mock_fetch.assert_called_once()
+        mock_calc_flux.assert_called_once_with(mock_mesh, dt)
+        mock_sim_step.assert_called_once()
+        mock_update_state.assert_called_once()
+        mock_send_influence.assert_called_once_with(5.0)
 
 
 def test_send_influence_to_torus(mock_requests_post):
@@ -655,14 +657,17 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
 def mock_malla_state():
     """Configura malla mockeada con amplitudes para estado agregado."""
     cell1 = Cell(
-        5.0, 0.0, 0.0, 0, 0, amplitude=10.0, velocity=1.0,
-        q_vector=np.array([0.1, 0.2]))
-    cell2 = Cell(5.0, 0.5, 0.0, 1, 0, amplitude=-5.0, velocity=-2.0,
-                 q_vector=np.array([-0.1, -0.2]))
-    cell3 = Cell(5.0, 1.0, 0.0, 2, 0, amplitude=2.0, velocity=0.1,
-                 q_vector=np.array([0.0, 0.0]))
-    cell4 = Cell(5.0, 1.5, 0.0, 3, 0, amplitude=6.0, velocity=3.0,
-                 q_vector=np.array([0.3, 0.4]))
+        r=5.0, theta=0.0, z=0.0, q_axial=0, r_axial=0, amplitude=10.0,
+        velocity=1.0, q_vector=np.array([0.1, 0.2]))
+    cell2 = Cell(
+        r=5.0, theta=0.5, z=0.0, q_axial=1, r_axial=0, amplitude=-5.0,
+        velocity=-2.0, q_vector=np.array([-0.1, -0.2]))
+    cell3 = Cell(
+        r=5.0, theta=1.0, z=0.0, q_axial=2, r_axial=0, amplitude=2.0,
+        velocity=0.1, q_vector=np.array([0.0, 0.0]))
+    cell4 = Cell(
+        r=5.0, theta=1.5, z=0.0, q_axial=3, r_axial=0, amplitude=6.0,
+        velocity=3.0, q_vector=np.array([0.3, 0.4]))
 
     mock_mesh = MagicMock(spec=HexCylindricalMesh)
     mock_mesh.cells = {
@@ -796,40 +801,32 @@ def test_map_cylinder_to_torus_coords(mock_malla_map):
     mock_mesh, num_capas, num_filas, num_columnas = mock_malla_map
 
     cell = Cell(
-        cyl_radius=5.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=10, r_axial=20,
+        r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20,
         amplitude=10.0, velocity=1.0, q_vector=np.array([0.0, 0.0]))
     mock_mesh.cells[(-99, -99)] = Cell(
-        cyl_radius=0.0, cyl_theta=0.0, cyl_z=0.0, q_axial=-99, r_axial=-99)
+        r=0.0, theta=0.0, z=0.0, q_axial=-99, r_axial=-99)
 
-    expected_coords = (2, 4, 7)  # Original: (2, 4, 7)
+    expected_coords = (2, 4, 7)
     actual_coords = map_cylinder_to_torus_coords(cell)
     assert actual_coords == expected_coords
 
     cell_zero_act = Cell(
-        cyl_radius=5.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=10, r_axial=20,
+        r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20,
         amplitude=0.0, velocity=0.0, q_vector=np.array([0.0, 0.0]))
-    # activity_magnitude = 0. capa_norm = 0.
-    # capa_idx = floor((1-0)*4 + 0.5) = floor(4.5) = 4
     expected_coords_zero = (4, 4, 7)
     actual_coords_zero = map_cylinder_to_torus_coords(cell_zero_act)
     assert actual_coords_zero == expected_coords_zero
 
     cell_max_act = Cell(
-        cyl_radius=5.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=10, r_axial=20,
+        r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20,
         amplitude=20.0, velocity=0.0, q_vector=np.array([0.0, 0.0]))
-    # activity_magnitude = 20. capa_norm = 1.
-    # capa_idx = floor((1-1)*4 + 0.5) = floor(0.5) = 0
     expected_coords_max = (0, 4, 7)
     actual_coords_max = map_cylinder_to_torus_coords(cell_max_act)
     assert actual_coords_max == expected_coords_max
 
     cell_high_act = Cell(
-        cyl_radius=5.0, cyl_theta=np.pi, cyl_z=0.0, q_axial=10, r_axial=20,
+        r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20,
         amplitude=15.0, velocity=15.0, q_vector=np.array([0.0, 0.0]))
-    # activity_magnitude = sqrt(15^2+15^2) =
-    # sqrt(225+225)=sqrt(450) approx 21.2
-    # capa_norm = min(21.2, 20.0) / 20.0 = 1.0
-    # capa_idx = floor((1-1)*4 + 0.5) = 0
     expected_coords_high = (0, 4, 7)
     actual_coords_high = map_cylinder_to_torus_coords(cell_high_act)
     assert actual_coords_high == expected_coords_high
@@ -865,9 +862,9 @@ def test_api_health(client, reset_globals):
     """Test: Endpoint /api/health retorna estado y detalles de la malla."""
     mock_mesh, _, _, _, _ = reset_globals
     mock_mesh.cells = {
-        (0, 0): Cell(1.0, 1.0, 1.0, 0, 0),
-        (1, 0): Cell(1.0, 1.0, 1.0, 1, 0),
-        (0, 1): Cell(1.0, 1.0, 1.0, 0, 1),
+        (0, 0): Cell(r=1.0, theta=1.0, z=1.0, q_axial=0, r_axial=0),
+        (1, 0): Cell(r=1.0, theta=1.0, z=1.0, q_axial=1, r_axial=0),
+        (0, 1): Cell(r=1.0, theta=1.0, z=1.0, q_axial=0, r_axial=1),
     }
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
     mock_mesh.verify_connectivity.side_effect = (
@@ -896,7 +893,7 @@ def test_api_health(client, reset_globals):
 def test_api_health_no_simulation_thread(client, reset_globals):
     """Test: /api/health cuando el hilo de simulación no está activo."""
     mock_mesh, _, _, _, _ = reset_globals
-    mock_mesh.cells = {(0, 0): Cell(1.0, 1.0, 1.0, 0, 0)}
+    mock_mesh.cells = {(0, 0): Cell(r=1.0, theta=1.0, z=1.0, q_axial=0, r_axial=0)}
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
 
     with patch(
@@ -956,9 +953,9 @@ def test_api_state(client, reset_globals):
         }
     )
     mock_mesh.cells = {
-        (0, 0): Cell(5.0, 0.0, 0.0, 0, 0),
-        (1, 0): Cell(5.0, 0.5, 0.0, 1, 0),
-        (0, 1): Cell(5.0, 0.0, 1.0, 0, 1),
+        (0, 0): Cell(r=5.0, theta=0.0, z=0.0, q_axial=0, r_axial=0),
+        (1, 0): Cell(r=5.0, theta=0.5, z=0.0, q_axial=1, r_axial=0),
+        (0, 1): Cell(r=5.0, theta=0.0, z=1.0, q_axial=0, r_axial=1),
     }
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
     expected_num_cells = len(mock_mesh.cells)
@@ -1090,9 +1087,9 @@ def test_api_event_pulse(client, reset_globals):
     initial_velocity = 1.5
     pulse_magnitude = 5.0
     target_cell = Cell(
-        cyl_radius=1.0,
-        cyl_theta=1.0,
-        cyl_z=1.0,
+        r=1.0,
+        theta=1.0,
+        z=1.0,
         q_axial=cell_coords_q,
         r_axial=cell_coords_r,
         velocity=initial_velocity)
@@ -1132,9 +1129,9 @@ def test_api_event_pulse_cell_not_found_in_populated_mesh(
     mock_mesh, _, _, _, _ = reset_globals
     existing_cell_coords_q, existing_cell_coords_r = 0, 0
     existing_cell = Cell(
-        cyl_radius=1.0,
-        cyl_theta=0.0,
-        cyl_z=0.0,
+        r=1.0,
+        theta=0.0,
+        z=0.0,
         q_axial=existing_cell_coords_q,
         r_axial=existing_cell_coords_r)
     mock_mesh.cells = {(
@@ -1168,10 +1165,10 @@ def test_api_event_pulse_cell_not_found_in_populated_mesh(
 def test_api_malla(client, reset_globals):
     """Test: /api/malla devuelve la estructura completa de la malla."""
     mock_mesh, _, _, _, _ = reset_globals
-    cell_a = Cell(mock_mesh.radius, 0.1, 0.5, 0, 0, amplitude=1,
-                  velocity=0.1, q_vector=np.array([0.1, 0.1]))
-    cell_b = Cell(mock_mesh.radius, 0.2, 1.5, 1, 0, amplitude=2,
-                  velocity=0.2, q_vector=np.array([0.2, 0.2]))
+    cell_a = Cell(r=mock_mesh.radius, theta=0.1, z=0.5, q_axial=0, r_axial=0,
+                  amplitude=1, velocity=0.1, q_vector=np.array([0.1, 0.1]))
+    cell_b = Cell(r=mock_mesh.radius, theta=0.2, z=1.5, q_axial=1, r_axial=0,
+                  amplitude=2, velocity=0.2, q_vector=np.array([0.2, 0.2]))
     mock_mesh.cells = {(0, 0): cell_a, (1, 0): cell_b}
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
     mock_mesh.min_z = 0.5
@@ -1290,7 +1287,7 @@ def test_api_malla_influence_push(client, reset_globals):
     mock_mesh, _, _, _, _ = reset_globals
     if not mock_mesh.cells:
         mock_mesh.cells[(0, 0)] = Cell(
-            cyl_radius=1.0, cyl_theta=0.0, cyl_z=0.0, q_axial=0, r_axial=0)
+            r=1.0, theta=0.0, z=0.0, q_axial=0, r_axial=0)
 
     test_field_vector_payload = [
         [[[1.1, 2.2]], [[3.3, 4.4]]],
