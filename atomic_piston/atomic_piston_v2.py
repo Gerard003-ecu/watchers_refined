@@ -1,4 +1,19 @@
 # atomic_piston/atomic_piston_v2.py
+"""
+Simulación de una Unidad de Potencia Inteligente (IPU) o Pistón Atómico.
+
+Este módulo define las clases y enumeraciones necesarias para simular el
+comportamiento de un pistón atómico, incluyendo su física, electrónica
+equivalente y sistemas de control.
+
+Clases:
+    PistonMode: Modos de operación (CAPACITOR, BATTERY).
+    TransducerType: Tipos de transductor (PIEZOELECTRIC, etc.).
+    FrictionModel: Modelos de fricción (COULOMB, STRIBECK, VISCOUS).
+    ControllerType: Tipos de controlador (PID, FUZZY).
+    AtomicPiston: La clase principal que simula el pistón.
+    PIDController: Un controlador PID genérico.
+"""
 import time
 import numpy as np
 from enum import Enum
@@ -40,20 +55,29 @@ class AtomicPiston:
     Simula una Unidad de Potencia Inteligente (IPU) o Pistón Atómico.
 
     Esta clase modela el comportamiento físico y electrónico de un pistón
-    diseñado para almacenar y liberar energía, con aplicaciones en sistemas
-    fotovoltaicos y de potencia.
+    diseñado para almacenar y liberar energía. Es el componente central para
+    simulaciones que involucran almacenamiento de energía mecánica y su
+    conversión a energía eléctrica.
 
     Attributes:
-        capacity (float): Capacidad máxima de compresión/expansión del pistón [m].
-        k (float): Constante elástica del resorte (ley de Hooke) [N/m].
+        capacity (float): Capacidad máxima de compresión/expansión [m].
+        k (float): Constante elástica del resorte [N/m].
         c (float): Coeficiente de amortiguación viscosa [N·s/m].
         m (float): Masa inercial del pistón [kg].
-        mode (PistonMode): Modo de operación actual (capacitor o batería).
-        transducer_type (TransducerType): Tipo de transductor electromecánico.
-        friction_model (FrictionModel): Modelo de fricción a utilizar.
+        mode (PistonMode): Modo de operación (CAPACITOR o BATTERY).
+        transducer_type (TransducerType): Tipo de transductor utilizado.
+        friction_model (FrictionModel): Modelo de fricción a aplicar.
         position (float): Posición actual del pistón [m].
         velocity (float): Velocidad actual del pistón [m/s].
         acceleration (float): Aceleración actual del pistón [m/s²].
+
+    Public Methods:
+        apply_force: Aplica una fuerza mecánica externa.
+        apply_electronic_signal: Aplica una señal eléctrica (voltaje).
+        update_state: Avanza la simulación un paso de tiempo `dt`.
+        discharge: Gestiona la descarga de energía según el modo.
+        reset: Reinicia el estado del pistón a sus condiciones iniciales.
+        export_history_to_csv: Exporta los datos de la simulación a un CSV.
     """
 
     def __init__(self,
@@ -71,7 +95,7 @@ class AtomicPiston:
         Inicializa una nueva instancia de AtomicPiston.
 
         Args:
-            capacity: Capacidad máxima de compresión del pistón [m]. Debe ser > 0.
+            capacity: Capacidad máxima de compresión [m]. Debe ser > 0.
             elasticity: Constante elástica del resorte (k) [N/m]. Debe ser >= 0.
             damping: Coeficiente de amortiguación (c) [N·s/m]. Debe ser >= 0.
             piston_mass: Masa inercial del pistón (m) [kg]. Debe ser > 0.
@@ -79,12 +103,13 @@ class AtomicPiston:
             transducer_type: Tipo de transductor a utilizar.
             friction_model: Modelo de fricción a simular.
             coulomb_friction: Coeficiente de fricción de Coulomb.
-            stribeck_coeffs: Coeficientes para el modelo Stribeck (estática, Coulomb, velocidad).
-            nonlinear_elasticity: Coeficiente para el término de elasticidad no lineal.
+            stribeck_coeffs: Tupla con coeficientes de Stribeck (estática,
+                Coulomb, velocidad).
+            nonlinear_elasticity: Coeficiente para el término de elasticidad
+                no lineal.
 
         Raises:
-            ValueError: Si alguno de los parámetros físicos (capacity, piston_mass, etc.)
-                        no cumple con las restricciones de validación (e.g., ser positivo).
+            ValueError: Si un parámetro físico no es válido (p. ej., negativo).
         """
         # -- Validación de Entradas --
         if capacity <= 0:
@@ -212,8 +237,9 @@ class AtomicPiston:
         Calcula la fuerza de fricción según el modelo físico seleccionado.
 
         Args:
-            driving_force: La fuerza neta que intenta mover el pistón (externa + resorte).
-                           Se usa para determinar la dirección de la fricción estática.
+            driving_force: La fuerza neta que intenta mover el pistón (externa +
+                resorte), usada para determinar la dirección de la fricción
+                estática.
 
         Returns:
             La fuerza de fricción calculada [N], que se opone al movimiento.
@@ -454,14 +480,14 @@ class AtomicPiston:
 
     def simulate_discharge_circuit(self, load_resistance: float, dt: float) -> Tuple[float, float, float]:
         """
-        Simula la descarga de energía a través de una carga externa resistiva.
+        Simula la descarga de energía a través de una carga externa.
 
         Args:
-            load_resistance: La resistencia de la carga externa [Ω].
-            dt: El intervalo de tiempo [s].
+            load_resistance: Resistencia de la carga externa [Ω].
+            dt: Intervalo de tiempo de la simulación [s].
 
         Returns:
-            Una tupla con (voltaje, corriente, potencia) en la carga.
+            Una tupla con el voltaje, la corriente y la potencia en la carga.
         """
         logger.debug(f"Simulando descarga con resistencia de carga: {load_resistance} Ohm")
         if self.circuit_voltage == 0:
@@ -749,22 +775,25 @@ class PIDController:
     """
     Implementa un controlador Proporcional-Integral-Derivativo (PID).
 
-    Utilizado para la regulación de velocidad y energía en el `AtomicPiston`.
+    Este controlador es utilizado por `AtomicPiston` para regular la
+    velocidad y la energía del sistema, ajustando la fuerza de control
+    basada en el error entre un setpoint y el valor actual.
 
     Attributes:
         kp (float): Ganancia proporcional.
         ki (float): Ganancia integral.
         kd (float): Ganancia derivativa.
+        output_limit (float): Límite de la salida para anti-windup.
     """
     def __init__(self, kp: float, ki: float, kd: float, output_limit: float = 10.0) -> None:
         """
         Inicializa el controlador PID.
 
         Args:
-            kp: Ganancia proporcional.
-            ki: Ganancia integral.
-            kd: Ganancia derivativa.
-            output_limit: Límite absoluto para la salida del controlador (anti-windup).
+            kp: Ganancia proporcional (P).
+            ki: Ganancia integral (I).
+            kd: Ganancia derivativa (D).
+            output_limit: Límite absoluto para la salida (anti-windup).
         """
         self.kp: float = kp
         self.ki: float = ki
