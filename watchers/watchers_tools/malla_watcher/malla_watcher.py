@@ -46,7 +46,7 @@ import json
 from flask import Flask, request, jsonify
 from werkzeug.exceptions import HTTPException
 import numpy as np
-from typing import List, Optional, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any
 from dataclasses import dataclass, InitVar, field
 from scipy.interpolate import RegularGridInterpolator
 from watchers.watchers_tools.malla_watcher.utils.cilindro_grafenal import (
@@ -141,6 +141,9 @@ class PhosWave:
     Esta clase encapsula el coeficiente de acoplamiento (C) que determina
     la fuerza de la interacción entre osciladores vecinos en la malla.
 
+    Args:
+        coef_acoplamiento (float): Coeficiente de acoplamiento inicial.
+
     Attributes:
         C (float): El coeficiente de acoplamiento. Debe ser no negativo.
     """
@@ -172,6 +175,9 @@ class Electron:
 
     Esta clase encapsula el coeficiente de amortiguación (D) que determina
     cómo la velocidad de un oscilador se disipa con el tiempo.
+
+    Args:
+        coef_amortiguacion (float): Coeficiente de amortiguación inicial.
 
     Attributes:
         D (float): El coeficiente de amortiguación. Debe ser no negativo.
@@ -616,7 +622,7 @@ def fetch_and_apply_torus_field() -> None:
         logger.error(
             "Error al procesar/decodificar respuesta JSON de %s: %s",
             ecu_vector_field_url, err)
-    except Exception:  # noqa: E722
+    except Exception:
         logger.exception(
             "Error inesperado al obtener/aplicar campo vectorial de %s",
             ecu_vector_field_url)
@@ -741,7 +747,7 @@ def send_influence_to_torus(dphi_dt: float) -> None:
         logger.error(
             "Error de red al enviar influencia (dPhi/dt) a %s: %s",
             ecu_influence_url, e)
-    except Exception:  # noqa: E722
+    except Exception:
         logger.exception(
             "Error inesperado al enviar influencia (dPhi/dt) a %s",
             ecu_influence_url)
@@ -816,7 +822,7 @@ def simulation_loop() -> None:
             update_aggregate_state()
             _send_influence_if_needed(dphi_dt)
 
-        except Exception:  # noqa: E722
+        except Exception:
             logger.exception(
                 "Error durante el paso de simulación %d de malla.", step_count)
 
@@ -1418,35 +1424,54 @@ def get_config() -> Tuple[str, int]:
 
 
 # --- Punto de Entrada Principal ---
-if __name__ == "__main__":
+
+
+def main():
+    """Función principal para inicializar y ejecutar el servicio."""
+    global malla_cilindrica_global
+    global simulation_thread
+    global resonador_global
+    global electron_global
+    global MATRIZ_ECU_BASE_URL
+    global TORUS_NUM_CAPAS
+    global TORUS_NUM_FILAS
+    global TORUS_NUM_COLUMNAS
+    global AMPLITUDE_INFLUENCE_THRESHOLD
+    global MAX_AMPLITUDE_FOR_NORMALIZATION
+    global REQUESTS_TIMEOUT
+    global BASE_COUPLING_T
+    global BASE_DAMPING_E
+    global K_GAIN_COUPLING
+    global K_GAIN_DAMPING
+    global SIMULATION_INTERVAL
+    global DPHI_DT_INFLUENCE_THRESHOLD
+
     # 1. Leer las variables de configuración REALES desde el entorno
     MESH_RADIUS_REAL = float(os.environ.get("MW_RADIUS", 5.0))
     MESH_HEIGHT_SEGMENTS_REAL = int(os.environ.get("MW_HEIGHT_SEG", 6))
-    MESH_CIRCUMFERENCE_SEGMENTS_REAL = \
-        int(os.environ.get("MW_CIRCUM_SEG", 12))
+    MESH_CIRCUMFERENCE_SEGMENTS_REAL = int(
+        os.environ.get("MW_CIRCUM_SEG", 12))
     MESH_HEX_SIZE_REAL = float(os.environ.get("MW_HEX_SIZE", 1.0))
-    MESH_PERIODIC_Z_REAL = \
-        os.environ.get("MW_PERIODIC_Z", "True").lower() == "true"
+    MESH_PERIODIC_Z_REAL = os.environ.get(
+        "MW_PERIODIC_Z", "True").lower() == "true"
 
-    MATRIZ_ECU_BASE_URL_REAL = \
-        os.environ.get("MATRIZ_ECU_URL", "http://ecu:8000")
+    MATRIZ_ECU_BASE_URL_REAL = os.environ.get(
+        "MATRIZ_ECU_URL", "http://ecu:8000")
     TORUS_NUM_CAPAS_REAL = int(os.environ.get("TORUS_NUM_CAPAS", 3))
     TORUS_NUM_FILAS_REAL = int(os.environ.get("TORUS_NUM_FILAS", 4))
     TORUS_NUM_COLUMNAS_REAL = int(os.environ.get("TORUS_NUM_COLUMNAS", 5))
-    AMPLITUDE_INFLUENCE_THRESHOLD_REAL = \
-        float(os.environ.get("MW_INFLUENCE_THRESHOLD", 5.0))
-    MAX_AMPLITUDE_FOR_NORMALIZATION_REAL = \
-        float(os.environ.get("MW_MAX_AMPLITUDE_NORM", 20.0))
-    REQUESTS_TIMEOUT_REAL = \
-        float(os.environ.get("MW_REQUESTS_TIMEOUT", 2.0))
+    AMPLITUDE_INFLUENCE_THRESHOLD_REAL = float(
+        os.environ.get("MW_INFLUENCE_THRESHOLD", 5.0))
+    MAX_AMPLITUDE_FOR_NORMALIZATION_REAL = float(
+        os.environ.get("MW_MAX_AMPLITUDE_NORM", 20.0))
+    REQUESTS_TIMEOUT_REAL = float(os.environ.get("MW_REQUESTS_TIMEOUT", 2.0))
     BASE_COUPLING_T_REAL = float(os.environ.get("MW_BASE_T", 0.6))
     BASE_DAMPING_E_REAL = float(os.environ.get("MW_BASE_E", 0.1))
     K_GAIN_COUPLING_REAL = float(os.environ.get("MW_K_GAIN_T", 0.1))
     K_GAIN_DAMPING_REAL = float(os.environ.get("MW_K_GAIN_E", 0.05))
-    SIMULATION_INTERVAL_REAL = \
-        float(os.environ.get("MW_SIM_INTERVAL", 0.5))
-    DPHI_DT_INFLUENCE_THRESHOLD_REAL = \
-        float(os.environ.get("MW_DPHI_DT_THRESHOLD", 1.0))
+    SIMULATION_INTERVAL_REAL = float(os.environ.get("MW_SIM_INTERVAL", 0.5))
+    DPHI_DT_INFLUENCE_THRESHOLD_REAL = float(
+        os.environ.get("MW_DPHI_DT_THRESHOLD", 1.0))
 
     # 2. Loguear la configuración REAL
     logger.info(
@@ -1507,7 +1532,7 @@ if __name__ == "__main__":
             logger.info(
                 "Malla REAL inicializada con %d celdas.",
                 len(malla_cilindrica_global.cells))
-    except Exception:  # noqa: E722
+    except Exception:
         logger.exception(
             "Error crítico al RE-inicializar HexCylindricalMesh global REAL.")
         exit(1)
@@ -1575,5 +1600,9 @@ if __name__ == "__main__":
         if simulation_thread.is_alive():
             logger.warning("El hilo de simulación no terminó a tiempo.")
     logger.info("Servicio malla_watcher finalizado.")
+
+
+if __name__ == "__main__":
+    main()
 
 # [end of watchers/watchers_tools/malla_watcher/malla_watcher.py]

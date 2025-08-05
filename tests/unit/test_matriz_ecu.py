@@ -373,7 +373,7 @@ def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
         "/api/ecu/influence", json=payload_vec_err_len
     )
     assert respuesta.status_code == 400
-    assert "lista de exactamente 2 elementos" in respuesta.get_json()["message"].lower()
+    assert "campo 'vector' debe ser una lista de 2 elementos" in respuesta.get_json()["message"].lower()
 
     payload_vec_err_type = {
         "capa": 0, "row": 1, "col": 1, "vector": [
@@ -382,8 +382,7 @@ def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
         "/api/ecu/influence", json=payload_vec_err_type
     )
     assert respuesta.status_code == 400
-    assert ("elementos del campo 'vector' deben ser números"
-            in respuesta.get_json()["message"].lower())
+    assert "elementos del 'vector' deben ser números" in respuesta.get_json()["message"].lower()
 
 
 def test_endpoint_influence_invalido_rango(cliente_flask: FlaskClient):

@@ -1,25 +1,19 @@
-# --- START OF FILE matriz_ecu.py (CORREGIDO) ---
+#!/usr/bin/env python3
+"""Módulo que define la matriz ECU (Experiencia de Campo Unificado).
 
-# !/usr/bin/env python3
-"""
-Módulo que define la matriz ECU (Experiencia de Campo Unificado)
-para el sistema Watchers, inspirada en un campo de confinamiento magnético
-toroidal (tipo Tokamak). Modela el estado y la dinámica de los watchers
-dentro de este campo multicapa.
-Proporciona servicios REST para obtener el estado unificado y recibir
-influencias. Incluye un hilo de simulación en segundo plano para la
-evolución dinámica del campo.
+Este módulo modela un campo de confinamiento magnético toroidal (tipo Tokamak)
+y la dinámica de los watchers dentro de él.
 
-El campo es representado como un campo vectorial 2D discreto en una
-grilla 3D toroidal. Cada punto de la grilla (capa, fila, columna)
-almacena un vector [vx, vy], que puede interpretarse como componentes
-locales de la densidad de flujo magnético (B).
-La interpretación exacta de vx y vy en términos de direcciones físicas
-(toroidal, poloidal, radial) se puede definir conceptualmente por analogía.
-Por ejemplo:
-vx es la componente toroidal de B.
-vy es la componente poloidal (vertical) de B.
-La dimensión de la "capa" podría representar la dirección radial.
+El campo es un campo vectorial 2D en una grilla 3D toroidal, donde cada punto
+almacena un vector [vx, vy] que representa componentes de la densidad de flujo
+magnético (B).
+
+Proporciona una API REST para:
+- Obtener el estado unificado del campo.
+- Recibir influencias externas (perturbaciones).
+- Monitorear la salud del servicio.
+
+Una simulación en segundo plano actualiza continuamente la dinámica del campo.
 """
 
 import logging
@@ -50,6 +44,8 @@ if not logging.getLogger("matriz_ecu").hasHandlers():
 logger = logging.getLogger("matriz_ecu")
 
 # --- Funciones Auxiliares para Configuración ---
+
+
 def get_env_int(var_name: str, default: int) -> int:
     """Obtiene una variable de entorno como entero con fallback y logging."""
     try:
@@ -137,12 +133,15 @@ class ToroidalField:
         self.lock = threading.Lock()
 
         if alphas and len(alphas) != num_capas:
-            raise ValueError(f"La lista 'alphas' debe tener longitud {num_capas}")
+            raise ValueError(
+                f"La lista 'alphas' debe tener longitud {num_capas}")
         self.alphas = alphas if alphas else [DEFAULT_ALPHA_VALUE] * num_capas
 
         if dampings and len(dampings) != num_capas:
-            raise ValueError(f"La lista 'dampings' debe tener longitud {num_capas}")
-        self.dampings = dampings if dampings else [DEFAULT_DAMPING_VALUE] * num_capas
+            raise ValueError(
+                f"La lista 'dampings' debe tener longitud {num_capas}")
+        self.dampings = dampings if dampings else [
+            DEFAULT_DAMPING_VALUE] * num_capas
 
         if not alphas:
             logger.info("Usando alpha por defecto para todas las capas.")
@@ -315,7 +314,8 @@ class ToroidalField:
             next_campo = []
             # Pre-calcular arrays de alphas y dampings para broadcasting
             alphas_array = np.array(self.alphas)[:, np.newaxis, np.newaxis]
-            dampings_array = np.array(self.dampings)[:, np.newaxis, np.newaxis]
+            dampings_array = np.array(
+                self.dampings)[:, np.newaxis, np.newaxis]
 
             for capa_idx in range(self.num_capas):
                 capa_actual = self.campo_q[capa_idx]
@@ -531,133 +531,142 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
         ), 500
 
 
-@app.route("/api/ecu/influence", methods=["POST"])
-def recibir_influencia_malla() -> Tuple[Any, int]:
-    """
-    Endpoint REST para recibir una influencia externa y aplicarla al campo.
+def _validate_and_parse_influence_payload(
+    data: Optional[Dict[str, Any]]
+) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[Any, int]]]:
+    """Valida y parsea el payload de la solicitud de influencia.
 
-    Espera un payload JSON con 'capa', 'row', 'col', 'vector' (lista 2D),
-    y 'nombre_watcher'. Aplica el 'vector' como una perturbación al campo
-    vectorial en la ubicación especificada.
-    """
-    logger.info("Solicitud POST /api/ecu/influence recibida.")
-    try:
-        data = request.get_json()
-        if not data:
-            logger.error(
-                "No se recibió payload JSON en la solicitud "
-                "POST /api/ecu/influence."
-            )
-            return jsonify({"status": "error",
-                            "message": "Payload JSON vacío o ausente"}), 400
-    except Exception as e_json:
-        logger.error(
-            "Error al parsear JSON en la solicitud "
-            f"POST /api/ecu/influence: {e_json}"
-        )
-        return jsonify({"status": "error",
-                        "message": "Error al parsear el payload JSON."}), 400
+    Args:
+        data: El diccionario JSON de la solicitud.
 
-    required_fields: Dict[str, type] = {
+    Returns:
+        Una tupla `(parsed_data, error_response)`.
+        Si la validación es exitosa, `parsed_data` contiene los datos
+        validados y `error_response` es `None`.
+        Si la validación falla, `parsed_data` es `None` y `error_response`
+        contiene una tupla `(response_json, status_code)` para ser
+        retornada por el endpoint.
+    """
+    if not data:
+        return None, (jsonify({
+            "status": "error", "message": "Payload JSON vacío o ausente"
+        }), 400)
+
+    required_fields = {
         "capa": int, "row": int, "col": int,
         "vector": list, "nombre_watcher": str
     }
-    missing_fields = [field for field in required_fields if field not in data]
-    if missing_fields:
-        msg = (
-            "Faltan campos requeridos en el JSON: "
-            f"{', '.join(missing_fields)}"
-        )
-        logger.error(msg)
-        return jsonify({"status": "error", "message": msg}), 400
+    missing = [f for f in required_fields if f not in data]
+    if missing:
+        msg = f"Faltan campos requeridos en el JSON: {', '.join(missing)}"
+        return None, (jsonify({"status": "error", "message": msg}), 400)
 
-    type_errors = []
+    errors = []
     for field, expected_type in required_fields.items():
-        # Asegurarse que el campo existe antes de verificar el tipo
-        if field in data and not isinstance(data[field], expected_type):
-            type_errors.append(
+        if not isinstance(data[field], expected_type):
+            errors.append(
                 f"Campo '{field}' debe ser {expected_type.__name__}, "
                 f"recibido {type(data[field]).__name__}"
             )
 
-    vector_data = data.get("vector")
-    vector_complex = None
-    # Esta validación es más específica y robusta que la anterior.
-    # Se ejecuta solo si 'vector' pasó la validación de tipo 'list'.
-    if isinstance(vector_data, list):
-        if len(vector_data) == 2:
-            try:
-                vector_complex = complex(float(vector_data[0]), float(vector_data[1]))
-            except (ValueError, TypeError) as e:
-                logger.debug(f"Error convirtiendo vector {vector_data}: {e}")
-                type_errors.append(
-                    "Elementos del campo 'vector' deben ser números (float, int)."
-                )
+    vec_data = data.get("vector")
+    vec_complex = None
+    if isinstance(vec_data, list):
+        if len(vec_data) != 2:
+            errors.append("Campo 'vector' debe ser una lista de 2 elementos.")
+        elif not all(isinstance(v, (int, float)) for v in vec_data):
+            errors.append("Elementos del 'vector' deben ser números.")
         else:
-            type_errors.append(
-                "Campo 'vector' debe ser una lista de exactamente 2 elementos."
-            )
-    # El caso en que 'vector' no es una lista ya está cubierto por la
-    # validación de tipos anterior.
+            vec_complex = complex(vec_data[0], vec_data[1])
 
-    if type_errors:
-        msg = "errores de tipo en json: " + "; ".join(type_errors).lower()
-        logger.error(msg)
-        return jsonify({"status": "error", "message": msg}), 400
+    if errors:
+        msg = "Errores de tipo en JSON: " + "; ".join(errors).lower()
+        return None, (jsonify({"status": "error", "message": msg}), 400)
 
-    # Si llegamos aquí, los campos requeridos existen y tienen tipos
-    # básicos correctos
-    capa, row, col = data['capa'], data['row'], data['col']
-    nombre_watcher = data['nombre_watcher']
+    parsed = {
+        "capa": data["capa"], "row": data["row"], "col": data["col"],
+        "vector_complex": vec_complex,
+        "nombre_watcher": data["nombre_watcher"]
+    }
 
-    if not (0 <= capa < campo_toroidal_global_servicio.num_capas):
-        return jsonify({
-            "status": "error",
-            "message": "Índice de capa fuera de rango."
-        }), 400
-    if not (0 <= row < campo_toroidal_global_servicio.num_rows):
-        return jsonify({
-            "status": "error",
-            "message": "Índice de fila fuera de rango."
-        }), 400
-    if not (0 <= col < campo_toroidal_global_servicio.num_cols):
-        return jsonify({
-            "status": "error",
-            "message": "Índice de columna fuera de rango."
-        }), 400
+    if not (0 <= parsed["capa"] < campo_toroidal_global_servicio.num_capas):
+        return None, (jsonify({
+            "status": "error", "message": "Índice de capa fuera de rango."
+        }), 400)
+    if not (0 <= parsed["row"] < campo_toroidal_global_servicio.num_rows):
+        return None, (jsonify({
+            "status": "error", "message": "Índice de fila fuera de rango."
+        }), 400)
+    if not (0 <= parsed["col"] < campo_toroidal_global_servicio.num_cols):
+        return None, (jsonify({
+            "status": "error", "message": "Índice de columna fuera de rango."
+        }), 400)
 
+    return parsed, None
+
+
+@app.route("/api/ecu/influence", methods=["POST"])
+def recibir_influencia_malla() -> Tuple[Any, int]:
+    """Recibe y aplica una influencia externa al campo toroidal.
+
+    Espera un payload JSON con 'capa', 'row', 'col', 'vector' (lista 2D),
+    y 'nombre_watcher'.
+
+    Returns:
+        Una tupla de respuesta JSON y código de estado HTTP.
+        - 200 OK: Si la influencia se aplicó con éxito.
+        - 400 Bad Request: Si el payload es inválido o faltan campos.
+        - 500 Internal Server Error: Si ocurre un error inesperado.
+    """
+    logger.info("Solicitud POST /api/ecu/influence recibida.")
     try:
+        data = request.get_json()
+        parsed_data, error_response = _validate_and_parse_influence_payload(
+            data)
+
+        if error_response:
+            return error_response
+
         success = campo_toroidal_global_servicio.aplicar_influencia(
-            capa=capa, row=row, col=col,
-            vector=vector_complex, nombre_watcher=nombre_watcher
+            capa=parsed_data["capa"],
+            row=parsed_data["row"],
+            col=parsed_data["col"],
+            vector=parsed_data["vector_complex"],
+            nombre_watcher=parsed_data["nombre_watcher"]
         )
+
         if success:
             logger.info(
-                f"Influencia de '{nombre_watcher}' aplicada exitosamente via"
-                f"API en ({capa}, {row}, {col})."
+                "Influencia de '%s' aplicada exitosamente via API en (%d, %d, %d).",
+                parsed_data['nombre_watcher'], parsed_data['capa'],
+                parsed_data['row'], parsed_data['col']
             )
             return jsonify({
                 "status": "success",
-                "message": f"Influencia de '{nombre_watcher}' aplicada.",
-                "applied_to": {"capa": capa, "row": row, "col": col},
-                "vector": [vector_complex.real, vector_complex.imag]
+                "message": f"Influencia de '{parsed_data['nombre_watcher']}' aplicada.",
+                "applied_to": {
+                    "capa": parsed_data["capa"],
+                    "row": parsed_data["row"],
+                    "col": parsed_data["col"]},
+                "vector": [
+                    parsed_data["vector_complex"].real,
+                    parsed_data["vector_complex"].imag
+                ]
             }), 200
         else:
-            logger.error(
-                f"Fallo al aplicar influencia de '{nombre_watcher}' via API "
-                f"en ({capa}, {row}, {col}) por validación interna."
-            )
-            return jsonify({"status": "error",
-                            "message": "Error de validación al aplicar "
-                                       "influencia."}), 400
-    except Exception as e_apply:
+            # Este caso puede ser redundante si _validate_... es exhaustivo
+            return jsonify({
+                "status": "error",
+                "message": "Error de validación interno al aplicar influencia."
+            }), 400
+
+    except Exception as e:
         logger.exception(
-            "Error inesperado en endpoint /api/ecu/influence "
-            f"al aplicar influencia: {e_apply}"
-        )
-        return jsonify({"status": "error",
-                        "message": "Error interno al procesar la "
-                                   "influencia."}), 500
+            "Error inesperado en endpoint /api/ecu/influence: %s", e)
+        return jsonify({
+            "status": "error",
+            "message": "Error interno al procesar la influencia."
+        }), 500
 
 
 # Retorna el campo vectorial completo
@@ -757,5 +766,3 @@ if __name__ == "__main__":
                     "El hilo de simulación ECU no terminó limpiamente."
                 )
         logger.info("Servicio matriz_ecu finalizado.")
-
-# --- END OF FILE matriz_ecu.py (CORREGIDO) ---
