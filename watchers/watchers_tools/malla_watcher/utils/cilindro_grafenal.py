@@ -5,6 +5,7 @@ import logging
 import numpy as np
 from collections import deque, Counter
 from typing import List, Optional, Dict, Tuple, Any
+from dataclasses import dataclass, field
 
 # --- Configuración del Logging ---
 logger = logging.getLogger(__name__)  # Usar __name__ para logger
@@ -57,60 +58,25 @@ def cartesian_flat_to_cylindrical(
     return radius, theta, z
 
 
+@dataclass(slots=True, eq=False)
 class Cell:
     """
     Representa una celda (nodo) de la malla hexagonal cilíndrica.
     Almacena coordenadas cilíndricas (r, theta, z), estado local de oscilador
     (amplitud, velocidad) y valor del campo vectorial externo (q_vector).
     """
-
-    def __init__(
-            self,
-            cyl_radius: float,
-            cyl_theta: float,
-            cyl_z: float,
-            q_axial: int,
-            r_axial: int,
-            amplitude: float = 0.0,
-            velocity: float = 0.0,
-            q_vector: Optional[np.ndarray] = None
-    ):
-        """
-        Inicializa la celda.
-
-        Args:
-            cyl_radius (float): Radio cilíndrico.
-            cyl_theta (float): Ángulo azimutal (radianes, [0, 2*pi)).
-            cyl_z (float): Altura a lo largo del eje.
-            q_axial (int): Coordenada axial 'q' original.
-            r_axial (int): Coordenada axial 'r' original.
-            amplitude (float): Amplitud del oscilador.
-            velocity (float): Velocidad del oscilador.
-            q_vector (Optional[np.ndarray]): Campo vectorial externo [vx, vy].
-        """
-        self.r: float = cyl_radius
-        self.theta: float = cyl_theta
-        self.z: float = cyl_z
-        self.q_axial: int = q_axial
-        self.r_axial: int = r_axial
-        self.amplitude: float = amplitude
-        self.velocity: float = velocity
-        # ATRIBUTO VORONOI CONSERVADO
-        self.voronoi_neighbors: List[Cell] = []
-
-        if q_vector is not None and isinstance(q_vector, np.ndarray):
-            self.q_vector: np.ndarray = q_vector
-        else:
-            self.q_vector: np.ndarray = np.zeros(2, dtype=float)
-
-    def __repr__(self) -> str:
-        q_vec_str = f"[{self.q_vector[0]:.2f}, {self.q_vector[1]:.2f}]"
-        return (
-            f"Cell(ax=({self.q_axial},{self.r_axial}), "
-            f"cyl=(r={self.r:.2f}, θ={self.theta:.2f}, z={self.z:.2f}), "
-            f"amp={self.amplitude:.2f}, vel={self.velocity:.2f}, "
-            f"q_v={q_vec_str})"
-        )
+    r: float
+    theta: float
+    z: float
+    q_axial: int
+    r_axial: int
+    amplitude: float = 0.0
+    velocity: float = 0.0
+    q_vector: np.ndarray = field(
+        default_factory=lambda: np.zeros(2, dtype=float))
+    # ATRIBUTO VORONOI CONSERVADO
+    voronoi_neighbors: List['Cell'] = field(
+        default_factory=list, repr=False, compare=False)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -224,11 +190,13 @@ class HexCylindricalMesh:
         self.previous_flux: float = 0.0
         self._z_periodic_tree = None
         self._z_periodic_cell_list = None
+        self._neighbor_cache: Dict[Tuple[int, int], List[Cell]] = {}
 
         self._initialize_mesh()
         if self.cells:
             self._calculate_z_bounds()
             self._build_z_periodic_lookup()
+            self._precompute_all_neighbors()
             self.verify_connectivity()
         else:
             logger.error("¡La inicialización de la malla no generó celdas!")
@@ -413,6 +381,19 @@ class HexCylindricalMesh:
             f"({current_bfs_iteration} iteraciones BFS)"
         )
 
+    def _precompute_all_neighbors(self):
+        """
+        Calcula y almacena en caché los vecinos de todas las celdas.
+        Este método se llama una vez durante la inicialización para optimizar
+        las llamadas subsecuentes a `get_neighbor_cells`.
+        """
+        logger.info(
+            "Pre-calculando vecinos para %d celdas...", len(self.cells))
+        for q, r in self.cells.keys():
+            neighbors = self._find_and_get_neighbor_cells(q, r)
+            self._neighbor_cache[(q, r)] = neighbors
+        logger.info("Pre-cálculo de vecinos completado.")
+
     def verify_connectivity(
             self,
             expected_min_neighbors_internal: int = 6
@@ -579,13 +560,7 @@ class HexCylindricalMesh:
     def get_neighbor_cells(
             self, q_center: int, r_center: int
     ) -> List[Cell]:
-        """Obtiene las celdas vecinas existentes de una celda central.
-
-        Calcula los vecinos teóricos de la celda en (q_center, r_center) y
-        luego verifica cuáles de estos vecinos existen realmente en la malla.
-        Maneja la periodicidad circunferencial (alrededor del eje del cilindro)
-        automáticamente. Si `self.periodic_z` es True, también intenta
-        encontrar vecinos envueltos en la dirección Z (altura).
+        """Recupera la lista pre-calculada de celdas vecinas existentes.
 
         Args:
             q_center: La coordenada axial 'q' de la celda central.
@@ -594,7 +569,16 @@ class HexCylindricalMesh:
         Returns:
             Una lista de instancias de `Cell` que son vecinas directas y
             existentes de la celda central. La lista puede estar vacía si
-            no se encuentran vecinos o si la celda central no existe.
+            la celda no fue encontrada en el caché.
+        """
+        return self._neighbor_cache.get((q_center, r_center), [])
+
+    def _find_and_get_neighbor_cells(
+            self, q_center: int, r_center: int
+    ) -> List[Cell]:
+        """
+        Encuentra las celdas vecinas existentes de una celda central.
+        Este es el método de cálculo real, llamado durante el pre-cómputo.
         """
         neighbor_cells: List[Cell] = []
         theoretical_neighbor_coords = self.get_axial_neighbors_coords(

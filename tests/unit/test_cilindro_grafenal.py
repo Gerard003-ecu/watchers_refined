@@ -48,7 +48,7 @@ def sample_cell_cg():  # cg para cilindro_grafenal
         Cell: Una instancia de `Cell` preconfigurada.
     """
     return Cell(
-        cyl_radius=5.0, cyl_theta=np.pi/2, cyl_z=1.0, q_axial=1, r_axial=-1,
+        r=5.0, theta=np.pi/2, z=1.0, q_axial=1, r_axial=-1,
         amplitude=10.0, velocity=0.5, q_vector=np.array([0.2, -0.1])
     )
 
@@ -95,23 +95,6 @@ def test_cell_initialization(sample_cell_cg: Cell):
     assert np.array_equal(sample_cell_cg.q_vector, np.array([0.2, -0.1]))
 
 
-def test_cell_repr(sample_cell_cg: Cell):
-    """Prueba la representación en cadena de una instancia de `Cell`.
-
-    Verifica que la salida de `repr(cell)` contenga la información esperada
-    sobre las coordenadas axiales, cilíndricas, amplitud, velocidad y q_vector.
-
-    Args:
-        sample_cell_cg (Cell): Fixture que proporciona una instancia de `Cell`.
-    """
-    repr_str = repr(sample_cell_cg)
-    assert "Cell(ax=(1,-1)" in repr_str
-    assert "cyl=(r=5.00, θ=1.57, z=1.00)" in repr_str
-    assert "amp=10.00" in repr_str
-    assert "vel=0.50" in repr_str
-    # CAMBIADO: Verificar q_vector en repr
-    # Aceptar formatos de numpy.array repr
-    assert "q_v=[0.20, -0.10]" in repr_str
 
 
 def test_cell_to_dict(sample_cell_cg: Cell):
@@ -394,3 +377,45 @@ def test_cartesian_flat_to_cylindrical():
     assert cartesian_flat_to_cylindrical(
         radius * -math.pi/2, -2.0, radius
     ) == pytest.approx((radius, 3 * math.pi / 2, -2.0))
+
+
+def test_neighbor_caching_and_retrieval():
+    """
+    Test that neighbors are pre-calculated, cached, and retrieved correctly.
+    """
+    # Using a mesh large enough to have internal cells with 6 neighbors
+    mesh = HexCylindricalMesh(
+        radius=5.0,
+        height_segments=5,
+        circumference_segments_target=10,
+        hex_size=1.0
+    )
+
+    # 1. Check that the cache is populated after initialization
+    assert hasattr(mesh, '_neighbor_cache')
+    assert mesh._neighbor_cache
+    assert len(mesh._neighbor_cache) == len(mesh.cells)
+
+    # 2. Pick a cell from the middle of the mesh
+    center_cell_key = (0, 0)
+    if center_cell_key not in mesh.cells:
+        center_cell_key = list(mesh.cells.keys())[0]
+
+    cell = mesh.get_cell(*center_cell_key)
+    assert cell is not None, "Could not find a sample cell in the mesh."
+
+    q, r = cell.q_axial, cell.r_axial
+
+    # 3. Get neighbors using the public method (which should use the cache)
+    cached_neighbors = mesh.get_neighbor_cells(q, r)
+    assert isinstance(cached_neighbors, list)
+
+    # 4. Get neighbors using the internal calculation method directly
+    calculated_neighbors = mesh._find_and_get_neighbor_cells(q, r)
+
+    # 5. The results should be identical in content
+    assert len(cached_neighbors) == len(calculated_neighbors)
+    assert {id(c) for c in cached_neighbors} == {id(c) for c in calculated_neighbors}
+
+    # 6. Verify that the public method is indeed returning a cached list
+    assert cached_neighbors is mesh._neighbor_cache[(q, r)]
