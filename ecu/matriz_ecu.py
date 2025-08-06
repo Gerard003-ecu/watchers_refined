@@ -724,6 +724,76 @@ def get_field_vector_api() -> Tuple[Any, int]:
         return jsonify(error_response), 500
 
 
+@app.route("/debug/set_random_phase", methods=["POST"])
+def set_random_phase_debug():
+    """
+    Endpoint de depuración para reiniciar el campo a una fase cuántica aleatoria.
+    Solo disponible en entornos de desarrollo o prueba.
+    """
+    flask_env = os.environ.get("FLASK_ENV", "production")
+    if flask_env not in ["development", "test"]:
+        logger.warning(
+            "Acceso denegado a endpoint de depuración en entorno '%s'.", flask_env
+        )
+        return jsonify({
+            "status": "error",
+            "message": "Endpoint de depuración solo disponible en desarrollo/test."
+        }), 403
+
+    try:
+        campo_toroidal_global_servicio.set_initial_quantum_phase()
+        logger.info("Endpoint de depuración: Campo reiniciado a fase cuántica aleatoria.")
+        return jsonify({
+            "status": "success",
+            "message": "Campo reiniciado a fase cuántica aleatoria."
+        }), 200
+    except Exception as e:
+        logger.exception("Error en endpoint /debug/set_random_phase: %s", e)
+        return jsonify({
+            "status": "error",
+            "message": "Error interno al reiniciar el campo."
+        }), 500
+
+
+@app.route("/api/ecu/field_vector/region/<int:capa_idx>", methods=["GET"])
+def get_region_field_vector_api(capa_idx: int) -> Tuple[Any, int]:
+    """
+    Endpoint REST para obtener el campo vectorial de una capa específica.
+    """
+    if not (0 <= capa_idx < campo_toroidal_global_servicio.num_capas):
+        return jsonify({
+            "status": "error",
+            "message": f"Índice de capa fuera de rango. Se esperaba entre 0 y {campo_toroidal_global_servicio.num_capas - 1}."
+        }), 404
+
+    try:
+        with campo_toroidal_global_servicio.lock:
+            # Obtener una copia de la capa para evitar problemas de concurrencia
+            layer_copy = [
+                [[cell.real, cell.imag] for cell in row]
+                for row in campo_toroidal_global_servicio.campo_q[capa_idx]
+            ]
+
+        logger.info(f"Solicitud GET para la capa {capa_idx} recibida.")
+        response_data = {
+            "status": "success",
+            "field_vector_region": layer_copy,
+            "metadata": {
+                "descripcion": f"Campo vectorial 2D para la capa {capa_idx}",
+                "capa_idx": capa_idx,
+                "filas": campo_toroidal_global_servicio.num_rows,
+                "columnas": campo_toroidal_global_servicio.num_cols,
+            }
+        }
+        return jsonify(response_data), 200
+    except Exception as e:
+        logger.exception(f"Error en endpoint para la capa {capa_idx}: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Error interno al procesar la solicitud de la región."
+        }), 500
+
+
 # --- Función Principal y Arranque ---
 def main():
     global simulation_thread

@@ -35,8 +35,8 @@ import requests
 from flask import Flask, jsonify, request
 
 # Local application imports
-from agent_ai.utils.logger import get_logger
-from agent_ai.validation.validator import (
+from utils.logger import get_logger
+from validation.validator import (
     check_missing_dependencies,
     validate_module_registration,
 )
@@ -1329,6 +1329,36 @@ def handle_command():
     )
     status_code = 200 if result.get("status") == "success" else 400
     return jsonify(result), status_code
+
+
+@agent_api.route("/commands/synchronize_region", methods=["POST"])
+def handle_synchronize_region():
+    """
+    Punto de entrada de API para iniciar una maniobra de sincronización de fase.
+    Espera un payload JSON con 'region' (string) y 'target_phase' (float).
+    """
+    data = request.get_json()
+    if not data or "region" not in data or "target_phase" not in data:
+        return jsonify({"status": "error", "message": "Payload inválido. Se requiere 'region' y 'target_phase'."}), 400
+
+    region = data.get("region")
+    target_phase = data.get("target_phase")
+
+    if not isinstance(region, str) or not isinstance(target_phase, (int, float)):
+        return jsonify({"status": "error", "message": "Tipos de datos inválidos para 'region' o 'target_phase'."}), 400
+
+    # Aquí llamamos a un método interno de agent_ai que inicia la maniobra.
+    # Por ahora, simularemos la llamada y devolveremos un éxito.
+    # En una implementación real, esto podría ser:
+    # agent_ai_instance_app.initiate_phase_synchronization(region, target_phase)
+    logger.info(f"Comando de sincronización recibido para la región '{region}' con fase objetivo {target_phase}.")
+    agent_ai_instance_app._delegate_phase_synchronization_task(region, target_phase)
+
+
+    return jsonify({
+        "status": "command_accepted",
+        "message": "Maniobra de sincronización iniciada."
+    }), 202
 
 
 def run_agent_ai_service():
