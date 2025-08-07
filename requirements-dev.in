@@ -1,31 +1,15 @@
-# Dependencias de agent_ai
-flask
-requests
-numpy
-opencv-python
-scikit-learn
-scipy
-dash
-dash-bootstrap-components
-plotly
+# High-level dependencies for development, linting, and testing.
 
-# Dependencias de benzwatcher
-fastapi
-uvicorn
-prometheus-client
-python-dotenv
-
-# Herramientas de Testing
-pytest
-pytest-mock
-pytest-cov
-responses
-jsonschema
-
-# Herramientas de Calidad de Código
-flake8
-black  # <-- Recomendado para autoformatear
-
-# Herramientas para compilar este archivo
+# Used to compile .in files into .txt files.
 pip-tools
 
+# Testing framework and plugins
+pytest
+pytest-cov
+pytest-mock
+responses
+
+# Linting and code formatting
+flake8
+black
+jsonschema
