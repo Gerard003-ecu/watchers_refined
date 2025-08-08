@@ -20,7 +20,7 @@ ENV PYTHONPATH="/app"
 EXPOSE 9000
 
 # Healthcheck para verificar si el servicio Flask responde
-HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:9000/api/health || exit 1
 
 # CMD corregido para usar ruta explícita

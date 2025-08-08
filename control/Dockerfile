@@ -22,7 +22,7 @@ EXPOSE 7000
 
 # Healthcheck para verificar si el servicio Flask responde (usando /api/harmony/state como ejemplo si no hay /api/health)
 # Ajusta la URL si tienes un endpoint de salud específico
-HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:7000/api/health || exit 1
 
   CMD ["python", "-m", "harmony_controller"]

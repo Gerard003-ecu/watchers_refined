@@ -5,14 +5,11 @@ import zipfile
 import tempfile
 from unittest.mock import patch, MagicMock, call
 
-# Añadir la carpeta 'atomic_piston' al path para importar
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'atomic_piston')))
-
 # Mock de pcbnew para poder ejecutar sin KiCad
 pcbnew_mock = MagicMock()
 sys.modules['pcbnew'] = pcbnew_mock
 
-from pcb_atomic_piston_v2 import create_schematic_netlist, create_pcb_design, generate_gerber_files
+from atomic_piston.pcb_atomic_piston_v2 import create_schematic_netlist, create_pcb_design, generate_gerber_files
 
 @pytest.fixture
 def temp_output_dir():
@@ -25,10 +22,13 @@ def temp_output_dir():
 @pytest.fixture
 def mock_kicad_dependencies(temp_output_dir):
     """Mockea las dependencias de KiCad (pcbnew, skidl)."""
-    with patch('skidl.generate_netlist') as mock_generate_netlist, \
-         patch('pcbnew.PLOT_CONTROLLER') as mock_plot_controller, \
-         patch('pcbnew.EXCELLON_WRITER') as mock_excellon_writer, \
-         patch('os.makedirs', return_value=None) as mock_makedirs:
+    with patch('atomic_piston.pcb_atomic_piston_v2.generate_netlist') as mock_generate_netlist, \
+         patch('atomic_piston.pcb_atomic_piston_v2.PLOT_CONTROLLER') as mock_plot_controller, \
+         patch('atomic_piston.pcb_atomic_piston_v2.EXCELLON_WRITER') as mock_excellon_writer, \
+         patch('os.makedirs', return_value=None) as mock_makedirs, \
+         patch('atomic_piston.pcb_atomic_piston_v2.Part', MagicMock()) as mock_part, \
+         patch('atomic_piston.pcb_atomic_piston_v2.Net', MagicMock()) as mock_net, \
+         patch('atomic_piston.pcb_atomic_piston_v2.reset', MagicMock()) as mock_reset:
 
         # Configurar mocks
         mock_plot_controller_instance = mock_plot_controller.return_value
@@ -75,9 +75,9 @@ def test_create_pcb_design(temp_output_dir, mock_kicad_dependencies):
         f.write("(netlist content)")
 
     # Mock de funciones internas de pcb_atomic_piston_v2
-    with patch('pcb_atomic_piston_v2.generate_gerber_files') as mock_generate_gerbers, \
-         patch('pcb_atomic_piston_v2.generate_drill_files') as mock_generate_drills, \
-         patch('pcb_atomic_piston_v2.verify_design', return_value=True) as mock_verify:
+    with patch('atomic_piston.pcb_atomic_piston_v2.generate_gerber_files') as mock_generate_gerbers, \
+         patch('atomic_piston.pcb_atomic_piston_v2.generate_drill_files') as mock_generate_drills, \
+         patch('atomic_piston.pcb_atomic_piston_v2.verify_design', return_value=True) as mock_verify:
 
         success = create_pcb_design(netlist_path)
 
