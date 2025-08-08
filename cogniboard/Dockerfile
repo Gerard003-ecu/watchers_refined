@@ -1,19 +1,28 @@
-# cogniboard/Dockerfile
-FROM python:3.9-slim
+# 1. Imagen Base: Usa una imagen base de Python específica y slim.
+FROM python:3.12-slim-bookworm
 
-# Establecer el directorio de trabajo para la aplicación
-WORKDIR /app/cogniboard
+# 2. Entorno: Establece WORKDIR y variables de entorno.
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
 
-# Copiar el archivo de requerimientos y aprovechar la caché de Docker:
-# Si requirements.txt no cambia, esta capa se reutiliza y no se vuelven a descargar las dependencias.
-COPY requirements.txt ./
+# Instalar dependencias del sistema (curl para HEALTHCHECK)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Optimización de Caché de Dependencias:
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el resto del código fuente del módulo
+# Copia el resto del código de la aplicación.
 COPY . .
 
-# Exponer el puerto para el healthcheck (por ejemplo, 9100)
-EXPOSE 9100
+# 4. Seguridad: Crea un usuario no-root y cambia a él.
+RUN useradd -m app
+USER app
 
-# Comando de inicio: ejecutar el script monitor.py
+# 5. Metadatos y Ejecución:
+EXPOSE 9100
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:9100/api/health || exit 1
+
 CMD ["python", "monitor.py"]
