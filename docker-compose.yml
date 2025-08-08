@@ -1,50 +1,104 @@
-version: '3'
+# ==============================================================================
+# Docker Compose Configuration for Watchers Monorepo
+#
+# This file defines the multi-container application setup for the "watchers"
+# project. It is designed with best practices for robustness, maintainability,
+# and security in mind.
+#
+# Key Features:
+#   - Externalized Configuration: Uses a .env file for environment-specific
+#     variables like ports, reducing hardcoded values.
+#   - DRY (Don't Repeat Yourself): Leverages YAML extension fields
+#     (x-common-config) to define a common configuration template for all
+#     services.
+#   - Healthcheck-based Startup: Uses `depends_on` with `service_healthy`
+#     to ensure a reliable startup order based on service dependencies.
+#   - Explicit Naming: Defines custom names for containers, networks, and
+#     volumes for clarity and predictability.
+#
+# ==============================================================================
+version: '3.8'
 
+# ==============================================================================
+# Extension Fields (for DRY principle)
+#
+# Defines a reusable configuration block that is applied to all services.
+# This avoids repetition and makes the file easier to maintain.
+# ==============================================================================
+x-common-config: &common-config
+  restart: unless-stopped
+  # Mounts a shared volume for caching Pip packages, speeding up builds.
+  volumes:
+    - pip-cache:/root/.cache/pip
+  # Connects all services to a custom-named bridge network.
+  networks:
+    - watchers_net
+  # Sets a common environment variable for all services.
+  environment:
+    - PYTHONPATH=/app
+
+# ==============================================================================
+# Services Definition
+#
+# Each block defines a microservice container.
+# ==============================================================================
 services:
-  #watchers_wave:
-  #  build:
-  #    context: ./watchers/watchers_tools/watchers_wave
-  #    dockerfile: Dockerfile
-  #  volumes:
-  #    - pip-cache:/root/.cache/pip
-  #    - ./logs:/app/logs
-  #  networks:
-  #    - watchers_net
-  #  restart: unless-stopped
-  #  ports:
-  #    - "5000:5000"
-  #  environment:
-  #    - PORT=5000
-  #    - PYTHONPATH=/app
+  # --- Core Services ---
 
-  #watcher_focus:
-  #  build:
-  #    context: ./watchers/watchers_tools/watcher_focus
-  #    dockerfile: Dockerfile
-  #  volumes:
-  #    - pip-cache:/root/.cache/pip
-  #    - ./logs:/app/logs
-  #  networks:
-  #    - watchers_net
-  #  restart: unless-stopped
-  #  ports:
-  #    - "6000:6000"
-  #  environment:
-  #    - PORT=6000
-  #    - PYTHONPATH=/app
+  ecu:
+    # Applies the common configuration template.
+    <<: *common-config
+    container_name: watchers-ecu
+    build:
+      context: ./ecu
+      dockerfile: Dockerfile
+    ports:
+      # Port mapping is externalized to the .env file.
+      - "${ECU_PORT}:8000"
+    environment:
+      - ECU_NUM_CAPAS=3
+      - ECU_NUM_FILAS=4
+      - ECU_NUM_COLUMNAS=5
+      - ECU_SIM_INTERVAL=1.0
+      - ECU_BETA_COUPLING=0.1
+      - MATRIZ_ECU_PORT=8000
+      - PORT=8000
+    # HEALTHCHECK is defined in the Dockerfile.
+
+  harmony_controller:
+    <<: *common-config
+    container_name: watchers-harmony-controller
+    build:
+      context: ./control
+      dockerfile: Dockerfile
+    ports:
+      - "${HARMONY_CONTROLLER_PORT}:7000"
+    environment:
+      - ECU_API_URL=http://ecu:8000/api/ecu
+      - HC_KP=1.0
+      - HC_KI=0.1
+      - HC_KD=0.05
+      - HC_SETPOINT_VECTOR=[1.0, 0.0]
+      - HC_INTERVAL=1.0
+      - HC_REQUESTS_TIMEOUT=2.0
+      - HC_MAX_RETRIES=3
+      - HC_BASE_RETRY_DELAY=0.5
+      - HC_PORT=7000
+    depends_on:
+      ecu:
+        # Waits for the 'ecu' service to be healthy before starting.
+        condition: service_healthy
+
+  # --- Watcher Services ---
 
   malla_watcher:
+    <<: *common-config
+    container_name: watchers-malla-watcher
     build:
       context: ./watchers/watchers_tools/malla_watcher
       dockerfile: Dockerfile
-    volumes:
-      - pip-cache:/root/.cache/pip
-      - ./logs:/app/logs
-    networks:
-      - watchers_net
-    restart: unless-stopped
     ports:
-      - "5001:5001"
+      - "${MALLA_WATCHER_PORT}:5001"
     environment:
       - MATRIZ_ECU_URL=http://ecu:8000
       - TORUS_NUM_CAPAS=3
@@ -64,88 +118,72 @@ services:
       - MW_PERIODIC_Z=True
       - MW_SIM_INTERVAL=0.5
       - PORT=5001
-      - PYTHONPATH=/app
+    depends_on:
+      ecu:
+        condition: service_healthy
 
-  ecu:
-    container_name: matriz_ecu
+  watchers_wave:
+    <<: *common-config
+    container_name: watchers-watchers-wave
     build:
-      context: ./ecu
+      context: ./watchers/watchers_tools/watchers_wave
       dockerfile: Dockerfile
-    volumes:
-      - pip-cache:/root/.cache/pip
-      - ./logs:/app/logs
-    networks:
-      - watchers_net
-    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${WATCHERS_WAVE_PORT}:5000"
     environment:
-      - ECU_NUM_CAPAS=3
-      - ECU_NUM_FILAS=4
-      - ECU_NUM_COLUMNAS=5
-      - ECU_SIM_INTERVAL=1.0
-      - ECU_BETA_COUPLING=0.1
-      - MATRIZ_ECU_PORT=8000
-      - PORT=8000
-      - PYTHONPATH=/app
+      - PORT=5000
 
- # harmony_controller:
- #   container_name: harmony_controller
- #   build:
- #     context: ./control
- #     dockerfile: Dockerfile
- #   volumes:
- #     - pip-cache:/root/.cache/pip
- #     - ./logs:/app/logs
- #   networks:
- #     - watchers_net
- #   restart: unless-stopped
- #   ports:
- #     - "7000:7000"
- #   environment:
- #     - ECU_API_URL=http://ecu:8000/api/ecu
- #     - HC_KP=1.0
- #     - HC_KI=0.1
- #     - HC_KD=0.05
- #     - HC_SETPOINT_VECTOR=[1.0, 0.0]
- #     - HC_INTERVAL=1.0
- #     - HC_REQUESTS_TIMEOUT=2.0
- #     - HC_MAX_RETRIES=3
- #     - HC_BASE_RETRY_DELAY=0.5
- #     - HC_PORT=7000
- #     - PYTHONPATH=/app
+  watcher_focus:
+    <<: *common-config
+    container_name: watchers-watcher-focus
+    build:
+      context: ./watchers/watchers_tools/watcher_focus
+      dockerfile: Dockerfile
+    ports:
+      - "${WATCHER_FOCUS_PORT}:6000"
+    environment:
+      - PORT=6000
 
- # agent_ai:
- #   container_name: agent_ai
- #   build:
- #     context: ./agent_ai
- #     dockerfile: Dockerfile
- #   volumes:
- #     - pip-cache:/root/.cache/pip
- #     - ./logs:/app/logs
- #   networks:
- #     - watchers_net
- #   restart: unless-stopped
- #   ports:
- #     - "9000:9000"
- #   environment:
- #     - HARMONY_CONTROLLER_URL=http://harmony_controller:7000
- #     - AGENT_AI_ECU_URL=http://ecu:8000
- #     - AGENT_AI_MALLA_URL=http://malla_watcher:5001
- #     - PORT=9000
- #     - AA_INTERVAL=5.0
- #     - AA_REQUESTS_TIMEOUT=4.0
- #     - AA_MAX_RETRIES=3
- #     - AA_BASE_RETRY_DELAY=0.5
- #     - AA_INITIAL_STRATEGY=default
- #     - AA_INITIAL_SETPOINT_VECTOR=[1.0, 0.0]
- #     - AA_GLOBAL_REQ_PATH=/app/requirements.txt
- #     - PYTHONPATH=/app
+  # --- AI and Agent Services ---
 
+  agent_ai:
+    <<: *common-config
+    container_name: watchers-agent-ai
+    build:
+      context: ./agent_ai
+      dockerfile: Dockerfile
+    ports:
+      - "${AGENT_AI_PORT}:9000"
+    environment:
+      - HARMONY_CONTROLLER_URL=http://harmony_controller:7000
+      - AGENT_AI_ECU_URL=http://ecu:8000
+      - AGENT_AI_MALLA_URL=http://malla_watcher:5001
+      - PORT=9000
+      - AA_INTERVAL=5.0
+      - AA_REQUESTS_TIMEOUT=4.0
+      - AA_MAX_RETRIES=3
+      - AA_BASE_RETRY_DELAY=0.5
+      - AA_INITIAL_STRATEGY=default
+      - AA_INITIAL_SETPOINT_VECTOR=[1.0, 0.0]
+      - AA_GLOBAL_REQ_PATH=/app/requirements.txt
+    depends_on:
+      harmony_controller:
+        condition: service_healthy
+      malla_watcher:
+        condition: service_healthy
+
+# ==============================================================================
+# Top-Level Resources
+#
+# Defines named volumes and networks for the application.
+# ==============================================================================
 volumes:
+  # Defines a named volume for Pip cache to persist between builds.
   pip-cache:
-    driver: local
+    name: watchers_pip_cache
 
 networks:
+  # Defines a custom bridge network for inter-service communication.
   watchers_net:
+    name: watchers_bridge_net
     driver: bridge
