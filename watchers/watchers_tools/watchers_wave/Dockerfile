@@ -1,33 +1,28 @@
-##### Dockerfile watchers_wave #####
-FROM python:3.12-slim
+# 1. Imagen Base: Usa una imagen base de Python específica y slim.
+FROM python:3.12-slim-bookworm
 
-# Configuración base
-ENV PYTHONUNBUFFERED=1
+# 2. Entorno: Establece WORKDIR y variables de entorno.
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# Instalar dependencias del sistema (si son necesarias)
-# RUN apt-get update && apt-get install -y <paquetes> && rm -rf /var/lib/apt/lists/*
-
-# Actualizar herramientas de Python
+# Instalar dependencias del sistema (curl para HEALTHCHECK)
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar e instalar dependencias primero para aprovechar la caché
-COPY requirements.txt ./
+# 3. Optimización de Caché de Dependencias:
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código fuente
-COPY . /app
+# Copia el resto del código de la aplicación.
+COPY . .
 
-# Configuración final
-ENV PYTHONPATH="/app"
+# 4. Seguridad: Crea un usuario no-root y cambia a él.
+RUN useradd -m app
+USER app
 
-# Exponer el puerto del servicio
+# 5. Metadatos y Ejecución:
 EXPOSE 5000
-
-# Healthcheck para verificar si el servicio Flask responde
-HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:5000/api/health || exit 1
 
-# Comando de inicio
 CMD ["python", "watchers_wave.py"]
