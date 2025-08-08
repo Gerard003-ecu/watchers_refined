@@ -32,7 +32,7 @@ ENV PYTHONPATH="/app"
 EXPOSE 5001
 
 # Healthcheck
-HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:5001/api/health || exit 1
 
 # Comando de inicio (Asegúrate de que el path es correcto dentro del contenedor)

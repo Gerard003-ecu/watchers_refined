@@ -30,7 +30,7 @@ try:
                          FOOTPRINTS, PLACEMENTS)
 except ImportError:
     print("Error: No se pudo importar el archivo de configuración 'config.py'.")
-    sys.exit(1)
+    raise
 
 
 # Configuración de logging
@@ -126,7 +126,7 @@ def create_schematic_netlist(filename="atomic_piston.net"):
         return os.path.abspath(filename)
     except Exception as e:
         logger.error(f"Error en creación de esquemático: {str(e)}")
-        sys.exit(1)
+        raise
 
 
 # =============== DISEÑO DE PCB ===============

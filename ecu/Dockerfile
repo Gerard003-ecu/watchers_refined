@@ -22,7 +22,7 @@ ENV PYTHONPATH="/app"
 EXPOSE 8000
 
 # Healthcheck (ahora curl debería existir)
-HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8000/api/health || exit 1
 
 CMD ["python", "matriz_ecu.py"]
