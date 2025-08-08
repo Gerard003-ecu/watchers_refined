@@ -1,87 +1,108 @@
-############ clean_podman ##############
-
 #!/bin/bash
-# Script para limpiar contenedores e imágenes del ecosistema watchers en Podman
+# ==============================================================================
+# Script to Clean the Entire Watchers Ecosystem from Podman
+#
+# Features:
+# - Robustness: Uses 'set -euo pipefail'.
+# - Comprehensive Cleanup: Removes containers, images, network, and optionally volumes.
+# - Efficiency: Uses filtering and bulk operations.
+# - Clear Logging: Color-coded output.
+# ==============================================================================
 
-# --- Configuración (DEBE COINCIDIR CON run_podman.sh) ---
-PROJECT_NAME="mi-proyecto"
+# --- Strict Mode & Error Handling ---
+set -euo pipefail
+
+# --- Configuration ---
+PROJECT_NAME="watchers"
 NETWORK_NAME="${PROJECT_NAME}_default"
-# Lista de nombres de servicios tal como se usan en los nombres de imagen/contenedor
-SERVICES=("ecu" "watchers_wave" "watcher_focus" "malla_watcher" "harmony_controller" "agent_ai")
+CLEAN_VOLUMES=false
 
-# --- Función para registrar mensajes ---
-log() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+# --- Colors for Logging ---
+COLOR_RESET='\033[0m'
+COLOR_GREEN='\033[0;32m'
+COLOR_YELLOW='\033[0;33m'
+COLOR_RED='\033[0;31m'
+COLOR_BLUE='\033[0;34m'
+
+# --- Argument Parsing ---
+if [[ "${1:-}" == "--with-volumes" ]]; then
+    CLEAN_VOLUMES=true
+fi
+
+# --- Logging Functions ---
+log_info() {
+    echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET} $1"
 }
 
-# === Inicio del script de limpieza ===
-log "Iniciando limpieza del ecosistema ${PROJECT_NAME}..."
+log_success() {
+    echo -e "${COLOR_GREEN}[SUCCESS]${COLOR_RESET} $1"
+}
 
-# --- 1. Detener Contenedores ---
-log "--- Deteniendo contenedores del proyecto ${PROJECT_NAME} ---"
-# Obtener IDs de contenedores (corriendo o detenidos) en la red del proyecto
-CONTAINER_IDS=$(podman ps -a --filter network=${NETWORK_NAME} -q)
+log_warn() {
+    echo -e "${COLOR_YELLOW}[WARN]${COLOR_RESET} $1"
+}
 
-if [[ -z "$CONTAINER_IDS" ]]; then
-  log "No se encontraron contenedores activos o detenidos para el proyecto ${PROJECT_NAME} en la red ${NETWORK_NAME}."
-else
-  log "Contenedores encontrados: $CONTAINER_IDS"
-  log "Intentando detener contenedores..."
-  # Usar xargs para manejar múltiples IDs de forma segura
-  # El comando stop puede fallar si ya están detenidos, por eso no salimos en error aquí
-  echo "$CONTAINER_IDS" | xargs --no-run-if-empty podman stop || log "Advertencia: Algunos contenedores no pudieron ser detenidos (quizás ya estaban detenidos)."
-  log "Contenedores detenidos (o ya estaban detenidos)."
-fi
+# --- Script Main Execution ---
+main() {
+    log_info "=== Starting Full Cleanup of Watchers Ecosystem ==="
 
-# --- 2. Eliminar Contenedores ---
-log "--- Eliminando contenedores del proyecto ${PROJECT_NAME} ---"
-# Volver a obtener IDs por si acaso (aunque los anteriores deberían ser los mismos si stop funcionó)
-CONTAINER_IDS=$(podman ps -a --filter network=${NETWORK_NAME} -q)
+    # --- 1. Stop and Remove Containers ---
+    log_info "Finding all containers for project '${PROJECT_NAME}'..."
+    CONTAINER_IDS=$(podman ps -a --filter "label=project=${PROJECT_NAME}" --format "{{.ID}}")
 
-if [[ -z "$CONTAINER_IDS" ]]; then
-  log "No se encontraron contenedores para eliminar."
-else
-  log "Intentando eliminar contenedores: $CONTAINER_IDS"
-  echo "$CONTAINER_IDS" | xargs --no-run-if-empty podman rm || {
-    log "ERROR: No se pudieron eliminar todos los contenedores. Verifique manualmente con 'podman ps -a --filter network=${NETWORK_NAME}'"
-    exit 1 # Salir si no se pueden eliminar contenedores, ya que bloqueará la eliminación de imágenes
-  }
-  log "Contenedores eliminados exitosamente."
-fi
+    if [[ -z "$CONTAINER_IDS" ]]; then
+        log_success "No containers found for project '${PROJECT_NAME}'."
+    else
+        log_info "Stopping and removing containers..."
+        # Stop and then remove. The '|| true' handles cases where a container is already stopped.
+        echo "$CONTAINER_IDS" | xargs --no-run-if-empty podman stop || true
+        echo "$CONTAINER_IDS" | xargs --no-run-if-empty podman rm
+        log_success "All project containers removed."
+    fi
 
-# --- 3. Eliminar Imágenes ---
-log "--- Eliminando imágenes del proyecto ${PROJECT_NAME} ---"
-IMAGES_REMOVED=0
-IMAGES_FAILED=0
+    # --- 2. Remove Images ---
+    log_info "Finding all images for project '${PROJECT_NAME}'..."
+    IMAGE_IDS=$(podman images --filter "reference=localhost/${PROJECT_NAME}/*" --format "{{.ID}}")
 
-for service in "${SERVICES[@]}"; do
-  image_name="localhost/${PROJECT_NAME}_${service}:latest"
-  short_image_name="${PROJECT_NAME}_${service}" # Para logs
+    if [[ -z "$IMAGE_IDS" ]]; then
+        log_success "No images found for project '${PROJECT_NAME}'."
+    else
+        log_info "Removing images..."
+        # Use --force to remove images even if they have multiple tags within the project
+        echo "$IMAGE_IDS" | xargs --no-run-if-empty podman rmi --force
+        log_success "All project images removed."
+    fi
 
-  log "Verificando imagen ${short_image_name} (${image_name})..."
-  # Comprobar si la imagen existe antes de intentar borrarla
-  if podman image exists "${image_name}"; then
-    log "Intentando eliminar imagen ${image_name}..."
-    podman rmi "${image_name}" || {
-      log "ERROR: Falló la eliminación de la imagen ${image_name}. Puede estar en uso por otro contenedor o tener etiquetas dependientes."
-      IMAGES_FAILED=$((IMAGES_FAILED + 1))
-    } && { # Solo contar como eliminada si el comando rmi tuvo éxito
-      log "Imagen ${image_name} eliminada exitosamente."
-      IMAGES_REMOVED=$((IMAGES_REMOVED + 1))
-    }
-  else
-    log "Imagen ${image_name} no encontrada, omitiendo."
-  fi
-done
+    # --- 3. Remove Network ---
+    if podman network exists "${NETWORK_NAME}"; then
+        log_info "Removing network '${NETWORK_NAME}'..."
+        podman network rm "${NETWORK_NAME}"
+        log_success "Network removed."
+    else
+        log_success "Network '${NETWORK_NAME}' not found."
+    fi
 
-log "--- Resumen de limpieza de imágenes ---"
-log "Imágenes eliminadas: ${IMAGES_REMOVED}"
-log "Imágenes con fallo al eliminar: ${IMAGES_FAILED}"
+    # --- 4. Remove Volumes (Optional) ---
+    if [[ "$CLEAN_VOLUMES" == "true" ]]; then
+        log_warn "--- Optional: Cleaning up project volumes ---"
+        log_warn "This is a destructive action. The current implementation will prune ALL unused volumes on your system, not just for this project."
+        log_warn "This is because Podman volumes are not easily associated with project labels."
+        read -p "Are you sure you want to continue? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Pruning all unused volumes..."
+            podman volume prune --force
+            log_success "Volume cleanup complete."
+        else
+            log_info "Volume cleanup skipped by user."
+        fi
+    else
+        log_info "Skipping volume cleanup. To remove all unused volumes, run with '--with-volumes'."
+    fi
 
-if [[ $IMAGES_FAILED -gt 0 ]]; then
-    log "ADVERTENCIA: No se pudieron eliminar todas las imágenes. Ejecute 'podman images | grep ${PROJECT_NAME}' para verificar."
-    # No salimos con error aquí, la limpieza principal (contenedores) puede haber sido exitosa
-fi
 
-log "--- Limpieza completada ---"
-exit 0
+    log_success "=== Watchers Ecosystem Cleanup Complete ==="
+}
+
+# --- Run main function ---
+main
