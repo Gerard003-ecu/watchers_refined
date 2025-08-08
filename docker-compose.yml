@@ -1,59 +1,58 @@
 # ==============================================================================
-# Docker Compose Configuration for Watchers Monorepo
+# Configuración de Docker Compose para el Monorepositorio de Watchers
 #
-# This file defines the multi-container application setup for the "watchers"
-# project. It is designed with best practices for robustness, maintainability,
-# and security in mind.
+# Este archivo define la configuración de la aplicación multicontenedor para el proyecto "watchers".
+# Está diseñado con las mejores prácticas para garantizar robustez, facilidad de mantenimiento y seguridad.
 #
-# Key Features:
-#   - Externalized Configuration: Uses a .env file for environment-specific
-#     variables like ports, reducing hardcoded values.
-#   - DRY (Don't Repeat Yourself): Leverages YAML extension fields
-#     (x-common-config) to define a common configuration template for all
-#     services.
-#   - Healthcheck-based Startup: Uses `depends_on` with `service_healthy`
-#     to ensure a reliable startup order based on service dependencies.
-#   - Explicit Naming: Defines custom names for containers, networks, and
-#     volumes for clarity and predictability.
+# Características clave:
+#   - Configuración externalizada: Utiliza un archivo .env para variables específicas del entorno
+#     como los puertos, lo que reduce los valores codificados.
+#   - DRY (Don't Repeat Yourself): Aprovecha los campos de extensión YAML (x-common-config)
+#     para definir una plantilla de configuración común para todos los servicios.
+#   - Inicio basado en comprobación de estado: Utiliza `depends_on` con `service_healthy`
+#     para garantizar un orden de inicio fiable según las dependencias del servicio.
+#   - Nomenclatura explícita: Define nombres personalizados para contenedores, redes y volúmenes
+#     para mayor claridad y previsibilidad.
 #
 # ==============================================================================
 version: '3.8'
 
 # ==============================================================================
-# Extension Fields (for DRY principle)
+# Campos de extensión (para el principio DRY)
 #
-# Defines a reusable configuration block that is applied to all services.
-# This avoids repetition and makes the file easier to maintain.
+# Define un bloque de configuración reutilizable que se aplica a todos los servicios.
+# Esto evita la repetición y facilita el mantenimiento del archivo.
 # ==============================================================================
 x-common-config: &common-config
   restart: unless-stopped
-  # Mounts a shared volume for caching Pip packages, speeding up builds.
+  # Monta un volumen compartido para almacenar en caché los paquetes Pip,
+  # lo que acelera las compilaciones.
   volumes:
     - pip-cache:/root/.cache/pip
-  # Connects all services to a custom-named bridge network.
+  # Conecta todos los servicios a una red de puente con un nombre personalizado.
   networks:
     - watchers_net
-  # Sets a common environment variable for all services.
+  # Establece una variable de entorno común para todos los servicios.
   environment:
     - PYTHONPATH=/app
 
 # ==============================================================================
-# Services Definition
+# Definición de Servicios
 #
-# Each block defines a microservice container.
+# Cada bloque define un contenedor de microservicio.
 # ==============================================================================
 services:
-  # --- Core Services ---
+  # --- Servicios pincipales ---
 
   ecu:
-    # Applies the common configuration template.
+    # Aplica la plantilla de configuración común.
     <<: *common-config
     container_name: watchers-ecu
     build:
       context: ./ecu
       dockerfile: Dockerfile
     ports:
-      # Port mapping is externalized to the .env file.
+      # La asignación de puertos se externaliza al archivo .env
       - "${ECU_PORT}:8000"
     environment:
       - ECU_NUM_CAPAS=3
@@ -63,7 +62,7 @@ services:
       - ECU_BETA_COUPLING=0.1
       - MATRIZ_ECU_PORT=8000
       - PORT=8000
-    # HEALTHCHECK is defined in the Dockerfile.
+    # HEALTHCHECK esta definido en el archivo Dockerfile.
 
   harmony_controller:
     <<: *common-config
@@ -86,10 +85,10 @@ services:
       - HC_PORT=7000
     depends_on:
       ecu:
-        # Waits for the 'ecu' service to be healthy before starting.
+        # Espera a que el servicio 'ecu' esté en buen estado antes de comenzar.
         condition: service_healthy
 
-  # --- Watcher Services ---
+  # --- Servicios de Watchers ---
 
   malla_watcher:
     <<: *common-config
@@ -144,7 +143,7 @@ services:
     environment:
       - PORT=6000
 
-  # --- AI and Agent Services ---
+  # --- Servicios de inteligencia artificial y agentes ---
 
   agent_ai:
     <<: *common-config
@@ -173,17 +172,17 @@ services:
         condition: service_healthy
 
 # ==============================================================================
-# Top-Level Resources
+# Recursos de alto nivel
 #
-# Defines named volumes and networks for the application.
+# Define volúmenes y redes con nombre para la aplicación.
 # ==============================================================================
 volumes:
-  # Defines a named volume for Pip cache to persist between builds.
+  # Define un volumen con nombre para que la caché Pip persista entre compilaciones.
   pip-cache:
     name: watchers_pip_cache
 
 networks:
-  # Defines a custom bridge network for inter-service communication.
+  # Define una red de puente personalizada para la comunicación entre servicios.
   watchers_net:
     name: watchers_bridge_net
     driver: bridge
