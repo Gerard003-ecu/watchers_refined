@@ -30,8 +30,10 @@ numpy==2.0.2
     # via -r control/requirements.in
 requests==2.32.4
     # via -r control/requirements.in
-urllib3==2.3.0
-    # via requests
+urllib3==2.5.0
+    # via
+    #   -r control/requirements.in
+    #   requests
 werkzeug==3.0.6
     # via flask
 zipp==3.21.0
