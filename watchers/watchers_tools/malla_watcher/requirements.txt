@@ -30,7 +30,7 @@ numpy==2.0.2
     # via
     #   -r watchers/watchers_tools/malla_watcher/requirements.in
     #   scipy
-requests==2.32.3
+requests==2.32.4
     # via -r watchers/watchers_tools/malla_watcher/requirements.in
 scipy==1.13.1
     # via -r watchers/watchers_tools/malla_watcher/requirements.in
