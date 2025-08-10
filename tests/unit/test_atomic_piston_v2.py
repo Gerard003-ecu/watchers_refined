@@ -3,7 +3,7 @@ from unittest.mock import patch
 import numpy as np
 
 # Import from project structure
-from atomic_piston.atomic_piston_v2 import (
+from atomic_piston.atomic_piston_service import (
     AtomicPiston, PistonMode, TransducerType
 )
 
@@ -18,7 +18,7 @@ import os
 import csv
 
 # Path for patching time.monotonic
-TIME_PATCH_PATH = 'atomic_piston.atomic_piston_v2.time.monotonic'
+TIME_PATCH_PATH = 'atomic_piston.atomic_piston_service.time.monotonic'
 
 
 @pytest.fixture
