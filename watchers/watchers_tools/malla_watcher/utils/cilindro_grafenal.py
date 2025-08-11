@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)  # Usar __name__ para logger
 try:
     from scipy.spatial import cKDTree
 except ImportError:
-    logger.warning("Scipy no está instalado. El rendimiento de la búsqueda de vecinos en Z se verá afectado.")
+    logger.warning(
+        "Scipy no está instalado. El rendimiento de la búsqueda de vecinos en Z se verá afectado."
+    )
     cKDTree = None
 
 # Ejemplo de configuración básica
