@@ -7,7 +7,9 @@ import json
 import threading
 # Se importa el módulo directamente para poder modificar sus variables globales en el entorno de prueba
 from atomic_piston import atomic_piston_service
-from atomic_piston.atomic_piston_service import app as agent_api, AtomicPiston, PistonMode
+from atomic_piston.atomic_piston_service import app as agent_api, AtomicPiston
+from atomic_piston.constants import PistonMode
+from atomic_piston.config import PistonConfig
 
 # 1. Configuración y Fixtures (pytest)
 
@@ -25,17 +27,22 @@ def client():
 @pytest.fixture(autouse=True)
 def reset_ipu_instance():
     """
-    Fixture para reiniciar la instancia de IPU antes de cada test.
+    Fixture para reiniciar la instancia de IPU y la configuración antes de cada test.
 
     Esto asegura que cada test se ejecute en un estado limpio y conocido,
     previniendo que los resultados de un test afecten a otro.
     """
+    # Se inicializa el objeto de configuración que el servicio espera
+    atomic_piston_service.config = PistonConfig()
+
     # Se modifica la instancia directamente en el módulo del servicio para que los endpoints la vean.
     atomic_piston_service.ipu_instance = AtomicPiston(
         capacity=10.0,
         elasticity=100.0,
         damping=5.0,
-        piston_mass=1.0
+        piston_mass=1.0,
+        # Usar el modelo de fricción de la configuración por defecto para consistencia
+        friction_model=atomic_piston_service.config.friction_model
     )
     # Se usa un mock de hilo no vivo para que `is_alive()` devuelva False, haciendo que
     # el detalle 'simulation_running' en /api/health sea un booleano False en lugar de None.

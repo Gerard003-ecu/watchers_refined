@@ -16,12 +16,16 @@ import os
 import threading
 import time
 import logging
+import math
 import requests
 import numpy as np
-from enum import Enum
 from flask import Flask, jsonify, request
+from collections import deque
 from typing import List, Dict, Tuple, Optional, Any
 import csv # Keep csv for export method, though it might not be used by the service itself
+
+from .constants import PistonMode, TransducerType, FrictionModel, ControllerType
+from .config import PistonConfig
 
 # --- Configuración del Logging ---
 # (Similar to malla_watcher for consistency)
@@ -46,14 +50,8 @@ if not logger.hasHandlers():
     logger.setLevel(logging.INFO)
 
 
-# --- Constantes de Configuración del Microservicio ---
-SERVICE_PORT = int(os.environ.get("ATOMIC_PISTON_PORT", 5002))
-SIMULATION_INTERVAL = float(os.environ.get("ATOMIC_PISTON_SIM_INTERVAL", 0.02)) # 50Hz simulation
-AGENT_AI_REGISTER_URL = os.environ.get("AGENT_AI_REGISTER_URL", "http://agent_ai:9000/api/register")
-REQUESTS_TIMEOUT = float(os.environ.get("ATOMIC_PISTON_REQUESTS_TIMEOUT", 3.0))
-MAX_REGISTRATION_RETRIES = 5
-RETRY_DELAY_SECONDS = 5
-
+# --- Global Service Configuration (will be populated in main) ---
+config: Optional[PistonConfig] = None
 
 # --- Andamiaje del Microservicio ---
 app = Flask(__name__)
@@ -78,6 +76,10 @@ def simulation_loop() -> None:
     """
     logger.info("Iniciando bucle de simulación del pistón atómico...")
 
+    if not config:
+        logger.error("La configuración global no está disponible. Deteniendo el hilo de simulación.")
+        return
+
     while not stop_simulation_event.is_set():
         start_time = time.monotonic()
 
@@ -89,8 +91,8 @@ def simulation_loop() -> None:
         try:
             with ipu_lock:
                 # El corazón de la simulación: actualizar estado y gestionar descarga
-                ipu_instance.update_state(SIMULATION_INTERVAL)
-                ipu_instance.discharge(SIMULATION_INTERVAL)
+                ipu_instance.update_state(config.simulation_interval)
+                ipu_instance.discharge(config.simulation_interval)
 
         except Exception as e:
             logger.exception("Error catastrófico durante el ciclo de simulación del pistón: %s", e)
@@ -98,7 +100,7 @@ def simulation_loop() -> None:
             stop_simulation_event.wait(5)
 
         elapsed_time = time.monotonic() - start_time
-        sleep_time = max(0, SIMULATION_INTERVAL - elapsed_time)
+        sleep_time = max(0, config.simulation_interval - elapsed_time)
 
         # Esperar el tiempo restante para mantener la frecuencia de simulación
         if sleep_time > 0:
@@ -121,6 +123,10 @@ def register_with_agent_ai(
     Realiza una solicitud HTTP POST para anunciar la disponibilidad de este
     servicio al ecosistema. Incluye reintentos en caso de fallo de conexión.
     """
+    if not config:
+        logger.error("La configuración global no está disponible para el registro.")
+        return False
+
     payload = {
         "nombre": module_name,
         "url": module_url,
@@ -131,11 +137,14 @@ def register_with_agent_ai(
         "descripcion": description
     }
 
-    logger.info(f"Intentando registrar '{module_name}' en AgentAI ({AGENT_AI_REGISTER_URL})...")
-    for attempt in range(MAX_REGISTRATION_RETRIES):
+    logger.info(f"Intentando registrar '{module_name}' en AgentAI ({config.agent_ai_register_url})...")
+    for attempt in range(config.max_registration_retries):
         try:
             response = requests.post(
-                AGENT_AI_REGISTER_URL, json=payload, timeout=REQUESTS_TIMEOUT
+                config.agent_ai_register_url,
+                json=payload,
+                timeout=config.requests_timeout,
+                verify=False  # Solo para entornos de prueba, no producción!
             )
             response.raise_for_status()
             if response.status_code == 200:
@@ -149,50 +158,24 @@ def register_with_agent_ai(
         except requests.exceptions.RequestException as e:
             logger.error(
                 f"Error de conexión al registrar '{module_name}' "
-                f"(intento {attempt + 1}/{MAX_REGISTRATION_RETRIES}): {e}"
+                f"(intento {attempt + 1}/{config.max_registration_retries}): {e}"
             )
         except Exception as e:
             logger.error(
                 f"Error inesperado durante el registro de '{module_name}' "
-                f"(intento {attempt + 1}/{MAX_REGISTRATION_RETRIES}): {e}"
+                f"(intento {attempt + 1}/{config.max_registration_retries}): {e}"
             )
 
-        if attempt < MAX_REGISTRATION_RETRIES - 1:
-            logger.info(f"Reintentando registro en {RETRY_DELAY_SECONDS} segundos...")
-            time.sleep(RETRY_DELAY_SECONDS)
+        if attempt < config.max_registration_retries - 1:
+            logger.info(f"Reintentando registro en {config.retry_delay_seconds} segundos...")
+            time.sleep(config.retry_delay_seconds)
         else:
             logger.error(
                 f"No se pudo registrar '{module_name}' en AgentAI después de "
-                f"{MAX_REGISTRATION_RETRIES} intentos."
+                f"{config.max_registration_retries} intentos."
             )
             return False
     return False
-
-
-class PistonMode(Enum):
-    """Define los modos de operación del pistón."""
-    CAPACITOR = "capacitor"
-    BATTERY = "battery"
-
-
-class TransducerType(Enum):
-    """Define los tipos de transductores que puede usar el pistón."""
-    PIEZOELECTRIC = "piezoelectric"
-    ELECTROSTATIC = "electrostatic"
-    MAGNETOSTRICTIVE = "magnetostrictive"
-
-
-class FrictionModel(Enum):
-    """Define los modelos de fricción disponibles."""
-    COULOMB = "coulomb"
-    STRIBECK = "stribeck"
-    VISCOUS = "viscous"
-
-
-class ControllerType(Enum):
-    """Define los tipos de controladores que se pueden emplear."""
-    PID = "pid"
-    FUZZY = "fuzzy"
 
 
 class AtomicPiston:
@@ -320,9 +303,10 @@ class AtomicPiston:
         self.target_energy: float = 0.0
 
         # -- Historial para Diagnóstico --
-        self.energy_history: List[float] = []
-        self.efficiency_history: List[float] = []
-        self.friction_force_history: List[float] = []
+        self.max_history_size = 10000
+        self.energy_history: deque = deque(maxlen=self.max_history_size)
+        self.efficiency_history: deque = deque(maxlen=self.max_history_size)
+        self.friction_force_history: deque = deque(maxlen=self.max_history_size)
 
         logger.info(
             f"AtomicPiston inicializado en modo {self.mode.value} "
@@ -496,9 +480,9 @@ class AtomicPiston:
 
         # 2. FUERZAS INTERNAS DEPENDIENTES DE LA POSICIÓN (RESORTE)
         # Términos k*x y ε*x³ en la ecuación.
-        spring_force = (
-            -self.k * self.position - self.nonlinear_elasticity * self.position**3
-        )
+        # Optimización: precalcular términos
+        position_sq = self.position * self.position
+        spring_force = -self.k * self.position - self.nonlinear_elasticity * position_sq * self.position
 
         # 3. FUERZA DE FRICCIÓN (dependiente de la velocidad y la fuerza motriz)
         # El término F_fricción(dx/dt) en la ecuación.
@@ -523,6 +507,24 @@ class AtomicPiston:
         new_position = (
             2 * self.position - self.previous_position + self.acceleration * (dt**2)
         )
+
+        # Corrección de energía para mantener estabilidad
+        # Esta seccion es opcional y puede ser activada para simulaciones largas
+        # donde el drift de energia de Verlet puede ser un problema.
+        energy_before = 0.5 * self.k * self.position**2 + 0.5 * self.m * self.velocity**2
+        # La energia potencial no lineal tambien deberia ser incluida si es significativa
+        # energy_before += (1/4) * self.nonlinear_elasticity * self.position**4
+
+        new_velocity_estimate = (new_position - self.previous_position) / (2 * dt)
+        energy_after = 0.5 * self.k * new_position**2 + 0.5 * self.m * new_velocity_estimate**2
+        # energy_after += (1/4) * self.nonlinear_elasticity * new_position**4
+
+        # Prevenir division por cero y solo corregir si la energia es significativa
+        if energy_after > 1e-9 and abs(energy_after - energy_before) > 0.1 * energy_before:
+            # Aplicar factor de corrección para conservar la energía
+            correction_factor = math.sqrt(energy_before / energy_after)
+            # Solo corregimos la parte dinámica de la posición, no el punto de equilibrio
+            new_position = self.position + (new_position - self.position) * correction_factor
 
         # v(t) ≈ [x(t+dt) - x(t-dt)] / (2*dt)
         self.velocity = (new_position - self.previous_position) / (2 * dt)
@@ -623,7 +625,8 @@ class AtomicPiston:
         max_discharge = self.current_charge * 0.8
         discharge_amount = min(self.battery_discharge_rate * dt, max_discharge)
 
-        self.position += discharge_amount
+        new_position = self.position + discharge_amount
+        self.position = min(0.0, new_position)  # Limitar a posición máxima 0.0
 
         # La amplitud de la señal es proporcional a la descarga real.
         output_amplitude = discharge_amount / (self.battery_discharge_rate * dt) if self.battery_discharge_rate > 0 else 1.0
@@ -896,9 +899,9 @@ class AtomicPiston:
         self.output_voltage = 0.0
         self.battery_is_discharging = False
         self.last_signal_info = {}
-        self.energy_history = []
-        self.efficiency_history = []
-        self.friction_force_history = []
+        self.energy_history.clear()
+        self.efficiency_history.clear()
+        self.friction_force_history.clear()
         self.speed_controller.reset()
         self.energy_controller.reset()
         logger.info("Estado del pistón reiniciado a condiciones iniciales.")
@@ -1255,52 +1258,39 @@ def main():
     el registro con AgentAI, y el arranque de los hilos de simulación y del
     servidor web.
     """
-    global ipu_instance, simulation_thread
+    global ipu_instance, simulation_thread, config
 
-    # --- 1. Cargar configuración para el pistón desde variables de entorno ---
+    # --- 1. Cargar configuración centralizada ---
     try:
-        capacity = float(os.environ.get("PISTON_CAPACITY", 10.0))
-        elasticity = float(os.environ.get("PISTON_ELASTICITY", 100.0))
-        damping = float(os.environ.get("PISTON_DAMPING", 5.0))
-        mass = float(os.environ.get("PISTON_MASS", 1.0))
-
-        friction_model_str = os.environ.get("PISTON_FRICTION_MODEL", "viscous").upper()
-        friction_model = FrictionModel[friction_model_str]
-    except KeyError:
-        logger.warning(
-            f"Modelo de fricción '{friction_model_str}' inválido. "
-            f"Usando VISCOUS por defecto."
-        )
-        friction_model = FrictionModel.VISCOUS
+        config = PistonConfig()
     except (ValueError, TypeError) as e:
         logger.exception(f"Error al leer la configuración de entorno: {e}")
-        return # Salir si la configuración es inválida
+        return  # Salir si la configuración es inválida
 
     logger.info("--- Configuración de la IPU ---")
-    logger.info(f"  Capacidad: {capacity}, Elasticidad: {elasticity}")
-    logger.info(f"  Amortiguación: {damping}, Masa: {mass}")
-    logger.info(f"  Modelo de Fricción: {friction_model.value}")
+    logger.info(f"  Capacidad: {config.capacity}, Elasticidad: {config.elasticity}")
+    logger.info(f"  Amortiguación: {config.damping}, Masa: {config.mass}")
+    logger.info(f"  Modelo de Fricción: {config.friction_model.value}")
     logger.info("---------------------------------")
 
     # --- 2. Inicializar la instancia global del pistón (gemelo digital) ---
     try:
         ipu_instance = AtomicPiston(
-            capacity=capacity,
-            elasticity=elasticity,
-            damping=damping,
-            piston_mass=mass,
-            friction_model=friction_model
+            capacity=config.capacity,
+            elasticity=config.elasticity,
+            damping=config.damping,
+            piston_mass=config.mass,
+            friction_model=config.friction_model
         )
         logger.info("Instancia global de AtomicPiston creada exitosamente.")
     except ValueError as e:
         logger.exception(f"Error crítico al inicializar AtomicPiston: {e}")
-        return # Salir si la inicialización del modelo falla
+        return  # Salir si la inicialización del modelo falla
 
     # --- 3. Registrar el servicio con AgentAI ---
     module_name = "atomic_piston_service"
-    # En un entorno contenedor, el nombre del servicio suele ser el hostname
     hostname = os.environ.get("HOSTNAME", module_name)
-    module_url = f"http://{hostname}:{SERVICE_PORT}"
+    module_url = f"http://{hostname}:{config.service_port}"
     health_url = f"{module_url}/api/health"
     description = "Microservicio que simula una Unidad de Potencia Inteligente (IPU) y expone una API para su control."
 
@@ -1321,10 +1311,8 @@ def main():
     logger.info("Hilo de simulación del pistón iniciado.")
 
     # --- 5. Iniciar el servidor Flask ---
-    logger.info(f"Iniciando servidor Flask de Atomic Piston en http://0.0.0.0:{SERVICE_PORT}")
-    # use_reloader=False es importante para evitar que el código se ejecute dos veces en modo debug
-    # y para que la gestión de hilos funcione correctamente.
-    app.run(host="0.0.0.0", port=SERVICE_PORT, debug=False, use_reloader=False)
+    logger.info(f"Iniciando servidor Flask de Atomic Piston en http://0.0.0.0:{config.service_port}")
+    app.run(host="0.0.0.0", port=config.service_port, debug=False, use_reloader=False)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,36 @@
-# =============== CONFIGURACIÓN DE DISEÑO ===============
+import os
+from .constants import FrictionModel
+
+class PistonConfig:
+    """
+    Clase para encapsular la configuración del AtomicPistonService.
+
+    Carga los parámetros desde las variables de entorno, proporcionando
+    valores por defecto si no se encuentran.
+    """
+    def __init__(self):
+        # --- Configuración del Pistón ---
+        self.capacity = float(os.environ.get("PISTON_CAPACITY", 10.0))
+        self.elasticity = float(os.environ.get("PISTON_ELASTICITY", 100.0))
+        self.damping = float(os.environ.get("PISTON_DAMPING", 5.0))
+        self.mass = float(os.environ.get("PISTON_MASS", 1.0))
+
+        friction_model_str = os.environ.get("PISTON_FRICTION_MODEL", "viscous").upper()
+        try:
+            self.friction_model = FrictionModel[friction_model_str]
+        except KeyError:
+            print(f"Warning: Modelo de fricción '{friction_model_str}' inválido. Usando VISCOUS por defecto.")
+            self.friction_model = FrictionModel.VISCOUS
+
+        # --- Configuración del Servicio ---
+        self.service_port = int(os.environ.get("ATOMIC_PISTON_PORT", 5002))
+        self.simulation_interval = float(os.environ.get("ATOMIC_PISTON_SIM_INTERVAL", 0.02)) # 50Hz
+        self.agent_ai_register_url = os.environ.get("AGENT_AI_REGISTER_URL", "http://agent_ai:9000/api/register")
+        self.requests_timeout = float(os.environ.get("ATOMIC_PISTON_REQUESTS_TIMEOUT", 3.0))
+        self.max_registration_retries = int(os.environ.get("MAX_REGISTRATION_RETRIES", 5))
+        self.retry_delay_seconds = int(os.environ.get("RETRY_DELAY_SECONDS", 5))
+
+# =============== CONFIGURACIÓN DE DISEÑO (Existente) ===============
 BOARD_WIDTH = 150  # mm
 BOARD_HEIGHT = 100  # mm
 LAYER_CONFIG = {
