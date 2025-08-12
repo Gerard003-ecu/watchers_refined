@@ -68,11 +68,12 @@ stop_simulation_event = threading.Event()
 # --- Lógica de Simulación (Thread) ---
 
 def simulation_loop() -> None:
-    """
-    Bucle principal que se ejecuta en un hilo de fondo para simular el pistón.
+    """Bucle principal de simulación que se ejecuta en un hilo de fondo.
 
-    Orquesta la actualización periódica del estado del 'gemelo digital' del
-    pistón atómico.
+    Este bucle infinito se encarga de actualizar el estado del `AtomicPiston`
+    a intervalos regulares definidos por `config.simulation_interval`.
+    Orquesta la simulación del 'gemelo digital' y maneja la detención
+    grácil a través de un `threading.Event`.
     """
     logger.info("Iniciando bucle de simulación del pistón atómico...")
 
@@ -117,11 +118,20 @@ def register_with_agent_ai(
     health_url: str,
     description: str = ""
 ) -> bool:
-    """
-    Intenta registrar este microservicio con el AgentAI.
+    """Intenta registrar el microservicio en el AgentAI.
 
-    Realiza una solicitud HTTP POST para anunciar la disponibilidad de este
-    servicio al ecosistema. Incluye reintentos en caso de fallo de conexión.
+    Realiza una solicitud HTTP POST al endpoint de registro de AgentAI para
+    anunciar la disponibilidad de este servicio en el ecosistema.
+    Implementa una lógica de reintentos en caso de fallo de conexión.
+
+    Args:
+        module_name (str): El nombre del módulo a registrar.
+        module_url (str): La URL base del servicio.
+        health_url (str): La URL del endpoint de salud del servicio.
+        description (str): Una descripción de la funcionalidad del servicio.
+
+    Returns:
+        bool: True si el registro fue exitoso, False en caso contrario.
     """
     if not config:
         logger.error("La configuración global no está disponible para el registro.")
@@ -179,8 +189,7 @@ def register_with_agent_ai(
 
 
 class AtomicPiston:
-    """
-    Simula una Unidad de Potencia Inteligente (IPU) o Pistón Atómico.
+    """Simula una Unidad de Potencia Inteligente (IPU) o Pistón Atómico.
 
     Esta clase modela el comportamiento físico y electrónico de un pistón
     diseñado para almacenar y liberar energía. Es el componente central para
@@ -198,14 +207,7 @@ class AtomicPiston:
         position (float): Posición actual del pistón [m].
         velocity (float): Velocidad actual del pistón [m/s].
         acceleration (float): Aceleración actual del pistón [m/s²].
-
-    Public Methods:
-        apply_force: Aplica una fuerza mecánica externa.
-        apply_electronic_signal: Aplica una señal eléctrica (voltaje).
-        update_state: Avanza la simulación un paso de tiempo `dt`.
-        discharge: Gestiona la descarga de energía según el modo.
-        reset: Reinicia el estado del pistón a sus condiciones iniciales.
-        export_history_to_csv: Exporta los datos de la simulación a un CSV.
+        dt (float): El último paso de tiempo utilizado en la simulación [s].
     """
 
     def __init__(self,
@@ -219,22 +221,21 @@ class AtomicPiston:
                  coulomb_friction: float = 0.2,
                  stribeck_coeffs: Tuple[float, float, float] = (0.3, 0.1, 0.05),
                  nonlinear_elasticity: float = 0.01) -> None:
-        """
-        Inicializa una nueva instancia de AtomicPiston.
+        """Inicializa una nueva instancia de AtomicPiston.
 
         Args:
-            capacity: Capacidad máxima de compresión [m]. Debe ser > 0.
-            elasticity: Constante elástica del resorte (k) [N/m]. Debe ser >= 0.
-            damping: Coeficiente de amortiguación (c) [N·s/m]. Debe ser >= 0.
-            piston_mass: Masa inercial del pistón (m) [kg]. Debe ser > 0.
-            mode: Modo de operación inicial del pistón.
-            transducer_type: Tipo de transductor a utilizar.
-            friction_model: Modelo de fricción a simular.
-            coulomb_friction: Coeficiente de fricción de Coulomb.
-            stribeck_coeffs: Tupla con coeficientes de Stribeck (estática,
-                Coulomb, velocidad).
-            nonlinear_elasticity: Coeficiente para el término de elasticidad
-                no lineal.
+            capacity (float): Capacidad máxima de compresión [m]. Debe ser > 0.
+            elasticity (float): Constante elástica (k) [N/m]. Debe ser >= 0.
+            damping (float): Coeficiente de amortiguación (c) [N·s/m]. Debe ser >= 0.
+            piston_mass (float): Masa inercial (m) [kg]. Debe ser > 0.
+            mode (PistonMode): Modo de operación inicial del pistón.
+            transducer_type (TransducerType): Tipo de transductor a utilizar.
+            friction_model (FrictionModel): Modelo de fricción a simular.
+            coulomb_friction (float): Coeficiente de fricción de Coulomb.
+            stribeck_coeffs (Tuple[float, float, float]): Coeficientes de Stribeck
+                (estática, Coulomb, velocidad).
+            nonlinear_elasticity (float): Coeficiente para el término de
+                elasticidad no lineal.
 
         Raises:
             ValueError: Si un parámetro físico no es válido (p. ej., negativo).
@@ -331,27 +332,26 @@ class AtomicPiston:
 
     @property
     def current_charge(self) -> float:
-        """
-        Calcula y devuelve la carga actual del pistón.
+        """Calcula la carga actual del pistón como compresión positiva.
 
-        La carga se define como la compresión positiva del pistón desde su
-        punto de equilibrio (posición 0).
+        La carga se define como la compresión del pistón desde su punto de
+        equilibrio (posición 0), donde una mayor compresión resulta en una
+        mayor carga.
 
         Returns:
-            La carga actual, representada como la compresión del pistón [m].
+            float: La compresión actual del pistón en metros [m].
         """
         return max(0, -self.position)
 
     @property
     def stored_energy(self) -> float:
-        """
-        Calcula y devuelve la energía mecánica total almacenada en el pistón.
+        """Calcula la energía mecánica total almacenada en el pistón.
 
         Combina la energía potencial elástica (lineal y no lineal) y la
         energía cinética del pistón.
 
         Returns:
-            La energía mecánica total almacenada en el sistema [J].
+            float: La energía mecánica total almacenada en el sistema [J].
         """
         potential = (
             0.5 * self.k * self.position**2
@@ -361,17 +361,19 @@ class AtomicPiston:
         return potential + kinetic
 
     def calculate_friction(self, driving_force: float) -> float:
-        """
-        Calcula la fuerza de fricción seca (no viscosa) según el modelo seleccionado.
+        """Calcula la fuerza de fricción seca (no viscosa) según el modelo.
 
-        El amortiguamiento viscoso general (-c * v) se calcula por separado.
+        El amortiguamiento viscoso general (-c * v) se calcula por separado en la
+        ecuación de movimiento. Esta función maneja solo los modelos de fricción
+        seca como Coulomb y Stribeck.
 
         Args:
-            driving_force: La fuerza neta (sin amortiguamiento) que intenta mover
-                el pistón, usada para determinar la dirección de la fricción estática.
+            driving_force (float): La fuerza neta (sin amortiguamiento) que
+                intenta mover el pistón. Se usa para determinar la dirección
+                de la fricción estática.
 
         Returns:
-            La fuerza de fricción seca calculada [N], que se opone al movimiento.
+            float: La fuerza de fricción seca calculada [N].
         """
         # Fricción cinética (cuando hay movimiento)
         if abs(self.velocity) > 1e-5:
@@ -397,17 +399,19 @@ class AtomicPiston:
                 # La fricción estática se opone a la fuerza impulsora hasta su límite estático.
                 return -np.sign(driving_force) * min(abs(driving_force), f_static)
 
-        # Si el modelo no es ni Coulomb ni Stribeck, o si es VISCOUS (ahora manejado fuera), no hay fricción seca.
+        # Si el modelo no es ni Coulomb ni Stribeck, no hay fricción seca.
         return 0.0
 
     def apply_force(self, signal_value: float, source: str, mass_factor: float = 1.0) -> None:
-        """
-        Aplica una fuerza mecánica externa al pistón.
+        """Aplica una fuerza mecánica externa basada en una señal de entrada.
+
+        La fuerza se calcula usando la energía cinética derivada de la velocidad
+        de la señal de entrada y se acumula en `self.last_applied_force`.
 
         Args:
-            signal_value: El valor de la señal de entrada que genera la fuerza.
-            source: Identificador de la fuente de la señal (para seguimiento).
-            mass_factor: Un factor para escalar la fuerza aplicada.
+            signal_value (float): El valor de la señal de entrada.
+            source (str): Identificador de la fuente de la señal para seguimiento.
+            mass_factor (float): Un factor para escalar la fuerza aplicada.
         """
         current_time = time.monotonic()
         signal_velocity = 0.0
@@ -423,13 +427,13 @@ class AtomicPiston:
         logger.debug(f"Fuente '{source}': Fuerza aplicada = {force:.2f}N")
 
     def apply_electronic_signal(self, voltage: float) -> None:
-        """
-        Aplica una señal eléctrica que se traduce en una fuerza mecánica.
+        """Aplica una señal eléctrica que se traduce en una fuerza mecánica.
 
-        La conversión de voltaje a fuerza depende del tipo de transductor.
+        La conversión de voltaje a fuerza depende del tipo de transductor y
+        se acumula en `self.last_applied_force`.
 
         Args:
-            voltage: El voltaje de la señal eléctrica de entrada [V].
+            voltage (float): El voltaje de la señal eléctrica de entrada [V].
         """
         applied_force = voltage * self.force_sensitivity
         if self.transducer_type == TransducerType.MAGNETOSTRICTIVE:
@@ -446,6 +450,19 @@ class AtomicPiston:
         logger.debug(f"Señal eléctrica: {voltage:.2f}V → Fuerza: {applied_force:.2f}N")
 
     def update_state(self, dt: float) -> None:
+        """Avanza el estado físico del pistón usando el integrador RK4.
+
+        Este método es el corazón de la simulación. Calcula todas las fuerzas
+        que actúan sobre el pistón y utiliza el método de Runge-Kutta de 4º
+        orden para integrar la ecuación de movimiento y obtener la nueva
+        posición y velocidad.
+
+        Args:
+            dt (float): El intervalo de tiempo para la integración [s].
+
+        Raises:
+            ValueError: Si `dt` es menor o igual a cero.
+        """
         if dt <= 0:
             raise ValueError("El paso de tiempo (dt) debe ser un valor positivo.")
         self.dt = dt
@@ -522,14 +539,19 @@ class AtomicPiston:
         self.friction_force_history.append(friction)
 
     def update_electronic_state(self) -> None:
-        """Actualiza el estado del circuito electrónico equivalente."""
+        """Actualiza el estado del circuito electrónico equivalente.
+
+        Calcula el voltaje y la corriente del circuito basándose en la posición
+        y velocidad actuales del pistón. También actualiza la carga acumulada
+        y procesa la salida eléctrica.
+        """
         self.circuit_voltage = -self.position * self.voltage_sensitivity
         self.circuit_current = self.velocity * self.equivalent_capacitance
         self.charge_accumulated += self.circuit_current * self.dt
         self.process_electrical_output()
 
     def process_electrical_output(self) -> None:
-        """Procesa la energía eléctrica generada a través del convertidor de salida."""
+        """Procesa la energía eléctrica generada a través del convertidor."""
         input_power = abs(self.circuit_voltage * self.circuit_current)
         output_power = input_power * self.converter_efficiency
         if self.equivalent_resistance > 0:
@@ -538,7 +560,18 @@ class AtomicPiston:
             self.output_voltage = 0.0
 
     def discharge(self, dt: float) -> Optional[Dict[str, Any]]:
-        """Solo maneja descarga, sin control de energía aquí"""
+        """Gestiona la descarga de energía según el modo de operación.
+
+        Delega la lógica de descarga al método correspondiente (`capacitor` o
+        `battery`). El control de energía se maneja en `update_state`.
+
+        Args:
+            dt (float): El intervalo de tiempo de la simulación [s].
+
+        Returns:
+            Optional[Dict[str, Any]]: Un diccionario con información sobre la
+            descarga si ocurre, de lo contrario None.
+        """
         # El control de energía ahora se maneja completamente en update_state
         if self.mode == PistonMode.CAPACITOR:
             return self.capacitor_discharge(dt)
@@ -547,14 +580,19 @@ class AtomicPiston:
         return None
 
     def capacitor_discharge(self, dt: float) -> Optional[Dict[str, Any]]:
-        """
-        Realiza una descarga en modo CAPACITOR si se cumplen las condiciones.
+        """Realiza una descarga en modo CAPACITOR si se cumplen las condiciones.
+
+        Verifica si la posición del pistón ha alcanzado el umbral de descarga.
+        Si es así, simula un pulso de energía, ajusta la posición para
+        reflejar la histéresis y devuelve un diccionario con los detalles.
 
         Args:
-            dt: El intervalo de tiempo [s].
+            dt (float): El intervalo de tiempo de la simulación [s]. Aunque la
+                descarga es instantánea, se mantiene por consistencia.
 
         Returns:
-            Un diccionario con los detalles de la descarga en forma de pulso.
+            Optional[Dict[str, Any]]: Un diccionario con los detalles de la
+            descarga en forma de pulso si ocurre, de lo contrario None.
         """
         discharge_threshold = self.capacitor_discharge_threshold
         hysteresis_threshold = discharge_threshold * (1 - self.hysteresis_factor)
@@ -567,7 +605,18 @@ class AtomicPiston:
         return None
 
     def battery_discharge(self, dt: float) -> Optional[Dict[str, Any]]:
-        """Realiza una descarga en modo batería si está activada y hay carga."""
+        """Realiza una descarga continua en modo BATTERY si está activada.
+
+        Si la descarga está activa y hay carga, reduce la compresión del pistón
+        a una tasa definida. La descarga se detiene si se agota la carga.
+
+        Args:
+            dt (float): El intervalo de tiempo para la descarga [s].
+
+        Returns:
+            Optional[Dict[str, Any]]: Un diccionario con detalles de la descarga
+            sostenida si ocurre, de lo contrario None.
+        """
         if not self.battery_is_discharging:
             return None
 
@@ -599,15 +648,18 @@ class AtomicPiston:
         }
 
     def simulate_discharge_circuit(self, load_resistance: float, dt: float) -> Tuple[float, float, float]:
-        """
-        Simula la descarga de energía a través de una carga externa.
+        """Simula la descarga de energía a través de una carga externa.
+
+        Calcula cómo la energía almacenada en el pistón se disipa a través de
+        una resistencia de carga, afectando la posición del pistón.
 
         Args:
-            load_resistance: Resistencia de la carga externa [Ω].
-            dt: Intervalo de tiempo de la simulación [s].
+            load_resistance (float): Resistencia de la carga externa [Ω].
+            dt (float): Intervalo de tiempo de la simulación [s].
 
         Returns:
-            Una tupla con el voltaje, la corriente y la potencia en la carga.
+            Tuple[float, float, float]: Una tupla con el voltaje, la corriente
+            y la potencia en la carga.
         """
         logger.debug(f"Simulando descarga con resistencia de carga: {load_resistance} Ohm")
         if self.circuit_voltage == 0:
@@ -640,11 +692,12 @@ class AtomicPiston:
         return load_voltage, discharge_current, power_dissipated
 
     def set_compression_direction(self, direction: int) -> None:
-        """
-        Configura la dirección de compresión del pistón.
+        """Configura la dirección de compresión del pistón.
 
         Args:
-            direction: La dirección de compresión (-1 para compresión negativa, 1 para positiva).
+            direction (int): La dirección de compresión, donde -1 indica que
+                las fuerzas externas comprimen el pistón (dirección negativa)
+                y 1 que lo expanden.
         """
         if direction not in (-1, 1):
             logger.warning(f"Dirección inválida: {direction}. Usando -1 (compresión).")
@@ -654,13 +707,13 @@ class AtomicPiston:
             logger.info(f"Dirección de compresión establecida en: {self.compression_direction}")
 
     def get_conversion_efficiency(self) -> float:
-        """
-        Calcula la eficiencia de conversión de energía instantánea.
+        """Calcula la eficiencia de conversión de energía instantánea.
 
-        Compara la energía mecánica con la energía eléctrica total del sistema.
+        Compara la energía mecánica almacenada con la energía eléctrica total
+        del sistema para determinar la eficiencia de la transducción.
 
         Returns:
-            La eficiencia de conversión instantánea (0 a 1).
+            float: La eficiencia de conversión instantánea (0 a 1).
         """
         mechanical_energy = self.stored_energy
         electrical_energy = 0.5 * self.equivalent_capacitance * self.circuit_voltage**2
@@ -670,22 +723,24 @@ class AtomicPiston:
         return 0.0
 
     def set_mode(self, mode: PistonMode) -> None:
-        """
-        Establece el modo de operación del pistón.
+        """Establece el modo de operación del pistón.
 
         Args:
-            mode: El nuevo modo de operación (PistonMode.CAPACITOR o PistonMode.BATTERY).
+            mode (PistonMode): El nuevo modo de operación, que puede ser
+                `PistonMode.CAPACITOR` o `PistonMode.BATTERY`.
         """
         self.mode = mode
         self.battery_is_discharging = False
         logger.info(f"Modo cambiado a: {mode.value}")
 
     def trigger_discharge(self, discharge_on: bool) -> None:
-        """
-        Activa o desactiva la descarga continua en modo BATTERY.
+        """Activa o desactiva la descarga continua en modo BATTERY.
+
+        Este método solo tiene efecto si el pistón está en modo BATTERY.
 
         Args:
-            discharge_on: True para activar la descarga, False para desactivarla.
+            discharge_on (bool): True para activar la descarga, False para
+                desactivarla.
         """
         if self.mode == PistonMode.BATTERY:
             self.battery_is_discharging = discharge_on
@@ -697,39 +752,35 @@ class AtomicPiston:
             )
 
     def set_speed_target(self, target: float) -> None:
-        """
-        Establece la velocidad objetivo para el controlador PID de velocidad.
+        """Establece la velocidad objetivo para el controlador PID de velocidad.
 
         Args:
-            target: La velocidad objetivo deseada [m/s].
+            target (float): La velocidad objetivo deseada [m/s].
         """
         self.target_speed = target
         self.speed_controller.reset()
         logger.info(f"Objetivo de velocidad establecido: {target:.2f} m/s")
 
     def set_energy_target(self, target: float) -> None:
-        """
-        Establece la energía objetivo para el controlador PID de energía.
+        """Establece la energía objetivo para el controlador PID de energía.
 
         Args:
-            target: La energía objetivo deseada [J].
+            target (float): La energía objetivo deseada [J].
         """
         self.target_energy = target
         self.energy_controller.reset()
         logger.info(f"Objetivo de energía establecido: {target:.2f} J")
 
     def generate_bode_data(self, frequency_range: np.ndarray) -> Dict[str, Any]:
-        """
-        Genera datos para un diagrama de Bode de la función de transferencia del sistema.
+        """Genera datos para un diagrama de Bode de la función de transferencia.
 
         Args:
-            frequency_range: Un array de NumPy con el rango de frecuencias a analizar [Hz].
+            frequency_range (np.ndarray): Un array de NumPy con el rango de
+                frecuencias a analizar [Hz].
 
         Returns:
-            Un diccionario que contiene los datos para el diagrama de Bode:
-            - 'frequencies': El mismo array de frecuencias de entrada [Hz].
-            - 'magnitude': Una lista de valores de magnitud en decibelios (dB).
-            - 'phase': Una lista de valores de fase en grados.
+            Dict[str, Any]: Un diccionario con los datos para el diagrama de
+            Bode, incluyendo 'frequencies', 'magnitude' y 'phase'.
         """
         magnitudes = []
         phases = []
@@ -745,11 +796,10 @@ class AtomicPiston:
         return {"frequencies": frequency_range, "magnitude": magnitudes, "phase": phases}
 
     def export_history_to_csv(self, filename: str) -> None:
-        """
-        Exporta los historiales de simulación (energía, eficiencia, etc.) a un archivo CSV.
+        """Exporta los historiales de simulación a un archivo CSV.
 
         Args:
-            filename: La ruta y nombre del archivo CSV donde se guardarán los datos.
+            filename (str): La ruta del archivo CSV donde se guardarán los datos.
 
         Raises:
             IOError: Si ocurre un problema al escribir en el archivo.
@@ -782,16 +832,16 @@ class AtomicPiston:
             raise
 
     def simulate_step_response(self, force_amplitude: float, duration: float, dt: float) -> Dict[str, Any]:
-        """
-        Simula la respuesta del pistón a una entrada de fuerza escalón.
+        """Simula la respuesta del pistón a una entrada de fuerza escalón.
 
         Args:
-            force_amplitude: Magnitud de la fuerza constante a aplicar [N].
-            duration: Duración total de la simulación [s].
-            dt: Paso de tiempo para la simulación [s].
+            force_amplitude (float): Magnitud de la fuerza a aplicar [N].
+            duration (float): Duración total de la simulación [s].
+            dt (float): Paso de tiempo para la simulación [s].
 
         Returns:
-            Un diccionario con las series temporales de 'time', 'position', 'velocity' y 'acceleration'.
+            Dict[str, Any]: Un diccionario con las series temporales de
+            'time', 'position', 'velocity' y 'acceleration'.
         """
         self.reset()
         time_series = np.arange(0, duration, dt)
@@ -814,16 +864,16 @@ class AtomicPiston:
         }
 
     def simulate_impulse_response(self, impulse_magnitude: float, duration: float, dt: float) -> Dict[str, Any]:
-        """
-        Simula la respuesta del pistón a una entrada de fuerza impulso.
+        """Simula la respuesta del pistón a una entrada de fuerza impulso.
 
         Args:
-            impulse_magnitude: Magnitud del impulso a aplicar [N·s].
-            duration: Duración total de la simulación [s].
-            dt: Paso de tiempo para la simulación [s].
+            impulse_magnitude (float): Magnitud del impulso a aplicar [N·s].
+            duration (float): Duración total de la simulación [s].
+            dt (float): Paso de tiempo para la simulación [s].
 
         Returns:
-            Un diccionario con las series temporales de 'time', 'position', 'velocity' y 'acceleration'.
+            Dict[str, Any]: Un diccionario con las series temporales de
+            'time', 'position', 'velocity' y 'acceleration'.
         """
         self.reset()
         time_series = np.arange(0, duration, dt)
@@ -848,7 +898,7 @@ class AtomicPiston:
         }
 
     def reset(self) -> None:
-        """Reinicia el estado del pistón a sus condiciones iniciales por defecto."""
+        """Reinicia el estado del pistón a sus condiciones iniciales."""
         self.position = 0.0
         self.velocity = 0.0
         self.acceleration = 0.0
@@ -867,13 +917,12 @@ class AtomicPiston:
         logger.info("Estado del pistón reiniciado a condiciones iniciales.")
 
     def get_differential_equation_terms(self) -> Dict[str, float]:
-        """
-        Devuelve los términos individuales de la ecuación diferencial del movimiento.
+        """Devuelve los términos de la ecuación diferencial del movimiento.
 
-        La ecuación es: m*a + F_fricción + F_resorte = F_externa
+        La ecuación es: m*a + F_amortiguamiento + F_resorte = F_externa.
 
         Returns:
-            Un diccionario con los componentes calculados de la ecuación.
+            Dict[str, float]: Un diccionario con los componentes calculados.
         """
         friction_force = self.calculate_friction()
         spring_force = -self.k * self.position
@@ -891,8 +940,7 @@ class AtomicPiston:
 
 
 class PIDController:
-    """
-    Implementa un controlador Proporcional-Integral-Derivativo (PID).
+    """Implementa un controlador Proporcional-Integral-Derivativo (PID).
 
     Este controlador es utilizado por `AtomicPiston` para regular la
     velocidad y la energía del sistema, ajustando la fuerza de control
@@ -905,14 +953,13 @@ class PIDController:
         output_limit (float): Límite de la salida para anti-windup.
     """
     def __init__(self, kp: float, ki: float, kd: float, output_limit: float = 10.0) -> None:
-        """
-        Inicializa el controlador PID.
+        """Inicializa el controlador PID.
 
         Args:
-            kp: Ganancia proporcional (P).
-            ki: Ganancia integral (I).
-            kd: Ganancia derivativa (D).
-            output_limit: Límite absoluto para la salida (anti-windup).
+            kp (float): Ganancia proporcional (P).
+            ki (float): Ganancia integral (I).
+            kd (float): Ganancia derivativa (D).
+            output_limit (float): Límite absoluto para la salida (anti-windup).
         """
         self.kp: float = kp
         self.ki: float = ki
@@ -922,16 +969,15 @@ class PIDController:
         self.output_limit: float = output_limit
 
     def update(self, setpoint: float, current_value: float, dt: float) -> float:
-        """
-        Calcula la salida del controlador PID para un paso de tiempo.
+        """Calcula la salida del controlador PID para un paso de tiempo.
 
         Args:
-            setpoint: El valor deseado o de referencia.
-            current_value: El valor medido actual del sistema.
-            dt: El intervalo de tiempo desde la última actualización [s].
+            setpoint (float): El valor deseado o de referencia.
+            current_value (float): El valor medido actual del sistema.
+            dt (float): El intervalo de tiempo desde la última actualización [s].
 
         Returns:
-            La señal de control calculada.
+            float: La señal de control calculada.
         """
         if dt <= 0:
             return 0.0
@@ -971,11 +1017,22 @@ class PIDController:
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """
-    Verifica el estado de salud del servicio Atomic Piston.
+    """Verifica el estado de salud del servicio.
 
-    Retorna el estado de la simulación en segundo plano y si la instancia
-    del pistón ha sido inicializada correctamente.
+    Retorna el estado de la simulación y si la instancia del pistón ha sido
+    inicializada. Devuelve un código 503 si el servicio no está operativo.
+
+    Returns:
+        Response: Un objeto de respuesta JSON con el estado de salud.
+            Ejemplo en caso de éxito:
+            {
+                "status": "success",
+                "message": "Servicio Atomic Piston operativo.",
+                "details": {
+                    "simulation_running": true,
+                    "piston_initialized": true
+                }
+            }
     """
     sim_alive = simulation_thread and simulation_thread.is_alive()
     piston_initialized = ipu_instance is not None
@@ -1005,11 +1062,14 @@ def health_check():
 
 @app.route('/api/state', methods=['GET'])
 def get_piston_state():
-    """
-    Devuelve el estado dinámico completo de la IPU en formato JSON.
+    """Devuelve el estado dinámico completo de la IPU.
 
     Este endpoint es de solo lectura y es seguro para ser llamado
     concurrentemente gracias al uso de un lock.
+
+    Returns:
+        Response: Un objeto de respuesta JSON con el estado completo del
+        pistón, o un error 503 si no está inicializado.
     """
     if not ipu_instance:
         return jsonify({"status": "error", "message": "IPU no inicializada."}), 503
@@ -1039,10 +1099,16 @@ def get_piston_state():
 
 @app.route('/api/control', methods=['POST'])
 def set_piston_control():
-    """
-    Acepta una señal de control para modular el objetivo de energía del pistón.
+    """Acepta una señal para modular el objetivo de energía del pistón.
 
-    Payload esperado: {"control_signal": float}
+    Payload JSON esperado:
+    {
+        "control_signal": float
+    }
+
+    Returns:
+        Response: Una confirmación del cambio o un error 400 si el payload
+        es inválido.
     """
     data = request.get_json()
     if not data or "control_signal" not in data:
@@ -1074,11 +1140,13 @@ def set_piston_control():
 
 @app.route('/api/config', methods=['GET'])
 def get_piston_config():
-    """
-    Devuelve la configuración estática completa de la IPU.
+    """Devuelve la configuración estática completa de la IPU.
 
-    Este endpoint es útil para depuración, monitoreo y para que otros
-    servicios entiendan las capacidades y límites de esta instancia de IPU.
+    Este endpoint es útil para depuración y para que otros servicios
+    entiendan las capacidades y límites de esta instancia de IPU.
+
+    Returns:
+        Response: Un objeto de respuesta JSON con la configuración completa.
     """
     if not ipu_instance:
         return jsonify({"status": "error", "message": "IPU no inicializada."}), 503
@@ -1139,16 +1207,23 @@ def get_piston_config():
 
 @app.route('/api/command', methods=['POST'])
 def execute_piston_command():
-    """
-    Ejecuta un comando avanzado en la IPU.
+    """Ejecuta un comando avanzado en la IPU.
 
-    Payload esperado: {"command": str, "value": any}
+    Payload JSON esperado:
+    {
+        "command": "<nombre_del_comando>",
+        "value": <valor_del_comando>
+    }
+
     Comandos Soportados:
-    - set_mode: value in ["capacitor", "battery"]
-    - trigger_discharge: value is boolean
-    - set_energy_target: value is float >= 0
-    - set_speed_target: value is float
-    - reset: value is ignored
+    - `set_mode`: value in ["capacitor", "battery"]
+    - `trigger_discharge`: value is boolean
+    - `set_energy_target`: value is float >= 0
+    - `set_speed_target`: value is float
+    - `reset`: value is ignored
+
+    Returns:
+        Response: Una confirmación del comando o un error 400/503.
     """
     data = request.get_json()
     if not data or "command" not in data:
@@ -1211,12 +1286,11 @@ def execute_piston_command():
 # --- Punto de Entrada Principal ---
 
 def main():
-    """
-    Función principal para inicializar y ejecutar el microservicio del pistón.
+    """Inicializa y ejecuta el microservicio del pistón.
 
-    Orquesta la carga de configuración, la inicialización del 'gemelo digital',
-    el registro con AgentAI, y el arranque de los hilos de simulación y del
-    servidor web.
+    Orquesta la carga de configuración desde `PistonConfig`, la inicialización
+    del 'gemelo digital' `AtomicPiston`, el registro con AgentAI, y el
+    arranque de los hilos de simulación y del servidor web Flask.
     """
     global ipu_instance, simulation_thread, config
 
