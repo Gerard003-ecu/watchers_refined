@@ -1,69 +1,79 @@
 # ==============================================================================
-# Configuración de Docker Compose para el Monorepositorio de Watchers
+# Docker Compose Configuration for the Watchers Monorepo
 #
-# Este archivo define la configuración de la aplicación multicontenedor para el proyecto "watchers".
-# Está diseñado con las mejores prácticas para garantizar robustez, facilidad de mantenimiento y seguridad.
+# This file defines the multi-container application setup for the "watchers" project.
+# It is designed with best practices to ensure robustness, maintainability, and security.
 #
-# Características clave:
-#   - Configuración externalizada: Utiliza un archivo .env para variables específicas del entorno
-#     como los puertos, lo que reduce los valores codificados.
-#   - DRY (Don't Repeat Yourself): Aprovecha los campos de extensión YAML (x-common-config)
-#     para definir una plantilla de configuración común para todos los servicios.
-#   - Inicio basado en comprobación de estado: Utiliza `depends_on` con `service_healthy`
-#     para garantizar un orden de inicio fiable según las dependencias del servicio.
-#   - Nomenclatura explícita: Define nombres personalizados para contenedores, redes y volúmenes
-#     para mayor claridad y previsibilidad.
+# Key Features:
+#   - Externalized Configuration: Uses a .env file for environment-specific variables
+#     like ports, reducing hardcoded values.
+#   - DRY (Don't Repeat Yourself): Leverages YAML extension fields (x-common-config)
+#     to define a common configuration template for all services.
+#   - Healthcheck-driven Startup: Uses `depends_on` with `service_healthy`
+#     to ensure a reliable startup order based on service dependencies.
+#   - Explicit Naming: Defines custom names for containers, networks, and volumes
+#     for clarity and predictability.
 #
 # ==============================================================================
 version: '3.8'
 
 # ==============================================================================
-# Campos de extensión (para el principio DRY)
+# Extension Fields (for DRY principle)
 #
-# Define un bloque de configuración reutilizable que se aplica a todos los servicios.
-# Esto evita la repetición y facilita el mantenimiento del archivo.
+# Defines a reusable configuration block that is applied to all services.
+# This avoids repetition and makes the file easier to maintain.
 # ==============================================================================
 x-common-config: &common-config
   restart: unless-stopped
-  # Monta un volumen compartido para almacenar en caché los paquetes Pip,
-  # lo que acelera las compilaciones.
   volumes:
+    # Mount a shared volume to cache Pip packages, speeding up builds.
     - pip-cache:/root/.cache/pip
-  # Conecta todos los servicios a una red de puente con un nombre personalizado.
+    # Mount a shared log directory for all services.
+    # The ':z' flag is crucial for Podman on SELinux-enabled systems (like Fedora, CentOS, RHEL).
+    # It tells the container runtime to relabel the host volume content, allowing the container
+    # to write to it without permission denied errors.
+    - ./logs:/app/logs:z
   networks:
     - watchers_net
-  # Establece una variable de entorno común para todos los servicios.
   environment:
     - PYTHONPATH=/app
 
 # ==============================================================================
-# Definición de Servicios
+# Service Definitions
 #
-# Cada bloque define un contenedor de microservicio.
+# Each block defines a microservice container.
 # ==============================================================================
 services:
-  # --- Servicios pincipales ---
+  # ============================================================================
+  # Core Services
+  # ============================================================================
 
   ecu:
-    # Aplica la plantilla de configuración común.
     <<: *common-config
     container_name: watchers-ecu
     build:
       context: ./ecu
       dockerfile: Dockerfile
-    #user: "${UID}:${GID}"
     ports:
-      # La asignación de puertos se externaliza al archivo .env
+      # Port mapping is externalized to the .env file
       - "${ECU_PORT}:8000"
     environment:
+      - PORT=8000
       - ECU_NUM_CAPAS=3
       - ECU_NUM_FILAS=4
       - ECU_NUM_COLUMNAS=5
       - ECU_SIM_INTERVAL=1.0
       - ECU_BETA_COUPLING=0.1
-      - MATRIZ_ECU_PORT=8000
-      - PORT=8000
-    # HEALTHCHECK esta definido en el archivo Dockerfile.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================================================
+  # Control Plane
+  # ============================================================================
 
   harmony_controller:
     <<: *common-config
@@ -71,10 +81,10 @@ services:
     build:
       context: ./control
       dockerfile: Dockerfile
-    #user: "${UID}:${GID}"
     ports:
       - "${HARMONY_CONTROLLER_PORT}:7000"
     environment:
+      - PORT=7000
       - ECU_API_URL=http://ecu:8000/api/ecu
       - HC_KP=1.0
       - HC_KI=0.1
@@ -84,13 +94,51 @@ services:
       - HC_REQUESTS_TIMEOUT=2.0
       - HC_MAX_RETRIES=3
       - HC_BASE_RETRY_DELAY=0.5
-      - HC_PORT=7000
     depends_on:
       ecu:
-        # Espera a que el servicio 'ecu' esté en buen estado antes de comenzar.
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-  # --- Servicios de Watchers ---
+  agent_ai:
+    <<: *common-config
+    container_name: watchers-agent-ai
+    build:
+      context: ./agent_ai
+      dockerfile: Dockerfile
+    ports:
+      - "${AGENT_AI_PORT}:9000"
+    environment:
+      - PORT=9000
+      - HARMONY_CONTROLLER_URL=http://harmony_controller:7000
+      - AGENT_AI_ECU_URL=http://ecu:8000
+      - AGENT_AI_MALLA_URL=http://malla_watcher:5001
+      - AA_INTERVAL=5.0
+      - AA_REQUESTS_TIMEOUT=4.0
+      - AA_MAX_RETRIES=3
+      - AA_BASE_RETRY_DELAY=0.5
+      - AA_INITIAL_STRATEGY=default
+      - AA_INITIAL_SETPOINT_VECTOR=[1.0, 0.0]
+      - AA_GLOBAL_REQ_PATH=/app/requirements.txt
+    depends_on:
+      harmony_controller:
+        condition: service_healthy
+      malla_watcher:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================================================
+  # Watcher Tools
+  # ============================================================================
 
   malla_watcher:
     <<: *common-config
@@ -98,10 +146,10 @@ services:
     build:
       context: ./watchers/watchers_tools/malla_watcher
       dockerfile: Dockerfile
-    #user: "${UID}:${GID}"
     ports:
       - "${MALLA_WATCHER_PORT}:5001"
     environment:
+      - PORT=5001
       - MATRIZ_ECU_URL=http://ecu:8000
       - TORUS_NUM_CAPAS=3
       - TORUS_NUM_FILAS=4
@@ -119,10 +167,15 @@ services:
       - MW_HEX_SIZE=1.0
       - MW_PERIODIC_Z=True
       - MW_SIM_INTERVAL=0.5
-      - PORT=5001
     depends_on:
       ecu:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   watchers_wave:
     <<: *common-config
@@ -130,7 +183,6 @@ services:
     build:
       context: ./watchers/watchers_tools/watchers_wave
       dockerfile: Dockerfile
-    #user: "${UID}:${GID}"
     ports:
       - "${WATCHERS_WAVE_PORT}:5000"
     environment:
@@ -142,53 +194,23 @@ services:
     build:
       context: ./watchers/watchers_tools/watcher_focus
       dockerfile: Dockerfile
-    #user: "${UID}:${GID}"
     ports:
       - "${WATCHER_FOCUS_PORT}:6000"
     environment:
       - PORT=6000
 
-  # --- Servicios de inteligencia artificial y agentes ---
-
-  agent_ai:
-    <<: *common-config
-    container_name: watchers-agent-ai
-    build:
-      context: ./agent_ai
-      dockerfile: Dockerfile
-    #user: "${UID}:${GID}"
-    ports:
-      - "${AGENT_AI_PORT}:9000"
-    environment:
-      - HARMONY_CONTROLLER_URL=http://harmony_controller:7000
-      - AGENT_AI_ECU_URL=http://ecu:8000
-      - AGENT_AI_MALLA_URL=http://malla_watcher:5001
-      - PORT=9000
-      - AA_INTERVAL=5.0
-      - AA_REQUESTS_TIMEOUT=4.0
-      - AA_MAX_RETRIES=3
-      - AA_BASE_RETRY_DELAY=0.5
-      - AA_INITIAL_STRATEGY=default
-      - AA_INITIAL_SETPOINT_VECTOR=[1.0, 0.0]
-      - AA_GLOBAL_REQ_PATH=/app/requirements.txt
-    depends_on:
-      harmony_controller:
-        condition: service_healthy
-      malla_watcher:
-        condition: service_healthy
-
 # ==============================================================================
-# Recursos de alto nivel
+# Top-level Resources
 #
-# Define volúmenes y redes con nombre para la aplicación.
+# Defines named volumes and networks for the application.
 # ==============================================================================
 volumes:
-  # Define un volumen con nombre para que la caché Pip persista entre compilaciones.
+  # Define a named volume for the Pip cache to persist between builds.
   pip-cache:
     name: watchers_pip_cache
 
 networks:
-  # Define una red de puente personalizada para la comunicación entre servicios.
+  # Define a custom bridge network for inter-service communication.
   watchers_net:
     name: watchers_bridge_net
     driver: bridge
