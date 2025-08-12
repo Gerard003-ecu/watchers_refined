@@ -13,7 +13,7 @@ charset-normalizer==3.4.2
 click==8.1.8
     # via flask
 flask==3.1.1
-    # via -r cogniboard/requirements.in
+    # via -r ./cogniboard/requirements.in
 idna==3.10
     # via requests
 itsdangerous==2.2.0
@@ -26,9 +26,9 @@ markupsafe==3.0.2
     #   jinja2
     #   werkzeug
 requests==2.32.4
-    # via -r cogniboard/requirements.in
+    # via -r ./cogniboard/requirements.in
 simple-pid==2.0.1
-    # via -r cogniboard/requirements.in
+    # via -r ./cogniboard/requirements.in
 urllib3==2.5.0
     # via requests
 werkzeug==3.1.3

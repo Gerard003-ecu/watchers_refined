@@ -13,7 +13,7 @@ charset-normalizer==3.4.1
 click==8.1.8
     # via flask
 flask==2.3.2
-    # via -r control/requirements.in
+    # via -r ./control/requirements.in
 idna==3.10
     # via requests
 itsdangerous==2.2.0
@@ -25,12 +25,12 @@ markupsafe==3.0.2
     #   jinja2
     #   werkzeug
 numpy==2.0.2
-    # via -r control/requirements.in
+    # via -r ./control/requirements.in
 requests==2.32.4
-    # via -r control/requirements.in
+    # via -r ./control/requirements.in
 urllib3==2.5.0
     # via
-    #   -r control/requirements.in
+    #   -r ./control/requirements.in
     #   requests
 werkzeug==3.0.6
     # via flask

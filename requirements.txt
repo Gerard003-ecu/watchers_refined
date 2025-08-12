@@ -85,8 +85,6 @@ numpy==2.3.1
     #   opencv-python
     #   scikit-learn
     #   scipy
-opencv-python==4.11.0.86
-    # via -r requirements-dev.in
 packaging==25.0
     # via
     #   black
