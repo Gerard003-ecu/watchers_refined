@@ -450,12 +450,27 @@ class AtomicPiston:
         logger.debug(f"Señal eléctrica: {voltage:.2f}V → Fuerza: {applied_force:.2f}N")
 
     def update_state(self, dt: float) -> None:
-        """Avanza el estado físico del pistón usando el integrador RK4.
+        """Actualiza el estado físico del pistón para un intervalo de tiempo `dt`.
 
-        Este método es el corazón de la simulación. Calcula todas las fuerzas
-        que actúan sobre el pistón y utiliza el método de Runge-Kutta de 4º
-        orden para integrar la ecuación de movimiento y obtener la nueva
-        posición y velocidad.
+        Resuelve numéricamente la Ecuación Diferencial Ordinaria (EDO) del
+        movimiento del pistón usando un integrador Runge-Kutta de 4º orden.
+
+        La EDO gobernante es:
+        m*x'' + c*x' + F_fricción_seca + k*x + ε*x³ = F_externa(t)
+
+        Interpretación Física de los Términos:
+        - m*x'': Término de Inercia. Representa la resistencia del pistón a
+          cambiar su estado de movimiento.
+        - c*x': Amortiguamiento Viscoso. Representa la pérdida de energía
+          proporcional a la velocidad (ej. fricción con un fluido).
+        - F_fricción_seca: Fricción de Coulomb/Stribeck. Representa la
+          fricción que no depende (o depende poco) de la velocidad.
+        - k*x: Fuerza Elástica Lineal (Ley de Hooke). La fuerza restauradora
+          principal del resorte.
+        - ε*x³: Fuerza Elástica No Lineal. Modela cómo el material del resorte
+          se vuelve más rígido o blando a grandes deformaciones.
+        - F_externa(t): Fuerzas Impulsoras. La suma de todas las fuerzas
+          externas aplicadas, incluyendo las de control.
 
         Args:
             dt (float): El intervalo de tiempo para la integración [s].
@@ -467,38 +482,52 @@ class AtomicPiston:
             raise ValueError("El paso de tiempo (dt) debe ser un valor positivo.")
         self.dt = dt
 
-        # 1. Calcular fuerza externa total (constante durante el paso)
+        # 1. FUERZAS IMPULSORAS (F_externa)
+        # Suma de todas las fuerzas externas y de control que mueven el sistema.
         external_force = self.last_applied_force
         if self.target_speed != 0.0:
             external_force += self.speed_controller.update(
                 self.target_speed, self.velocity, dt
             )
 
-        # 2. Precalcular términos constantes para eficiencia
+        # Precalcular términos constantes para eficiencia
         k = self.k
         c = self.c
         m = self.m
         nl = self.nonlinear_elasticity
         capacity = self.capacity
 
-        # 3. Función de derivadas optimizada
+        # Función de derivadas optimizada
         def derivatives(state: np.ndarray, ext_force: float) -> np.ndarray:
             pos, vel = state
-            # Precalcular términos comunes
+
+            # 2. FUERZA ELÁSTICA (k*x + ε*x³)
+            # La fuerza restauradora del resorte, combinando su
+            # comportamiento lineal y no lineal.
             pos_sq = pos * pos
             spring_force = -k * pos - nl * pos_sq * pos
 
-            # Calcular fuerza de fricción seca (no incluye amortiguamiento viscoso)
+            # 3. FUERZA DE FRICCIÓN SECA (F_fricción_seca)
+            # Fricción que se opone al inicio del movimiento (estática) o al
+            # movimiento a velocidad constante (cinética).
             driving_force = ext_force + spring_force
             friction_force = self.calculate_friction(driving_force)
 
-            # Fuerza total = externa + resorte + fricción seca + amortiguamiento viscoso
-            total_force = ext_force + spring_force + friction_force - c * vel
+            # 4. FUERZA DE AMORTIGUAMIENTO VISCOSO (c*x')
+            # Pérdida de energía por fricción con el medio, proporcional a la velocidad.
+            damping_force = -c * vel
+
+            # Suma de todas las fuerzas para obtener la fuerza neta.
+            total_force = ext_force + spring_force + friction_force + damping_force
+
+            # 5. RESPUESTA INERCIAL (m*x'')
+            # La aceleración resultante, que es la manifestación de la inercia
+            # del pistón resistiéndose al cambio de movimiento.
             acceleration = total_force / m
 
             return np.array([vel, acceleration])
 
-        # 4. Integración RK4
+        # Integración RK4
         state = np.array([self.position, self.velocity])
         k1 = derivatives(state, external_force)
         k2 = derivatives(state + 0.5 * dt * k1, external_force)
@@ -508,7 +537,7 @@ class AtomicPiston:
         new_state = state + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
         self.position, self.velocity = new_state
 
-        # 5. Manejar límites físicos con conservación de energía
+        # Manejar límites físicos con conservación de energía
         if abs(self.position) > capacity:
             # Calcular energía antes del ajuste
             energy_before = self.stored_energy
@@ -522,14 +551,14 @@ class AtomicPiston:
                 velocity_scale = math.sqrt(energy_after / energy_before)
                 self.velocity *= velocity_scale * 0.8  # Factor de pérdida
 
-        # 6. Actualizar aceleración para reporte
+        # Actualizar aceleración para reporte
         self.acceleration = derivatives(new_state, external_force)[1]
 
-        # 7. Actualizar sistemas electrónicos y resetear fuerzas
+        # Actualizar sistemas electrónicos y resetear fuerzas
         self.update_electronic_state()
         self.last_applied_force = 0.0
 
-        # 8. Registrar métricas
+        # Registrar métricas
         self.energy_history.append(self.stored_energy)
         self.efficiency_history.append(self.get_conversion_efficiency())
 
