@@ -51,6 +51,7 @@ services:
     build:
       context: ./ecu
       dockerfile: Dockerfile
+    user: "${UID}:${GID}"
     ports:
       # La asignación de puertos se externaliza al archivo .env
       - "${ECU_PORT}:8000"
@@ -70,6 +71,7 @@ services:
     build:
       context: ./control
       dockerfile: Dockerfile
+    user: "${UID}:${GID}"
     ports:
       - "${HARMONY_CONTROLLER_PORT}:7000"
     environment:
@@ -96,6 +98,7 @@ services:
     build:
       context: ./watchers/watchers_tools/malla_watcher
       dockerfile: Dockerfile
+    user: "${UID}:${GID}"
     ports:
       - "${MALLA_WATCHER_PORT}:5001"
     environment:
@@ -127,6 +130,7 @@ services:
     build:
       context: ./watchers/watchers_tools/watchers_wave
       dockerfile: Dockerfile
+    user: "${UID}:${GID}"
     ports:
       - "${WATCHERS_WAVE_PORT}:5000"
     environment:
@@ -138,6 +142,7 @@ services:
     build:
       context: ./watchers/watchers_tools/watcher_focus
       dockerfile: Dockerfile
+    user: "${UID}:${GID}"
     ports:
       - "${WATCHER_FOCUS_PORT}:6000"
     environment:
@@ -151,6 +156,7 @@ services:
     build:
       context: ./agent_ai
       dockerfile: Dockerfile
+    user: "${UID}:${GID}"
     ports:
       - "${AGENT_AI_PORT}:9000"
     environment:
