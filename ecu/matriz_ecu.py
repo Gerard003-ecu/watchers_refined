@@ -32,21 +32,10 @@ import numpy as np
 from flask import Flask, jsonify, request
 
 # --- Configuración del Logging ---
-log_dir = "logs"
-os.makedirs(log_dir, exist_ok=True)
-if not logging.getLogger("matriz_ecu").hasHandlers():
-    logging.basicConfig(
-        level=logging.INFO,
-        # Añadido threadName
-        format=(
-            "%(asctime)s [%(levelname)s] [%(threadName)s] "
-            "%(name)s: %(message)s"
-        ),
-        handlers=[
-            logging.FileHandler(os.path.join(log_dir, "matriz_ecu.log")),
-            logging.StreamHandler()
-        ]
-    )
+# El logger se configura dentro de main() para ser compatible con contenedores.
+# A nivel global, solo obtenemos la instancia del logger.
+# Los logs emitidos antes de que main() configure el logger (ej. warnings de
+# get_env_*) usarán la configuración por defecto de logging (a stderr).
 logger = logging.getLogger("matriz_ecu")
 
 # --- Funciones Auxiliares para Configuración ---
@@ -796,10 +785,42 @@ def get_region_field_vector_api(capa_idx: int) -> Tuple[Any, int]:
 
 # --- Función Principal y Arranque ---
 def main():
+    """Función principal que configura el logging y arranca la aplicación."""
     global simulation_thread
 
+    # --- Configuración del Logging ---
+    log_dir = "logs"
+    log_file = os.path.join(log_dir, "matriz_ecu.log")
+
+    # 1. Verificar si el directorio de logs existe y es escribible.
+    #    La creación del directorio es ahora una responsabilidad externa
+    #    (ej. docker-compose.yml o un script de arranque).
+    if not os.path.isdir(log_dir) or not os.access(log_dir, os.W_OK):
+        print(
+            f"FATAL: El directorio de logs '{log_dir}' no existe o no tiene "
+            "permisos de escritura. La aplicación no puede iniciar."
+        )
+        exit(1)
+
+    # 2. Mover la configuración del logging dentro de main().
+    #    Usamos force=True (disponible en Python 3.8+) para asegurar que
+    #    esta configuración sobreescribe cualquier configuración por defecto.
+    logging.basicConfig(
+        level=logging.INFO,
+        format=(
+            "%(asctime)s [%(levelname)s] [%(threadName)s] "
+            "%(name)s: %(message)s"
+        ),
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ],
+        force=True
+    )
+    # --- Fin Configuración del Logging ---
+
     logger.info(
-        f"Configuración ECU: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS},"
+        f"Configuración ECU: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS}, "
         f"SimInterval={SIMULATION_INTERVAL}s, Beta={BETA_COUPLING}"
     )
 
