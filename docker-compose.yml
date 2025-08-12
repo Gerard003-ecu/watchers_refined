@@ -187,6 +187,12 @@ services:
       - "${WATCHERS_WAVE_PORT}:5000"
     environment:
       - PORT=5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   watcher_focus:
     <<: *common-config
@@ -198,6 +204,12 @@ services:
       - "${WATCHER_FOCUS_PORT}:6000"
     environment:
       - PORT=6000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 # ==============================================================================
 # Top-level Resources
