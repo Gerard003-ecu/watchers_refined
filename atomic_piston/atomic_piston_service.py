@@ -268,7 +268,6 @@ class AtomicPiston:
         self.position: float = 0.0
         self.velocity: float = 0.0
         self.acceleration: float = 0.0
-        self.previous_position: float = 0.0
         self.last_applied_force: float = 0.0
         self.last_signal_info: Dict[str, Tuple[float, float]] = {}
 
@@ -363,22 +362,20 @@ class AtomicPiston:
 
     def calculate_friction(self, driving_force: float) -> float:
         """
-        Calcula la fuerza de fricción según el modelo físico seleccionado.
+        Calcula la fuerza de fricción seca (no viscosa) según el modelo seleccionado.
+
+        El amortiguamiento viscoso general (-c * v) se calcula por separado.
 
         Args:
-            driving_force: La fuerza neta que intenta mover el pistón (externa +
-                resorte), usada para determinar la dirección de la fricción
-                estática.
+            driving_force: La fuerza neta (sin amortiguamiento) que intenta mover
+                el pistón, usada para determinar la dirección de la fricción estática.
 
         Returns:
-            La fuerza de fricción calculada [N], que se opone al movimiento.
+            La fuerza de fricción seca calculada [N], que se opone al movimiento.
         """
         # Fricción cinética (cuando hay movimiento)
         if abs(self.velocity) > 1e-5:
-            if self.friction_model == FrictionModel.VISCOUS:
-                return -self.c * self.velocity
-
-            elif self.friction_model == FrictionModel.COULOMB:
+            if self.friction_model == FrictionModel.COULOMB:
                 return -np.sign(self.velocity) * self.coulomb_friction
 
             elif self.friction_model == FrictionModel.STRIBECK:
@@ -391,10 +388,7 @@ class AtomicPiston:
 
         # Fricción estática (cuando la velocidad es casi cero)
         else:
-            if self.friction_model == FrictionModel.VISCOUS:
-                return 0.0 # No hay fricción viscosa sin velocidad
-
-            elif self.friction_model == FrictionModel.COULOMB:
+            if self.friction_model == FrictionModel.COULOMB:
                 # La fricción estática se opone a la fuerza impulsora hasta su límite máximo.
                 return -np.sign(driving_force) * min(abs(driving_force), self.coulomb_friction)
 
@@ -403,6 +397,7 @@ class AtomicPiston:
                 # La fricción estática se opone a la fuerza impulsora hasta su límite estático.
                 return -np.sign(driving_force) * min(abs(driving_force), f_static)
 
+        # Si el modelo no es ni Coulomb ni Stribeck, o si es VISCOUS (ahora manejado fuera), no hay fricción seca.
         return 0.0
 
     def apply_force(self, signal_value: float, source: str, mass_factor: float = 1.0) -> None:
@@ -452,12 +447,8 @@ class AtomicPiston:
 
     def update_state(self, dt: float) -> None:
         """
-        Actualiza el estado físico del pistón para un intervalo de tiempo `dt`.
-
-        Resuelve la ecuación diferencial del movimiento del pistón usando la
-        integración de Verlet, un método numérico estable.
-
-        La ecuación es: m * d²x/dt² + F_fricción(dx/dt) + k*x + ε*x³ = F_externa(t)
+        Avanza el estado físico del pistón para un intervalo de tiempo `dt`
+        utilizando el método de integración de Runge-Kutta de 4º orden (RK4).
 
         Args:
             dt: El intervalo de tiempo para la integración [s]. Debe ser > 0.
@@ -469,74 +460,59 @@ class AtomicPiston:
             raise ValueError("El paso de tiempo (dt) debe ser un valor positivo.")
         self.dt = dt
 
-        # 1. SUMA DE FUERZAS EXTERNAS Y DE CONTROL
-        # F_externa(t) en la ecuación diferencial.
+        # 1. SUMA DE FUERZAS EXTERNAS Y DE CONTROL (consideradas constantes durante el paso dt)
         external_force = self.last_applied_force
         if self.target_speed != 0.0:
             control_force = self.speed_controller.update(
                 self.target_speed, self.velocity, dt
             )
             external_force += control_force
+        if self.target_energy > 0:
+            energy_control = self.energy_controller.update(
+                self.target_energy, self.stored_energy, dt
+            )
+            external_force += energy_control
 
-        # 2. FUERZAS INTERNAS DEPENDIENTES DE LA POSICIÓN (RESORTE)
-        # Términos k*x y ε*x³ en la ecuación.
-        # Optimización: precalcular términos
-        position_sq = self.position * self.position
-        spring_force = -self.k * self.position - self.nonlinear_elasticity * position_sq * self.position
+        # --- Integración RK4 ---
+        def derivatives(state: np.ndarray, ext_force: float) -> np.ndarray:
+            position, velocity = state
 
-        # 3. FUERZA DE FRICCIÓN (dependiente de la velocidad y la fuerza motriz)
-        # El término F_fricción(dx/dt) en la ecuación.
-        # Para la fricción estática, necesitamos saber si las otras fuerzas
-        # son suficientes para superar el umbral estático.
-        driving_force_for_friction = external_force + spring_force
-        friction_force = self.calculate_friction(driving_force_for_friction)
-        self.friction_force_history.append(friction_force)
+            # Calcular fuerzas internas basadas en el estado actual
+            position_sq = position * position
+            spring_force = -self.k * position - self.nonlinear_elasticity * position_sq * position
+            damping_force = -self.c * velocity
 
-        # 4. FUERZA NETA SOBRE EL PISTÓN
-        # Reorganizando la ecuación: F_neta = F_externa - (F_fricción + F_resorte)
-        # O más directamente: F_neta = F_externa + F_resorte + F_fricción
-        # (recordando que F_resorte y F_fricción ya tienen el signo correcto).
-        total_force = external_force + spring_force + friction_force
+            # La fuerza motriz para la fricción no incluye el amortiguamiento
+            driving_force_for_friction = ext_force + spring_force
+            friction_force = self.calculate_friction(driving_force_for_friction)
 
-        # 5. CÁLCULO DE LA ACELERACIÓN (a = F_neta / m)
-        # Este es el término d²x/dt² de la ecuación.
-        self.acceleration = total_force / self.m
+            total_force = ext_force + spring_force + damping_force + friction_force
+            acceleration = total_force / self.m
 
-        # 6. INTEGRACIÓN NUMÉRICA (Verlet) para encontrar la nueva posición y velocidad.
-        # x(t+dt) = 2x(t) - x(t-dt) + a(t)dt²
-        new_position = (
-            2 * self.position - self.previous_position + self.acceleration * (dt**2)
-        )
+            return np.array([velocity, acceleration])
 
-        # Corrección de energía para mantener estabilidad
-        # Esta seccion es opcional y puede ser activada para simulaciones largas
-        # donde el drift de energia de Verlet puede ser un problema.
-        energy_before = 0.5 * self.k * self.position**2 + 0.5 * self.m * self.velocity**2
-        # La energia potencial no lineal tambien deberia ser incluida si es significativa
-        # energy_before += (1/4) * self.nonlinear_elasticity * self.position**4
+        # Estado inicial como vector
+        initial_state = np.array([self.position, self.velocity])
 
-        new_velocity_estimate = (new_position - self.previous_position) / (2 * dt)
-        energy_after = 0.5 * self.k * new_position**2 + 0.5 * self.m * new_velocity_estimate**2
-        # energy_after += (1/4) * self.nonlinear_elasticity * new_position**4
+        # Calcular coeficientes de RK4
+        k1 = derivatives(initial_state, external_force)
+        k2 = derivatives(initial_state + 0.5 * dt * k1, external_force)
+        k3 = derivatives(initial_state + 0.5 * dt * k2, external_force)
+        k4 = derivatives(initial_state + dt * k3, external_force)
 
-        # Prevenir division por cero y solo corregir si la energia es significativa
-        if energy_after > 1e-9 and abs(energy_after - energy_before) > 0.1 * energy_before:
-            # Aplicar factor de corrección para conservar la energía
-            correction_factor = math.sqrt(energy_before / energy_after)
-            # Solo corregimos la parte dinámica de la posición, no el punto de equilibrio
-            new_position = self.position + (new_position - self.position) * correction_factor
+        # Actualizar el estado del pistón
+        new_state = initial_state + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
+        self.position, self.velocity = new_state
 
-        # v(t) ≈ [x(t+dt) - x(t-dt)] / (2*dt)
-        self.velocity = (new_position - self.previous_position) / (2 * dt)
+        # Actualizar la aceleración para consistencia del estado reportado
+        self.acceleration = derivatives(new_state, external_force)[1]
 
-        # Actualizar posiciones para la siguiente iteración
-        self.previous_position = self.position
-        self.position = new_position
+        # --- Fin de RK4 ---
 
-        # Limitar la posición para evitar que exceda la capacidad física
-        self.position = np.clip(
-            self.position, -self.capacity, self.capacity
-        )
+        # Limitar la posición y simular rebote si se alcanza la capacidad
+        if self.position <= -self.capacity or self.position >= self.capacity:
+            self.velocity *= -0.8  # Coeficiente de restitución
+        self.position = np.clip(self.position, -self.capacity, self.capacity)
 
         # Actualizar estado electrónico y resetear fuerzas para el siguiente ciclo
         self.update_electronic_state()
@@ -545,6 +521,7 @@ class AtomicPiston:
         # Registrar historial para diagnóstico
         self.energy_history.append(self.stored_energy)
         self.efficiency_history.append(self.get_conversion_efficiency())
+        self.friction_force_history.append(self.calculate_friction(external_force + (-self.k * self.position)))
 
     def update_electronic_state(self) -> None:
         """Actualiza el estado del circuito electrónico equivalente."""
@@ -891,7 +868,6 @@ class AtomicPiston:
         self.position = 0.0
         self.velocity = 0.0
         self.acceleration = 0.0
-        self.previous_position = 0.0
         self.last_applied_force = 0.0
         self.circuit_voltage = 0.0
         self.circuit_current = 0.0
