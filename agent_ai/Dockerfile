@@ -1,28 +1,35 @@
-# 1. Imagen Base: Usa una imagen base de Python específica y slim.
-FROM python:3.12-slim-bookworm
+# Dockerfile para el servicio Agent AI
+FROM python:3.12-slim
 
-# 2. Entorno: Establece WORKDIR y variables de entorno.
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# Establecer variables de entorno para Python
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
 WORKDIR /app
 
-# Instalar dependencias del sistema (curl para HEALTHCHECK y build-essential para compilación)
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Optimización de Caché de Dependencias:
+# Crear un usuario y grupo no-root 'appuser' con UID/GID fijos
+RUN groupadd -r appgroup -g 1001 && \
+    useradd -r -u 1001 -g appgroup appuser
+
+# Copiar requirements.txt y instalar dependencias como root
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia el resto del código de la aplicación.
+# Copiar el resto del código de la aplicación
 COPY . .
 
-# 4. Seguridad: Crea un usuario no-root y cambia a él.
-RUN useradd -m app
-USER app
+# Cambiar la propiedad de /app al usuario no-root
+RUN chown -R appuser:appgroup /app
 
-# 5. Metadatos y Ejecución:
+# Cambiar al usuario no-root para la ejecución
+USER appuser
+
+# Exponer el puerto específico de este servicio
 EXPOSE 9000
-HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:9000/api/health || exit 1
 
+# Comando para ejecutar este servicio específico
 CMD ["python", "-m", "api.endpoints"]
