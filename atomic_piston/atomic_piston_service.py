@@ -446,82 +446,80 @@ class AtomicPiston:
         logger.debug(f"Señal eléctrica: {voltage:.2f}V → Fuerza: {applied_force:.2f}N")
 
     def update_state(self, dt: float) -> None:
-        """
-        Avanza el estado físico del pistón para un intervalo de tiempo `dt`
-        utilizando el método de integración de Runge-Kutta de 4º orden (RK4).
-
-        Args:
-            dt: El intervalo de tiempo para la integración [s]. Debe ser > 0.
-
-        Raises:
-            ValueError: Si `dt` es menor o igual a cero.
-        """
         if dt <= 0:
             raise ValueError("El paso de tiempo (dt) debe ser un valor positivo.")
         self.dt = dt
 
-        # 1. SUMA DE FUERZAS EXTERNAS Y DE CONTROL (consideradas constantes durante el paso dt)
+        # 1. Calcular fuerza externa total (constante durante el paso)
         external_force = self.last_applied_force
         if self.target_speed != 0.0:
-            control_force = self.speed_controller.update(
+            external_force += self.speed_controller.update(
                 self.target_speed, self.velocity, dt
             )
-            external_force += control_force
-        if self.target_energy > 0:
-            energy_control = self.energy_controller.update(
-                self.target_energy, self.stored_energy, dt
-            )
-            external_force += energy_control
 
-        # --- Integración RK4 ---
+        # 2. Precalcular términos constantes para eficiencia
+        k = self.k
+        c = self.c
+        m = self.m
+        nl = self.nonlinear_elasticity
+        capacity = self.capacity
+
+        # 3. Función de derivadas optimizada
         def derivatives(state: np.ndarray, ext_force: float) -> np.ndarray:
-            position, velocity = state
+            pos, vel = state
+            # Precalcular términos comunes
+            pos_sq = pos * pos
+            spring_force = -k * pos - nl * pos_sq * pos
 
-            # Calcular fuerzas internas basadas en el estado actual
-            position_sq = position * position
-            spring_force = -self.k * position - self.nonlinear_elasticity * position_sq * position
-            damping_force = -self.c * velocity
+            # Calcular fuerza de fricción seca (no incluye amortiguamiento viscoso)
+            driving_force = ext_force + spring_force
+            friction_force = self.calculate_friction(driving_force)
 
-            # La fuerza motriz para la fricción no incluye el amortiguamiento
-            driving_force_for_friction = ext_force + spring_force
-            friction_force = self.calculate_friction(driving_force_for_friction)
+            # Fuerza total = externa + resorte + fricción seca + amortiguamiento viscoso
+            total_force = ext_force + spring_force + friction_force - c * vel
+            acceleration = total_force / m
 
-            total_force = ext_force + spring_force + damping_force + friction_force
-            acceleration = total_force / self.m
+            return np.array([vel, acceleration])
 
-            return np.array([velocity, acceleration])
+        # 4. Integración RK4
+        state = np.array([self.position, self.velocity])
+        k1 = derivatives(state, external_force)
+        k2 = derivatives(state + 0.5 * dt * k1, external_force)
+        k3 = derivatives(state + 0.5 * dt * k2, external_force)
+        k4 = derivatives(state + dt * k3, external_force)
 
-        # Estado inicial como vector
-        initial_state = np.array([self.position, self.velocity])
-
-        # Calcular coeficientes de RK4
-        k1 = derivatives(initial_state, external_force)
-        k2 = derivatives(initial_state + 0.5 * dt * k1, external_force)
-        k3 = derivatives(initial_state + 0.5 * dt * k2, external_force)
-        k4 = derivatives(initial_state + dt * k3, external_force)
-
-        # Actualizar el estado del pistón
-        new_state = initial_state + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
+        new_state = state + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
         self.position, self.velocity = new_state
 
-        # Actualizar la aceleración para consistencia del estado reportado
+        # 5. Manejar límites físicos con conservación de energía
+        if abs(self.position) > capacity:
+            # Calcular energía antes del ajuste
+            energy_before = self.stored_energy
+
+            # Aplicar restricción conservando la dirección
+            self.position = np.clip(self.position, -capacity, capacity)
+
+            # Ajustar velocidad para conservar energía (coeficiente de restitución)
+            energy_after = self.stored_energy
+            if energy_before > 0 and energy_after < energy_before:
+                velocity_scale = math.sqrt(energy_after / energy_before)
+                self.velocity *= velocity_scale * 0.8  # Factor de pérdida
+
+        # 6. Actualizar aceleración para reporte
         self.acceleration = derivatives(new_state, external_force)[1]
 
-        # --- Fin de RK4 ---
-
-        # Limitar la posición y simular rebote si se alcanza la capacidad
-        if self.position <= -self.capacity or self.position >= self.capacity:
-            self.velocity *= -0.8  # Coeficiente de restitución
-        self.position = np.clip(self.position, -self.capacity, self.capacity)
-
-        # Actualizar estado electrónico y resetear fuerzas para el siguiente ciclo
+        # 7. Actualizar sistemas electrónicos y resetear fuerzas
         self.update_electronic_state()
         self.last_applied_force = 0.0
 
-        # Registrar historial para diagnóstico
+        # 8. Registrar métricas
         self.energy_history.append(self.stored_energy)
         self.efficiency_history.append(self.get_conversion_efficiency())
-        self.friction_force_history.append(self.calculate_friction(external_force + (-self.k * self.position)))
+
+        # Calcular fricción para registro (usando estado actual)
+        current_spring_force = -k * self.position - nl * self.position**3
+        friction = self.calculate_friction(external_force + current_spring_force)
+        self.friction_force_history.append(friction)
 
     def update_electronic_state(self) -> None:
         """Actualiza el estado del circuito electrónico equivalente."""
@@ -540,22 +538,8 @@ class AtomicPiston:
             self.output_voltage = 0.0
 
     def discharge(self, dt: float) -> Optional[Dict[str, Any]]:
-        """
-        Gestiona la descarga de energía del pistón según el modo de operación.
-
-        Args:
-            dt: El intervalo de tiempo [s].
-
-        Returns:
-            Un diccionario con información sobre la descarga si ocurre, o None.
-        """
-        # Aplicar control de energía si está activo
-        if self.target_energy > 0:
-            discharge_rate = self.energy_controller.update(
-                self.target_energy, self.stored_energy, dt
-            )
-            self.battery_discharge_rate = max(0.01, discharge_rate)
-
+        """Solo maneja descarga, sin control de energía aquí"""
+        # El control de energía ahora se maneja completamente en update_state
         if self.mode == PistonMode.CAPACITOR:
             return self.capacitor_discharge(dt)
         elif self.mode == PistonMode.BATTERY:
