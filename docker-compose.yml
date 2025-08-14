@@ -32,6 +32,7 @@ x-common-config: &common-config
     - watchers_net
   environment:
     - PYTHONPATH=/app
+    - FLASK_ENV=development
 
 # ==============================================================================
 # Service Definitions
