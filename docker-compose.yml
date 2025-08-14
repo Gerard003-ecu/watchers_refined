@@ -27,12 +27,7 @@ x-common-config: &common-config
   restart: unless-stopped
   volumes:
     # Mount a shared volume to cache Pip packages, speeding up builds.
-    - pip-cache:/root/.cache/pip
-    # Mount a shared log directory for all services.
-    # The ':z' flag is crucial for Podman on SELinux-enabled systems (like Fedora, CentOS, RHEL).
-    # It tells the container runtime to relabel the host volume content, allowing the container
-    # to write to it without permission denied errors.
-    - ./logs:/app/logs:z
+    - pip-cache:/root/.cache/pip # El volumen de logs ha sido eliminado.
   networks:
     - watchers_net
   environment:
