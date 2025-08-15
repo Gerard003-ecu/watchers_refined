@@ -71,8 +71,6 @@ class TestAgentAI(unittest.TestCase):
         os.environ.pop("AA_INITIAL_STRATEGY", None)
 
         self.agent = AgentAI()
-        if self.agent._strategic_thread.is_alive():
-            self.agent.shutdown()
 
         # Mock time.sleep
         self.patcher_sleep = mock.patch("agent_ai.agent_ai.time.sleep")
@@ -88,14 +86,11 @@ class TestAgentAI(unittest.TestCase):
         sea detenido correctamente si aún está en ejecución, para evitar
         interferencias entre pruebas.
         """
-        if self.agent._strategic_thread.is_alive():
-            self.agent.shutdown()
-
         # Stop mock_sleep patcher
         self.patcher_sleep.stop()
 
     def test_initialization_defaults(
-        self, mock_get_logger, mock_validate, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Verifica la inicialización de AgentAI con valores por defecto.
@@ -127,7 +122,7 @@ class TestAgentAI(unittest.TestCase):
     # --- NUEVOS TESTS para verificar __init__ y lectura de ENV ---
 
     def test_init_central_urls_defaults(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Verifica que AgentAI usa URLs por defecto si no hay variables
@@ -180,7 +175,7 @@ class TestAgentAI(unittest.TestCase):
             )
 
     def test_init_central_urls_from_env(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Verifica que AgentAI usa URLs de variables de entorno
@@ -229,7 +224,7 @@ class TestAgentAI(unittest.TestCase):
     # --- FIN NUEVOS TESTS ---
     # --- Tests de Comunicación con HC (sin cambios funcionales) ---
     def test_get_harmony_state_success(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Prueba la obtención exitosa del estado de Harmony Controller.
@@ -269,7 +264,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(state, mock_harmony_data)
 
     def test_get_harmony_state_network_error(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Prueba el manejo de errores de red al obtener el estado de Harmony.
@@ -299,7 +294,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(self.mock_sleep.call_count, MAX_RETRIES - 1)
 
     def test_get_harmony_state_bad_response(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Prueba el manejo de respuestas no exitosas de Harmony Controller.
@@ -328,7 +323,7 @@ class TestAgentAI(unittest.TestCase):
             self.assertIsNone(state)
 
     def test_send_setpoint_to_harmony_success(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Prueba el envío exitoso de un setpoint a Harmony Controller.
@@ -361,7 +356,7 @@ class TestAgentAI(unittest.TestCase):
         )
 
     def test_send_setpoint_to_harmony_error(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Prueba el manejo de errores de red al enviar setpoint a Harmony.
@@ -389,7 +384,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(self.mock_sleep.call_count, MAX_RETRIES - 1)
 
     def test_determine_harmony_setpoint_simple(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Prueba la lógica de determinación del setpoint de Harmony
@@ -415,10 +410,10 @@ class TestAgentAI(unittest.TestCase):
             la magnitud del setpoint se reduce.
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
+            mock_requests, Mock del módulo `requests`.
         """
 
         # Caso default: sin cambios
@@ -576,7 +571,7 @@ class TestAgentAI(unittest.TestCase):
         # --- NUEVOS TESTS DETALLADOS --- #
 
     def test_determine_estrategia_default_sin_cambio_base(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Verifica que la estrategia 'default' no altera el setpoint base.
@@ -587,9 +582,9 @@ class TestAgentAI(unittest.TestCase):
         debe ser igual al setpoint objetivo actual del agente.
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [1.5, -0.5]
@@ -614,7 +609,7 @@ class TestAgentAI(unittest.TestCase):
         )
 
     def test_determine_estrategia_estabilidad_reduce_por_error_bajo(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
     ):
         """
         Verifica que la estrategia 'estabilidad' reduce la magnitud del
@@ -626,9 +621,9 @@ class TestAgentAI(unittest.TestCase):
         reduzca en un factor predeterminado (0.98).
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
@@ -657,9 +652,9 @@ class TestAgentAI(unittest.TestCase):
 
     def test_determine_estrategia_estabilidad_reduce_por_pid_alto(
         self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
         mock_requests
     ):
         """
@@ -672,9 +667,9 @@ class TestAgentAI(unittest.TestCase):
         un factor predeterminado (0.98), independientemente del error actual.
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
@@ -702,9 +697,9 @@ class TestAgentAI(unittest.TestCase):
 
     def test_determine_estrategia_estabilidad_reduce_extra_por_reductores(
         self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
         mock_requests
     ):
         """
@@ -718,9 +713,9 @@ class TestAgentAI(unittest.TestCase):
         (factor 0.97 sobre la reducción anterior).
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
@@ -767,9 +762,9 @@ class TestAgentAI(unittest.TestCase):
 
     def test_determine_estrategia_rendimiento_aumenta(
         self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
         mock_requests
     ):
         """
@@ -782,9 +777,9 @@ class TestAgentAI(unittest.TestCase):
         en un factor predeterminado (1.02).
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
@@ -810,9 +805,9 @@ class TestAgentAI(unittest.TestCase):
 
     def test_determine_estrategia_rendimiento_aumenta_extra_por_potenciadores(
         self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
         mock_requests
     ):
         """
@@ -826,9 +821,9 @@ class TestAgentAI(unittest.TestCase):
         (factor 1.01 sobre el aumento anterior).
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
@@ -879,9 +874,9 @@ class TestAgentAI(unittest.TestCase):
 
     def test_determine_estrategia_rendimiento_establece_minimo_si_cero(
         self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
         mock_requests
     ):
         """
@@ -895,9 +890,9 @@ class TestAgentAI(unittest.TestCase):
         (ej. [0.1, 0.1] para un vector 2D) para iniciar la actividad.
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [0.0, 0.0]  # Setpoint inicial cero
@@ -924,9 +919,9 @@ class TestAgentAI(unittest.TestCase):
 
     def test_determine_estrategia_ahorro_reduce_con_reductores(
         self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
         mock_requests
     ):
         """
@@ -939,9 +934,9 @@ class TestAgentAI(unittest.TestCase):
         debe reducirse en un factor predeterminado (0.95).
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
@@ -974,9 +969,9 @@ class TestAgentAI(unittest.TestCase):
 
     def test_determine_estrategia_ahorro_sin_cambio_sin_reductores(
         self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
         mock_requests
     ):
         """
@@ -989,9 +984,9 @@ class TestAgentAI(unittest.TestCase):
         cambiar respecto al setpoint objetivo actual del agente.
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
@@ -1023,9 +1018,9 @@ class TestAgentAI(unittest.TestCase):
 
     def test_determine_cogniboard_alto_reduce(
         self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
         mock_requests
     ):
         """
@@ -1039,9 +1034,9 @@ class TestAgentAI(unittest.TestCase):
         debería reducir la magnitud a un 90% de la original.
 
         Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
+            mock_logger, Mock para el logger.
+            mock_validate_module_registration, Mock de la función de validación de registro.
+            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
             mock_requests, Mock para el módulo `requests`.
         """
         initial_vector = [5.0, 0.0]
