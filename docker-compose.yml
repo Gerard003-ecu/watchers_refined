@@ -32,7 +32,6 @@ x-common-config: &common-config
     - watchers_net
   environment:
     - PYTHONPATH=/app
-    - FLASK_ENV=development
 
 # ==============================================================================
 # Service Definitions
@@ -60,6 +59,7 @@ services:
       - ECU_NUM_COLUMNAS=5
       - ECU_SIM_INTERVAL=1.0
       - ECU_BETA_COUPLING=0.1
+      - FLASK_ENV=development
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 10s
@@ -120,6 +120,7 @@ services:
       - AA_INITIAL_STRATEGY=default
       - AA_INITIAL_SETPOINT_VECTOR=[1.0, 0.0]
       - AA_GLOBAL_REQ_PATH=/app/requirements.txt
+      - FLASK_ENV=development
     depends_on:
       harmony_controller:
         condition: service_healthy
