@@ -715,34 +715,32 @@ def get_field_vector_api() -> Tuple[Any, int]:
 
 
 @app.route("/debug/set_random_phase", methods=["POST"])
-def set_random_phase_debug():
+def set_random_phase_endpoint():
     """
-    Endpoint de depuración para reiniciar el campo a una fase cuántica aleatoria.
-    Solo disponible en entornos de desarrollo o prueba.
+    Endpoint de depuración para reiniciar el campo a un estado de fase aleatoria.
+    Protegido para ejecutarse solo en entornos de no producción.
     """
-    flask_env = os.environ.get("FLASK_ENV", "production")
+    # Leer la variable de entorno y loguear su valor para depuración
+    flask_env = os.environ.get("FLASK_ENV", "production").lower().strip()
+    logger.debug(f"Verificando entorno para endpoint de depuración. FLASK_ENV='{flask_env}'")
+
+    # Comprobar si el entorno permite la ejecución de este endpoint
     if flask_env not in ["development", "test"]:
         logger.warning(
-            "Acceso denegado a endpoint de depuración en entorno '%s'.", flask_env
+            f"Acceso denegado a endpoint de depuración. Entorno actual: '{flask_env}'."
         )
         return jsonify({
             "status": "error",
-            "message": "Endpoint de depuración solo disponible en desarrollo/test."
+            "message": f"Endpoint de depuración no disponible en entorno '{flask_env}'."
         }), 403
 
     try:
         campo_toroidal_global_servicio.set_initial_quantum_phase()
-        logger.info("Endpoint de depuración: Campo reiniciado a fase cuántica aleatoria.")
-        return jsonify({
-            "status": "success",
-            "message": "Campo reiniciado a fase cuántica aleatoria."
-        }), 200
+        logger.info("Campo reiniciado a fase cuántica aleatoria a través de endpoint de depuración.")
+        return jsonify({"status": "success", "message": "Campo reiniciado"})
     except Exception as e:
-        logger.exception("Error en endpoint /debug/set_random_phase: %s", e)
-        return jsonify({
-            "status": "error",
-            "message": "Error interno al reiniciar el campo."
-        }), 500
+        logger.exception(f"Error en set_random_phase: {e}")
+        return jsonify({"status": "error", "message": "Error interno al reiniciar el campo."}), 500
 
 
 @app.route("/api/ecu/field_vector/region/<int:capa_idx>", methods=["GET"])
