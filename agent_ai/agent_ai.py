@@ -145,7 +145,6 @@ class AgentAI:
             "config_status": None,
         }
         self.lock = threading.Lock()
-        self._stop_event = threading.Event()
 
         self.central_urls: Dict[str, str] = {}
         hc_url = os.environ.get(HARMONY_CONTROLLER_URL_ENV)
@@ -187,159 +186,7 @@ class AgentAI:
             else f"{hc_base_url}/api/harmony/register_tool"
         )
         logger.info("URL registro HC: '%s'", self.hc_register_url)
-
-        self._strategic_thread = threading.Thread(
-            target=self._strategic_loop,
-            daemon=True,
-            name="AgentAIStrategicLoop",
-        )
         logger.info("AgentAI inicializado.")
-
-    def start_loop(self):
-        """Inicia el bucle estratégico principal de AgentAI.
-
-        Este bucle se ejecuta en un hilo separado y es responsable de
-        monitorizar continuamente el estado del sistema, determinar y enviar
-        setpoints al Harmony Controller, y reaccionar a cambios y comandos.
-        Si el bucle ya está en ejecución, esta función no hace nada.
-        """
-        if not self._strategic_thread.is_alive():
-            self._stop_event.clear()
-            self._strategic_thread = threading.Thread(
-                target=self._strategic_loop,
-                daemon=True,
-                name="AgentAIStrategicLoop",
-            )
-            self._strategic_thread.start()
-            logger.info("Bucle estratégico iniciado.")
-        else:
-            logger.info("Bucle estratégico ya está corriendo.")
-
-    def _strategic_loop(self):
-        """Bucle principal que ejecuta la lógica estratégica periódicamente."""
-        logger.info(
-            "Esperando a que harmony_controller esté disponible..."
-        )
-        max_retries_hc_wait = 30
-        retry_interval_hc_wait = 2
-        hc_ready = False
-        for attempt in range(max_retries_hc_wait):
-            try:
-                url = f"{HARMONY_CONTROLLER_URL}/api/harmony/state"
-                response = requests.get(url, timeout=REQUESTS_TIMEOUT)
-                if response.status_code == 200:
-                    logger.info(
-                        "Conexión establecida con harmony_controller"
-                    )
-                    hc_ready = True
-                    break
-            except Exception as e:
-                logger.debug(
-                    "Intento %s/%s: HC no disponible (%s)",
-                    attempt + 1,
-                    max_retries_hc_wait,
-                    str(e),
-                )
-                time.sleep(retry_interval_hc_wait)
-        if not hc_ready:
-            logger.warning(
-                "No existe conexión inicial con harmony_controller."
-            )
-
-        logger.info("Iniciando bucle estratégico...")
-        while not self._stop_event.is_set():
-            start_time = time.monotonic()
-            try:
-                state = self._get_harmony_state()
-                current_harmony_state = state
-                with self.lock:
-                    if current_harmony_state is not None:
-                        self.harmony_state = current_harmony_state
-
-                with self.lock:
-                    current_measurement = self.harmony_state.get(
-                        "last_measurement", 0.0
-                    )
-                    cogniboard_signal = self.external_inputs[
-                        "cogniboard_signal"
-                    ]
-                    config_status = self.external_inputs["config_status"]
-                    strategy = self.current_strategy
-                    modules_copy = dict(self.modules)
-
-                    new_setpoint_vector = self._determine_harmony_setpoint(
-                        current_measurement,
-                        cogniboard_signal,
-                        config_status,
-                        strategy,
-                        modules_copy,
-                    )
-                with self.lock:
-                    setpoint_changed = not np.allclose(
-                        self.target_setpoint_vector,
-                        new_setpoint_vector,
-                        rtol=1e-5,
-                        atol=1e-8,
-                    )
-                    if setpoint_changed:
-                        self.target_setpoint_vector = new_setpoint_vector
-                        logger.info(
-                            "Nuevo setpoint estratégico determinado: %s",
-                            [
-                                f"{x:.3f}"
-                                for x in self.target_setpoint_vector
-                            ],
-                        )
-
-                if setpoint_changed:
-                    self._send_setpoint_to_harmony(self.target_setpoint_vector)
-
-                # --- Lógica de Coherencia Cuántica ---
-                field_vector = self._get_ecu_field_vector()
-                if field_vector is not None:
-                    # Suponemos que operamos sobre la primera capa por simplicidad
-                    coherence, dominant_phase = self.calculate_coherence(
-                        field_vector[0]
-                    )
-                    logger.info(
-                        "Coherencia Capa 0: %.3f, Fase Dominante: %.3f rad",
-                        coherencia,
-                        dominant_phase,
-                    )
-
-                    # Decisión estratégica basada en la coherencia
-                    if coherence < 0.8:
-                        logger.warning(
-                            "Coherencia (%.3f) por debajo del umbral. "
-                            "Iniciando maniobra de sincronización de fase para reforzar la fase dominante.",
-                            coherencia,
-                        )
-                        # Delegar a Harmony Controller, usando la fase dominante actual como objetivo
-                        self._delegate_phase_synchronization_task(
-                            region_identifier="capa_0", target_phase=dominant_phase
-                        )
-                    elif coherence > 0.95: # Si la coherencia ya es alta, intentamos resonar
-                        logger.info(
-                            "Coherencia alta (%.3f). Intentando maniobra de resonancia.",
-                            coherencia,
-                        )
-                        resonant_frequency = self.find_resonant_frequency("capa_0")
-                        if resonant_frequency is not None:
-                            self._delegate_resonance_task("capa_0", resonant_frequency)
-
-
-            except BaseException as e:
-                if isinstance(e, (SystemExit, KeyboardInterrupt)):
-                    logger.info(
-                        "Señal de salida recibida en bucle estratégico.")
-                    break
-                logger.exception("Error inesperado en el bucle estratégico.")
-
-            elapsed_time = time.monotonic() - start_time
-            sleep_time = max(0, STRATEGIC_LOOP_INTERVAL - elapsed_time)
-            if sleep_time > 0:
-                self._stop_event.wait(sleep_time)
-        logger.info("Bucle estratégico detenido.")
 
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
         hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
@@ -1252,39 +1099,113 @@ class AgentAI:
             "registered_modules": modules_list,
         }
 
-    def shutdown(self):
-        """Detiene el bucle estratégico principal de AgentAI de forma segura.
 
-        Señala al hilo del bucle estratégico que debe detenerse y espera a que
-        finalice.
-        """
-        logger.info("Solicitando detención del bucle estratégico...")
-        self._stop_event.set()
-        if self._strategic_thread.is_alive():
-            self._strategic_thread.join(
-                timeout=STRATEGIC_LOOP_INTERVAL + 1
-            )
-            if self._strategic_thread.is_alive():
-                logger.warning(
-                    "El hilo estratégico no terminó limpiamente."
+def strategic_loop(agent_instance: AgentAI):
+    """
+    El bucle principal que ejecuta la lógica de negocio de AgentAI.
+    Se ejecuta en un hilo separado.
+    """
+    logger.info("Iniciando bucle estratégico...")
+    while True:
+        start_time = time.monotonic()
+        try:
+            state = agent_instance._get_harmony_state()
+            if state is None:
+                logger.error(
+                    "No se pudo obtener el estado de Harmony. "
+                    "El bucle estratégico esperará 30 segundos antes de reintentar."
+                )
+                time.sleep(30)
+                continue
+
+            current_harmony_state = state
+            with agent_instance.lock:
+                agent_instance.harmony_state = current_harmony_state
+
+            with agent_instance.lock:
+                current_measurement = agent_instance.harmony_state.get(
+                    "last_measurement", 0.0
+                )
+                cogniboard_signal = agent_instance.external_inputs[
+                    "cogniboard_signal"
+                ]
+                config_status = agent_instance.external_inputs["config_status"]
+                strategy = agent_instance.current_strategy
+                modules_copy = dict(agent_instance.modules)
+
+                new_setpoint_vector = agent_instance._determine_harmony_setpoint(
+                    current_measurement,
+                    cogniboard_signal,
+                    config_status,
+                    strategy,
+                    modules_copy,
+                )
+            with agent_instance.lock:
+                setpoint_changed = not np.allclose(
+                    agent_instance.target_setpoint_vector,
+                    new_setpoint_vector,
+                    rtol=1e-5,
+                    atol=1e-8,
+                )
+                if setpoint_changed:
+                    agent_instance.target_setpoint_vector = new_setpoint_vector
+                    logger.info(
+                        "Nuevo setpoint estratégico determinado: %s",
+                        [
+                            f"{x:.3f}"
+                            for x in agent_instance.target_setpoint_vector
+                        ],
+                    )
+
+            if setpoint_changed:
+                agent_instance._send_setpoint_to_harmony(agent_instance.target_setpoint_vector)
+
+            field_vector = agent_instance._get_ecu_field_vector()
+            if field_vector is not None:
+                coherence, dominant_phase = agent_instance.calculate_coherence(
+                    field_vector[0]
+                )
+                logger.info(
+                    "Coherencia Capa 0: %.3f, Fase Dominante: %.3f rad",
+                    coherencia,
+                    dominant_phase,
                 )
 
+                if coherence < 0.8:
+                    logger.warning(
+                        "Coherencia (%.3f) por debajo del umbral. "
+                        "Iniciando maniobra de sincronización de fase.",
+                        coherencia,
+                    )
+                    agent_instance._delegate_phase_synchronization_task(
+                        region_identifier="capa_0", target_phase=dominant_phase
+                    )
+                elif coherence > 0.95:
+                    logger.info(
+                        "Coherencia alta (%.3f). Intentando maniobra de resonancia.",
+                        coherencia,
+                    )
+                    resonant_frequency = agent_instance.find_resonant_frequency("capa_0")
+                    if resonant_frequency is not None:
+                        agent_instance._delegate_resonance_task("capa_0", resonant_frequency)
 
-# --- Instancia Global ---
-agent_ai_instance_app = AgentAI()
+        except Exception as e:
+            logger.exception("Error inesperado en el bucle estratégico: %s", e)
+
+        elapsed_time = time.monotonic() - start_time
+        sleep_time = max(0, STRATEGIC_LOOP_INTERVAL - elapsed_time)
+        time.sleep(sleep_time)
+
+
+# --- Instancia Global y App ---
+agent_ai_instance = AgentAI()
 agent_api = Flask(__name__)
 
 
+# --- Endpoints de la API ---
 @agent_api.route("/api/register", methods=["POST"])
 def handle_register():
-    """Punto de entrada de API para registrar un nuevo módulo.
-
-    Recibe datos JSON con la información del módulo, los pasa a la instancia
-    de AgentAI para su procesamiento y retorna el resultado.
-
-    Returns:
-        Una respuesta JSON con el estado del registro y un código HTTP.
-    """
+    """Punto de entrada de API para registrar un nuevo módulo."""
     data = request.get_json()
     if not data:
         return (
@@ -1293,38 +1214,24 @@ def handle_register():
             ),
             400,
         )
-    result = agent_ai_instance_app.registrar_modulo(data)
+    result = agent_ai_instance.registrar_modulo(data)
     status_code = 200 if result.get("status") == "success" else 400
     return jsonify(result), status_code
 
 
 @agent_api.route("/api/state", methods=["GET"])
 def handle_get_state():
-    """Punto de entrada de API para obtener el estado completo de AgentAI.
-
-    Retorna una representación JSON del estado interno actual de la instancia
-    de AgentAI.
-
-    Returns:
-        Una respuesta JSON con el estado completo y código HTTP 200.
-    """
-    return jsonify(agent_ai_instance_app.obtener_estado_completo()), 200
+    """Punto de entrada de API para obtener el estado completo de AgentAI."""
+    return jsonify(agent_ai_instance.obtener_estado_completo()), 200
 
 
 @agent_api.route("/api/command", methods=["POST"])
 def handle_command():
-    """Punto de entrada de API para enviar comandos estratégicos a AgentAI.
-
-    Recibe un comando y su valor en formato JSON, los procesa a través de
-    la instancia de AgentAI y retorna el resultado.
-
-    Returns:
-        Una respuesta JSON con el estado del comando y un código HTTP.
-    """
+    """Punto de entrada de API para enviar comandos estratégicos a AgentAI."""
     data = request.get_json()
     if not data or "comando" not in data or "valor" not in data:
         return jsonify({"status": "error", "message": "Comando inválido"}), 400
-    result = agent_ai_instance_app.actualizar_comando_estrategico(
+    result = agent_ai_instance.actualizar_comando_estrategico(
         data["comando"], data["valor"]
     )
     status_code = 200 if result.get("status") == "success" else 400
@@ -1335,25 +1242,19 @@ def handle_command():
 def handle_synchronize_region():
     """
     Punto de entrada de API para iniciar una maniobra de sincronización de fase.
-    Espera un payload JSON con 'region' (string) y 'target_phase' (float).
     """
     data = request.get_json()
     if not data or "region" not in data or "target_phase" not in data:
-        return jsonify({"status": "error", "message": "Payload inválido. Se requiere 'region' y 'target_phase'."}), 400
+        return jsonify({"status": "error", "message": "Payload inválido."}), 400
 
     region = data.get("region")
     target_phase = data.get("target_phase")
 
     if not isinstance(region, str) or not isinstance(target_phase, (int, float)):
-        return jsonify({"status": "error", "message": "Tipos de datos inválidos para 'region' o 'target_phase'."}), 400
+        return jsonify({"status": "error", "message": "Tipos de datos inválidos."}), 400
 
-    # Aquí llamamos a un método interno de agent_ai que inicia la maniobra.
-    # Por ahora, simularemos la llamada y devolveremos un éxito.
-    # En una implementación real, esto podría ser:
-    # agent_ai_instance_app.initiate_phase_synchronization(region, target_phase)
-    logger.info(f"Comando de sincronización recibido para la región '{region}' con fase objetivo {target_phase}.")
-    agent_ai_instance_app._delegate_phase_synchronization_task(region, target_phase)
-
+    logger.info(f"Comando de sincronización recibido para '{region}' con fase {target_phase}.")
+    agent_ai_instance._delegate_phase_synchronization_task(region, target_phase)
 
     return jsonify({
         "status": "command_accepted",
@@ -1361,25 +1262,23 @@ def handle_synchronize_region():
     }), 202
 
 
-def run_agent_ai_service():
-    """Ejecuta el servicio Flask de AgentAI.
+def main():
+    """Punto de entrada principal para iniciar el servicio AgentAI."""
+    logger.info("Iniciando hilo para el bucle estratégico...")
+    strategy_thread = threading.Thread(
+        target=strategic_loop,
+        args=(agent_ai_instance,),
+        daemon=True,
+        name="AgentAIStrategicLoop"
+    )
+    strategy_thread.start()
 
-    Inicializa el bucle estratégico de AgentAI y luego inicia el servidor
-    Flask para atender las peticiones API.
-    """
     port = int(os.environ.get("AGENT_AI_PORT", 9000))
     logger.info("Iniciando servicio Flask para AgentAI en puerto %d...", port)
-    agent_ai_instance_app.start_loop()
-    agent_api.run(
-        host="0.0.0.0", port=port, debug=False, use_reloader=False
-    )
+
+    # Esta llamada es bloqueante y mantiene el proceso principal vivo
+    agent_api.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
 
 if __name__ == "__main__":
-    try:
-        run_agent_ai_service()
-    except KeyboardInterrupt:
-        logger.info("Interrupción manual.")
-    finally:
-        agent_ai_instance_app.shutdown()
-        logger.info("AgentAI finalizado.")
+    main()
