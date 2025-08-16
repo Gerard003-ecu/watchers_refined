@@ -34,5 +34,6 @@ USER appuser
 # Exponer el puerto específico de este servicio
 EXPOSE 7000
 
-# Comando para ejecutar este servicio específico
-CMD ["python", "harmony_controller.py"]
+# Comando para ejecutar el servicio como un paquete de Python.
+# Esto ejecuta el fichero __main__.py dentro del directorio/paquete 'control'.
+CMD ["python", "-m", "control"]
