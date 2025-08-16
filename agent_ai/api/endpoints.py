@@ -9,8 +9,8 @@ módulos y recibir señales de control y configuración.
 """
 
 from flask import Flask, request, jsonify
-from agent_ai.utils.logger import get_logger
-from agent_ai.agent_ai import agent_ai_instance_app
+from ..utils.logger import get_logger
+from ..agent_ai import agent_ai_instance
 
 # import logging # No se usa directamente si usamos get_logger
 import os
@@ -38,7 +38,7 @@ def get_status():
             - mensaje (str): Un mensaje descriptivo en caso de error.
     """
     try:
-        estado = agent_ai_instance_app.obtener_estado_completo()
+        estado = agent_ai_instance.obtener_estado_completo()
         return jsonify({"status": "success", "data": estado}), 200
     except Exception:
         logger.exception("Error al obtener estado completo de AgentAI")
@@ -96,7 +96,7 @@ def post_command():
 
     try:
         # Delegar el procesamiento al método de comandos estratégicos
-        resultado = agent_ai_instance_app.actualizar_comando_estrategico(
+        resultado = agent_ai_instance.actualizar_comando_estrategico(
             comando, valor
         )
         # Determinar código de estado basado en el resultado
@@ -150,7 +150,7 @@ def register_module():
     data = request.get_json() or {}
     try:
         # La validación detallada ocurre dentro de agent_ai_instance_app
-        resultado = agent_ai_instance_app.registrar_modulo(data)
+        resultado = agent_ai_instance.registrar_modulo(data)
         status_code = 200 if resultado.get("status") == "success" else 400
         return jsonify(resultado), status_code
     except Exception:
@@ -188,9 +188,9 @@ def health():
     try:
         # Verificar si la instancia y el hilo existen y están vivos
         is_loop_alive = (
-            hasattr(agent_ai_instance_app, "_strategic_thread")
-            and agent_ai_instance_app._strategic_thread is not None
-            and agent_ai_instance_app._strategic_thread.is_alive()
+            hasattr(agent_ai_instance, "_strategic_thread")
+            and agent_ai_instance._strategic_thread is not None
+            and agent_ai_instance._strategic_thread.is_alive()
         )
 
         health_status = "success" if is_loop_alive else "error"
@@ -262,7 +262,7 @@ def control_input():
 
     try:
         logger.info(f"Recibida señal de control externa: {control_signal}")
-        agent_ai_instance_app.recibir_control_cogniboard(
+        agent_ai_instance.recibir_control_cogniboard(
             control_signal
         )  # Pasar la señal
         return (
@@ -322,7 +322,7 @@ def config_input():
 
     try:
         logger.info(f"Recibido estado de configuración: {config_status}")
-        agent_ai_instance_app.recibir_config_status(
+        agent_ai_instance.recibir_config_status(
             config_status
         )  # Pasar el estado
         return (
@@ -358,11 +358,11 @@ if __name__ == "__main__":
 
     # Iniciar el bucle estratégico de AgentAI si no se está ejecutando
     # Esto es importante si se ejecuta este script directamente
-    if not agent_ai_instance_app._strategic_thread.is_alive():
+    if not agent_ai_instance._strategic_thread.is_alive():
         logger.info(
             "Iniciando bucle estratégico de AgentAI desde endpoints.py..."
         )
-        agent_ai_instance_app.start_loop()
+        agent_ai_instance.start_loop()
 
     # Para producción, usa un servidor WSGI como Gunicorn o Waitress
     # Ejemplo con Waitress:
@@ -374,7 +374,7 @@ if __name__ == "__main__":
 
     # Limpieza al salir (si se ejecuta directamente)
     logger.info("Deteniendo AgentAI API...")
-    agent_ai_instance_app.shutdown()
+    agent_ai_instance.shutdown()
     logger.info("AgentAI API finalizado.")
 
 
