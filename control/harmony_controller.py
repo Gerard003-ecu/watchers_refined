@@ -469,7 +469,11 @@ def run_phase_sync_task(
         derivative = (error - last_error) / control_interval
         last_error = error
 
-        control_output = (p * error) + (i * integral) + (d * derivative)
+        # Calcular términos individuales para el logging
+        p_term = p * error
+        i_term = i * integral
+        d_term = d * derivative
+        control_output = p_term + i_term + d_term
 
         # 6. Aplicar influencia
         # La influencia es un vector complejo. Usamos la salida del control
@@ -477,9 +481,19 @@ def run_phase_sync_task(
         influence_vector = 1.0 * np.exp(1j * control_output)
         apply_influence_to_ecu(region, influence_vector)
 
+        # Logging de depuración detallado según lo solicitado
         logger.debug(
-            "[%s] Fase actual: %.3f, Error: %.3f, Salida PID: %.3f",
-            task_id, current_phase, error, control_output
+            "[PID Sync] Setpoint: %.2f, Current: %.2f, Error: %.2f",
+            target_phase, current_phase, error
+        )
+        logger.debug(
+            "[PID Sync] Terms (P: %.2f, I: %.2f, D: %.2f) -> Total Output: %.2f",
+            p_term, i_term, d_term, control_output
+        )
+        influence_vector_str = f"({influence_vector.real:.2f}{influence_vector.imag:+.2f}j)"
+        logger.debug(
+            "[PID Sync] Applying influence vector: %s to ECU",
+            influence_vector_str
         )
 
         # 7. Esperar
