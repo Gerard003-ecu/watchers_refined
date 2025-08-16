@@ -35,4 +35,4 @@ USER appuser
 EXPOSE 7000
 
 # Comando para ejecutar este servicio específico
-CMD ["python", "-m", "harmony_controller"]
+CMD ["python", "harmony_controller.py"]

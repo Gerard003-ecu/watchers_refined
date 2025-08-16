@@ -35,8 +35,8 @@ import requests
 from flask import Flask, jsonify, request
 
 # Local application imports
-from agent_ai.utils.logger import get_logger
-from agent_ai.validation.validator import (
+from .utils.logger import get_logger
+from .validation.validator import (
     check_missing_dependencies,
     validate_module_registration,
 )
