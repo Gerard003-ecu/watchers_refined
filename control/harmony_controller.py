@@ -756,8 +756,10 @@ def harmony_control_loop():
 
         pid_output = 0.0
         if hasattr(controller_state, "pid_controller"):
-            pid_output = controller_state.pid_controller.compute(
-                current_sp_norm, current_measurement, dt
+            # Corregido: Se llama al método `update` en lugar de `compute`
+            # y se pasan los argumentos correctos (`measurement`, `dt`).
+            pid_output = controller_state.pid_controller.update(
+                current_measurement, dt
             )
             logger.debug(
                 "[CtrlLoop] SP=%.3f, PV=%.3f, PIDOut=%.3f",
