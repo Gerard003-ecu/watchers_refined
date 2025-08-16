@@ -1254,7 +1254,7 @@ def aplicar_influencia_toroide_push() -> Tuple[str, int]:
 @app.route('/api/event', methods=['POST'])
 def receive_event() -> Tuple[str, int]:
     """
-    Procesa un evento externo y  lo aplica a una celda específica de la malla.
+    Procesa un evento externo y lo aplica a una celda específica de la malla.
 
     Actualmente, solo soporta eventos de tipo "pulse".
     Espera un payload JSON con:
