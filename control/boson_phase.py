@@ -3,7 +3,7 @@
 boson_phase.py
 
 Este módulo implementa un controlador PID adaptativo llamado "BosonPhase"
-para armonizar el estado de la matriz ECU (Experiencia Cuántica Unificada),
+para armonizar el estado de la matriz ECU (Experiencia de Campo Unificada),
 es decir, para ajustar el estado ideal de la malla vectorial (matriz_ecu).
 
 El controlador PID se ajusta automáticamente según la diferencia entre la
