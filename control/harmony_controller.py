@@ -32,7 +32,7 @@ import uuid
 from flask import Flask, jsonify, request
 from typing import Dict, List, Any, Optional
 
-from .boson_phase import BosonPhase
+from .boson_phase import BosonPhasePID as BosonPhase
 
 ECU_API_URL = os.environ.get("ECU_API_URL", "http://ecu:8000/api/ecu")
 
@@ -129,8 +129,9 @@ class HarmonyControllerState:
                 Por defecto es setpoint_vector_init.
         """
         self.pid_controller = BosonPhase(
-            kp, ki, kd, setpoint=initial_setpoint
+            kp, ki, kd
         )
+        self.pid_controller.set_target(initial_setpoint)
         self.current_setpoint = initial_setpoint
         if isinstance(initial_setpoint_vector, np.ndarray):
             self.setpoint_vector = initial_setpoint_vector.tolist()
@@ -1147,29 +1148,5 @@ def abort_task_api(task_id: str):
     return jsonify({"status": "success", "message": "Señal de aborto enviada."}), 200
 
 
-def main():
-    """Inicia el servicio Harmony Controller.
-
-    Esta función realiza dos acciones principales:
-    1. Crea e inicia un hilo demonio (`HarmonyControlLoop`) que ejecutará
-       el bucle de control principal del Harmony Controller en segundo plano.
-    2. Inicia el servidor Flask para exponer la API REST del controlador,
-       permitiendo la interacción externa para monitorización y control.
-
-    El host y puerto para el servidor Flask se configuran a través de variables
-    de entorno (`HC_PORT`, por defecto 7000) o valores predeterminados.
-    """
-    control_thread = threading.Thread(
-        target=harmony_control_loop, daemon=True, name="HarmonyControlLoop"
-    )
-    control_thread.start()
-    port = int(os.environ.get("HC_PORT", 7000))
-    logger.info(
-        "Iniciando servidor Flask para Harmony Controller en puerto %d...",
-        port
-    )
-    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
-
-
-if __name__ == "__main__":
-    main()
+# El punto de entrada ha sido movido a __main__.py para permitir
+# la ejecución del módulo con `python -m control`.

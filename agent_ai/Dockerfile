@@ -31,5 +31,9 @@ USER appuser
 # Exponer el puerto específico de este servicio
 EXPOSE 9000
 
-# Comando para ejecutar este servicio específico
-CMD ["python", "-m", "api.endpoints"]
+# Comando para ejecutar el servicio como un paquete de Python.
+# Esto establece 'agent_ai' como el paquete de nivel superior y ejecuta
+# el módulo 'endpoints' que se encuentra en el sub-paquete 'api'.
+# El WORKDIR es /app, y dentro de /app está el directorio agent_ai/,
+# por lo que Python puede encontrar el paquete agent_ai.
+CMD ["python", "-m", "agent_ai.api.endpoints"]

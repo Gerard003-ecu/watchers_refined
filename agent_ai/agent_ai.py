@@ -1197,88 +1197,33 @@ def strategic_loop(agent_instance: AgentAI):
         time.sleep(sleep_time)
 
 
-# --- Instancia Global y App ---
+# --- Instancia Global ---
+# Esta instancia será importada por otros módulos (como endpoints.py)
+# para acceder a la lógica de AgentAI.
 agent_ai_instance = AgentAI()
-agent_api = Flask(__name__)
 
+# El hilo del bucle estratégico se inicia ahora desde el punto de entrada
+# principal de la aplicación (en endpoints.py) para asegurar que solo se
+# inicie una vez.
+_strategic_thread = None
 
-# --- Endpoints de la API ---
-@agent_api.route("/api/register", methods=["POST"])
-def handle_register():
-    """Punto de entrada de API para registrar un nuevo módulo."""
-    data = request.get_json()
-    if not data:
-        return (
-            jsonify(
-                {"status": "error", "message": "No JSON data received"}
-            ),
-            400,
+def start_loop():
+    """Inicia el bucle estratégico si no está ya en ejecución."""
+    global _strategic_thread
+    if _strategic_thread is None or not _strategic_thread.is_alive():
+        logger.info("Iniciando el bucle estratégico de AgentAI...")
+        _strategic_thread = threading.Thread(
+            target=strategic_loop,
+            args=(agent_ai_instance,),
+            daemon=True,
+            name="AgentAIStrategicLoop"
         )
-    result = agent_ai_instance.registrar_modulo(data)
-    status_code = 200 if result.get("status") == "success" else 400
-    return jsonify(result), status_code
+        _strategic_thread.start()
+    else:
+        logger.info("El bucle estratégico de AgentAI ya está en ejecución.")
 
-
-@agent_api.route("/api/state", methods=["GET"])
-def handle_get_state():
-    """Punto de entrada de API para obtener el estado completo de AgentAI."""
-    return jsonify(agent_ai_instance.obtener_estado_completo()), 200
-
-
-@agent_api.route("/api/command", methods=["POST"])
-def handle_command():
-    """Punto de entrada de API para enviar comandos estratégicos a AgentAI."""
-    data = request.get_json()
-    if not data or "comando" not in data or "valor" not in data:
-        return jsonify({"status": "error", "message": "Comando inválido"}), 400
-    result = agent_ai_instance.actualizar_comando_estrategico(
-        data["comando"], data["valor"]
-    )
-    status_code = 200 if result.get("status") == "success" else 400
-    return jsonify(result), status_code
-
-
-@agent_api.route("/commands/synchronize_region", methods=["POST"])
-def handle_synchronize_region():
-    """
-    Punto de entrada de API para iniciar una maniobra de sincronización de fase.
-    """
-    data = request.get_json()
-    if not data or "region" not in data or "target_phase" not in data:
-        return jsonify({"status": "error", "message": "Payload inválido."}), 400
-
-    region = data.get("region")
-    target_phase = data.get("target_phase")
-
-    if not isinstance(region, str) or not isinstance(target_phase, (int, float)):
-        return jsonify({"status": "error", "message": "Tipos de datos inválidos."}), 400
-
-    logger.info(f"Comando de sincronización recibido para '{region}' con fase {target_phase}.")
-    agent_ai_instance._delegate_phase_synchronization_task(region, target_phase)
-
-    return jsonify({
-        "status": "command_accepted",
-        "message": "Maniobra de sincronización iniciada."
-    }), 202
-
-
-def main():
-    """Punto de entrada principal para iniciar el servicio AgentAI."""
-    logger.info("Iniciando hilo para el bucle estratégico...")
-    strategy_thread = threading.Thread(
-        target=strategic_loop,
-        args=(agent_ai_instance,),
-        daemon=True,
-        name="AgentAIStrategicLoop"
-    )
-    strategy_thread.start()
-
-    port = int(os.environ.get("AGENT_AI_PORT", 9000))
-    logger.info("Iniciando servicio Flask para AgentAI en puerto %d...", port)
-
-    # Esta llamada es bloqueante y mantiene el proceso principal vivo
-    agent_api.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
-
-
-if __name__ == "__main__":
-    main()
+def shutdown():
+    """Función de limpieza (actualmente un placeholder)."""
+    logger.info("AgentAI shutdown.")
+    # En un futuro, aquí se podrían añadir lógicas de apagado seguro.
+    pass
