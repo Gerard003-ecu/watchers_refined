@@ -115,6 +115,53 @@ def post_command():
         )
 
 
+@app.route("/commands/synchronize_region", methods=["POST"])
+def synchronize_region_command():
+    """
+    Recibe un comando para iniciar una maniobra de sincronización de fase.
+    """
+    data = request.get_json()
+    if not data or "region" not in data or "target_phase" not in data:
+        logger.warning(
+            "Payload inválido para /commands/synchronize_region: %s", data
+        )
+        return jsonify({"status": "error", "message": "Payload inválido, se requiere 'region' y 'target_phase'"}), 400
+
+    try:
+        region = data["region"]
+        target_phase = float(data["target_phase"])
+
+        # Delegar la tarea a la instancia de AgentAI
+        agent_ai_core.agent_ai_instance._delegate_phase_synchronization_task(
+            region, target_phase
+        )
+
+        return (
+            jsonify(
+                {
+                    "status": "command_accepted",
+                    "message": f"Sincronización de fase iniciada para la región '{region}'.",
+                }
+            ),
+            202,
+        )
+
+    except ValueError:
+        logger.warning(
+            "Error de valor en /commands/synchronize_region: 'target_phase' no es un flotante válido. Payload: %s",
+            data,
+        )
+        return jsonify({"status": "error", "message": "El campo 'target_phase' debe ser un número."}), 400
+    except Exception as e:
+        logger.exception("Error al procesar el comando synchronize_region")
+        return (
+            jsonify(
+                {"status": "error", "message": "Error interno al procesar el comando."}
+            ),
+            500,
+        )
+
+
 @app.route("/api/register", methods=["POST"])
 def register_module():
     """
