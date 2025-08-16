@@ -5,7 +5,9 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
+# El WORKDIR es /app, que se añade a PYTHONPATH para que los módulos sean importables
 WORKDIR /app
+ENV PYTHONPATH "${PYTHONPATH}:/app"
 
 # Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
@@ -18,12 +20,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 RUN groupadd -r appgroup -g 1001 && \
     useradd -r -u 1001 -g appgroup appuser
 
-# Copiar requirements.txt y instalar dependencias como root
-COPY requirements.txt .
+# Copiar el fichero de requisitos específico del servicio y instalar dependencias
+COPY control/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el resto del código de la aplicación
-COPY . .
+# Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
+# Esto asegura que la estructura de paquetes se mantiene dentro del contenedor
+COPY control/ /app/control/
+COPY common/ /app/common/
 
 # Cambiar la propiedad de /app al usuario no-root
 RUN chown -R appuser:appgroup /app

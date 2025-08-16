@@ -47,8 +47,8 @@ services:
     <<: *common-config
     container_name: watchers-ecu
     build:
-      context: ./ecu
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ecu/Dockerfile
     ports:
       # Port mapping is externalized to the .env file
       - "${ECU_PORT}:8000"
@@ -75,8 +75,8 @@ services:
     <<: *common-config
     container_name: watchers-harmony-controller
     build:
-      context: ./control
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: control/Dockerfile
     ports:
       - "${HARMONY_CONTROLLER_PORT}:7000"
     environment:
@@ -104,8 +104,8 @@ services:
     <<: *common-config
     container_name: watchers-agent-ai
     build:
-      context: ./agent_ai
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: agent_ai/Dockerfile
     ports:
       - "${AGENT_AI_PORT}:9000"
     environment:
@@ -141,8 +141,8 @@ services:
     <<: *common-config
     container_name: watchers-malla-watcher
     build:
-      context: ./watchers/watchers_tools/malla_watcher
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: watchers/watchers_tools/malla_watcher/Dockerfile
     ports:
       - "${MALLA_WATCHER_PORT}:5001"
     environment:
@@ -178,8 +178,8 @@ services:
     <<: *common-config
     container_name: watchers-watchers-wave
     build:
-      context: ./watchers/watchers_tools/watchers_wave
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: watchers/watchers_tools/watchers_wave/Dockerfile
     ports:
       - "${WATCHERS_WAVE_PORT}:5000"
     environment:
@@ -195,8 +195,8 @@ services:
     <<: *common-config
     container_name: watchers-watcher-focus
     build:
-      context: ./watchers/watchers_tools/watcher_focus
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: watchers/watchers_tools/watcher_focus/Dockerfile
     ports:
       - "${WATCHER_FOCUS_PORT}:6000"
     environment:
