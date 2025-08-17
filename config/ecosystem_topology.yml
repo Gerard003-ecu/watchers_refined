@@ -1,0 +1,69 @@
+# ==============================================================================
+# Topología del Ecosistema Watchers
+# Define la clasificación semántica y los permisos de interacción (MIC)
+# para todos los servicios del ecosistema.
+# ==============================================================================
+
+# Taxonomía: Clasificación de cada servicio
+services:
+  # --- Watcher Tools Centrales ---
+  harmony_controller:
+    type: central
+    category: regulador
+    description: "Controlador táctico PID para la gestión de estados."
+  ecu:
+    type: central
+    category: integrador
+    description: "Simulador del entorno físico (campo toroidal)."
+  malla_watcher:
+    type: central
+    category: convergente
+    description: "Modelo de osciladores acoplados que reacciona al entorno."
+
+  # --- Watcher Tools Auxiliares ---
+  cogniboard:
+    type: auxiliar
+    category: sensor
+    description: "Monitorea la salud de la red de servicios y calcula la entropía."
+  atomic_piston:
+    type: auxiliar
+    category: actuador # O 'convertidor', dependiendo de su función final
+    description: "Unidad de Potencia Inteligente (IPU) para la gestión de energía pulsada."
+
+  # --- Servicios de Infraestructura ---
+  agent_ai:
+    type: infraestructura
+    category: estratega
+    description: "Cerebro estratégico del ecosistema."
+  config_agent:
+    type: infraestructura
+    category: arquitecto
+    description: "Valida y modela la topología del ecosistema."
+
+# Matriz de Interacción Central (MIC): Permisos de comunicación
+# Define qué servicio (origen) puede iniciar comunicación con qué otro servicio (destino).
+mic:
+  # Origen -> Destino: Permiso (puede ser un booleano o un string descriptivo)
+  agent_ai:
+    harmony_controller: "CONTROL_TASK"
+    ecu: "DEBUG_COMMAND"
+    malla_watcher: "SET_PARAMETERS"
+    atomic_piston: "CONTROL_COMMAND"
+
+  harmony_controller:
+    ecu: "READ_WRITE_STATE"
+
+  malla_watcher:
+    ecu: "READ_WRITE_STATE"
+
+  cogniboard:
+    # Cogniboard necesita hacer GET a los /api/health de todos
+    ecu: "HEALTH_CHECK"
+    harmony_controller: "HEALTH_CHECK"
+    malla_watcher: "HEALTH_CHECK"
+    agent_ai: "HEALTH_CHECK"
+    # También envía su señal de control a agent_ai
+    agent_ai: "SEND_CONTROL_SIGNAL"
+
+  config_agent:
+    agent_ai: "SEND_CONFIG_REPORT"
