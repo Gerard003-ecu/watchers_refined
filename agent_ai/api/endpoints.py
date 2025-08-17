@@ -53,6 +53,25 @@ def get_status():
         )
 
 
+@app.route("/api/metrics", methods=["POST"])
+def receive_metrics():
+    """
+    Recibe métricas de rendimiento de otros servicios.
+    """
+    data = request.get_json()
+    if not data or not all(k in data for k in ["source_service", "function_name", "execution_time", "call_count"]):
+        logger.warning("Solicitud a /api/metrics con payload inválido: %s", data)
+        return jsonify({"status": "error", "mensaje": "Payload JSON inválido o faltan claves requeridas."}), 400
+
+    try:
+        # Delegar el almacenamiento a la instancia de AgentAI
+        agent_ai_core.agent_ai_instance.store_metric(data)
+        return jsonify({"status": "success", "mensaje": "Métrica recibida."}), 200
+    except Exception as e:
+        logger.exception("Error al procesar métrica: %s", data)
+        return jsonify({"status": "error", "mensaje": f"Error interno al procesar la métrica: {e}"}), 500
+
+
 @app.route("/api/command", methods=["POST"])
 def post_command():
     """Procesa un comando estratégico enviado a AgentAI.

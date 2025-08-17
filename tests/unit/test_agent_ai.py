@@ -1650,6 +1650,66 @@ class TestAgentAI(unittest.TestCase):
         self.assertAlmostEqual(coherence, 1.0, places=7)
         self.assertAlmostEqual(phase, 0.0, places=7)
 
+    def test_store_metric(self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests):
+        """Prueba que store_metric almacena las métricas correctamente."""
+        self.agent.performance_metrics = {} # Asegurar que esté vacío
+        metric_data = {
+            "source_service": "test_service",
+            "function_name": "test_function",
+            "execution_time": 0.5,
+            "call_count": 1,
+        }
+        self.agent.store_metric(metric_data)
+
+        self.assertIn("test_service", self.agent.performance_metrics)
+        self.assertIn("test_function", self.agent.performance_metrics["test_service"])
+
+        stored_metrics = self.agent.performance_metrics["test_service"]["test_function"]
+        self.assertEqual(len(stored_metrics), 1)
+        self.assertEqual(stored_metrics[0]["execution_time"], 0.5)
+        self.assertEqual(stored_metrics[0]["call_count"], 1)
+        self.assertIn("timestamp", stored_metrics[0])
+
+    def test_analyze_pid_response(self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests):
+        """Prueba el análisis de una respuesta PID con la nueva lógica robusta."""
+        setpoint = 1.0
+        # 11 data points, so steady state is calculated from the last 10% (last 2 points)
+        timestamps = [1672531200 + i for i in range(11)]
+        values = [0.0, 0.2, 0.5, 0.9, 1.1, 1.2, 1.1, 1.05, 1.02, 1.01, 1.01]
+        data = list(zip(timestamps, values))
+
+        # steady_state_value = mean(1.01, 1.01) = 1.01
+        # rise time (10% -> 0.101, 90% -> 0.909)
+        # time_10 = 1, time_90 = 4. rise_time = 3
+        # peak = 1.2. overshoot = (1.2 - 1.01)/1.01 * 100 = 18.81%
+        # settling band [0.9595, 1.0605]. last outside is 1.2 at t=5. settling_time = 5
+        # crossings: 0.0 -> 1.2 (1), 1.2 -> 1.05 (none), 1.05 -> 1.0 (none). 1 crossing. Not oscillatory.
+
+        analysis = self.agent.analyze_pid_response(data, setpoint)
+
+        self.assertIsNotNone(analysis.get("rise_time"))
+        self.assertAlmostEqual(analysis["rise_time"], 3.0, places=1)
+
+        self.assertIsNotNone(analysis.get("overshoot"))
+        self.assertAlmostEqual(analysis["overshoot"], 18.81, places=2)
+
+        self.assertIsNotNone(analysis.get("settling_time"))
+        self.assertAlmostEqual(analysis["settling_time"], 5.0, places=1)
+
+        self.assertFalse(analysis["oscillatory"])
+
+    def test_analyze_pid_response_oscillatory(self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests):
+        """Prueba la detección de una respuesta oscilatoria con la nueva lógica."""
+        setpoint = 1.0
+        timestamps = [1672531200 + i for i in range(11)]
+        values = [0.0, 1.2, 0.8, 1.1, 0.9, 1.05, 0.95, 1.02, 0.98, 1.01, 1.0]
+        data = list(zip(timestamps, values))
+
+        # crossings: 0->1.2, 1.2->0.8, 0.8->1.1, 1.1->0.9, 0.9->1.05, 1.05->0.95, 0.95->1.02, 1.02->0.98, 0.98->1.01
+        # many crossings.
+        analysis = self.agent.analyze_pid_response(data, setpoint)
+        self.assertTrue(analysis["oscillatory"])
+
 
 if __name__ == "__main__":
     unittest.main()
