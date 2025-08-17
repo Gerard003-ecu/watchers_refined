@@ -3,7 +3,7 @@
 Este módulo implementa el núcleo de control del ecosistema watchers, diseñado para
 mantener un estado de equilibrio o "armonía" dentro de un ecosistema de
 componentes monitorizados denominados "watcher_tools" y una entidad central de
-estado conocida como ECU (Estado de Campo Unificado).
+estado conocida como ECU (Experiencia de Campo Unificado).
 
 Funcionalidades Principales:
     - Implementa un bucle de control principal basado en un controlador PID
