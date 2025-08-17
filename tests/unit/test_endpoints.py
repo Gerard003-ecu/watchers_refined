@@ -202,4 +202,62 @@ def test_config_input_missing_data(client_and_mocks):
     assert response.status_code == 400
     assert "Falta 'config_status'" in response.json["mensaje"]
 
+
+def test_receive_metrics_success(client_and_mocks):
+    """Prueba POST /api/metrics exitoso."""
+    client, mock_instance, _ = client_and_mocks
+
+    metric_data = {
+        "source_service": "test_service",
+        "function_name": "test_function",
+        "execution_time": 0.123,
+        "call_count": 5,
+    }
+
+    response = client.post("/api/metrics", json=metric_data)
+
+    mock_instance.store_metric.assert_called_once_with(metric_data)
+    assert response.status_code == 200
+    assert response.json['status'] == 'success'
+
+def test_receive_metrics_bad_request(client_and_mocks):
+    """Prueba POST /api/metrics con payload vacío."""
+    client, mock_instance, _ = client_and_mocks
+
+    # Enviar un payload vacío/nulo
+    response = client.post("/api/metrics", json=None)
+
+    mock_instance.store_metric.assert_not_called()
+    assert response.status_code == 400
+    assert "Payload JSON vacío o ausente" in response.json["mensaje"]
+
+
+def test_receive_metrics_success(client_and_mocks):
+    """Prueba POST /api/metrics exitoso."""
+    client, mock_instance, _ = client_and_mocks
+
+    metric_data = {
+        "source_service": "test_service",
+        "function_name": "test_function",
+        "execution_time": 0.123,
+        "call_count": 5,
+    }
+
+    response = client.post("/api/metrics", json=metric_data)
+
+    mock_instance.store_metric.assert_called_once_with(metric_data)
+    assert response.status_code == 200
+    assert response.json['status'] == 'success'
+
+def test_receive_metrics_bad_request(client_and_mocks):
+    """Prueba POST /api/metrics con payload vacío."""
+    client, mock_instance, _ = client_and_mocks
+
+    response = client.post("/api/metrics", json=None)
+
+    mock_instance.store_metric.assert_not_called()
+    assert response.status_code == 400
+    assert "Payload JSON vacío o ausente" in response.json["mensaje"]
+
+
 # --- END OF FILE tests/unit/test_endpoints.py ---

@@ -146,6 +146,10 @@ class AgentAI:
         }
         self.lock = threading.Lock()
 
+        # Almacenamiento para métricas de rendimiento
+        self.performance_metrics: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+        self.metrics_lock = threading.Lock()
+
         self.central_urls: Dict[str, str] = {}
         hc_url = os.environ.get(HARMONY_CONTROLLER_URL_ENV)
         if hc_url:
@@ -187,6 +191,36 @@ class AgentAI:
         )
         logger.info("URL registro HC: '%s'", self.hc_register_url)
         logger.info("AgentAI inicializado.")
+
+    def store_metric(self, data: Dict[str, Any]):
+        """Almacena una métrica de rendimiento de un servicio.
+
+        Args:
+            data (Dict[str, Any]): Un diccionario con los datos de la métrica.
+                Se esperan las claves: 'source_service', 'function_name',
+                'execution_time', 'call_count'.
+        """
+        source = data.get("source_service")
+        func_name = data.get("function_name")
+
+        if not source or not func_name:
+            logger.warning("Métrica recibida sin 'source_service' o 'function_name': %s", data)
+            return
+
+        metric_record = {
+            "timestamp": time.time(),
+            "execution_time": data.get("execution_time"),
+            "call_count": data.get("call_count"),
+        }
+
+        with self.metrics_lock:
+            if source not in self.performance_metrics:
+                self.performance_metrics[source] = {}
+            if func_name not in self.performance_metrics[source]:
+                self.performance_metrics[source][func_name] = []
+
+            self.performance_metrics[source][func_name].append(metric_record)
+            logger.debug("Métrica de %s/%s almacenada.", source, func_name)
 
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
         hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
@@ -430,6 +464,75 @@ class AgentAI:
             "No se pudo delegar la tarea de resonancia a HC tras %s intentos.",
             MAX_RETRIES,
         )
+
+    def analyze_pid_response(self, data: list, setpoint: float) -> dict:
+        """
+        Analiza una serie temporal de datos de respuesta de un sistema de control.
+        La data se asume ordenada por timestamp.
+
+        Args:
+            data (list): Una lista de tuplas (timestamp, value).
+            setpoint (float): El valor de setpoint objetivo.
+
+        Returns:
+            dict: Un diccionario con las métricas calculadas:
+                  rise_time, overshoot, settling_time, oscillatory.
+        """
+        if not data or len(data) < 10: # Requiere suficientes datos para un análisis estable
+            return {
+                "rise_time": None, "overshoot": None, "settling_time": None,
+                "oscillatory": False, "analysis_error": "No hay suficientes datos para el análisis."
+            }
+
+        try:
+            timestamps, values = zip(*data)
+            values = np.array(values)
+            timestamps = np.array(timestamps) - timestamps[0] # Normalizar tiempo a 0
+
+            # Calcular valor de estado estacionario como el promedio del último 10% de los datos
+            steady_state_start_index = int(len(values) * 0.9)
+            steady_state_value = np.mean(values[steady_state_start_index:])
+
+            if steady_state_value < 1e-9:
+                return {"rise_time": None, "overshoot": 0, "settling_time": None, "oscillatory": False, "analysis_error": "Valor de estado estacionario es cero."}
+
+            # Rise Time (10% a 90% del valor de estado estacionario)
+            ten_percent_val = 0.1 * steady_state_value
+            ninety_percent_val = 0.9 * steady_state_value
+
+            indices_above_10 = np.where(values >= ten_percent_val)[0]
+            indices_above_90 = np.where(values >= ninety_percent_val)[0]
+
+            rise_time = timestamps[indices_above_90[0]] - timestamps[indices_above_10[0]] if indices_above_10.any() and indices_above_90.any() else None
+
+            # Overshoot
+            peak_value = np.max(values)
+            overshoot = ((peak_value - steady_state_value) / steady_state_value) * 100 if peak_value > steady_state_value else 0.0
+
+            # Settling Time (tiempo para que la respuesta permanezca dentro del 5% del valor de estado estacionario)
+            settling_band_upper = steady_state_value * 1.05
+            settling_band_lower = steady_state_value * 0.95
+
+            outside_band_indices = np.where((values > settling_band_upper) | (values < settling_band_lower))[0]
+
+            settling_time = timestamps[outside_band_indices[-1]] if outside_band_indices.any() else timestamps[0]
+
+            # Oscillatory (si cruza el setpoint más de 2 veces)
+            crossings = np.where(np.diff(np.sign(values - setpoint)))[0]
+            oscillatory = len(crossings) > 2
+
+            return {
+                "rise_time": rise_time,
+                "overshoot": overshoot,
+                "settling_time": settling_time,
+                "oscillatory": oscillatory,
+            }
+        except Exception as e:
+            logger.error("Error inesperado en analyze_pid_response: %s", e)
+            return {
+                "rise_time": None, "overshoot": None, "settling_time": None,
+                "oscillatory": False, "analysis_error": str(e)
+            }
 
 
     def _determine_harmony_setpoint(

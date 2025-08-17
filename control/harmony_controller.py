@@ -33,8 +33,10 @@ from flask import Flask, jsonify, request
 from typing import Dict, List, Any, Optional
 
 from .boson_phase import BosonPhasePID as BosonPhase
+from common.decorators import measure_performance
 
 ECU_API_URL = os.environ.get("ECU_API_URL", "http://ecu:8000/api/ecu")
+AGENT_AI_URL = os.environ.get("AGENT_AI_URL", "http://agent_ai:9000")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -711,6 +713,7 @@ def send_tool_control(
     return False
 
 
+@measure_performance(agent_ai_url=AGENT_AI_URL, source_service="harmony_controller")
 def harmony_control_loop():
     """Ejecuta el bucle principal de control táctico del Harmony Controller.
 
