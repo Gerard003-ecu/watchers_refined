@@ -1,109 +1,142 @@
 #!/usr/bin/env python3
 """
-config_agent.py
+config_agent.py - Constructor de Topología del Ecosistema Watchers
 
-Este módulo orquesta la validación de la configuración del ecosistema watchers.
-Utiliza funciones del módulo config_validator para:
-  - Validar Dockerfiles.
-  - Validar el archivo docker-compose.yml.
-  - Validar archivos de requirements.
+Este agente actúa como un "functor" que mapea la configuración física
+(docker-compose, Dockerfiles) a un modelo algebraico-topológico
+(la Matriz de Interacción Central y la taxonomía de servicios).
 
-El objetivo es asegurar que la infraestructura esté correctamente configurada
-antes de desplegar el ecosistema.
-
-Además, este módulo envía la "señal" de configuración (los resultados de
-validación) a agent_ai mediante un endpoint REST, de modo que se pueda
-tomar acción si es necesario.
+Flujo de trabajo:
+1. Carga la topología deseada desde config/ecosystem_topology.yml.
+2. Carga la configuración de despliegue desde docker-compose.yml.
+3. Para cada servicio a desplegar:
+    a. Valida sus artefactos (Dockerfile, dependencias).
+    b. Lo clasifica según la topología.
+    c. Descubre sus dependencias de red (interacciones).
+4. Valida las interacciones observadas contra la MIC.
+5. Envía un informe completo y estructurado a agent_ai.
 """
-
 import os
 import logging
 import requests
+import re
+from typing import Dict, Any, List
 
 from config_agent.config_validator import (
-    validate_dockerfile,
-    validate_docker_compose,
-    validate_requirements_file,
+    load_yaml_file,
+    validate_topology,
+    validate_dockerfile_best_practices,
+    check_dependency_consistency,
+    validate_mic,
 )
 
-# Configuración del logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+# --- Configuración ---
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("config_agent")
 
-# Endpoint de agent_ai para recibir actualizaciones de configuración
-AGENT_AI_CONFIG_ENDPOINT = os.getenv(
-    "AGENT_AI_CONFIG_ENDPOINT", "http://agent_ai:9000/api/config"
-)
+AGENT_AI_CONFIG_ENDPOINT = os.getenv("AGENT_AI_CONFIG_ENDPOINT", "http://agent_ai:9000/api/config_report")
+TOPOLOGY_PATH = "config/ecosystem_topology.yml"
+COMPOSE_PATH = "docker-compose.yml"
 
+def discover_interactions(service_data: Dict[str, Any]) -> List[str]:
+    """Parsea las variables de entorno de un servicio para encontrar URLs de otros servicios."""
+    interactions = []
+    env_vars = service_data.get("environment", [])
+    if not env_vars:
+        return interactions
 
-def validate_configurations():
-    """
-    Valida los principales archivos de configuración:
-      - Dockerfile principal (en la raíz o de cada módulo).
-      - docker-compose.yml.
-      - Archivo global de requirements (requirements.txt).
-    Retorna un diccionario con el resultado de cada validación.
-    """
-    results = {}
+    # Busca patrones como http://service_name:port
+    url_pattern = re.compile(r"https?://([a-zA-Z0-9_-]+):[0-9]+")
+    for var in env_vars:
+        match = url_pattern.search(var)
+        if match:
+            interactions.append(match.group(1))
+    return list(set(interactions)) # Devuelve destinos únicos
 
-    # Validar Dockerfile principal
-    dockerfile_path = os.path.join(os.getcwd(), "Dockerfile")
-    results["Dockerfile"] = validate_dockerfile(dockerfile_path)
+def build_report():
+    """Construye el informe de configuración completo."""
+    report = {"global_status": "OK", "services": {}, "mic_validation": {}}
 
-    # Validar docker-compose.yml
-    compose_path = os.path.join(os.getcwd(), "docker-compose.yml")
-    results["docker-compose.yml"] = validate_docker_compose(compose_path)
+    # 1. Cargar y validar topología y compose
+    topology_ok, topology_data = load_yaml_file(TOPOLOGY_PATH)
+    compose_ok, compose_data = load_yaml_file(COMPOSE_PATH)
 
-    # Validar archivo global de requirements
-    requirements_path = os.path.join(os.getcwd(), "requirements.txt")
-    results["requirements.txt"] = validate_requirements_file(requirements_path)
+    if not (topology_ok and compose_ok):
+        report["global_status"] = "ERROR"
+        report["error"] = "No se pudieron cargar los archivos de configuración principales."
+        return report
 
-    return results
+    status, msg = validate_topology(topology_data)
+    if not status:
+        report["global_status"] = "ERROR"
+        report["error"] = f"Topología inválida: {msg}"
+        return report
 
+    defined_services = topology_data.get("services", {})
+    mic_permissions = topology_data.get("mic", {})
+    deployed_services = compose_data.get("services", {})
+    observed_interactions = {}
 
-def send_config_status(results: dict) -> bool:
-    """
-    Envía la señal de configuración a agent_ai mediante un POST a
-    AGENT_AI_CONFIG_ENDPOINT. Se envía un JSON con los resultados de
-    validación.
+    # 2. Analizar cada servicio a desplegar
+    for name, data in deployed_services.items():
+        if name not in defined_services:
+            logger.warning(f"El servicio '{name}' se está desplegando pero no está definido en la topología.")
+            continue
 
-    Retorna True si la señal se envió correctamente, o False en caso de error.
-    """
+        context = data.get("build", {}).get("context", ".")
+        dockerfile_path = os.path.join(context, data.get("build", {}).get("dockerfile", "Dockerfile"))
+        req_in_path = os.path.join(context, "requirements.in")
+
+        service_report = {
+            "type": defined_services[name].get("type"),
+            "category": defined_services[name].get("category"),
+            "dockerfile_status": validate_dockerfile_best_practices(dockerfile_path),
+            "dependency_status": check_dependency_consistency(req_in_path),
+            "observed_interactions": discover_interactions(data),
+        }
+        report["services"][name] = service_report
+        observed_interactions[name] = service_report["observed_interactions"]
+
+    # 3. Validar la MIC
+    mic_ok, mic_messages = validate_mic(mic_permissions, observed_interactions)
+    report["mic_validation"] = {"status": "OK" if mic_ok else "VIOLATION", "messages": mic_messages}
+
+    # 4. Determinar el estado global
+    for service in report["services"].values():
+        if not (service["dockerfile_status"][0] and service["dependency_status"][0]):
+            report["global_status"] = "ERROR"
+            break
+    if not mic_ok:
+        report["global_status"] = "ERROR"
+
+    return report
+
+def send_report(report: Dict[str, Any]):
+    """Envía el informe a agent_ai."""
     try:
-        payload = {"config_status": results}
-        response = requests.post(
-            AGENT_AI_CONFIG_ENDPOINT, json=payload, timeout=10
-        )
+        response = requests.post(AGENT_AI_CONFIG_ENDPOINT, json=report, timeout=15)
         response.raise_for_status()
-        logger.info(f"Configuración enviada a agent_ai: {response.json()}")
-        return True
+        logger.info(f"Informe de configuración enviado a agent_ai. Respuesta: {response.status_code}")
     except Exception as e:
-        logger.error(f"Error enviando la configuración a agent_ai: {e}")
-        return False
-
+        logger.error(f"No se pudo enviar el informe de configuración a agent_ai: {e}")
 
 def main():
-    logger.info("Iniciando validación de configuraciones...")
-    results = validate_configurations()
-    for file, (status, msg) in results.items():
-        logger.info(f"Validación de {file}: {status} - {msg}")
+    logger.info("Iniciando constructor de topología y validación...")
+    report = build_report()
 
-    if any(status is False for status, _ in results.values()):
-        logger.error(
-            "Existen problemas de configuración. Se requiere intervención."
-        )
-    else:
-        logger.info("Todas las configuraciones son correctas.")
+    # Imprimir un resumen legible
+    logger.info("--- Resumen de Validación ---")
+    logger.info(f"Estado Global: {report['global_status']}")
+    for name, data in report["services"].items():
+        logger.info(f"  - Servicio: {name}")
+        logger.info(f"    - Dockerfile: {'OK' if data['dockerfile_status'][0] else 'FAIL'}")
+        logger.info(f"    - Dependencias: {'OK' if data['dependency_status'][0] else 'FAIL'}")
+    logger.info(f"Validación de MIC: {report['mic_validation']['status']}")
+    for msg in report['mic_validation']['messages']:
+        logger.info(f"  - {msg}")
 
-    # Enviar la señal de configuración a agent_ai
-    if send_config_status(results):
-        logger.info("La señal de configuración se envió correctamente.")
-    else:
-        logger.error("No se pudo enviar la señal de configuración a agent_ai.")
-
+    send_report(report)
+    logger.info("Proceso de config_agent finalizado.")
 
 if __name__ == "__main__":
     main()
