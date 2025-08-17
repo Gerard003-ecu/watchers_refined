@@ -9,8 +9,8 @@ módulos y recibir señales de control y configuración.
 """
 
 from flask import Flask, request, jsonify
-from agent_ai.utils.logger import get_logger
-from agent_ai.agent_ai import agent_ai_instance_app
+from ..utils.logger import get_logger
+from .. import agent_ai as agent_ai_core
 
 # import logging # No se usa directamente si usamos get_logger
 import os
@@ -38,7 +38,7 @@ def get_status():
             - mensaje (str): Un mensaje descriptivo en caso de error.
     """
     try:
-        estado = agent_ai_instance_app.obtener_estado_completo()
+        estado = agent_ai_core.agent_ai_instance.obtener_estado_completo()
         return jsonify({"status": "success", "data": estado}), 200
     except Exception:
         logger.exception("Error al obtener estado completo de AgentAI")
@@ -51,6 +51,25 @@ def get_status():
             ),
             500,
         )
+
+
+@app.route("/api/metrics", methods=["POST"])
+def receive_metrics():
+    """
+    Recibe métricas de rendimiento de otros servicios.
+    """
+    data = request.get_json()
+    if not data or not all(k in data for k in ["source_service", "function_name", "execution_time", "call_count"]):
+        logger.warning("Solicitud a /api/metrics con payload inválido: %s", data)
+        return jsonify({"status": "error", "mensaje": "Payload JSON inválido o faltan claves requeridas."}), 400
+
+    try:
+        # Delegar el almacenamiento a la instancia de AgentAI
+        agent_ai_core.agent_ai_instance.store_metric(data)
+        return jsonify({"status": "success", "mensaje": "Métrica recibida."}), 200
+    except Exception as e:
+        logger.exception("Error al procesar métrica: %s", data)
+        return jsonify({"status": "error", "mensaje": f"Error interno al procesar la métrica: {e}"}), 500
 
 
 @app.route("/api/command", methods=["POST"])
@@ -96,7 +115,7 @@ def post_command():
 
     try:
         # Delegar el procesamiento al método de comandos estratégicos
-        resultado = agent_ai_instance_app.actualizar_comando_estrategico(
+        resultado = agent_ai_core.agent_ai_instance.actualizar_comando_estrategico(
             comando, valor
         )
         # Determinar código de estado basado en el resultado
@@ -111,6 +130,53 @@ def post_command():
                 "status": "error",
                 "mensaje": f"Error interno al procesar comando '{comando}'"
             }),
+            500,
+        )
+
+
+@app.route("/commands/synchronize_region", methods=["POST"])
+def synchronize_region_command():
+    """
+    Recibe un comando para iniciar una maniobra de sincronización de fase.
+    """
+    data = request.get_json()
+    if not data or "region" not in data or "target_phase" not in data:
+        logger.warning(
+            "Payload inválido para /commands/synchronize_region: %s", data
+        )
+        return jsonify({"status": "error", "message": "Payload inválido, se requiere 'region' y 'target_phase'"}), 400
+
+    try:
+        region = data["region"]
+        target_phase = float(data["target_phase"])
+
+        # Delegar la tarea a la instancia de AgentAI
+        agent_ai_core.agent_ai_instance._delegate_phase_synchronization_task(
+            region, target_phase
+        )
+
+        return (
+            jsonify(
+                {
+                    "status": "command_accepted",
+                    "message": f"Sincronización de fase iniciada para la región '{region}'.",
+                }
+            ),
+            202,
+        )
+
+    except ValueError:
+        logger.warning(
+            "Error de valor en /commands/synchronize_region: 'target_phase' no es un flotante válido. Payload: %s",
+            data,
+        )
+        return jsonify({"status": "error", "message": "El campo 'target_phase' debe ser un número."}), 400
+    except Exception as e:
+        logger.exception("Error al procesar el comando synchronize_region")
+        return (
+            jsonify(
+                {"status": "error", "message": "Error interno al procesar el comando."}
+            ),
             500,
         )
 
@@ -150,7 +216,7 @@ def register_module():
     data = request.get_json() or {}
     try:
         # La validación detallada ocurre dentro de agent_ai_instance_app
-        resultado = agent_ai_instance_app.registrar_modulo(data)
+        resultado = agent_ai_core.agent_ai_instance.registrar_modulo(data)
         status_code = 200 if resultado.get("status") == "success" else 400
         return jsonify(resultado), status_code
     except Exception:
@@ -188,9 +254,9 @@ def health():
     try:
         # Verificar si la instancia y el hilo existen y están vivos
         is_loop_alive = (
-            hasattr(agent_ai_instance_app, "_strategic_thread")
-            and agent_ai_instance_app._strategic_thread is not None
-            and agent_ai_instance_app._strategic_thread.is_alive()
+            hasattr(agent_ai_core, "_strategic_thread")
+            and agent_ai_core._strategic_thread is not None
+            and agent_ai_core._strategic_thread.is_alive()
         )
 
         health_status = "success" if is_loop_alive else "error"
@@ -262,7 +328,7 @@ def control_input():
 
     try:
         logger.info(f"Recibida señal de control externa: {control_signal}")
-        agent_ai_instance_app.recibir_control_cogniboard(
+        agent_ai_core.agent_ai_instance.recibir_control_cogniboard(
             control_signal
         )  # Pasar la señal
         return (
@@ -322,7 +388,7 @@ def config_input():
 
     try:
         logger.info(f"Recibido estado de configuración: {config_status}")
-        agent_ai_instance_app.recibir_config_status(
+        agent_ai_core.agent_ai_instance.recibir_config_status(
             config_status
         )  # Pasar el estado
         return (
@@ -356,26 +422,23 @@ if __name__ == "__main__":
         f"Iniciando servidor Flask para AgentAI API en puerto {port}..."
     )
 
-    # Iniciar el bucle estratégico de AgentAI si no se está ejecutando
-    # Esto es importante si se ejecuta este script directamente
-    if not agent_ai_instance_app._strategic_thread.is_alive():
-        logger.info(
-            "Iniciando bucle estratégico de AgentAI desde endpoints.py..."
+    # Iniciar el bucle estratégico de AgentAI.
+    logger.info("Iniciando bucle estratégico de AgentAI desde endpoints.py...")
+    agent_ai_core.start_loop()
+
+    try:
+        # Para producción, se recomienda un servidor WSGI como Gunicorn o Waitress
+        # Ejemplo con Waitress:
+        # from waitress import serve
+        # serve(app, host="0.0.0.0", port=port)
+        app.run(
+            host="0.0.0.0", port=port, debug=False, use_reloader=False
         )
-        agent_ai_instance_app.start_loop()
-
-    # Para producción, usa un servidor WSGI como Gunicorn o Waitress
-    # Ejemplo con Waitress:
-    # from waitress import serve
-    # serve(app, host="0.0.0.0", port=port)
-    app.run(
-        host="0.0.0.0", port=port, debug=False, use_reloader=False
-    )  # Mantener para desarrollo
-
-    # Limpieza al salir (si se ejecuta directamente)
-    logger.info("Deteniendo AgentAI API...")
-    agent_ai_instance_app.shutdown()
-    logger.info("AgentAI API finalizado.")
+    finally:
+        # Limpieza al salir
+        logger.info("Deteniendo AgentAI API...")
+        agent_ai_core.shutdown()
+        logger.info("AgentAI API finalizado.")
 
 
 # --- END OF FILE agent_ai/api/endpoints.py ---

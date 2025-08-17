@@ -24,6 +24,7 @@ Una simulación en segundo plano actualiza continuamente la dinámica del campo.
 
 import logging
 import os
+import sys
 import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -714,34 +715,32 @@ def get_field_vector_api() -> Tuple[Any, int]:
 
 
 @app.route("/debug/set_random_phase", methods=["POST"])
-def set_random_phase_debug():
+def set_random_phase_endpoint():
     """
-    Endpoint de depuración para reiniciar el campo a una fase cuántica aleatoria.
-    Solo disponible en entornos de desarrollo o prueba.
+    Endpoint de depuración para reiniciar el campo a un estado de fase aleatoria.
+    Protegido para ejecutarse solo en entornos de no producción.
     """
-    flask_env = os.environ.get("FLASK_ENV", "production")
+    # Leer la variable de entorno y loguear su valor para depuración
+    flask_env = os.environ.get("FLASK_ENV", "production").lower().strip()
+    logger.debug(f"Verificando entorno para endpoint de depuración. FLASK_ENV='{flask_env}'")
+
+    # Comprobar si el entorno permite la ejecución de este endpoint
     if flask_env not in ["development", "test"]:
         logger.warning(
-            "Acceso denegado a endpoint de depuración en entorno '%s'.", flask_env
+            f"Acceso denegado a endpoint de depuración. Entorno actual: '{flask_env}'."
         )
         return jsonify({
             "status": "error",
-            "message": "Endpoint de depuración solo disponible en desarrollo/test."
+            "message": f"Endpoint de depuración no disponible en entorno '{flask_env}'."
         }), 403
 
     try:
         campo_toroidal_global_servicio.set_initial_quantum_phase()
-        logger.info("Endpoint de depuración: Campo reiniciado a fase cuántica aleatoria.")
-        return jsonify({
-            "status": "success",
-            "message": "Campo reiniciado a fase cuántica aleatoria."
-        }), 200
+        logger.info("Campo reiniciado a fase cuántica aleatoria a través de endpoint de depuración.")
+        return jsonify({"status": "success", "message": "Campo reiniciado"})
     except Exception as e:
-        logger.exception("Error en endpoint /debug/set_random_phase: %s", e)
-        return jsonify({
-            "status": "error",
-            "message": "Error interno al reiniciar el campo."
-        }), 500
+        logger.exception(f"Error en set_random_phase: {e}")
+        return jsonify({"status": "error", "message": "Error interno al reiniciar el campo."}), 500
 
 
 @app.route("/api/ecu/field_vector/region/<int:capa_idx>", methods=["GET"])
@@ -789,34 +788,19 @@ def main():
     global simulation_thread
 
     # --- Configuración del Logging ---
-    log_dir = "logs"
-    log_file = os.path.join(log_dir, "matriz_ecu.log")
-
-    # 1. Verificar si el directorio de logs existe y es escribible.
-    #    La creación del directorio es ahora una responsabilidad externa
-    #    (ej. docker-compose.yml o un script de arranque).
-    if not os.path.isdir(log_dir) or not os.access(log_dir, os.W_OK):
-        print(
-            f"FATAL: El directorio de logs '{log_dir}' no existe o no tiene "
-            "permisos de escritura. La aplicación no puede iniciar."
+    # Refactorizado para loguear siempre a stdout, siguiendo 12-Factor App.
+    # Se elimina la gestión de archivos de log y directorios.
+    if not logging.getLogger("matriz_ecu").hasHandlers():
+        logging.basicConfig(
+            level=logging.INFO,
+            format=(
+                "%(asctime)s [%(levelname)s] [%(threadName)s] "
+                "%(name)s: %(message)s"
+            ),
+            handlers=[
+                logging.StreamHandler(sys.stdout)  # Redirige los logs a la consola
+            ]
         )
-        exit(1)
-
-    # 2. Mover la configuración del logging dentro de main().
-    #    Usamos force=True (disponible en Python 3.8+) para asegurar que
-    #    esta configuración sobreescribe cualquier configuración por defecto.
-    logging.basicConfig(
-        level=logging.INFO,
-        format=(
-            "%(asctime)s [%(levelname)s] [%(threadName)s] "
-            "%(name)s: %(message)s"
-        ),
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ],
-        force=True
-    )
     # --- Fin Configuración del Logging ---
 
     logger.info(

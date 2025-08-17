@@ -32,9 +32,11 @@ import uuid
 from flask import Flask, jsonify, request
 from typing import Dict, List, Any, Optional
 
-from control.boson_phase import BosonPhase
+from .boson_phase import BosonPhasePID as BosonPhase
+from common.decorators import measure_performance
 
 ECU_API_URL = os.environ.get("ECU_API_URL", "http://ecu:8000/api/ecu")
+AGENT_AI_URL = os.environ.get("AGENT_AI_URL", "http://agent_ai:9000")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -129,8 +131,9 @@ class HarmonyControllerState:
                 Por defecto es setpoint_vector_init.
         """
         self.pid_controller = BosonPhase(
-            kp, ki, kd, setpoint=initial_setpoint
+            kp, ki, kd
         )
+        self.pid_controller.set_target(initial_setpoint)
         self.current_setpoint = initial_setpoint
         if isinstance(initial_setpoint_vector, np.ndarray):
             self.setpoint_vector = initial_setpoint_vector.tolist()
@@ -468,7 +471,11 @@ def run_phase_sync_task(
         derivative = (error - last_error) / control_interval
         last_error = error
 
-        control_output = (p * error) + (i * integral) + (d * derivative)
+        # Calcular términos individuales para el logging
+        p_term = p * error
+        i_term = i * integral
+        d_term = d * derivative
+        control_output = p_term + i_term + d_term
 
         # 6. Aplicar influencia
         # La influencia es un vector complejo. Usamos la salida del control
@@ -476,9 +483,19 @@ def run_phase_sync_task(
         influence_vector = 1.0 * np.exp(1j * control_output)
         apply_influence_to_ecu(region, influence_vector)
 
+        # Logging de depuración detallado según lo solicitado
         logger.debug(
-            "[%s] Fase actual: %.3f, Error: %.3f, Salida PID: %.3f",
-            task_id, current_phase, error, control_output
+            "[PID Sync] Setpoint: %.2f, Current: %.2f, Error: %.2f",
+            target_phase, current_phase, error
+        )
+        logger.debug(
+            "[PID Sync] Terms (P: %.2f, I: %.2f, D: %.2f) -> Total Output: %.2f",
+            p_term, i_term, d_term, control_output
+        )
+        influence_vector_str = f"({influence_vector.real:.2f}{influence_vector.imag:+.2f}j)"
+        logger.debug(
+            "[PID Sync] Applying influence vector: %s to ECU",
+            influence_vector_str
         )
 
         # 7. Esperar
@@ -696,6 +713,7 @@ def send_tool_control(
     return False
 
 
+@measure_performance(agent_ai_url=AGENT_AI_URL, source_service="harmony_controller")
 def harmony_control_loop():
     """Ejecuta el bucle principal de control táctico del Harmony Controller.
 
@@ -755,8 +773,10 @@ def harmony_control_loop():
 
         pid_output = 0.0
         if hasattr(controller_state, "pid_controller"):
-            pid_output = controller_state.pid_controller.compute(
-                current_sp_norm, current_measurement, dt
+            # Corregido: Se llama al método `update` en lugar de `compute`
+            # y se pasan los argumentos correctos (`measurement`, `dt`).
+            pid_output = controller_state.pid_controller.update(
+                current_measurement, dt
             )
             logger.debug(
                 "[CtrlLoop] SP=%.3f, PV=%.3f, PIDOut=%.3f",
@@ -1147,29 +1167,5 @@ def abort_task_api(task_id: str):
     return jsonify({"status": "success", "message": "Señal de aborto enviada."}), 200
 
 
-def main():
-    """Inicia el servicio Harmony Controller.
-
-    Esta función realiza dos acciones principales:
-    1. Crea e inicia un hilo demonio (`HarmonyControlLoop`) que ejecutará
-       el bucle de control principal del Harmony Controller en segundo plano.
-    2. Inicia el servidor Flask para exponer la API REST del controlador,
-       permitiendo la interacción externa para monitorización y control.
-
-    El host y puerto para el servidor Flask se configuran a través de variables
-    de entorno (`HC_PORT`, por defecto 7000) o valores predeterminados.
-    """
-    control_thread = threading.Thread(
-        target=harmony_control_loop, daemon=True, name="HarmonyControlLoop"
-    )
-    control_thread.start()
-    port = int(os.environ.get("HC_PORT", 7000))
-    logger.info(
-        "Iniciando servidor Flask para Harmony Controller en puerto %d...",
-        port
-    )
-    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
-
-
-if __name__ == "__main__":
-    main()
+# El punto de entrada ha sido movido a __main__.py para permitir
+# la ejecución del módulo con `python -m control`.

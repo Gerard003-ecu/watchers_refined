@@ -185,3 +185,5 @@ wheel==0.45.1
 # pip
 # setuptools
 numpy
+opencv-python
+skidl
