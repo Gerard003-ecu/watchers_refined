@@ -67,6 +67,25 @@ services:
       retries: 5
       start_period: 30s
 
+  # ==========================================
+  # === Infrastructure & Validation Services ===
+  # ==========================================
+
+  config_agent:
+    # Este servicio se ejecuta una vez para validar la configuración y luego termina.
+    build:
+      context: .
+      dockerfile: config_agent/Dockerfile
+    networks:
+      - watchers_net
+    environment:
+      - PYTHONPATH=/app
+      - AGENT_AI_CONFIG_ENDPOINT=http://agent_ai:9000/api/config_report
+    restart: "no"
+    depends_on:
+      agent_ai:
+        condition: service_healthy
+
   # ============================================================================
   # Control Plane
   # ============================================================================
