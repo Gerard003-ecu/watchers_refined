@@ -45,8 +45,8 @@ def discover_interactions(service_data: Dict[str, Any]) -> List[str]:
     if not env_vars:
         return interactions
 
-    # Busca patrones como http://service_name:port
-    url_pattern = re.compile(r"https?://([a-zA-Z0-9_-]+):[0-9]+")
+    # Busca patrones como scheme://user:pass@host:port/path
+    url_pattern = re.compile(r"\w+://(?:[^@]+@)?([^:/]+)")
     for var in env_vars:
         match = url_pattern.search(var)
         if match:

@@ -8,6 +8,8 @@ pytest
 pytest-cov
 pytest-mock
 responses
+requests
+pyyaml
 
 # Linting and code formatting
 flake8
