@@ -146,6 +146,13 @@ class AgentAI:
         }
         self.lock = threading.Lock()
 
+        # Atributos para el estado del sistema basado en config_agent
+        self.system_report: Dict[str, Any] = {}
+        self.mic: Dict[str, Any] = {}
+        self.service_map: Dict[str, Any] = {}
+        self.is_architecture_validated: bool = False
+        self.operational_status: str = "STARTING"  # STARTING, OPERATIONAL, DEGRADED, HALTED
+
         # Almacenamiento para métricas de rendimiento
         self.performance_metrics: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
         self.metrics_lock = threading.Lock()
@@ -221,6 +228,33 @@ class AgentAI:
 
             self.performance_metrics[source][func_name].append(metric_record)
             logger.debug("Métrica de %s/%s almacenada.", source, func_name)
+
+    def update_system_architecture(self, report: Dict[str, Any]):
+        """
+        Procesa y almacena el informe de arquitectura del sistema de config_agent.
+
+        Args:
+            report (Dict[str, Any]): El informe completo de config_agent.
+        """
+        with self.lock:
+            self.system_report = report
+            self.mic = report.get("mic_validation", {}).get("permissions", {})
+            self.service_map = report.get("services", {})
+
+            global_status = report.get("global_status")
+            if global_status == "OK":
+                self.is_architecture_validated = True
+                self.operational_status = "OPERATIONAL"
+                logger.info(
+                    "Arquitectura del sistema validada. Estado: OK. El sistema está operativo."
+                )
+            else:  # "ERROR" or "VIOLATION"
+                self.is_architecture_validated = False
+                self.operational_status = "HALTED"
+                logger.error(
+                    f"La validación de la arquitectura falló. Estado: {global_status}. "
+                    f"El sistema se detiene por seguridad."
+                )
 
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
         hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
@@ -335,23 +369,23 @@ class AgentAI:
     ):
         """
         Delega una tarea de sincronización de fase a Harmony Controller.
-
-        Esta función envía una solicitud a un endpoint especializado en Harmony
-        Controller para que inicie un bucle de control PID enfocado en la fase.
-
-        **Descripción para Harmony Controller:**
-        Al recibir esta solicitud, Harmony Controller debe:
-        1. Instanciar o reconfigurar un controlador PID para la fase.
-        2. Setpoint (SP): `target_phase` (la fase objetivo en radianes).
-        3. Process Variable (PV): La 'fase dominante' actual de la `region_identifier`,
-           que deberá leer periódicamente de `matriz_ecu`.
-        4. Control Output: El resultado del PID será un escalar. Este escalar debe
-           ser usado para construir un vector de influencia complejo. Por ejemplo,
-           `influencia = complex(magnitud_fija, pid_output)`, donde `magnitud_fija`
-           es un valor pequeño y `pid_output` ajusta la fase de la influencia
-           para corregir el error de fase en la región.
-        5. Esta influencia compleja se debe enviar a `matriz_ecu.aplicar_influencia()`.
         """
+        # Comprobación de permisos basada en la MIC
+        try:
+            permission = self.mic["agent_ai"]["harmony_controller"]
+            if permission != "CONTROL_TASK":
+                logger.error(
+                    f"Violación de MIC: No se tiene permiso '{permission}' para controlar harmony_controller."
+                )
+                return
+        except KeyError:
+            logger.error(
+                "Violación de MIC: No hay una regla definida para agent_ai -> harmony_controller."
+            )
+            return
+
+        logger.info("Permiso verificado. Delegando tarea de sincronización a harmony_controller.")
+
         task_url = f"{self.central_urls['harmony_controller']}/api/tasks/phase_sync"
         payload = {
             "region_identifier": region_identifier,
@@ -1156,23 +1190,6 @@ class AgentAI:
             "Señal de control de Cogniboard actualizada: %s",
             control_signal)
 
-    def recibir_config_status(self, config_status: Any):
-        """
-        Actualiza el estado de configuración recibido de Config Agent.
-
-        Almacena el estado de configuración para que pueda ser utilizado
-        en la lógica de determinación del setpoint o en otras decisiones
-        estratégicas.
-
-        Args:
-            config_status: El estado de configuración recibido.
-            El tipo de dato puede variar.
-        """
-        with self.lock:
-            self.external_inputs["config_status"] = config_status
-        logger.debug(
-            "Estado de configuración actualizado: %s", config_status)
-
     def obtener_estado_completo(self) -> Dict[str, Any]:
         """
         Retorna una vista completa del estado interno actual de AgentAI.
@@ -1211,6 +1228,21 @@ def strategic_loop(agent_instance: AgentAI):
     logger.info("Iniciando bucle estratégico...")
     while True:
         start_time = time.monotonic()
+
+        # --- Puerta de Seguridad ---
+        # No operar si la arquitectura no es válida.
+        with agent_instance.lock:
+            is_validated = agent_instance.is_architecture_validated
+            current_status = agent_instance.operational_status
+
+        if not is_validated:
+            logger.warning(
+                f"La arquitectura no está validada. Estado actual: {current_status}. "
+                f"Pausando bucle estratégico durante 60s."
+            )
+            time.sleep(60)
+            continue
+
         try:
             state = agent_instance._get_harmony_state()
             if state is None:
