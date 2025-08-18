@@ -350,67 +350,27 @@ def control_input():
         )
 
 
-@app.route("/api/config", methods=["POST"])
-def config_input():
-    """Recibe y procesa un estado de configuración externa para AgentAI.
-
-    Este endpoint permite que sistemas externos, como ConfigAgent, envíen
-    actualizaciones sobre el estado de la configuración del sistema global,
-    lo cual puede ser utilizado por AgentAI para ajustar sus estrategias o
-    parámetros operativos.
-
-    El cuerpo de la solicitud debe ser un JSON con la siguiente estructura:
-    {
-        "config_status": <estado_de_la_configuracion>
-    }
-    El tipo de `<estado_de_la_configuracion>` puede variar.
-
-    Args:
-        None explícito en la firma, pero espera un JSON
-        en el cuerpo de la solicitud.
-
-    Returns:
-        flask.Response: Un objeto JSON que contiene:
-            - status (str): "success" si el estado de configuración fue
-              recibido y procesado exitosamente, "error" en caso contrario.
-            - mensaje (str): Un mensaje descriptivo sobre el resultado de la
-              operación.
+@app.route("/api/config_report", methods=["POST"])
+def config_report_input():
     """
-    data = request.get_json() or {}
-    config_status = data.get("config_status")
+    Recibe el informe de configuración completo de config_agent.
 
-    if config_status is None:
-        logger.warning("Solicitud a /api/config sin 'config_status'")
-        return (
-            jsonify({"status": "error", "mensaje": "Falta 'config_status'"}),
-            400,
-        )
+    Este endpoint procesa el informe JSON, valida su estructura básica y lo
+    pasa a la instancia de AgentAI para su procesamiento y almacenamiento.
+    """
+    report = request.get_json()
+    if not report or not all(k in report for k in ["global_status", "services", "mic_validation"]):
+        logger.warning("Solicitud a /api/config_report con payload inválido: %s", report)
+        return jsonify({"status": "error", "message": "Payload JSON inválido o faltan claves requeridas."}), 400
 
     try:
-        logger.info(f"Recibido estado de configuración: {config_status}")
-        agent_ai_core.agent_ai_instance.recibir_config_status(
-            config_status
-        )  # Pasar el estado
-        return (
-            jsonify(
-                {
-                    "status": "success",
-                    "mensaje": "Estado de configuración recibido",
-                }
-            ),
-            200,
-        )
-    except Exception:
-        logger.exception(
-            "Error al procesar estado de configuración externa"
-        )
-        return (
-            jsonify({
-                "status": "error",
-                "mensaje": "Error interno al procesar estado de configuración"
-            }),
-            500,
-        )
+        # Delegar el procesamiento a la instancia de AgentAI
+        agent_ai_core.agent_ai_instance.update_system_architecture(report)
+        logger.info("Informe de configuración recibido y procesado.")
+        return jsonify({"status": "report_received"}), 200
+    except Exception as e:
+        logger.exception("Error al procesar el informe de configuración: %s", e)
+        return jsonify({"status": "error", "message": f"Error interno al procesar el informe: {e}"}), 500
 
 
 # --- Punto de Entrada (si se ejecuta como script) ---
