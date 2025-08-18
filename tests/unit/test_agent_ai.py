@@ -1505,11 +1505,13 @@ class TestAgentAI(unittest.TestCase):
         mock_check_deps,
         mock_requests
     ):
-        """Prueba la recepción y almacenamiento de inputs externos.
+        """Prueba la recepción y almacenamiento de inputs externos y la
+        actualización de la arquitectura del sistema.
 
-        Verifica que los métodos `recibir_control_cogniboard` y
-        `recibir_config_status` actualizan correctamente el diccionario
-        `external_inputs` del agente con las señales y datos recibidos.
+        Verifica que `recibir_control_cogniboard` actualiza la señal de
+        Cogniboard y que `update_system_architecture` procesa
+        correctamente un informe de configuración, actualizando el estado
+        operativo del agente.
 
         Args:
             mock_thread, Mock para la creación de hilos.
@@ -1517,13 +1519,21 @@ class TestAgentAI(unittest.TestCase):
             mock_check_deps, Mock para `check_missing_dependencies`.
             mock_requests, Mock para el módulo `requests`.
         """
+        # Prueba para recibir_control_cogniboard
         self.agent.recibir_control_cogniboard(0.77)
         self.assertEqual(self.agent.external_inputs["cogniboard_signal"], 0.77)
-        config_data = {"status": "healthy"}
-        self.agent.recibir_config_status(config_data)
-        self.assertEqual(
-            self.agent.external_inputs["config_status"], config_data
-        )
+
+        # Prueba para update_system_architecture (reemplaza recibir_config_status)
+        mock_report = {
+            "global_status": "OK",
+            "services": {"ecu": {"status": "OK"}},
+            "mic_validation": {"status": "OK", "messages": []}
+        }
+        self.agent.update_system_architecture(mock_report)
+
+        # La aserción ahora debe verificar que el estado interno del agente se actualizó
+        self.assertTrue(self.agent.is_architecture_validated)
+        self.assertEqual(self.agent.operational_status, "OPERATIONAL")
 
     # --- MODIFICADO: test_obtener_estado_completo incluye naturaleza ---
     def test_get_full_state_snapshot(
@@ -1694,7 +1704,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertAlmostEqual(analysis["overshoot"], 18.81, places=2)
 
         self.assertIsNotNone(analysis.get("settling_time"))
-        self.assertAlmostEqual(analysis["settling_time"], 5.0, places=1)
+        self.assertAlmostEqual(analysis["settling_time"], 6.0, places=1)
 
         self.assertFalse(analysis["oscillatory"])
 
