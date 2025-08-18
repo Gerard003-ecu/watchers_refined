@@ -1,12 +1,20 @@
-FROM python:3.9-slim
+# config_agent/Dockerfile
+FROM python:3.12-slim
 
+# Establecer el directorio de trabajo
 WORKDIR /app
 
-COPY requirements.txt ./
+# Copiar el código del agente y sus dependencias
+COPY config_agent/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app
+# Copiar el código del agente y el módulo común
+COPY config_agent/ /app/config_agent/
+COPY common/ /app/common/
 
-EXPOSE 9200
+# Copiar los archivos de configuración que necesita analizar
+COPY docker-compose.yml ./
+COPY config/ecosystem_topology.yml ./config/
 
-CMD ["python", "config_agent.py"]
+# El comando que se ejecuta cuando el contenedor arranca
+CMD ["python", "-m", "config_agent.config_agent"]

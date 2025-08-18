@@ -1,0 +1,10 @@
+# config_agent/requirements.in
+
+# Para parsear docker-compose.yml y ecosystem_topology.yml
+pyyaml
+
+# Para enviar el informe a agent_ai
+requests
+
+# Para verificar la consistencia de las dependencias
+pip-tools
