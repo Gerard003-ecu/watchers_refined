@@ -238,8 +238,15 @@ def test_send_report_success(mock_post):
 def test_send_report_failure(mock_logger, mock_post):
     report_data = {"global_status": "ERROR"}
 
+    # We call with retries=3, which is the default
     send_report(report_data)
 
-    mock_post.assert_called_once()
+    # The function should attempt to post 3 times due to the retry logic
+    assert mock_post.call_count == 3
+
+    # It should log a warning for each failed attempt
+    assert mock_logger.warning.call_count == 3
+
+    # It should log a single final error message after all retries fail
     mock_logger.error.assert_called_once()
     assert "No se pudo enviar el informe" in mock_logger.error.call_args[0][0]

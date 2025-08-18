@@ -20,6 +20,7 @@ import os
 import logging
 import requests
 import re
+import time
 from typing import Dict, Any, List
 
 from config_agent.config_validator import (
@@ -111,14 +112,22 @@ def build_report():
 
     return report
 
-def send_report(report: Dict[str, Any]):
-    """Envía el informe a agent_ai."""
-    try:
-        response = requests.post(AGENT_AI_CONFIG_ENDPOINT, json=report, timeout=15)
-        response.raise_for_status()
-        logger.info(f"Informe de configuración enviado a agent_ai. Respuesta: {response.status_code}")
-    except Exception as e:
-        logger.error(f"No se pudo enviar el informe de configuración a agent_ai: {e}")
+def send_report(report: Dict[str, Any], retries: int = 3, delay: int = 5):
+    """Envía el informe a agent_ai, con reintentos en caso de fallo."""
+    for attempt in range(retries):
+        try:
+            response = requests.post(AGENT_AI_CONFIG_ENDPOINT, json=report, timeout=15)
+            response.raise_for_status()
+            logger.info(f"Informe de configuración enviado a agent_ai. Respuesta: {response.status_code}")
+            return  # Envío exitoso, salimos de la función
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Intento {attempt + 1}/{retries} fallido al enviar el informe: {e}")
+            if attempt < retries - 1:
+                logger.info(f"Reintentando en {delay} segundos...")
+                time.sleep(delay)
+            else:
+                logger.error(f"No se pudo enviar el informe de configuración a agent_ai después de {retries} intentos.")
+                break # Salir del bucle después del último intento
 
 def main():
     logger.info("Iniciando constructor de topología y validación...")
