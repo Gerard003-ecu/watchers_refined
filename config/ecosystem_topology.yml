@@ -29,6 +29,14 @@ services:
     type: auxiliar
     category: actuador # O 'convertidor', dependiendo de su función final
     description: "Unidad de Potencia Inteligente (IPU) para la gestión de energía pulsada."
+  watchers_wave:
+    type: auxiliar
+    category: modulador
+    description: "Herramienta auxiliar para modular ondas."
+  watcher_focus:
+    type: auxiliar
+    category: potenciador
+    description: "Herramienta auxiliar para potenciar el enfoque."
 
   # --- Servicios de Infraestructura ---
   agent_ai:
@@ -67,3 +75,8 @@ mic:
 
   config_agent:
     agent_ai: "SEND_CONFIG_REPORT"
+
+  ecu:
+    agent_ai: "REPORT_STATE"
+    harmony_controller: "READ_STATE"
+    malla_watcher: "READ_STATE"
