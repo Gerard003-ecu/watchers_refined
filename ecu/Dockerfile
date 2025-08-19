@@ -16,9 +16,8 @@ ENV PYTHONPATH "${PYTHONPATH}:/app"
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Crear un usuario y grupo no-root 'appuser' con UID/GID fijos
-RUN groupadd -r appgroup -g 1001 && \
-    useradd -r -u 1001 -g appgroup appuser
+# Crear un usuario y grupo no-root
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
 COPY ecu/requirements.txt ./
@@ -31,11 +30,11 @@ COPY common/ /app/common/
 # Cambiar la propiedad de /app al usuario no-root
 RUN chown -R appuser:appgroup /app
 
-# Cambiar al usuario no-root para la ejecución
-USER appuser
-
-# Exponer el puerto específico de este servicio
+# Exponer el puerto del servicio
 EXPOSE 8000
+
+# Cambiar al usuario no-root
+USER appuser
 
 # Ejecutar el servicio como un módulo dentro del paquete 'ecu'
 CMD ["python", "-m", "ecu.matriz_ecu"]
