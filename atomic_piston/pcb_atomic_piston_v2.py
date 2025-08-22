@@ -217,51 +217,52 @@ def place_components(board):
 
 
 def route_critical_nets(board):
-    """Enruta manualmente las redes críticas de potencia."""
-    logger.info("Enrutando pistas críticas...")
+    """
+    Enruta manualmente las redes críticas con una estrategia de cadena (daisy-chain).
 
-    # Configurar anchos de pista
-    power_width = FromMM(LAYER_CONFIG['power_track_width'])
-    signal_width = FromMM(LAYER_CONFIG['signal_track_width'])
+    Este enfoque es más seguro y eficiente que crear una malla completa,
+    ya que reduce drásticamente la cantidad de pistas a generar, evitando
+    posibles sobrecargas en el motor de enrutado de KiCad.
+    """
+    logger.info("Enrutando pistas críticas con estrategia daisy-chain...")
 
-    # Enrutar redes de potencia
-    for net_name in ["PV+", "SWITCH_NODE", "GND_POWER"]:
+    # Configuración unificada de redes y anchos de pista
+    net_configs = {
+        # Redes de Potencia
+        "PV+": FromMM(LAYER_CONFIG['power_track_width']),
+        "SWITCH_NODE": FromMM(LAYER_CONFIG['power_track_width']),
+        "GND_POWER": FromMM(LAYER_CONFIG['power_track_width']),
+        # Redes de Señal
+        "GPIO22_CTRL": FromMM(LAYER_CONFIG['signal_track_width']),
+        "+3V3": FromMM(LAYER_CONFIG['signal_track_width']),
+        "GND_DIGITAL": FromMM(LAYER_CONFIG['signal_track_width']),
+    }
+
+    for net_name, width in net_configs.items():
         net = find_net(board, net_name)
         if not net:
             continue
 
-        # Conectar todos los pads de esta red
         pads = list(net.Pads())
         if len(pads) < 2:
+            logger.warning(f"La red '{net_name}' tiene menos de 2 pads, no se puede enrutar en cadena.")
             continue
 
-        for pad1, pad2 in combinations(pads, 2):
+        # Lógica de enrutado en cadena (Daisy-Chain)
+        # Conecta los pads de forma secuencial: P1->P2, P2->P3, ...
+        for i in range(len(pads) - 1):
+            pad1 = pads[i]
+            pad2 = pads[i+1]
             create_track(
                 board,
                 pad1.GetCenter(),
                 pad2.GetCenter(),
                 net,
-                power_width,
-                F_Cu
+                width,
+                F_Cu  # Asumimos que todas se enrutan en la capa superior por ahora
             )
 
-    # Enrutar señales de control
-    for net_name in ["GPIO22_CTRL", "+3V3", "GND_DIGITAL"]:
-        net = find_net(board, net_name)
-        if net:
-            pads = list(net.Pads())
-            if len(pads) < 2:
-                continue
-
-            for pad1, pad2 in combinations(pads, 2):
-                create_track(
-                    board,
-                    pad1.GetCenter(),
-                    pad2.GetCenter(),
-                    net,
-                    signal_width,
-                    F_Cu
-                )
+    logger.info("Enrutado de pistas críticas completado.")
 
 
 def create_power_planes(board):
