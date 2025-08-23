@@ -8,22 +8,17 @@ logic have been omitted due to persistent timeout issues in the test
 environment that could not be resolved. The existing tests focus on API
 endpoint validation without running the full task loops.
 """
+
 import pytest
 import responses
-import time
-import threading
-from unittest.mock import MagicMock, call
 
 from control.harmony_controller import (
     app,
     task_manager,
-    run_phase_sync_task,
-    run_resonance_task,
-    ECU_API_URL,
 )
 
-
 # --- Pytest Fixtures ---
+
 
 @pytest.fixture
 def client():
@@ -49,7 +44,7 @@ def task_manager_cleanup():
     """
     # Clean up before the test runs
     with task_manager.lock:
-        for task_id, task_info in list(task_manager.tasks.items()):
+        for _task_id, task_info in list(task_manager.tasks.items()):
             if task_info["thread"].is_alive():
                 task_info["stop_event"].set()
                 task_info["thread"].join(timeout=1)
@@ -60,7 +55,7 @@ def task_manager_cleanup():
     finally:
         # Clean up after the test has run
         with task_manager.lock:
-            for task_id, task_info in list(task_manager.tasks.items()):
+            for _task_id, task_info in list(task_manager.tasks.items()):
                 if task_info["thread"].is_alive():
                     task_info["stop_event"].set()
                     task_info["thread"].join(timeout=1)
@@ -69,22 +64,23 @@ def task_manager_cleanup():
 
 # --- Tests for API and TaskManager ---
 
+
 def test_start_phase_sync_task_api(client, mocker):
     """
     Verifies that the POST /tasks/phase_sync endpoint correctly starts a task.
     """
     # Mock the thread to prevent the actual task loop from running
-    mock_thread_start = mocker.patch('threading.Thread.start')
+    mock_thread_start = mocker.patch("threading.Thread.start")
 
     payload = {
         "target_phase": 1.57,
         "region": "test_region",
         "pid_gains": {"kp": 1, "ki": 1, "kd": 1},
         "tolerance": 0.01,
-        "timeout": 10.0
+        "timeout": 10.0,
     }
 
-    response = client.post('/tasks/phase_sync', json=payload)
+    response = client.post("/tasks/phase_sync", json=payload)
 
     assert response.status_code == 202
     data = response.get_json()
@@ -100,21 +96,22 @@ def test_start_phase_sync_task_api(client, mocker):
     # Verify that a thread was created and started
     mock_thread_start.assert_called_once()
 
+
 def test_invalid_payload_api(client):
     """
     Verifies that a malformed or incomplete payload returns a 400 Bad Request.
     """
     # Malformed JSON
     response_malformed = client.post(
-        '/tasks/phase_sync',
-        data="{ 'target_phase': 1.57, ... ", # Invalid JSON
-        content_type='application/json'
+        "/tasks/phase_sync",
+        data="{ 'target_phase': 1.57, ... ",  # Invalid JSON
+        content_type="application/json",
     )
     assert response_malformed.status_code == 400
 
     # Missing fields
     payload_missing = {"target_phase": 1.57, "region": "test_region"}
-    response_missing = client.post('/tasks/phase_sync', json=payload_missing)
+    response_missing = client.post("/tasks/phase_sync", json=payload_missing)
     assert response_missing.status_code == 400
     data = response_missing.get_json()
     assert data["status"] == "error"

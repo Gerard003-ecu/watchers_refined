@@ -1,26 +1,22 @@
 # tests/test_solenoid_model.py
 import numpy as np
 import pytest
+
 from watchers.watchers_tools.solenoid_watcher.model.solenoid_model import (
-    simulate_solenoid
+    simulate_solenoid,
 )
 
 
 def test_simulate_field():
-    Intensity = 0.5      # Corriente en amperios
-    n = 150      # Densidad de vueltas (vueltas por metro)
-    R = 0.2      # Radio en metros (no usado en este modelo básico)
+    Intensity = 0.5  # Corriente en amperios
+    n = 150  # Densidad de vueltas (vueltas por metro)
+    R = 0.2  # Radio en metros (no usado en este modelo básico)
     t_end = 1.0  # Tiempo final de la simulación en segundos
     num_points = 100  # Número de puntos en la simulación
     mu0 = 4 * np.pi * 1e-7  # Permeabilidad del vacío
     # Se simula la evolución del campo magnético
     t, sol = simulate_solenoid(
-        Intensity,
-        n,
-        R,
-        initial_state=[0, 0],
-        t_end=t_end,
-        num_points=num_points
+        Intensity, n, R, initial_state=[0, 0], t_end=t_end, num_points=num_points
     )
     # El componente Bz es el segundo elemento de cada estado, tomamos el final
     final_Bz = sol[-1, 1]

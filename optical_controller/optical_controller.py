@@ -17,11 +17,12 @@ Funcionalidades principales:
     y verificar el estado de salud del módulo.
 """
 
-import numpy as np
-import cv2
 import logging
-from flask import Flask, request, jsonify
 from typing import List
+
+import cv2
+import numpy as np
+from flask import Flask, jsonify, request
 
 # Configuración centralizada
 logging.basicConfig(
@@ -29,8 +30,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.FileHandler("logs/optical_controller.log"),
-        logging.StreamHandler()
-    ]
+        logging.StreamHandler(),
+    ],
 )
 logger = logging.getLogger("optical_controller")
 
@@ -59,14 +60,14 @@ def capturar_imagen(matriz_estado: List[List[float]]) -> np.ndarray:
     try:
         imagen = np.array(matriz_estado, dtype=np.float32)
         imagen = (
-            imagen - np.min(imagen)
-        ) / (np.max(imagen) - np.min(imagen) + 1e-6) * 255
+            (imagen - np.min(imagen)) / (np.max(imagen) - np.min(imagen) + 1e-6) * 255
+        )
         imagen = imagen.astype(np.uint8)
         logger.debug("Imagen capturada del estado.")
         return imagen
     except Exception as e:
         logger.error(f"Error capturando imagen: {str(e)}")
-        raise ValueError("Error al procesar la matriz de estado.")
+        raise ValueError("Error al procesar la matriz de estado.") from e
 
 
 def procesar_imagen(imagen: np.ndarray) -> np.ndarray:
@@ -93,7 +94,7 @@ def procesar_imagen(imagen: np.ndarray) -> np.ndarray:
         return imagen_reflejada
     except Exception as e:
         logger.error(f"Error procesando imagen: {str(e)}")
-        raise ValueError("Error al aplicar transformación óptica.")
+        raise ValueError("Error al aplicar transformación óptica.") from e
 
 
 def generar_retroalimentacion(imagen_procesada: np.ndarray) -> float:
@@ -122,7 +123,7 @@ def generar_retroalimentacion(imagen_procesada: np.ndarray) -> float:
         return retroalimentacion
     except Exception as e:
         logger.error(f"Error generando retroalimentación: {str(e)}")
-        raise ValueError("Error al calcular la retroalimentación.")
+        raise ValueError("Error al calcular la retroalimentación.") from e
 
 
 def retroalimentacion_optica(matriz_estado: List[List[float]]) -> float:
@@ -202,21 +203,14 @@ def obtener_retroalimentacion() -> jsonify:
 
         matriz_estado = datos["estado"]
         retroalimentacion = retroalimentacion_optica(matriz_estado)
-        return jsonify({
-            "status": "success",
-            "optical_feedback": retroalimentacion
-        })
+        return jsonify({"status": "success", "optical_feedback": retroalimentacion})
     except ValueError as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 400
+        return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
         logger.error(f"Error en endpoint /api/optical-feedback: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "message": "Error interno del servidor."
-        }), 500
+        return jsonify(
+            {"status": "error", "message": "Error interno del servidor."}
+        ), 500
 
 
 @app.route("/api/health", methods=["GET"])
@@ -235,11 +229,13 @@ def salud() -> jsonify:
         }
         (HTTP 200)
     """
-    return jsonify({
-        "status": "success",
-        "module": "Optical_controller",
-        "mensaje": "Módulo operativo"
-    }), 200
+    return jsonify(
+        {
+            "status": "success",
+            "module": "Optical_controller",
+            "mensaje": "Módulo operativo",
+        }
+    ), 200
 
 
 def iniciar_servicio(host: str = "0.0.0.0", port: int = 8001) -> None:

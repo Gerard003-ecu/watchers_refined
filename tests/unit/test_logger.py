@@ -1,14 +1,14 @@
 # --- START OF FILE tests/unit/test_logger.py---
 
-import unittest
-import unittest.mock as mock
+import importlib
+import io
 import logging
 import os
-import io
-from pathlib import Path
-import importlib
 import sys
 import tempfile
+import unittest
+import unittest.mock as mock
+from pathlib import Path
 
 LOG_DIR_ENV = os.environ.get("WATCHERS_LOG_DIR", "logs")
 base_dir = os.getcwd()
@@ -20,17 +20,15 @@ try:
 except ImportError:
     try:
         import logger as agent_logger
-    except ImportError:
+    except ImportError as e:
         raise ImportError(
-            "No se pudo importar el módulo logger"
-            "Verifica PYTHONPATH y estructura."
-        )
+            "No se pudo importar el módulo loggerVerifica PYTHONPATH y estructura."
+        ) from e
 
 logger_instance = logging.getLogger("agent_ai")
 
 
 class TestLogger(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir_obj = tempfile.TemporaryDirectory()
         self.temp_dir = Path(self.temp_dir_obj.name)
@@ -75,13 +73,11 @@ class TestLogger(unittest.TestCase):
         esté correctamente configurado
         """
         log = self.temp_logger_module.get_logger()
-        file_handlers = [
-            h for h in log.handlers
-            if isinstance(h, logging.FileHandler)
-        ]
+        file_handlers = [h for h in log.handlers if isinstance(h, logging.FileHandler)]
         self.assertEqual(
-            len(file_handlers), 1,
-            f"Se encontraron {len(file_handlers)} file handlers, se esperaba 1"
+            len(file_handlers),
+            1,
+            f"Se encontraron {len(file_handlers)} file handlers, se esperaba 1",
         )
         file_handler = file_handlers[0]
         self.assertEqual(file_handler.level, logging.DEBUG)
@@ -92,7 +88,7 @@ class TestLogger(unittest.TestCase):
             self.log_file_path.parent.resolve(),
             expected_log_dir.resolve(),
             f"El directorio del log ({self.log_file_path.parent}) "
-            f"no coincide con el esperado ({expected_log_dir})"
+            f"no coincide con el esperado ({expected_log_dir})",
         )
 
         self.assertTrue(str(self.log_file_path).endswith("agent_ai.log"))
@@ -104,14 +100,15 @@ class TestLogger(unittest.TestCase):
         """
         log = self.temp_logger_module.get_logger()
         console_handlers = [
-            h for h in log.handlers
+            h
+            for h in log.handlers
             if isinstance(h, logging.StreamHandler)
             and not isinstance(h, logging.FileHandler)
         ]
         self.assertEqual(
-            len(console_handlers), 1,
-            f"Se encontraron {len(console_handlers)} console handlers, "
-            "se esperaba 1."
+            len(console_handlers),
+            1,
+            f"Se encontraron {len(console_handlers)} console handlers, se esperaba 1.",
         )
         console_handler = console_handlers[0]
         self.assertEqual(console_handler.level, logging.INFO)
@@ -132,20 +129,17 @@ class TestLogger(unittest.TestCase):
 
         # Asegurarse de que los handlers hayan tenido tiempo de escribir
         for handler in log.handlers:
-            if hasattr(handler, 'flush'):
+            if hasattr(handler, "flush"):
                 handler.flush()
 
-        self.assertTrue(
-            self.log_file_path.exists(),
-            "El archivo de log no fue creado"
-        )
+        self.assertTrue(self.log_file_path.exists(), "El archivo de log no fue creado")
         content = self.log_file_path.read_text()
         self.assertIn(test_message_info, content)
         self.assertIn(test_message_debug, content)
         self.assertIn("[INFO]", content)
         self.assertIn("[DEBUG]", content)
 
-    @mock.patch('sys.stderr', new_callable=io.StringIO)
+    @mock.patch("sys.stderr", new_callable=io.StringIO)
     def test_console_output(self, mock_stderr):
         """
         Verifica que los mensajes de nivel
@@ -154,7 +148,8 @@ class TestLogger(unittest.TestCase):
         log = self.temp_logger_module.get_logger()
         # Encontrar y remover el handler de consola original
         original_console_handlers = [
-            h for h in log.handlers
+            h
+            for h in log.handlers
             if isinstance(h, logging.StreamHandler)
             and not isinstance(h, logging.FileHandler)
         ]
@@ -165,9 +160,7 @@ class TestLogger(unittest.TestCase):
         formatter = (
             original_console_handlers[0].formatter
             if original_console_handlers
-            else logging.Formatter(
-                "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-            )
+            else logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
         )
         mock_console_handler = logging.StreamHandler(mock_stderr)
         mock_console_handler.setLevel(logging.INFO)
@@ -200,11 +193,7 @@ class TestLogger(unittest.TestCase):
         """
         log1 = self.temp_logger_module.get_logger()
         log2 = self.temp_logger_module.get_logger()
-        self.assertIs(
-            log1,
-            log2,
-            "Se esperaba una única instancia del logger"
-        )
+        self.assertIs(log1, log2, "Se esperaba una única instancia del logger")
 
     def test_log_directory_creation(self):
         """
@@ -212,10 +201,8 @@ class TestLogger(unittest.TestCase):
         se crea automáticamente
         """
         log_dir = Path(self.temp_logger_module.LOG_DIR)
-        self.assertTrue(
-            log_dir.exists(),
-            "El directorio de logs no fue creado"
-        )
+        self.assertTrue(log_dir.exists(), "El directorio de logs no fue creado")
         self.assertTrue(log_dir.is_dir())
+
 
 # --- END OF FILE tests/unit/test_logger.py ---

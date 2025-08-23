@@ -8,11 +8,12 @@ Utiliza FastAPI para exponer:
   - Un endpoint para exponer las métricas.
 """
 
+import uvicorn
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
-import uvicorn
-from benzwatcher.core.benz_watcher import BenzWatcher
+
 from benzwatcher.core import metrics
+from benzwatcher.core.benz_watcher import BenzWatcher
 
 app = FastAPI(title="BenzWatcher API", version="1.0")
 
@@ -36,13 +37,13 @@ def catalyze_signal(request: CatalysisRequest):
         return CatalysisResponse(adjusted_value=adjusted)
     except Exception as e:
         metrics.record_failure()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Endpoint para exponer las métricas en formato compatible con Prometheus
 @app.get("/metrics")
 def get_metrics():
-    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 

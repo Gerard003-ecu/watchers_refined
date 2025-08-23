@@ -1,11 +1,12 @@
-import time
-import threading
-import requests
 import functools
-import os
 import logging
+import threading
+import time
+
+import requests
 
 logger = logging.getLogger(__name__)
+
 
 def measure_performance(agent_ai_url: str, source_service: str):
     """
@@ -15,13 +16,14 @@ def measure_performance(agent_ai_url: str, source_service: str):
         agent_ai_url (str): La URL base del servicio AgentAI para enviar las métricas.
         source_service (str): El nombre del servicio de origen de la métrica.
     """
+
     def decorator(func):
         """
         El decorador real que envuelve la función.
         """
         # Usar un atributo de la función para mantener el contador de llamadas
         # se reiniciará si el proceso se reinicia.
-        if not hasattr(decorator, 'call_count'):
+        if not hasattr(decorator, "call_count"):
             decorator.call_count = 0
 
         @functools.wraps(func)
@@ -53,13 +55,16 @@ def measure_performance(agent_ai_url: str, source_service: str):
                 target=send_metrics,
                 args=(metrics_url, metrics_payload),
                 daemon=True,
-                name=f"MetricsThread-{func.__name__}"
+                name=f"MetricsThread-{func.__name__}",
             )
             thread.start()
 
             return result
+
         return wrapper
+
     return decorator
+
 
 def send_metrics(url: str, payload: dict):
     """

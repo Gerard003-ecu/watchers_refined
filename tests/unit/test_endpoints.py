@@ -5,9 +5,10 @@
 test_endpoints.py - Pruebas para la API REST de AgentAI (Estratégico)
 """
 
-import pytest
 import threading
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Importar la app Flask desde el módulo de endpoints refactorizado
 # Ajusta la ruta si tu estructura es diferente
@@ -16,7 +17,7 @@ from agent_ai.api.endpoints import app as agent_ai_app
 # La ruta a mockear es ahora el módulo 'agent_ai_core' que se importa
 # en 'endpoints.py'. Al mockear el módulo, podemos controlar su contenido,
 # incluyendo la instancia 'agent_ai_instance'.
-AGENT_AI_CORE_PATH = 'agent_ai.api.endpoints.agent_ai_core'
+AGENT_AI_CORE_PATH = "agent_ai.api.endpoints.agent_ai_core"
 
 
 @pytest.fixture
@@ -26,8 +27,8 @@ def client_and_mocks():
     entero, incluyendo su instancia y sus hilos.
     Devuelve el cliente, el mock de la instancia y el mock del módulo.
     """
-    agent_ai_app.config['TESTING'] = True
-    agent_ai_app.config['WTF_CSRF_ENABLED'] = False
+    agent_ai_app.config["TESTING"] = True
+    agent_ai_app.config["WTF_CSRF_ENABLED"] = False
     with agent_ai_app.test_client() as client:
         with patch(AGENT_AI_CORE_PATH) as mock_agent_ai_core:
             mock_instance = MagicMock()
@@ -40,6 +41,7 @@ def client_and_mocks():
 
 # --- Tests para Endpoints ---
 
+
 def test_get_status_success(client_and_mocks):
     """Prueba GET /api/status exitoso."""
     client, mock_instance, _ = client_and_mocks
@@ -47,7 +49,7 @@ def test_get_status_success(client_and_mocks):
     mock_data = {
         "target_setpoint_vector": [1.0],
         "current_strategy": "test",
-        "registered_modules": []
+        "registered_modules": [],
     }
     mock_instance.obtener_estado_completo.return_value = mock_data
 
@@ -55,8 +57,8 @@ def test_get_status_success(client_and_mocks):
 
     mock_instance.obtener_estado_completo.assert_called_once()
     assert response.status_code == 200
-    assert response.json['status'] == 'success'
-    assert response.json['data'] == mock_data
+    assert response.json["status"] == "success"
+    assert response.json["data"] == mock_data
 
 
 def test_post_strategic_command_success(client_and_mocks):
@@ -103,10 +105,7 @@ def test_register_module_success(client_and_mocks):
     """Prueba POST /api/register exitoso."""
     client, mock_instance, _ = client_and_mocks
     module_data = {"nombre": "NewTool", "url": "http://newtool/health"}
-    mock_response = {
-        "status": "success",
-        "mensaje": "Módulo 'NewTool' registrado"
-    }
+    mock_response = {"status": "success", "mensaje": "Módulo 'NewTool' registrado"}
     mock_instance.registrar_modulo.return_value = mock_response
 
     response = client.post("/api/register", json=module_data)
@@ -218,41 +217,14 @@ def test_receive_metrics_success(client_and_mocks):
 
     mock_instance.store_metric.assert_called_once_with(metric_data)
     assert response.status_code == 200
-    assert response.json['status'] == 'success'
+    assert response.json["status"] == "success"
+
 
 def test_receive_metrics_bad_request(client_and_mocks):
     """Prueba POST /api/metrics con payload vacío."""
     client, mock_instance, _ = client_and_mocks
 
     # Enviar un payload vacío/nulo
-    response = client.post("/api/metrics", json=None)
-
-    mock_instance.store_metric.assert_not_called()
-    assert response.status_code == 400
-    assert "Payload JSON vacío o ausente" in response.json["mensaje"]
-
-
-def test_receive_metrics_success(client_and_mocks):
-    """Prueba POST /api/metrics exitoso."""
-    client, mock_instance, _ = client_and_mocks
-
-    metric_data = {
-        "source_service": "test_service",
-        "function_name": "test_function",
-        "execution_time": 0.123,
-        "call_count": 5,
-    }
-
-    response = client.post("/api/metrics", json=metric_data)
-
-    mock_instance.store_metric.assert_called_once_with(metric_data)
-    assert response.status_code == 200
-    assert response.json['status'] == 'success'
-
-def test_receive_metrics_bad_request(client_and_mocks):
-    """Prueba POST /api/metrics con payload vacío."""
-    client, mock_instance, _ = client_and_mocks
-
     response = client.post("/api/metrics", json=None)
 
     mock_instance.store_metric.assert_not_called()

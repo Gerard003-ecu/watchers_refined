@@ -1,8 +1,9 @@
 # atomic_piston/atomic_piston.py
-import time
-import numpy as np
-from enum import Enum
 import logging
+import time
+from enum import Enum
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +32,15 @@ class AtomicPiston:
     - Gestión de energía con supercondensadores e inductores
     """
 
-    def __init__(self,
-                 capacity: float,
-                 elasticity: float,
-                 damping: float,
-                 piston_mass: float = 1.0,
-                 mode: PistonMode = PistonMode.CAPACITOR,
-                 transducer_type: TransducerType = TransducerType.PIEZOELECTRIC):
+    def __init__(
+        self,
+        capacity: float,
+        elasticity: float,
+        damping: float,
+        piston_mass: float = 1.0,
+        mode: PistonMode = PistonMode.CAPACITOR,
+        transducer_type: TransducerType = TransducerType.PIEZOELECTRIC,
+    ):
         """Inicializa una nueva instancia de AtomicPiston.
 
         Args:
@@ -88,8 +91,8 @@ class AtomicPiston:
 
         # Circuito equivalente
         self.equivalent_capacitance = 1.0 / max(0.001, self.k)  # C = 1/k
-        self.equivalent_inductance = self.m                      # L = m
-        self.equivalent_resistance = 1.0 / max(0.001, self.c)    # R = 1/c
+        self.equivalent_inductance = self.m  # L = m
+        self.equivalent_resistance = 1.0 / max(0.001, self.c)  # R = 1/c
 
         # Estado electrónico
         self.circuit_voltage = 0.0  # Voltaje en el circuito equivalente (V)
@@ -169,7 +172,7 @@ class AtomicPiston:
 
         # Calcular fuerza con dirección configurable
         # F = 0.5 * masa * velocidad² (energía cinética convertida a fuerza)
-        force = self.compression_direction * 0.5 * mass_factor * (signal_velocity ** 2)
+        force = self.compression_direction * 0.5 * mass_factor * (signal_velocity**2)
         self.last_applied_force += force
 
         logger.debug(f"Fuente '{source}': Fuerza aplicada = {force:.2f}N")
@@ -234,9 +237,7 @@ class AtomicPiston:
         # Integración Verlet para mejor precisión
         # x(t+dt) = 2x(t) - x(t-dt) + a(t) * dt²
         new_position = (
-            2 * self.position -
-            self.previous_position +
-            self.acceleration * (dt ** 2)
+            2 * self.position - self.previous_position + self.acceleration * (dt**2)
         )
 
         # Actualizar velocidad (v = [x(t+dt) - x(t-dt)] / (2*dt))
@@ -248,9 +249,7 @@ class AtomicPiston:
 
         # Limitar saturación (evitar sobrecompresión/extensión excesiva)
         self.position = np.clip(
-            self.position,
-            -self.saturation_threshold,
-            self.saturation_threshold
+            self.position, -self.saturation_threshold, self.saturation_threshold
         )
 
         # Actualizar estado electrónico (conversión mecánico-eléctrica)
@@ -343,7 +342,7 @@ class AtomicPiston:
             return {
                 "type": "pulse",
                 "amplitude": amplitude,
-                "duration": 0.001  # Pulso muy corto
+                "duration": 0.001,  # Pulso muy corto
             }
         return None
 
@@ -390,11 +389,7 @@ class AtomicPiston:
                     "Descarga BATTERY: Carga agotada después del paso de descarga."
                 )
 
-            return {
-                "type": "sustained",
-                "amplitude": output_amplitude,
-                "duration": dt
-            }
+            return {"type": "sustained", "amplitude": output_amplitude, "duration": dt}
         else:  # current_charge is already <= 0 at the beginning of the call
             self.battery_is_discharging = False
             logger.info("Descarga BATTERY: Carga ya estaba agotada.")
@@ -577,23 +572,15 @@ class AtomicPiston:
             omega = 2 * np.pi * f
 
             # Función de transferencia del sistema mecánico
-            H_mech = 1 / (
-                self.m * (1j*omega)**2 + self.c * (1j*omega) + self.k
-            )
+            H_mech = 1 / (self.m * (1j * omega) ** 2 + self.c * (1j * omega) + self.k)
 
             # Convertir a respuesta eléctrica
-            H_electrical = (
-                H_mech * self.voltage_sensitivity * self.force_sensitivity
-            )
+            H_electrical = H_mech * self.voltage_sensitivity * self.force_sensitivity
 
             magnitude.append(20 * np.log10(np.abs(H_electrical)))
             phase.append(np.angle(H_electrical, deg=True))
 
-        return {
-            'frequencies': frequency_range,
-            'magnitude': magnitude,
-            'phase': phase
-        }
+        return {"frequencies": frequency_range, "magnitude": magnitude, "phase": phase}
 
     def reset(self):
         """Reinicia el estado del pistón a sus condiciones iniciales.

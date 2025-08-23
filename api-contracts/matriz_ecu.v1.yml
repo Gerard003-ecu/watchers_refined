@@ -1,0 +1,137 @@
+openapi: 3.0.0
+info:
+  title: Matriz ECU API
+  description: API for the Matriz ECU microservice.
+  version: 1.0.0
+servers:
+  - url: http://matriz-ecu.watchers.local/
+    description: Local development server
+paths:
+  /api/health:
+    get:
+      summary: Health Check
+      description: Returns the health status of the service.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /api/ecu/field_vector:
+    get:
+      summary: Get Field Vector
+      responses:
+        '200':
+          description: The current field vector.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldVectorResponse'
+  /api/ecu/influence:
+    post:
+      summary: Post Influence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfluencePayload'
+      responses:
+        '200':
+          description: The influence was successfully applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfluenceResponse'
+  /debug/set_random_phase:
+    post:
+      summary: Set Random Phase
+      description: Sets a random phase in the ECU for debugging purposes.
+      responses:
+        '200':
+          description: Random phase set successfully.
+
+components:
+  schemas:
+    FieldVectorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        field_vector:
+          type: array
+          description: "Array de capas. Cada capa es una matriz 2D de vectores."
+          items:
+            type: array
+            description: "Una capa, que es un array de filas."
+            items:
+              type: array
+              description: "Una fila, que es un array de vectores."
+              items:
+                type: array
+                description: "Un vector 2D representado como [real, imag]."
+                minItems: 2
+                maxItems: 2
+                items:
+                  type: number
+                  format: double
+        metadata:
+          type: object
+          properties:
+            capas:
+              type: integer
+            filas:
+              type: integer
+            columnas:
+              type: integer
+
+    InfluencePayload:
+      type: object
+      required:
+        - capa
+        - row
+        - col
+        - vector
+        - nombre_watcher
+      properties:
+        capa:
+          type: integer
+          description: "Índice de la capa a influenciar."
+          example: 0
+        row:
+          type: integer
+          description: "Índice de la fila a influenciar."
+          example: 1
+        col:
+          type: integer
+          description: "Índice de la columna a influenciar."
+          example: 2
+        vector:
+          type: array
+          description: "Vector de influencia [real, imag]."
+          minItems: 2
+          maxItems: 2
+          items:
+            type: number
+            format: double
+          example: [1.5, -0.5]
+        nombre_watcher:
+          type: string
+          description: "Identificador del watcher que envía la influencia."
+          example: "malla_watcher_dPhiDt_123"
+
+    InfluenceResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "Influencia aplicada."

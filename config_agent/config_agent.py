@@ -16,31 +16,41 @@ Flujo de trabajo:
 4. Valida las interacciones observadas contra la MIC.
 5. Envía un informe completo y estructurado a agent_ai.
 """
-import os
+
 import logging
-import requests
+import os
 import re
 import time
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
+import requests
 
 from config_agent.config_validator import (
-    load_yaml_file,
-    validate_topology,
-    validate_dockerfile_best_practices,
     check_dependency_consistency,
+    load_yaml_file,
+    validate_dockerfile_best_practices,
     validate_mic,
+    validate_topology,
 )
 
 # --- Configuración ---
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger("config_agent")
 
-AGENT_AI_CONFIG_ENDPOINT = os.getenv("AGENT_AI_CONFIG_ENDPOINT", "http://agent_ai:9000/api/config_report")
+AGENT_AI_CONFIG_ENDPOINT = os.getenv(
+    "AGENT_AI_CONFIG_ENDPOINT", "http://agent_ai:9000/api/config_report"
+)
 TOPOLOGY_PATH = "config/ecosystem_topology.yml"
 COMPOSE_PATH = "docker-compose.yml"
 
+
 def discover_interactions(service_data: Dict[str, Any]) -> List[str]:
-    """Parsea las variables de entorno de un servicio para encontrar URLs de otros servicios."""
+    """
+    Parsea las variables de entorno de un servicio para encontrar URLs de
+    otros servicios.
+    """
     interactions = []
     env_vars = service_data.get("environment", [])
     if not env_vars:
@@ -52,7 +62,8 @@ def discover_interactions(service_data: Dict[str, Any]) -> List[str]:
         match = url_pattern.search(var)
         if match:
             interactions.append(match.group(1))
-    return list(set(interactions)) # Devuelve destinos únicos
+    return list(set(interactions))  # Devuelve destinos únicos
+
 
 def build_report():
     """Construye el informe de configuración completo."""
@@ -64,7 +75,9 @@ def build_report():
 
     if not (topology_ok and compose_ok):
         report["global_status"] = "ERROR"
-        report["error"] = "No se pudieron cargar los archivos de configuración principales."
+        report["error"] = (
+            "No se pudieron cargar los archivos de configuración principales."
+        )
         return report
 
     status, msg = validate_topology(topology_data)
@@ -81,11 +94,17 @@ def build_report():
     # 2. Analizar cada servicio a desplegar
     for name, data in deployed_services.items():
         if name not in defined_services:
-            logger.warning(f"El servicio '{name}' se está desplegando pero no está definido en la topología.")
+            logger.warning(
+                "El servicio '%s' se está desplegando pero no está "
+                "definido en la topología.",
+                name,
+            )
             continue
 
         context = data.get("build", {}).get("context", ".")
-        dockerfile_path = os.path.join(context, data.get("build", {}).get("dockerfile", "Dockerfile"))
+        dockerfile_path = os.path.join(
+            context, data.get("build", {}).get("dockerfile", "Dockerfile")
+        )
         req_in_path = os.path.join(context, "requirements.in")
 
         service_report = {
@@ -100,7 +119,10 @@ def build_report():
 
     # 3. Validar la MIC
     mic_ok, mic_messages = validate_mic(mic_permissions, observed_interactions)
-    report["mic_validation"] = {"status": "OK" if mic_ok else "VIOLATION", "messages": mic_messages}
+    report["mic_validation"] = {
+        "status": "OK" if mic_ok else "VIOLATION",
+        "messages": mic_messages,
+    }
 
     # 4. Determinar el estado global
     for service in report["services"].values():
@@ -112,22 +134,33 @@ def build_report():
 
     return report
 
+
 def send_report(report: Dict[str, Any], retries: int = 3, delay: int = 5):
     """Envía el informe a agent_ai, con reintentos en caso de fallo."""
     for attempt in range(retries):
         try:
             response = requests.post(AGENT_AI_CONFIG_ENDPOINT, json=report, timeout=15)
             response.raise_for_status()
-            logger.info(f"Informe de configuración enviado a agent_ai. Respuesta: {response.status_code}")
+            logger.info(
+                "Informe de configuración enviado a agent_ai. Respuesta: %s",
+                response.status_code,
+            )
             return  # Envío exitoso, salimos de la función
         except requests.exceptions.RequestException as e:
-            logger.warning(f"Intento {attempt + 1}/{retries} fallido al enviar el informe: {e}")
+            logger.warning(
+                f"Intento {attempt + 1}/{retries} fallido al enviar el informe: {e}"
+            )
             if attempt < retries - 1:
                 logger.info(f"Reintentando en {delay} segundos...")
                 time.sleep(delay)
             else:
-                logger.error(f"No se pudo enviar el informe de configuración a agent_ai después de {retries} intentos.")
-                break # Salir del bucle después del último intento
+                logger.error(
+                    "No se pudo enviar el informe de configuración a agent_ai "
+                    "después de %s intentos.",
+                    retries,
+                )
+                break  # Salir del bucle después del último intento
+
 
 def main():
     logger.info("Iniciando constructor de topología y validación...")
@@ -138,14 +171,19 @@ def main():
     logger.info(f"Estado Global: {report['global_status']}")
     for name, data in report["services"].items():
         logger.info(f"  - Servicio: {name}")
-        logger.info(f"    - Dockerfile: {'OK' if data['dockerfile_status'][0] else 'FAIL'}")
-        logger.info(f"    - Dependencias: {'OK' if data['dependency_status'][0] else 'FAIL'}")
+        logger.info(
+            f"    - Dockerfile: {'OK' if data['dockerfile_status'][0] else 'FAIL'}"
+        )
+        logger.info(
+            f"    - Dependencias: {'OK' if data['dependency_status'][0] else 'FAIL'}"
+        )
     logger.info(f"Validación de MIC: {report['mic_validation']['status']}")
-    for msg in report['mic_validation']['messages']:
+    for msg in report["mic_validation"]["messages"]:
         logger.info(f"  - {msg}")
 
     send_report(report)
     logger.info("Proceso de config_agent finalizado.")
+
 
 if __name__ == "__main__":
     main()

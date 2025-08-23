@@ -32,7 +32,6 @@ from typing import Any, Dict, List, Optional
 # Third-party imports
 import numpy as np
 import requests
-from flask import Flask, jsonify, request
 
 # Local application imports
 from .utils.logger import get_logger
@@ -49,13 +48,11 @@ HARMONY_CONTROLLER_URL = os.environ.get(
 )
 HARMONY_CONTROLLER_REGISTER_URL = os.environ.get(
     "HARMONY_CONTROLLER_REGISTER_URL",
-    f"{HARMONY_CONTROLLER_URL}/api/harmony/register_tool"
+    f"{HARMONY_CONTROLLER_URL}/api/harmony/register_tool",
 )
 # Nombre de la variable ENV
 HARMONY_CONTROLLER_URL_ENV = "HARMONY_CONTROLLER_URL"
-HARMONY_CONTROLLER_REGISTER_URL_ENV = (
-    "HARMONY_CONTROLLER_REGISTER_URL"
-)
+HARMONY_CONTROLLER_REGISTER_URL_ENV = "HARMONY_CONTROLLER_REGISTER_URL"
 AGENT_AI_ECU_URL_ENV = "AGENT_AI_ECU_URL"
 AGENT_AI_ECU_FIELD_VECTOR_URL_ENV = "AGENT_AI_ECU_FIELD_VECTOR_URL"
 AGENT_AI_MALLA_URL_ENV = "AGENT_AI_MALLA_URL"
@@ -63,19 +60,11 @@ DEFAULT_HC_URL = "http://harmony_controller:7000"
 DEFAULT_ECU_URL = "http://ecu:8000"
 DEFAULT_ECU_FIELD_VECTOR_URL = "http://ecu:8000/api/ecu/field_vector"
 DEFAULT_MALLA_URL = "http://malla_watcher:5001"
-STRATEGIC_LOOP_INTERVAL = float(
-    os.environ.get("AA_INTERVAL", 5.0)
-)
-REQUESTS_TIMEOUT = float(
-    os.environ.get("AA_REQUESTS_TIMEOUT", 4.0)
-)
-GLOBAL_REQUIREMENTS_PATH = os.environ.get(
-    "AA_GLOBAL_REQ_PATH", "/app/requirements.txt"
-)
+STRATEGIC_LOOP_INTERVAL = float(os.environ.get("AA_INTERVAL", 5.0))
+REQUESTS_TIMEOUT = float(os.environ.get("AA_REQUESTS_TIMEOUT", 4.0))
+GLOBAL_REQUIREMENTS_PATH = os.environ.get("AA_GLOBAL_REQ_PATH", "/app/requirements.txt")
 MAX_RETRIES = int(os.environ.get("AA_MAX_RETRIES", 3))
-BASE_RETRY_DELAY = float(
-    os.environ.get("AA_BASE_RETRY_DELAY", 0.5)
-)
+BASE_RETRY_DELAY = float(os.environ.get("AA_BASE_RETRY_DELAY", 0.5))
 
 
 class AgentAI:
@@ -126,20 +115,15 @@ class AgentAI:
             ):
                 self.target_setpoint_vector: List[float] = parsed_vector
             else:
-                raise ValueError(
-                    "El valor parseado no es una lista de números")
+                raise ValueError("El valor parseado no es una lista de números")
         except (json.JSONDecodeError, ValueError) as e:
             log_msg = (
                 "AA_INITIAL_SETPOINT_VECTOR ('%s') inválido (%s), usando "
                 "default [1.0, 0.0]"
             )
-            logger.error(
-                log_msg, initial_vector_str, e
-            )
+            logger.error(log_msg, initial_vector_str, e)
             self.target_setpoint_vector = [1.0, 0.0]
-        self.current_strategy: str = os.environ.get(
-            "AA_INITIAL_STRATEGY", "default"
-        )
+        self.current_strategy: str = os.environ.get("AA_INITIAL_STRATEGY", "default")
         self.external_inputs: Dict[str, Any] = {
             "cogniboard_signal": None,
             "config_status": None,
@@ -151,7 +135,9 @@ class AgentAI:
         self.mic: Dict[str, Any] = {}
         self.service_map: Dict[str, Any] = {}
         self.is_architecture_validated: bool = False
-        self.operational_status: str = "STARTING"  # STARTING, OPERATIONAL, DEGRADED, HALTED
+        self.operational_status: str = (
+            "STARTING"  # STARTING, OPERATIONAL, DEGRADED, HALTED
+        )
 
         # Almacenamiento para métricas de rendimiento
         self.performance_metrics: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
@@ -187,9 +173,7 @@ class AgentAI:
             self.central_urls["malla_watcher"],
         )
 
-        hc_reg_url_env = os.environ.get(
-            HARMONY_CONTROLLER_REGISTER_URL_ENV
-        )
+        hc_reg_url_env = os.environ.get(HARMONY_CONTROLLER_REGISTER_URL_ENV)
         hc_base_url = self.central_urls["harmony_controller"]
         self.hc_register_url = (
             hc_reg_url_env
@@ -211,7 +195,9 @@ class AgentAI:
         func_name = data.get("function_name")
 
         if not source or not func_name:
-            logger.warning("Métrica recibida sin 'source_service' o 'function_name': %s", data)
+            logger.warning(
+                "Métrica recibida sin 'source_service' o 'function_name': %s", data
+            )
             return
 
         metric_record = {
@@ -246,7 +232,8 @@ class AgentAI:
                 self.is_architecture_validated = True
                 self.operational_status = "OPERATIONAL"
                 logger.info(
-                    "Arquitectura del sistema validada. Estado: OK. El sistema está operativo."
+                    "Arquitectura del sistema validada. Estado: OK. "
+                    "El sistema está operativo."
                 )
             else:  # "ERROR" or "VIOLATION"
                 self.is_architecture_validated = False
@@ -266,24 +253,19 @@ class AgentAI:
                 json_data = response.json()
                 response_data = json_data
 
-                if (response_data.get("status") == "success" and
-                        "data" in response_data):
+                if response_data.get("status") == "success" and "data" in response_data:
                     data_preview = str(response_data["data"])[:100]
-                    logger.debug(
-                        "Estado válido recibido de Harmony: %s", data_preview
-                    )
+                    logger.debug("Estado válido recibido de Harmony: %s", data_preview)
                     return response_data["data"]
                 else:
                     logger.warning(
                         "Respuesta inválida desde Harmony: %s", response_data
                     )
             except Exception as e:
-                logger.exception(
-                    "Error inesperado (intento %s): %s", attempt + 1, e
-                )
+                logger.exception("Error inesperado (intento %s): %s", attempt + 1, e)
 
             if attempt < MAX_RETRIES - 1:
-                delay = BASE_RETRY_DELAY * (2 ** attempt)
+                delay = BASE_RETRY_DELAY * (2**attempt)
                 logger.debug(
                     "Reintentando obtener estado de Harmony en %.2fs...",
                     delay,
@@ -310,20 +292,22 @@ class AgentAI:
                     # La ECU devuelve [real, imag], necesitamos convertirlo a complejo
                     field_data = data["field_vector"]
                     complex_field = np.array(field_data, dtype=float)
-                    # El array es (capas, filas, cols, 2), lo convertimos a (capas, filas, cols) de tipo complejo
+                    # El array es (capas, filas, cols, 2), lo convertimos a
+                    # (capas, filas, cols) de tipo complejo
                     complex_field = complex_field[..., 0] + 1j * complex_field[..., 1]
                     logger.debug("Campo vectorial complejo recibido de ECU.")
                     return complex_field
             except Exception as e:
                 logger.error(
                     "Error al obtener campo vectorial de ECU (intento %s): %s",
-                    attempt + 1, e
+                    attempt + 1,
+                    e,
                 )
             if attempt < MAX_RETRIES - 1:
-                time.sleep(BASE_RETRY_DELAY * (2 ** attempt))
+                time.sleep(BASE_RETRY_DELAY * (2**attempt))
         logger.error(
             "No se pudo obtener el campo vectorial de ECU tras %s intentos.",
-            MAX_RETRIES
+            MAX_RETRIES,
         )
         return None
 
@@ -338,7 +322,8 @@ class AgentAI:
         Returns:
             tuple[float, float]: Una tupla conteniendo:
                 - coherencia (float): Magnitud del vector de fase promedio (0 a 1).
-                - fase_dominante (float): Ángulo del vector de fase promedio (en radianes).
+                - fase_dominante (float): Ángulo del vector de fase promedio
+                  (en radianes).
         """
         if region.size == 0:
             return 0.0, 0.0
@@ -348,7 +333,9 @@ class AgentAI:
         magnitudes = np.abs(region)
         non_zero_magnitudes = magnitudes > 1e-9
         phases = np.zeros_like(region, dtype=np.complex128)
-        phases[non_zero_magnitudes] = region[non_zero_magnitudes] / magnitudes[non_zero_magnitudes]
+        phases[non_zero_magnitudes] = (
+            region[non_zero_magnitudes] / magnitudes[non_zero_magnitudes]
+        )
 
         # Calcular el vector de fase promedio solo sobre los elementos no nulos
         non_zero_phases = phases[non_zero_magnitudes]
@@ -375,16 +362,22 @@ class AgentAI:
             permission = self.mic["agent_ai"]["harmony_controller"]
             if permission != "CONTROL_TASK":
                 logger.error(
-                    f"Violación de MIC: No se tiene permiso '{permission}' para controlar harmony_controller."
+                    "Violación de MIC: No se tiene permiso '%s' para controlar "
+                    "harmony_controller.",
+                    permission,
                 )
                 return
         except KeyError:
             logger.error(
-                "Violación de MIC: No hay una regla definida para agent_ai -> harmony_controller."
+                "Violación de MIC: No hay una regla definida para agent_ai -> "
+                "harmony_controller."
             )
             return
 
-        logger.info("Permiso verificado. Delegando tarea de sincronización a harmony_controller.")
+        logger.info(
+            "Permiso verificado. Delegando tarea de sincronización a "
+            "harmony_controller."
+        )
 
         task_url = f"{self.central_urls['harmony_controller']}/api/tasks/phase_sync"
         payload = {
@@ -417,10 +410,11 @@ class AgentAI:
                     e,
                 )
                 if attempt < MAX_RETRIES - 1:
-                    delay = BASE_RETRY_DELAY * (2 ** attempt)
+                    delay = BASE_RETRY_DELAY * (2**attempt)
                     time.sleep(delay)
         logger.error(
-            "No se pudo delegar la tarea de sincronización de fase a HC tras %s intentos.",
+            "No se pudo delegar la tarea de sincronización de fase a HC tras "
+            "%s intentos.",
             MAX_RETRIES,
         )
 
@@ -437,7 +431,8 @@ class AgentAI:
             region_identifier (str): El identificador de la región (ej. "capa_0").
 
         Returns:
-            Optional[float]: La frecuencia de resonancia (alpha), o None si no se puede determinar.
+            Optional[float]: La frecuencia de resonancia (alpha), o None si no
+            se puede determinar.
         """
         # Simulación: En un caso real, esto sería una llamada API a la ECU.
         # Por ejemplo: `self._get_ecu_parameter(region_identifier, 'alpha')`
@@ -492,7 +487,7 @@ class AgentAI:
                     e,
                 )
                 if attempt < MAX_RETRIES - 1:
-                    delay = BASE_RETRY_DELAY * (2 ** attempt)
+                    delay = BASE_RETRY_DELAY * (2**attempt)
                     time.sleep(delay)
         logger.error(
             "No se pudo delegar la tarea de resonancia a HC tras %s intentos.",
@@ -512,23 +507,35 @@ class AgentAI:
             dict: Un diccionario con las métricas calculadas:
                   rise_time, overshoot, settling_time, oscillatory.
         """
-        if not data or len(data) < 10: # Requiere suficientes datos para un análisis estable
+        if (
+            not data or len(data) < 10
+        ):  # Requiere suficientes datos para un análisis estable
             return {
-                "rise_time": None, "overshoot": None, "settling_time": None,
-                "oscillatory": False, "analysis_error": "No hay suficientes datos para el análisis."
+                "rise_time": None,
+                "overshoot": None,
+                "settling_time": None,
+                "oscillatory": False,
+                "analysis_error": "No hay suficientes datos para el análisis.",
             }
 
         try:
-            timestamps, values = zip(*data)
+            timestamps, values = zip(*data, strict=False)
             values = np.array(values)
-            timestamps = np.array(timestamps) - timestamps[0] # Normalizar tiempo a 0
+            timestamps = np.array(timestamps) - timestamps[0]  # Normalizar tiempo a 0
 
-            # Calcular valor de estado estacionario como el promedio del último 10% de los datos
+            # Calcular valor de estado estacionario como el promedio del último
+            # 10% de los datos
             steady_state_start_index = int(len(values) * 0.9)
             steady_state_value = np.mean(values[steady_state_start_index:])
 
             if steady_state_value < 1e-9:
-                return {"rise_time": None, "overshoot": 0, "settling_time": None, "oscillatory": False, "analysis_error": "Valor de estado estacionario es cero."}
+                return {
+                    "rise_time": None,
+                    "overshoot": 0,
+                    "settling_time": None,
+                    "oscillatory": False,
+                    "analysis_error": "Valor de estado estacionario es cero.",
+                }
 
             # Rise Time (10% a 90% del valor de estado estacionario)
             ten_percent_val = 0.1 * steady_state_value
@@ -537,19 +544,34 @@ class AgentAI:
             indices_above_10 = np.where(values >= ten_percent_val)[0]
             indices_above_90 = np.where(values >= ninety_percent_val)[0]
 
-            rise_time = timestamps[indices_above_90[0]] - timestamps[indices_above_10[0]] if indices_above_10.any() and indices_above_90.any() else None
+            rise_time = (
+                timestamps[indices_above_90[0]] - timestamps[indices_above_10[0]]
+                if indices_above_10.any() and indices_above_90.any()
+                else None
+            )
 
             # Overshoot
             peak_value = np.max(values)
-            overshoot = ((peak_value - steady_state_value) / steady_state_value) * 100 if peak_value > steady_state_value else 0.0
+            overshoot = (
+                ((peak_value - steady_state_value) / steady_state_value) * 100
+                if peak_value > steady_state_value
+                else 0.0
+            )
 
-            # Settling Time (tiempo para que la respuesta permanezca dentro del 5% del valor de estado estacionario)
+            # Settling Time (tiempo para que la respuesta permanezca dentro del 5%
+            # del valor de estado estacionario)
             settling_band_upper = steady_state_value * 1.05
             settling_band_lower = steady_state_value * 0.95
 
-            outside_band_indices = np.where((values > settling_band_upper) | (values < settling_band_lower))[0]
+            outside_band_indices = np.where(
+                (values > settling_band_upper) | (values < settling_band_lower)
+            )[0]
 
-            settling_time = timestamps[outside_band_indices[-1]] if outside_band_indices.any() else timestamps[0]
+            settling_time = (
+                timestamps[outside_band_indices[-1]]
+                if outside_band_indices.any()
+                else timestamps[0]
+            )
 
             # Oscillatory (si cruza el setpoint más de 2 veces)
             crossings = np.where(np.diff(np.sign(values - setpoint)))[0]
@@ -564,10 +586,12 @@ class AgentAI:
         except Exception as e:
             logger.error("Error inesperado en analyze_pid_response: %s", e)
             return {
-                "rise_time": None, "overshoot": None, "settling_time": None,
-                "oscillatory": False, "analysis_error": str(e)
+                "rise_time": None,
+                "overshoot": None,
+                "settling_time": None,
+                "oscillatory": False,
+                "analysis_error": str(e),
             }
-
 
     def _determine_harmony_setpoint(
         self,
@@ -582,17 +606,19 @@ class AgentAI:
         """
         with self.lock:
             current_target_vector = list(self.target_setpoint_vector)
-            current_target_norm = np.linalg.norm(current_target_vector) \
-                if current_target_vector else 0.0
-            last_pid_output = self.harmony_state.get(
-                "last_pid_output", 0.0
+            current_target_norm = (
+                np.linalg.norm(current_target_vector) if current_target_vector else 0.0
             )
+            last_pid_output = self.harmony_state.get("last_pid_output", 0.0)
 
         new_target_vector = list(current_target_vector)
         error_global = current_target_norm - measurement
         logger.debug(
             "[SetpointLogic] MA:%.3f, MO:%.3f, EG:%.3f",
-            measurement, current_target_norm, error_global)
+            measurement,
+            current_target_norm,
+            error_global,
+        )
 
         aux_stats = {
             "malla": {"potenciador": 0, "reductor": 0},
@@ -605,20 +631,13 @@ class AgentAI:
             ):
                 aporta_a = mod_info.get("aporta_a")
                 naturaleza = mod_info.get("naturaleza_auxiliar")
-                if (
-                    aporta_a == "malla_watcher"
-                    and naturaleza in aux_stats["malla"]
-                ):
+                if aporta_a == "malla_watcher" and naturaleza in aux_stats["malla"]:
                     aux_stats["malla"][naturaleza] += 1
-                elif (
-                    aporta_a == "matriz_ecu" and naturaleza in aux_stats["ecu"]
-                ):
+                elif aporta_a == "matriz_ecu" and naturaleza in aux_stats["ecu"]:
                     aux_stats["ecu"][naturaleza] += 1
 
         logger.debug("[SetpointLogic] Estrategia: %s", strategy)
-        log_msg_aux = (
-            "[SetpointLogic] Aux: Malla(P:%s,R:%s), ECU(P:%s,R:%s)"
-        )
+        log_msg_aux = "[SetpointLogic] Aux: Malla(P:%s,R:%s), ECU(P:%s,R:%s)"
         logger.debug(
             log_msg_aux,
             aux_stats["malla"]["potenciador"],
@@ -628,9 +647,7 @@ class AgentAI:
         )
 
         stability_threshold = (
-            0.1 * current_target_norm
-            if current_target_norm > 0
-            else 0.1
+            0.1 * current_target_norm if current_target_norm > 0 else 0.1
         )
         pid_effort_threshold = 0.5
 
@@ -644,20 +661,12 @@ class AgentAI:
                 norm_vec = np.linalg.norm(new_target_vector)
                 if norm_vec > 1e-6:
                     logger.info(
-                        "[Estrategia Estabilidad] Reduciendo magnitud "
-                        "setpoint."
+                        "[Estrategia Estabilidad] Reduciendo magnitud setpoint."
                     )
-                    new_target_vector = adjust_vector(
-                        new_target_vector, 0.98
-                    )
-            if aux_stats["malla"]["reductor"] > \
-                    aux_stats["malla"]["potenciador"]:
-                logger.info(
-                    "[Estabilidad] Más reductores en malla, reducción extra."
-                )
-                new_target_vector = adjust_vector(
-                    new_target_vector, 0.97
-                )
+                    new_target_vector = adjust_vector(new_target_vector, 0.98)
+            if aux_stats["malla"]["reductor"] > aux_stats["malla"]["potenciador"]:
+                logger.info("[Estabilidad] Más reductores en malla, reducción extra.")
+                new_target_vector = adjust_vector(new_target_vector, 0.97)
 
         elif strategy == "rendimiento":
             if (
@@ -667,55 +676,37 @@ class AgentAI:
                 norm_vec = np.linalg.norm(new_target_vector)
                 if norm_vec > 1e-6:
                     logger.info(
-                        "[Estrategia Rendimiento] Aumentando magnitud "
-                        "setpoint."
+                        "[Estrategia Rendimiento] Aumentando magnitud setpoint."
                     )
-                    new_target_vector = adjust_vector(
-                        new_target_vector, 1.02
-                    )
+                    new_target_vector = adjust_vector(new_target_vector, 1.02)
                 elif norm_vec < 1e-6:
                     logger.info(
-                        "[Estrategia Rendimiento] Estableciendo setpoint "
-                        "mínimo."
+                        "[Estrategia Rendimiento] Estableciendo setpoint mínimo."
                     )
                     dim = len(self.target_setpoint_vector)
                     new_target_vector = [0.1] * dim
-            if aux_stats["ecu"]["potenciador"] > \
-                    aux_stats["ecu"]["reductor"]:
-                logger.info(
-                    "[Rendimiento] Más potenciadores ECU, aumento extra."
-                )
-                new_target_vector = adjust_vector(
-                    new_target_vector, 1.01
-                )
+            if aux_stats["ecu"]["potenciador"] > aux_stats["ecu"]["reductor"]:
+                logger.info("[Rendimiento] Más potenciadores ECU, aumento extra.")
+                new_target_vector = adjust_vector(new_target_vector, 1.01)
 
         elif strategy == "ahorro_energia":
             total_reductores = (
-                aux_stats["malla"]["reductor"]
-                + aux_stats["ecu"]["reductor"]
+                aux_stats["malla"]["reductor"] + aux_stats["ecu"]["reductor"]
             )
             if total_reductores > 0:
-                logger.info(
-                    "[Ahorro Energía] Reductores activos, reducción "
-                    "setpoint."
-                )
-                new_target_vector = adjust_vector(
-                    new_target_vector, 0.95
-                )
+                logger.info("[Ahorro Energía] Reductores activos, reducción setpoint.")
+                new_target_vector = adjust_vector(new_target_vector, 0.95)
 
         if cogniboard_signal is not None:
             try:
                 signal_val = float(cogniboard_signal)
                 if signal_val > 0.8:
                     logger.info(
-                        "[Cogniboard] Señal alta detectada, reduciendo "
-                        "magnitud final."
+                        "[Cogniboard] Señal alta detectada, reduciendo magnitud final."
                     )
                     norm = np.linalg.norm(new_target_vector)
                     if norm > 1e-6:
-                        new_target_vector = adjust_vector(
-                            new_target_vector, 0.9
-                        )
+                        new_target_vector = adjust_vector(new_target_vector, 0.9)
             except (ValueError, TypeError):
                 logger.warning(
                     "No se pudo convertir señal cogniboard a float: %s",
@@ -737,9 +728,7 @@ class AgentAI:
         Envía el setpoint vectorial calculado a Harmony Controller con
         reintentos.
         """
-        hc_url = self.central_urls.get(
-            "harmony_controller", DEFAULT_HC_URL
-        )
+        hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         url = f"{hc_url}/api/harmony/setpoint"
         payload = {"setpoint_vector": setpoint_vector}
 
@@ -751,8 +740,7 @@ class AgentAI:
 
         for attempt in range(MAX_RETRIES):
             try:
-                response = requests.post(
-                    url, json=payload, timeout=REQUESTS_TIMEOUT)
+                response = requests.post(url, json=payload, timeout=REQUESTS_TIMEOUT)
                 response.raise_for_status()
                 logger.info(
                     "Setpoint %s enviado exitosamente a HC. Respuesta: %s",
@@ -763,8 +751,7 @@ class AgentAI:
             except Exception as e:
                 err_type = type(e).__name__
                 logger.error(
-                    "Error al enviar setpoint a HC (%s) intento %s/%s: %s - "
-                    "%s",
+                    "Error al enviar setpoint a HC (%s) intento %s/%s: %s - %s",
                     url,
                     attempt + 1,
                     MAX_RETRIES,
@@ -818,24 +805,20 @@ class AgentAI:
         valido, mensaje = validate_module_registration(modulo_info)
         if not valido:
             logger.error(
-                "Registro fallido para '%s' (datos inválidos): %s - Data: "
-                "%s",
+                "Registro fallido para '%s' (datos inválidos): %s - Data: %s",
                 nombre,
                 mensaje,
                 modulo_info,
             )
-            return {
-                "status": "error",
-                "mensaje": mensaje
-            }
+            return {"status": "error", "mensaje": mensaje}
 
         deps_ok = True
         deps_msg = "Validación de dependencias omitida o exitosa."
         if req_path:
             if not os.path.exists(req_path):
                 deps_msg = (
-                    "No se pudo encontrar el archivo de dependencias: "
-                    f"{req_path}")
+                    f"No se pudo encontrar el archivo de dependencias: {req_path}"
+                )
                 logger.error(deps_msg)
                 # deps_ok = False # No longer just set, return error
                 return {"status": "error", "mensaje": deps_msg}
@@ -850,26 +833,22 @@ class AgentAI:
             else:  # Both local and global req files exist
                 try:
                     deps_ok, deps_msg = check_missing_dependencies(
-                        req_path, GLOBAL_REQUIREMENTS_PATH)
+                        req_path, GLOBAL_REQUIREMENTS_PATH
+                    )
                     if not deps_ok:
                         logger.error(
                             "Registro fallido para '%s' (dependencias): %s",
                             nombre,
                             deps_msg,
                         )
-                        return {
-                            "status": "error",
-                            "mensaje": deps_msg
-                        }
+                        return {"status": "error", "mensaje": deps_msg}
                 except Exception as e:
                     # deps_ok = False # Not needed, already returning
-                    deps_msg = (
-                        f"Error inesperado al verificar dependencias: {e}"
-                    )
+                    deps_msg = f"Error inesperado al verificar dependencias: {e}"
                     logger.exception(deps_msg)  # Log con stacktrace
                     return {  # Retornar error si la verificación misma falla
                         "status": "error",
-                        "mensaje": deps_msg
+                        "mensaje": deps_msg,
                     }
             # This elif is no longer reachable due to the checks above,
             # can be removed or will be dead code.
@@ -885,19 +864,13 @@ class AgentAI:
 
         with self.lock:
             if nombre in self.modules:
-                logger.warning(
-                    "Intento de registrar módulo existente: %s", nombre
-                )
-                return {
-                    "status": "error",
-                    "mensaje": "El módulo ya está registrado."
-                }
+                logger.warning("Intento de registrar módulo existente: %s", nombre)
+                return {"status": "error", "mensaje": "El módulo ya está registrado."}
 
             module_entry = {
                 "nombre": nombre,
                 "url": modulo_info.get("url"),
-                "url_salud": modulo_info.get("url_salud",
-                                             modulo_info.get("url")),
+                "url_salud": modulo_info.get("url_salud", modulo_info.get("url")),
                 "tipo": tipo_modulo,
                 "descripcion": modulo_info.get("descripcion", ""),
                 "estado_salud": "pendiente",
@@ -920,29 +893,24 @@ class AgentAI:
                 "Módulo '%s' (%s) registrado. %s. Pendiente de validación.",
                 nombre,
                 log_details,
-                deps_msg)
+                deps_msg,
+            )
 
         thread = threading.Thread(
             target=self._validar_salud_modulo,
             args=(nombre,),
             daemon=True,
-            name=f"HealthCheck-{nombre}"
+            name=f"HealthCheck-{nombre}",
         )
         thread.start()
-        return {
-            "status": "success",
-            "mensaje": f"Módulo '{nombre}' registrado"
-        }
+        return {"status": "success", "mensaje": f"Módulo '{nombre}' registrado"}
 
     def _validar_salud_modulo(self, nombre):
         """Valida la salud del módulo y notifica a HC si es necesario."""
         with self.lock:
             modulo = self.modules.get(nombre)
             if not modulo:
-                logger.error(
-                    "No se encontró el módulo '%s' para validar.",
-                    nombre
-                )
+                logger.error("No se encontró el módulo '%s' para validar.", nombre)
                 return
 
             modulo_url_salud = modulo.get("url_salud")
@@ -952,9 +920,7 @@ class AgentAI:
             modulo_naturaleza = modulo.get("naturaleza_auxiliar")
 
         if not modulo_url_salud:
-            logger.error(
-                "No se encontró URL de salud para validar '%s'", nombre
-            )
+            logger.error("No se encontró URL de salud para validar '%s'", nombre)
             estado_salud = "error_configuracion"
         else:
             estado_salud = "error_desconocido"
@@ -965,34 +931,31 @@ class AgentAI:
                         nombre,
                         modulo_url_salud,
                         attempt + 1,
-                        MAX_RETRIES)
-                    response = requests.get(
-                        modulo_url_salud, timeout=REQUESTS_TIMEOUT
+                        MAX_RETRIES,
                     )
+                    response = requests.get(modulo_url_salud, timeout=REQUESTS_TIMEOUT)
                     if response.status_code == 200:
                         estado_salud = "ok"
-                        logger.info(
-                            "Módulo '%s' validado (Salud OK).", nombre
-                        )
+                        logger.info("Módulo '%s' validado (Salud OK).", nombre)
                         break
                     else:
                         estado_salud = f"error_{response.status_code}"
                         logger.warning(
                             "Validación fallida para '%s'. Status: %d",
                             nombre,
-                            response.status_code
+                            response.status_code,
                         )
                 except Exception as e:
                     estado_salud = "error_inesperado"
                     logger.exception(
-                        "Error inesperado al validar salud de '%s': %s",
-                        nombre, e)
+                        "Error inesperado al validar salud de '%s': %s", nombre, e
+                    )
 
                 if estado_salud == "ok":
                     break
 
                 if attempt < MAX_RETRIES - 1:
-                    delay = BASE_RETRY_DELAY * (2 ** attempt)
+                    delay = BASE_RETRY_DELAY * (2**attempt)
                     logger.debug(
                         "Reintentando validación para '%s' en %.2fs...",
                         nombre,
@@ -1001,11 +964,10 @@ class AgentAI:
                     time.sleep(delay)
                 else:
                     logger.error(
-                        "Validación para '%s' falló tras %d intentos. "
-                        "Estado: %s",
+                        "Validación para '%s' falló tras %d intentos. Estado: %s",
                         nombre,
                         MAX_RETRIES,
-                        estado_salud
+                        estado_salud,
                     )
 
         with self.lock:
@@ -1045,8 +1007,7 @@ class AgentAI:
         elif estado_salud == "ok" and modulo_tipo == "auxiliar":
             if not modulo_aporta_a:
                 logger.warning(
-                    "Módulo aux '%s' ok pero sin 'aporta_a'. No se "
-                    "notificará.",
+                    "Módulo aux '%s' ok pero sin 'aporta_a'. No se notificará.",
                     nombre,
                 )
             if not modulo_naturaleza:
@@ -1075,7 +1036,8 @@ class AgentAI:
                     register_url,
                 )
                 response = requests.post(
-                    register_url, json=payload, timeout=REQUESTS_TIMEOUT)
+                    register_url, json=payload, timeout=REQUESTS_TIMEOUT
+                )
                 response.raise_for_status()
                 logger.info(
                     "Notificación para '%s' enviada a HC. Respuesta: %d",
@@ -1084,14 +1046,11 @@ class AgentAI:
                 )
                 return
             except Exception as e:
-                logger.exception(
-                    "Error inesperado al notificar a HC: %s", e
-                )
+                logger.exception("Error inesperado al notificar a HC: %s", e)
                 if attempt < MAX_RETRIES - 1:
                     delay = BASE_RETRY_DELAY * (2**attempt)
                     logger.debug(
-                        "Reintentando notificación a HC para '%s' en "
-                        "%.2fs...",
+                        "Reintentando notificación a HC para '%s' en %.2fs...",
                         nombre,
                         delay,
                     )
@@ -1104,9 +1063,7 @@ class AgentAI:
                     )
 
     def actualizar_comando_estrategico(
-        self,
-        comando: str,
-        valor: Any
+        self, comando: str, valor: Any
     ) -> Dict[str, str]:
         """
         Procesa y aplica comandos estratégicos de alto nivel.
@@ -1148,17 +1105,11 @@ class AgentAI:
                         }
                     new_vector = [float(x) for x in valor]
                     self.target_setpoint_vector = new_vector
-                    logger.info(
-                        "Setpoint objetivo actualizado a: %s", new_vector
-                    )
-                    self._send_setpoint_to_harmony(
-                        self.target_setpoint_vector
-                    )
+                    logger.info("Setpoint objetivo actualizado a: %s", new_vector)
+                    self._send_setpoint_to_harmony(self.target_setpoint_vector)
                     return {
                         "status": "success",
-                        "mensaje": (
-                            f"Setpoint objetivo establecido a {new_vector}"
-                        ),
+                        "mensaje": (f"Setpoint objetivo establecido a {new_vector}"),
                     }
                 except (ValueError, TypeError):
                     return {
@@ -1166,9 +1117,7 @@ class AgentAI:
                         "mensaje": "Valor debe ser una lista de números",
                     }
             else:
-                logger.warning(
-                    "Comando estratégico desconocido: %s", comando
-                )
+                logger.warning("Comando estratégico desconocido: %s", comando)
                 return {
                     "status": "error",
                     "mensaje": f"Comando '{comando}' no reconocido",
@@ -1186,9 +1135,7 @@ class AgentAI:
         """
         with self.lock:
             self.external_inputs["cogniboard_signal"] = control_signal
-        logger.debug(
-            "Señal de control de Cogniboard actualizada: %s",
-            control_signal)
+        logger.debug("Señal de control de Cogniboard actualizada: %s", control_signal)
 
     def obtener_estado_completo(self) -> Dict[str, Any]:
         """
@@ -1203,9 +1150,7 @@ class AgentAI:
             estado de Harmony Controller y la lista de módulos registrados.
         """
         with self.lock:
-            modules_list = [
-                dict(info) for info in self.modules.values()
-            ]
+            modules_list = [dict(info) for info in self.modules.values()]
             harmony_state_copy = dict(self.harmony_state)
             external_inputs_copy = dict(self.external_inputs)
             target_setpoint_copy = list(self.target_setpoint_vector)
@@ -1230,7 +1175,6 @@ def strategic_loop(agent_instance: AgentAI):
         start_time = time.monotonic()
 
         # --- Puerta de Seguridad ---
-        # No operar si la arquitectura no es válida.
         with agent_instance.lock:
             is_validated = agent_instance.is_architecture_validated
             current_status = agent_instance.operational_status
@@ -1244,6 +1188,7 @@ def strategic_loop(agent_instance: AgentAI):
             continue
 
         try:
+            # --- 1. Obtener Estado del Controlador Táctico ---
             state = agent_instance._get_harmony_state()
             if state is None:
                 logger.error(
@@ -1253,80 +1198,97 @@ def strategic_loop(agent_instance: AgentAI):
                 time.sleep(30)
                 continue
 
-            current_harmony_state = state
+            # Actualizar el estado interno de forma segura
             with agent_instance.lock:
-                agent_instance.harmony_state = current_harmony_state
+                agent_instance.harmony_state = state
 
+            # --- 2. Determinar y Enviar Nuevo Setpoint Estratégico ---
             with agent_instance.lock:
+                # Copiar todos los datos necesarios para la decisión en una
+                # sola sección crítica
                 current_measurement = agent_instance.harmony_state.get(
                     "last_measurement", 0.0
                 )
-                cogniboard_signal = agent_instance.external_inputs[
-                    "cogniboard_signal"
-                ]
+                cogniboard_signal = agent_instance.external_inputs["cogniboard_signal"]
                 config_status = agent_instance.external_inputs["config_status"]
                 strategy = agent_instance.current_strategy
                 modules_copy = dict(agent_instance.modules)
+                current_setpoint = list(agent_instance.target_setpoint_vector)
 
-                new_setpoint_vector = agent_instance._determine_harmony_setpoint(
-                    current_measurement,
-                    cogniboard_signal,
-                    config_status,
-                    strategy,
-                    modules_copy,
-                )
-            with agent_instance.lock:
-                setpoint_changed = not np.allclose(
-                    agent_instance.target_setpoint_vector,
-                    new_setpoint_vector,
-                    rtol=1e-5,
-                    atol=1e-8,
-                )
-                if setpoint_changed:
+            # La determinación del setpoint ahora ocurre fuera del lock
+            new_setpoint_vector = agent_instance._determine_harmony_setpoint(
+                current_measurement,
+                cogniboard_signal,
+                config_status,
+                strategy,
+                modules_copy,
+            )
+
+            # Comprobar si el setpoint ha cambiado y actualizar/enviar si es necesario
+            if not np.allclose(
+                current_setpoint, new_setpoint_vector, rtol=1e-5, atol=1e-8
+            ):
+                with agent_instance.lock:
                     agent_instance.target_setpoint_vector = new_setpoint_vector
-                    logger.info(
-                        "Nuevo setpoint estratégico determinado: %s",
-                        [
-                            f"{x:.3f}"
-                            for x in agent_instance.target_setpoint_vector
-                        ],
-                    )
 
-            if setpoint_changed:
-                agent_instance._send_setpoint_to_harmony(agent_instance.target_setpoint_vector)
+                logger.info(
+                    "Nuevo setpoint estratégico determinado: %s",
+                    [f"{x:.3f}" for x in new_setpoint_vector],
+                )
+                agent_instance._send_setpoint_to_harmony(new_setpoint_vector)
 
+            # --- 3. Lógica Cuántica: Analizar y Actuar sobre el Campo ECU ---
+            # CORRECCIÓN: Toda la lógica que depende del campo se mueve
+            # dentro de este bloque.
             field_vector = agent_instance._get_ecu_field_vector()
             if field_vector is not None:
+                # Si tenemos el campo, calculamos la coherencia.
+                # Asumimos que la capa 0 es la de interés para la estrategia principal.
                 coherence, dominant_phase = agent_instance.calculate_coherence(
                     field_vector[0]
                 )
                 logger.info(
                     "Coherencia Capa 0: %.3f, Fase Dominante: %.3f rad",
-                    coherencia,
+                    coherence,
                     dominant_phase,
                 )
 
+                # Ahora, tomamos decisiones basadas en la coherencia que
+                # acabamos de calcular.
                 if coherence < 0.8:
                     logger.warning(
                         "Coherencia (%.3f) por debajo del umbral. "
                         "Iniciando maniobra de sincronización de fase.",
-                        coherencia,
+                        coherence,
                     )
+                    # La variable 'dominant_phase' está garantizada de existir aquí.
                     agent_instance._delegate_phase_synchronization_task(
                         region_identifier="capa_0", target_phase=dominant_phase
                     )
                 elif coherence > 0.95:
                     logger.info(
                         "Coherencia alta (%.3f). Intentando maniobra de resonancia.",
-                        coherencia,
+                        coherence,
                     )
-                    resonant_frequency = agent_instance.find_resonant_frequency("capa_0")
+                    resonant_frequency = agent_instance.find_resonant_frequency(
+                        "capa_0"
+                    )
                     if resonant_frequency is not None:
-                        agent_instance._delegate_resonance_task("capa_0", resonant_frequency)
+                        agent_instance._delegate_resonance_task(
+                            "capa_0", resonant_frequency
+                        )
+            else:
+                # Si no pudimos obtener el campo, lo registramos y continuamos
+                # el bucle.
+                logger.error(
+                    "No se pudo obtener el campo de ECU. Omitiendo la lógica "
+                    "cuántica en este ciclo."
+                )
 
         except Exception as e:
             logger.exception("Error inesperado en el bucle estratégico: %s", e)
 
+        # --- Fin del Ciclo ---
         elapsed_time = time.monotonic() - start_time
         sleep_time = max(0, STRATEGIC_LOOP_INTERVAL - elapsed_time)
         time.sleep(sleep_time)
@@ -1342,6 +1304,7 @@ agent_ai_instance = AgentAI()
 # inicie una vez.
 _strategic_thread = None
 
+
 def start_loop():
     """Inicia el bucle estratégico si no está ya en ejecución."""
     global _strategic_thread
@@ -1351,11 +1314,12 @@ def start_loop():
             target=strategic_loop,
             args=(agent_ai_instance,),
             daemon=True,
-            name="AgentAIStrategicLoop"
+            name="AgentAIStrategicLoop",
         )
         _strategic_thread.start()
     else:
         logger.info("El bucle estratégico de AgentAI ya está en ejecución.")
+
 
 def shutdown():
     """Función de limpieza (actualmente un placeholder)."""

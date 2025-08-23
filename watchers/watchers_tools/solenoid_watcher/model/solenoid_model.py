@@ -37,8 +37,8 @@ def solenoid_model(state, time, current, turns_density, radius):
 
 
 def simulate_solenoid(
-        current, turns_density, radius,
-        initial_state=(0, 0), t_end=1.0, num_points=100):
+    current, turns_density, radius, initial_state=(0, 0), t_end=1.0, num_points=100
+):
     """
     Simula la evolución del campo magnético en el solenoide.
 
@@ -58,9 +58,6 @@ def simulate_solenoid(
         raise ValueError("Parámetros deben ser positivos")
     time = np.linspace(0, t_end, num_points)
     solution = odeint(
-        solenoid_model,
-        initial_state,
-        time,
-        args=(current, turns_density, radius)
-      )
+        solenoid_model, initial_state, time, args=(current, turns_density, radius)
+    )
     return time, solution

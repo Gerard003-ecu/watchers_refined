@@ -21,10 +21,10 @@ class ExergyModel:
     def calculate_exergy(self, system_state):
         """Calcula la exergía como máximo trabajo útil obtenible"""
         # U: Energía interna, S: Entropía, p: presión, V: volumen
-        U = system_state['energy']
-        S = system_state['entropy']
-        p = system_state['pressure']
-        V = system_state['volume']
+        U = system_state["energy"]
+        S = system_state["entropy"]
+        p = system_state["pressure"]
+        V = system_state["volume"]
         exergy = U + p * V - self.T0 * S
         return exergy
 
@@ -39,13 +39,14 @@ class ExergyModel:
         from scipy.optimize import minimize
 
         def exergy_loss(x):
-            return -np.dot(x, vector) + 0.5 * np.linalg.norm(x)**2
-        constraints = {'type': 'ineq', 'fun': lambda x: np.sum(x) - 0.1}
+            return -np.dot(x, vector) + 0.5 * np.linalg.norm(x) ** 2
+
+        constraints = {"type": "ineq", "fun": lambda x: np.sum(x) - 0.1}
         result = minimize(
             exergy_loss,
             x0=np.ones_like(vector),
-            method='SLSQP',
-            constraints=constraints
+            method="SLSQP",
+            constraints=constraints,
         )
         return result.x
 

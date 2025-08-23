@@ -12,20 +12,22 @@ Principales Funcionalidades:
 - Se registra de forma autónoma con el servicio AgentAI al iniciar.
 - Ejecuta la simulación física en un hilo de fondo continuo.
 """
+
+import csv  # Keep csv for export method, not used by the service itself
+import logging
+import math
 import os
 import threading
 import time
-import logging
-import math
-import requests
-import numpy as np
-from flask import Flask, jsonify, request
 from collections import deque
-from typing import List, Dict, Tuple, Optional, Any
-import csv # Keep csv for export method, though it might not be used by the service itself
+from typing import Any, Dict, Optional, Tuple
 
-from .constants import PistonMode, TransducerType, FrictionModel, ControllerType
+import numpy as np
+import requests
+from flask import Flask, jsonify, request
+
 from .config import PistonConfig
+from .constants import FrictionModel, PistonMode, TransducerType
 
 # --- Configuración del Logging ---
 # (Similar to malla_watcher for consistency)
@@ -34,16 +36,22 @@ os.makedirs(log_dir, exist_ok=True)
 logger = logging.getLogger("atomic_piston_service")
 if not logger.hasHandlers():
     # File handler
-    file_handler = logging.FileHandler(os.path.join(log_dir, "atomic_piston_service.log"))
+    file_handler = logging.FileHandler(
+        os.path.join(log_dir, "atomic_piston_service.log")
+    )
     file_handler.setFormatter(
-        logging.Formatter("%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s")
+        logging.Formatter(
+            "%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s"
+        )
     )
     logger.addHandler(file_handler)
 
     # Console handler
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(
-         logging.Formatter("%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s")
+        logging.Formatter(
+            "%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s"
+        )
     )
     logger.addHandler(stream_handler)
 
@@ -57,7 +65,7 @@ config: Optional[PistonConfig] = None
 app = Flask(__name__)
 
 # Instancia global del pistón (gemelo digital) que será gestionada por el servicio
-ipu_instance: Optional['AtomicPiston'] = None
+ipu_instance: Optional["AtomicPiston"] = None
 
 # Elementos para la gestión de hilos
 ipu_lock = threading.Lock()
@@ -66,6 +74,7 @@ stop_simulation_event = threading.Event()
 
 
 # --- Lógica de Simulación (Thread) ---
+
 
 def simulation_loop() -> None:
     """Bucle principal de simulación que se ejecuta en un hilo de fondo.
@@ -78,15 +87,20 @@ def simulation_loop() -> None:
     logger.info("Iniciando bucle de simulación del pistón atómico...")
 
     if not config:
-        logger.error("La configuración global no está disponible. Deteniendo el hilo de simulación.")
+        logger.error(
+            "La configuración global no está disponible. "
+            "Deteniendo el hilo de simulación."
+        )
         return
 
     while not stop_simulation_event.is_set():
         start_time = time.monotonic()
 
         if not ipu_instance:
-            logger.warning("Instancia de IPU no inicializada, saltando ciclo de simulación.")
-            stop_simulation_event.wait(1) # Esperar un poco antes de reintentar
+            logger.warning(
+                "Instancia de IPU no inicializada, saltando ciclo de simulación."
+            )
+            stop_simulation_event.wait(1)  # Esperar un poco antes de reintentar
             continue
 
         try:
@@ -96,7 +110,9 @@ def simulation_loop() -> None:
                 ipu_instance.discharge(config.simulation_interval)
 
         except Exception as e:
-            logger.exception("Error catastrófico durante el ciclo de simulación del pistón: %s", e)
+            logger.exception(
+                "Error catastrófico durante el ciclo de simulación del pistón: %s", e
+            )
             # En caso de un error grave en la simulación, esperar antes de reintentar
             stop_simulation_event.wait(5)
 
@@ -112,11 +128,9 @@ def simulation_loop() -> None:
 
 # --- Lógica de Registro con AgentAI ---
 
+
 def register_with_agent_ai(
-    module_name: str,
-    module_url: str,
-    health_url: str,
-    description: str = ""
+    module_name: str, module_url: str, health_url: str, description: str = ""
 ) -> bool:
     """Intenta registrar el microservicio en el AgentAI.
 
@@ -144,26 +158,32 @@ def register_with_agent_ai(
         "tipo": "hardware_simulation",
         "aporta_a": "ecosistema_watchers",
         "naturaleza_auxiliar": "gemelo_digital_ipu",
-        "descripcion": description
+        "descripcion": description,
     }
 
-    logger.info(f"Intentando registrar '{module_name}' en AgentAI ({config.agent_ai_register_url})...")
+    logger.info(
+        "Intentando registrar '%s' en AgentAI (%s)...",
+        module_name,
+        config.agent_ai_register_url,
+    )
     for attempt in range(config.max_registration_retries):
         try:
             response = requests.post(
                 config.agent_ai_register_url,
                 json=payload,
                 timeout=config.requests_timeout,
-                verify=False  # Solo para entornos de prueba, no producción!
+                verify=False,  # Solo para entornos de prueba, no producción!
             )
             response.raise_for_status()
             if response.status_code == 200:
-                logger.info(f"Registro de '{module_name}' exitoso en AgentAI.")
+                logger.info("Registro de '%s' exitoso en AgentAI.", module_name)
                 return True
             else:
                 logger.warning(
-                    f"Registro de '{module_name}' recibido con status {response.status_code}. "
-                    f"Respuesta: {response.text}"
+                    "Registro de '%s' recibido con status %d. Respuesta: %s",
+                    module_name,
+                    response.status_code,
+                    response.text,
                 )
         except requests.exceptions.RequestException as e:
             logger.error(
@@ -177,7 +197,9 @@ def register_with_agent_ai(
             )
 
         if attempt < config.max_registration_retries - 1:
-            logger.info(f"Reintentando registro en {config.retry_delay_seconds} segundos...")
+            logger.info(
+                f"Reintentando registro en {config.retry_delay_seconds} segundos..."
+            )
             time.sleep(config.retry_delay_seconds)
         else:
             logger.error(
@@ -210,17 +232,19 @@ class AtomicPiston:
         dt (float): El último paso de tiempo utilizado en la simulación [s].
     """
 
-    def __init__(self,
-                 capacity: float,
-                 elasticity: float,
-                 damping: float,
-                 piston_mass: float = 1.0,
-                 mode: PistonMode = PistonMode.CAPACITOR,
-                 transducer_type: TransducerType = TransducerType.PIEZOELECTRIC,
-                 friction_model: FrictionModel = FrictionModel.VISCOUS,
-                 coulomb_friction: float = 0.2,
-                 stribeck_coeffs: Tuple[float, float, float] = (0.3, 0.1, 0.05),
-                 nonlinear_elasticity: float = 0.01) -> None:
+    def __init__(
+        self,
+        capacity: float,
+        elasticity: float,
+        damping: float,
+        piston_mass: float = 1.0,
+        mode: PistonMode = PistonMode.CAPACITOR,
+        transducer_type: TransducerType = TransducerType.PIEZOELECTRIC,
+        friction_model: FrictionModel = FrictionModel.VISCOUS,
+        coulomb_friction: float = 0.2,
+        stribeck_coeffs: Tuple[float, float, float] = (0.3, 0.1, 0.05),
+        nonlinear_elasticity: float = 0.01,
+    ) -> None:
         """Inicializa una nueva instancia de AtomicPiston.
 
         Args:
@@ -248,7 +272,9 @@ class AtomicPiston:
         if damping < 0:
             raise ValueError("El amortiguamiento (damping) no puede ser negativo.")
         if piston_mass <= 0:
-            raise ValueError("La masa del pistón (piston_mass) debe ser un valor positivo.")
+            raise ValueError(
+                "La masa del pistón (piston_mass) debe ser un valor positivo."
+            )
 
         # -- Parámetros Físicos --
         self.capacity: float = capacity
@@ -297,8 +323,10 @@ class AtomicPiston:
         self.compression_direction: int = -1
 
         # -- Controladores PID --
-        self.speed_controller: 'PIDController' = PIDController(kp=1.0, ki=0.1, kd=0.01)
-        self.energy_controller: 'PIDController' = PIDController(kp=0.5, ki=0.05, kd=0.005)
+        self.speed_controller: "PIDController" = PIDController(kp=1.0, ki=0.1, kd=0.01)
+        self.energy_controller: "PIDController" = PIDController(
+            kp=0.5, ki=0.05, kd=0.005
+        )
         self.target_speed: float = 0.0
         self.target_energy: float = 0.0
 
@@ -309,8 +337,11 @@ class AtomicPiston:
         self.friction_force_history: deque = deque(maxlen=self.max_history_size)
 
         logger.info(
-            f"AtomicPiston inicializado en modo {self.mode.value} "
-            f"con transductor {self.transducer_type.value} y fricción {self.friction_model.value}."
+            "AtomicPiston inicializado en modo %s con transductor %s y "
+            "fricción %s.",
+            self.mode.value,
+            self.transducer_type.value,
+            self.friction_model.value,
         )
 
     def _set_transducer_params(self) -> None:
@@ -328,7 +359,9 @@ class AtomicPiston:
             self.force_sensitivity = 0.05
             self.internal_resistance = 50.0
 
-        logger.debug(f"Parámetros de transductor establecidos para {self.transducer_type.value}")
+        logger.debug(
+            f"Parámetros de transductor establecidos para {self.transducer_type.value}"
+        )
 
     @property
     def current_charge(self) -> float:
@@ -391,18 +424,24 @@ class AtomicPiston:
         # Fricción estática (cuando la velocidad es casi cero)
         else:
             if self.friction_model == FrictionModel.COULOMB:
-                # La fricción estática se opone a la fuerza impulsora hasta su límite máximo.
-                return -np.sign(driving_force) * min(abs(driving_force), self.coulomb_friction)
+                # La fricción estática se opone a la fuerza impulsora hasta
+                # su límite máximo.
+                return -np.sign(driving_force) * min(
+                    abs(driving_force), self.coulomb_friction
+                )
 
             elif self.friction_model == FrictionModel.STRIBECK:
                 f_static, _, _ = self.stribeck_coeffs
-                # La fricción estática se opone a la fuerza impulsora hasta su límite estático.
+                # La fricción estática se opone a la fuerza impulsora hasta
+                # su límite estático.
                 return -np.sign(driving_force) * min(abs(driving_force), f_static)
 
         # Si el modelo no es ni Coulomb ni Stribeck, no hay fricción seca.
         return 0.0
 
-    def apply_force(self, signal_value: float, source: str, mass_factor: float = 1.0) -> None:
+    def apply_force(
+        self, signal_value: float, source: str, mass_factor: float = 1.0
+    ) -> None:
         """Aplica una fuerza mecánica externa basada en una señal de entrada.
 
         La fuerza se calcula usando la energía cinética derivada de la velocidad
@@ -534,7 +573,7 @@ class AtomicPiston:
         k3 = derivatives(state + 0.5 * dt * k2, external_force)
         k4 = derivatives(state + dt * k3, external_force)
 
-        new_state = state + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
+        new_state = state + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
         self.position, self.velocity = new_state
 
         # Manejar límites físicos con conservación de energía
@@ -654,12 +693,17 @@ class AtomicPiston:
         # es corregir el estado y detener el proceso.
         if self.current_charge <= 1e-5:
             self.battery_is_discharging = False
-            logger.info("Descarga BATTERY: Carga agotada o insignificante. Descarga desactivada.")
-            # Aseguramos que la posición quede en 0 para evitar cargas residuales.
+            logger.info(
+                "Descarga BATTERY: Carga agotada o insignificante. "
+                "Descarga desactivada."
+            )
+            # Aseguramos que la posición quede en 0 para evitar cargas
+            # residuales.
             self.position = 0.0
             return None
 
-        # 2. Si pasamos la comprobación anterior, significa que hay carga y debemos descargar.
+        # 2. Si pasamos la comprobación anterior, significa que hay carga y
+        # debemos descargar.
         # La descarga máxima es un 80% para evitar que se vacíe en un solo paso.
         max_discharge = self.current_charge * 0.8
         discharge_amount = min(self.battery_discharge_rate * dt, max_discharge)
@@ -668,15 +712,17 @@ class AtomicPiston:
         self.position = min(0.0, new_position)  # Limitar a posición máxima 0.0
 
         # La amplitud de la señal es proporcional a la descarga real.
-        output_amplitude = discharge_amount / (self.battery_discharge_rate * dt) if self.battery_discharge_rate > 0 else 1.0
+        output_amplitude = (
+            discharge_amount / (self.battery_discharge_rate * dt)
+            if self.battery_discharge_rate > 0
+            else 1.0
+        )
 
-        return {
-            "type": "sustained",
-            "amplitude": output_amplitude,
-            "duration": dt
-        }
+        return {"type": "sustained", "amplitude": output_amplitude, "duration": dt}
 
-    def simulate_discharge_circuit(self, load_resistance: float, dt: float) -> Tuple[float, float, float]:
+    def simulate_discharge_circuit(
+        self, load_resistance: float, dt: float
+    ) -> Tuple[float, float, float]:
         """Simula la descarga de energía a través de una carga externa.
 
         Calcula cómo la energía almacenada en el pistón se disipa a través de
@@ -690,7 +736,9 @@ class AtomicPiston:
             Tuple[float, float, float]: Una tupla con el voltaje, la corriente
             y la potencia en la carga.
         """
-        logger.debug(f"Simulando descarga con resistencia de carga: {load_resistance} Ohm")
+        logger.debug(
+            f"Simulando descarga con resistencia de carga: {load_resistance} Ohm"
+        )
         if self.circuit_voltage == 0:
             return 0.0, 0.0, 0.0
 
@@ -701,10 +749,11 @@ class AtomicPiston:
         discharge_energy = discharge_current**2 * load_resistance * dt
 
         if abs(self.position) > 1e-6 and self.k > 0:
-            # La energía potencial es E = 0.5*k*x². El cambio en posición es dx = dE / (k*x).
-            # La energía se disipa, por lo que dE es negativo (la energía almacenada disminuye).
-            # Para una posición negativa (compresión), dE/ (k*x) resulta en un dx positivo,
-            # moviendo la posición hacia cero, lo cual es correcto.
+            # La energía potencial es E = 0.5*k*x². El cambio en posición es
+            # dx = dE / (k*x). La energía se disipa, por lo que dE es negativo
+            # (la energía almacenada disminuye). Para una posición negativa
+            # (compresión), dE / (k*x) resulta en un dx positivo, moviendo la
+            # posición hacia cero, lo cual es correcto.
             position_change = -discharge_energy / (self.k * self.position)
         else:
             position_change = 0.0
@@ -733,7 +782,9 @@ class AtomicPiston:
             self.compression_direction = -1
         else:
             self.compression_direction = direction
-            logger.info(f"Dirección de compresión establecida en: {self.compression_direction}")
+            logger.info(
+                f"Dirección de compresión establecida en: {self.compression_direction}"
+            )
 
     def get_conversion_efficiency(self) -> float:
         """Calcula la eficiencia de conversión de energía instantánea.
@@ -773,7 +824,9 @@ class AtomicPiston:
         """
         if self.mode == PistonMode.BATTERY:
             self.battery_is_discharging = discharge_on
-            logger.info(f"Descarga BATTERY {'activada' if discharge_on else 'desactivada'}.")
+            logger.info(
+                f"Descarga BATTERY {'activada' if discharge_on else 'desactivada'}."
+            )
         else:
             logger.warning(
                 f"Llamada a trigger_discharge en modo {self.mode.value}, "
@@ -817,12 +870,16 @@ class AtomicPiston:
             omega = 2 * np.pi * f
             # Función de transferencia mecánica: H_mech(s) = X(s) / F(s)
             # s = jω
-            H_mech = 1 / (self.m * (1j * omega)**2 + self.c * (1j * omega) + self.k)
+            H_mech = 1 / (self.m * (1j * omega) ** 2 + self.c * (1j * omega) + self.k)
             # Función de transferencia electromecánica completa
             H_electrical = H_mech * self.voltage_sensitivity * self.force_sensitivity
             magnitudes.append(20 * np.log10(np.abs(H_electrical)))
             phases.append(np.angle(H_electrical, deg=True))
-        return {"frequencies": frequency_range, "magnitude": magnitudes, "phase": phases}
+        return {
+            "frequencies": frequency_range,
+            "magnitude": magnitudes,
+            "phase": phases,
+        }
 
     def export_history_to_csv(self, filename: str) -> None:
         """Exporta los historiales de simulación a un archivo CSV.
@@ -833,26 +890,35 @@ class AtomicPiston:
         Raises:
             IOError: Si ocurre un problema al escribir en el archivo.
         """
-        header = ['time_step', 'stored_energy', 'conversion_efficiency', 'friction_force']
+        header = [
+            "time_step",
+            "stored_energy",
+            "conversion_efficiency",
+            "friction_force",
+        ]
 
         # Encuentra la longitud máxima para el caso de historiales de diferente longitud
         num_steps = max(
             len(self.energy_history),
             len(self.efficiency_history),
-            len(self.friction_force_history)
+            len(self.friction_force_history),
         )
 
         try:
-            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+            with open(filename, "w", newline="", encoding="utf-8") as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(header)
 
                 for i in range(num_steps):
                     row = [
                         i,
-                        self.energy_history[i] if i < len(self.energy_history) else '',
-                        self.efficiency_history[i] if i < len(self.efficiency_history) else '',
-                        self.friction_force_history[i] if i < len(self.friction_force_history) else ''
+                        self.energy_history[i] if i < len(self.energy_history) else "",
+                        self.efficiency_history[i]
+                        if i < len(self.efficiency_history)
+                        else "",
+                        self.friction_force_history[i]
+                        if i < len(self.friction_force_history)
+                        else "",
                     ]
                     writer.writerow(row)
             logger.info(f"Historial de simulación exportado exitosamente a {filename}")
@@ -860,7 +926,9 @@ class AtomicPiston:
             logger.error(f"Error al exportar el historial a CSV: {e}")
             raise
 
-    def simulate_step_response(self, force_amplitude: float, duration: float, dt: float) -> Dict[str, Any]:
+    def simulate_step_response(
+        self, force_amplitude: float, duration: float, dt: float
+    ) -> Dict[str, Any]:
         """Simula la respuesta del pistón a una entrada de fuerza escalón.
 
         Args:
@@ -892,7 +960,9 @@ class AtomicPiston:
             "acceleration": np.array(acceleration_history),
         }
 
-    def simulate_impulse_response(self, impulse_magnitude: float, duration: float, dt: float) -> Dict[str, Any]:
+    def simulate_impulse_response(
+        self, impulse_magnitude: float, duration: float, dt: float
+    ) -> Dict[str, Any]:
         """Simula la respuesta del pistón a una entrada de fuerza impulso.
 
         Args:
@@ -910,7 +980,8 @@ class AtomicPiston:
         velocity_history = []
         acceleration_history = []
 
-        # Aplicar el impulso como un cambio instantáneo en la velocidad (p = m*v -> Δv = I/m)
+        # Aplicar el impulso como un cambio instantáneo en la velocidad
+        # (p = m*v -> Δv = I/m)
         self.velocity += impulse_magnitude / self.m
 
         for _ in time_series:
@@ -956,7 +1027,12 @@ class AtomicPiston:
         friction_force = self.calculate_friction()
         spring_force = -self.k * self.position
         nonlinear_spring_force = -self.nonlinear_elasticity * self.position**3
-        total_force = self.last_applied_force + spring_force + nonlinear_spring_force + friction_force
+        total_force = (
+            self.last_applied_force
+            + spring_force
+            + nonlinear_spring_force
+            + friction_force
+        )
 
         return {
             "mass_term": self.m * self.acceleration,
@@ -964,7 +1040,7 @@ class AtomicPiston:
             "spring_force": spring_force,
             "nonlinear_spring_force": nonlinear_spring_force,
             "external_force": self.last_applied_force,
-            "total_force": total_force
+            "total_force": total_force,
         }
 
 
@@ -981,7 +1057,10 @@ class PIDController:
         kd (float): Ganancia derivativa.
         output_limit (float): Límite de la salida para anti-windup.
     """
-    def __init__(self, kp: float, ki: float, kd: float, output_limit: float = 10.0) -> None:
+
+    def __init__(
+        self, kp: float, ki: float, kd: float, output_limit: float = 10.0
+    ) -> None:
         """Inicializa el controlador PID.
 
         Args:
@@ -1044,7 +1123,8 @@ class PIDController:
 
 # --- Endpoints de la API Flask ---
 
-@app.route('/api/health', methods=['GET'])
+
+@app.route("/api/health", methods=["GET"])
 def health_check():
     """Verifica el estado de salud del servicio.
 
@@ -1083,13 +1163,13 @@ def health_check():
         "message": message,
         "details": {
             "simulation_running": sim_alive,
-            "piston_initialized": piston_initialized
-        }
+            "piston_initialized": piston_initialized,
+        },
     }
     return jsonify(response_data), http_code
 
 
-@app.route('/api/state', methods=['GET'])
+@app.route("/api/state", methods=["GET"])
 def get_piston_state():
     """Devuelve el estado dinámico completo de la IPU.
 
@@ -1119,14 +1199,14 @@ def get_piston_state():
             },
             "control_targets": {
                 "target_speed": ipu_instance.target_speed,
-                "target_energy": ipu_instance.target_energy
-            }
+                "target_energy": ipu_instance.target_energy,
+            },
         }
 
     return jsonify({"status": "success", "state": state_data})
 
 
-@app.route('/api/control', methods=['POST'])
+@app.route("/api/control", methods=["POST"])
 def set_piston_control():
     """Acepta una señal para modular el objetivo de energía del pistón.
 
@@ -1141,12 +1221,22 @@ def set_piston_control():
     """
     data = request.get_json()
     if not data or "control_signal" not in data:
-        return jsonify({"status": "error", "message": "Payload JSON inválido o falta 'control_signal'."}), 400
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Payload JSON inválido o falta 'control_signal'.",
+            }
+        ), 400
 
     try:
         signal = float(data["control_signal"])
     except (ValueError, TypeError):
-        return jsonify({"status": "error", "message": "'control_signal' debe ser un valor numérico."}), 400
+        return jsonify(
+            {
+                "status": "error",
+                "message": "'control_signal' debe ser un valor numérico.",
+            }
+        ), 400
 
     if not ipu_instance:
         return jsonify({"status": "error", "message": "IPU no inicializada."}), 503
@@ -1158,16 +1248,22 @@ def set_piston_control():
         ipu_instance.set_energy_target(new_target_energy)
         current_target = ipu_instance.target_energy
 
-    logger.info(f"Señal de control recibida: {signal}. Nuevo objetivo de energía: {current_target:.2f} J")
+    logger.info(
+        "Señal de control recibida: %s. Nuevo objetivo de energía: %.2f J",
+        signal,
+        current_target,
+    )
 
-    return jsonify({
-        "status": "success",
-        "message": "Objetivo de energía ajustado.",
-        "new_energy_target": current_target
-    })
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Objetivo de energía ajustado.",
+            "new_energy_target": current_target,
+        }
+    )
 
 
-@app.route('/api/config', methods=['GET'])
+@app.route("/api/config", methods=["GET"])
 def get_piston_config():
     """Devuelve la configuración estática completa de la IPU.
 
@@ -1186,13 +1282,13 @@ def get_piston_config():
             "kp": ipu_instance.speed_controller.kp,
             "ki": ipu_instance.speed_controller.ki,
             "kd": ipu_instance.speed_controller.kd,
-            "output_limit": ipu_instance.speed_controller.output_limit
+            "output_limit": ipu_instance.speed_controller.output_limit,
         }
         energy_pid_gains = {
             "kp": ipu_instance.energy_controller.kp,
             "ki": ipu_instance.energy_controller.ki,
             "kd": ipu_instance.energy_controller.kd,
-            "output_limit": ipu_instance.energy_controller.output_limit
+            "output_limit": ipu_instance.energy_controller.output_limit,
         }
 
         config_data = {
@@ -1222,19 +1318,21 @@ def get_piston_config():
                 "converter_efficiency": ipu_instance.converter_efficiency,
             },
             "operational_params": {
-                "capacitor_discharge_threshold": ipu_instance.capacitor_discharge_threshold,
+                "capacitor_discharge_threshold": (
+                    ipu_instance.capacitor_discharge_threshold
+                ),
                 "hysteresis_factor": ipu_instance.hysteresis_factor,
             },
             "pid_gains": {
                 "speed_controller": speed_pid_gains,
                 "energy_controller": energy_pid_gains,
-            }
+            },
         }
 
     return jsonify({"status": "success", "config": config_data})
 
 
-@app.route('/api/command', methods=['POST'])
+@app.route("/api/command", methods=["POST"])
 def execute_piston_command():
     """Ejecuta un comando avanzado en la IPU.
 
@@ -1256,10 +1354,12 @@ def execute_piston_command():
     """
     data = request.get_json()
     if not data or "command" not in data:
-        return jsonify({"status": "error", "message": "Payload JSON inválido o falta 'command'."}), 400
+        return jsonify(
+            {"status": "error", "message": "Payload JSON inválido o falta 'command'."}
+        ), 400
 
     command = data.get("command")
-    value = data.get("value") # Value puede ser opcional para comandos como 'reset'
+    value = data.get("value")  # Value puede ser opcional para comandos como 'reset'
 
     if not ipu_instance:
         return jsonify({"status": "error", "message": "IPU no inicializada."}), 503
@@ -1270,14 +1370,18 @@ def execute_piston_command():
         try:
             if command == "set_mode":
                 if value not in [m.value for m in PistonMode]:
-                    raise ValueError(f"Modo inválido. Válidos: {[m.value for m in PistonMode]}")
+                    raise ValueError(
+                        f"Modo inválido. Válidos: {[m.value for m in PistonMode]}"
+                    )
                 mode = PistonMode(value)
                 ipu_instance.set_mode(mode)
                 message = f"Modo cambiado a {mode.value}."
 
             elif command == "trigger_discharge":
                 if not isinstance(value, bool):
-                    raise ValueError("El valor para 'trigger_discharge' debe ser booleano (true/false).")
+                    raise ValueError(
+                        "El valor para 'trigger_discharge' debe ser booleano."
+                    )
                 ipu_instance.trigger_discharge(value)
                 status = "activada" if value else "desactivada"
                 message = f"Descarga en modo batería {status}."
@@ -1300,19 +1404,29 @@ def execute_piston_command():
 
             else:
                 # Si el comando no es ninguno de los conocidos, retornar error.
-                return jsonify({"status": "error", "message": f"Comando desconocido: '{command}'."}), 400
+                return jsonify(
+                    {"status": "error", "message": f"Comando desconocido: '{command}'."}
+                ), 400
 
         except (ValueError, TypeError, KeyError) as e:
             # Captura errores de conversión de tipo (e.g., float("abc"))
             # o de enum (e.g., PistonMode("invalid"))
-            logger.error(f"Error procesando comando '{command}' con valor '{value}': {e}")
-            return jsonify({"status": "error", "message": f"Valor inválido para el comando '{command}': {e}"}), 400
+            logger.error(
+                f"Error procesando comando '{command}' con valor '{value}': {e}"
+            )
+            return jsonify(
+                {
+                    "status": "error",
+                    "message": f"Valor inválido para el comando '{command}': {e}",
+                }
+            ), 400
 
     logger.info(f"Comando '{command}' ejecutado. Mensaje: {message}")
     return jsonify({"status": "success", "message": message})
 
 
 # --- Punto de Entrada Principal ---
+
 
 def main():
     """Inicializa y ejecuta el microservicio del pistón.
@@ -1343,7 +1457,7 @@ def main():
             elasticity=config.elasticity,
             damping=config.damping,
             piston_mass=config.mass,
-            friction_model=config.friction_model
+            friction_model=config.friction_model,
         )
         logger.info("Instancia global de AtomicPiston creada exitosamente.")
     except ValueError as e:
@@ -1355,7 +1469,10 @@ def main():
     hostname = os.environ.get("HOSTNAME", module_name)
     module_url = f"http://{hostname}:{config.service_port}"
     health_url = f"{module_url}/api/health"
-    description = "Microservicio que simula una Unidad de Potencia Inteligente (IPU) y expone una API para su control."
+    description = (
+        "Microservicio que simula una Unidad de Potencia Inteligente (IPU) y "
+        "expone una API para su control."
+    )
 
     registration_successful = register_with_agent_ai(
         module_name, module_url, health_url, description
@@ -1366,15 +1483,15 @@ def main():
     # --- 4. Iniciar el hilo de simulación ---
     stop_simulation_event.clear()
     simulation_thread = threading.Thread(
-        target=simulation_loop,
-        daemon=True,
-        name="PistonSimLoop"
+        target=simulation_loop, daemon=True, name="PistonSimLoop"
     )
     simulation_thread.start()
     logger.info("Hilo de simulación del pistón iniciado.")
 
     # --- 5. Iniciar el servidor Flask ---
-    logger.info(f"Iniciando servidor Flask de Atomic Piston en http://0.0.0.0:{config.service_port}")
+    logger.info(
+        f"Iniciando servidor Flask de Atomic Piston en http://0.0.0.0:{config.service_port}"
+    )
     app.run(host="0.0.0.0", port=config.service_port, debug=False, use_reloader=False)
 
 

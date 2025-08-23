@@ -19,8 +19,8 @@ class LIATransformer:
     def __init__(self, dimensions, subspace_mapping):
         self.dimensions = dimensions
         # Matriz diagonal por bloques para ortogonalidad
-        self.transformation_matrix = (
-            self._create_block_diagonal_matrix(subspace_mapping)
+        self.transformation_matrix = self._create_block_diagonal_matrix(
+            subspace_mapping
         )
         self.subspaces = subspace_mapping
 
@@ -44,7 +44,7 @@ class LIATransformer:
             raise ValueError("Dimensionalidad del vector incorrecta")
         transformed = np.dot(self.transformation_matrix, vector)
         # Normalizar por subespacio
-        for name, subspace in self.subspaces.items():
+        for _name, subspace in self.subspaces.items():
             subspace_norm = np.linalg.norm(transformed[subspace])
             if subspace_norm > 0:
                 transformed[subspace] /= subspace_norm
@@ -54,8 +54,6 @@ class LIATransformer:
         """Escalabilidad: Añade nuevas dimensiones al espacio"""
         new_total = self.dimensions + new_dimensions
         new_matrix = np.zeros((new_total, new_total))
-        new_matrix[:self.dimensions, :self.dimensions] = (
-            self.transformation_matrix
-        )
+        new_matrix[: self.dimensions, : self.dimensions] = self.transformation_matrix
         self.dimensions = new_total
         self.transformation_matrix = new_matrix

@@ -19,9 +19,10 @@ Variables de entorno:
 
 import os
 import time
+
 import requests
-from simple_pid import PID
 from flask import Flask, jsonify
+from simple_pid import PID
 
 # Configuración de parámetros a partir de variables de entorno
 CONTROL_INTERVAL = float(os.getenv("CONTROL_INTERVAL", "30"))
@@ -82,7 +83,7 @@ def calculate_entropy():
     Una entropía de 0 indica que todos los servicios están operativos.
     """
     failures = 0
-    for name, url in SERVICES.items():
+    for _name, url in SERVICES.items():
         if not fetch_health(url):
             failures += 1
     return float(failures)
@@ -94,9 +95,7 @@ def send_control_signal(signal):
     """
     try:
         payload = {"control_signal": signal}
-        response = requests.post(
-            AGENT_AI_CONTROL_ENDPOINT, json=payload, timeout=5
-        )
+        response = requests.post(AGENT_AI_CONTROL_ENDPOINT, json=payload, timeout=5)
         response.raise_for_status()
         print(f"[Cogniboard] Señal enviada: {signal}")
     except Exception as e:

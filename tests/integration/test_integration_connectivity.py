@@ -1,17 +1,17 @@
 # --- START OF FILE tests/integration/test_integration_connectivity.py ---
 
-import pytest
-import requests
+import json
+import logging
 import os
 import time  # Necesario para time.sleep
-import logging
-import json
+
+import pytest
+import requests
 
 # Configurar logging para pruebas de integración
 # Esto ayuda a ver qué URLs se están intentando y las respuestas
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -22,9 +22,7 @@ logger = logging.getLogger(__name__)
 # accesibles desde donde ejecutas pytest.
 ECU_URL = os.environ.get("TEST_ECU_URL", "http://localhost:8000")
 MALLA_URL = os.environ.get("TEST_MALLA_URL", "http://localhost:5001")
-HARMONY_CONTROLLER_URL = os.environ.get(
-    "TEST_HC_URL", "http://localhost:7000"
-)
+HARMONY_CONTROLLER_URL = os.environ.get("TEST_HC_URL", "http://localhost:7000")
 AGENT_AI_URL = os.environ.get("TEST_AGENT_AI_URL", "http://localhost:9000")
 
 # Configuración para reintentos en health checks
@@ -53,8 +51,7 @@ def check_service_health(service_name, url):
             elif "malla" in url.lower():
                 state_endpoint += "/api/malla/state"
             # Acepta hc o harmony_controller en la URL para el endpoint de HC
-            elif "harmony_controller" in url.lower() or \
-                 "hc" in url.lower():
+            elif "harmony_controller" in url.lower() or "hc" in url.lower():
                 state_endpoint += "/api/harmony/state"
             elif "agent_ai" in url.lower():
                 state_endpoint += "/api/state"
@@ -62,17 +59,14 @@ def check_service_health(service_name, url):
                 # Endpoint por defecto si no se reconoce el nombre en la URL
                 state_endpoint += "/api/state"
 
-            response = requests.get(state_endpoint,
-                                    timeout=HEALTH_CHECK_TIMEOUT)
+            response = requests.get(state_endpoint, timeout=HEALTH_CHECK_TIMEOUT)
             # Lanza excepción para códigos de status 4xx/5xx
             response.raise_for_status()
             data = response.json()
 
             # Verifica si el servicio reporta estar saludable
             if data.get("is_healthy", False):
-                logger.info(
-                    f"{service_name} saludable. Estado reportado: {data}"
-                )
+                logger.info(f"{service_name} saludable. Estado reportado: {data}")
                 return True, data
             else:
                 # Si responde 200 pero is_healthy es False, reintentar
@@ -99,7 +93,7 @@ def check_service_health(service_name, url):
             )
         except json.JSONDecodeError:
             # Guardar response.text si existe para el log
-            response_text = response.text if 'response' in locals() else "N/A"
+            response_text = response.text if "response" in locals() else "N/A"
             logger.warning(
                 f"Respuesta de {service_name} no es JSON válido. URL: "
                 f"{state_endpoint}, Respuesta: {response_text}. Intento "
@@ -147,16 +141,13 @@ def test_ecu_is_accessible_and_healthy():
     is_healthy, data = check_service_health("Matriz ECU", ECU_URL)
 
     assert is_healthy, (
-        "Matriz ECU no saludable/accesible tras reintentos. "
-        "Última resp.:\n"
-        f"    {data}"
+        f"Matriz ECU no saludable/accesible tras reintentos. Última resp.:\n    {data}"
     )
 
     logger.info("Verificando estructura del estado de Matriz ECU...")
 
     assert "data" in data, (
-        f"Respuesta de {ECU_URL}/api/ecu/state no contiene 'data'. "
-        f"Respuesta: {data}"
+        f"Respuesta de {ECU_URL}/api/ecu/state no contiene 'data'. Respuesta: {data}"
     )
     ecu_state_data = data["data"]
 
@@ -213,8 +204,7 @@ def test_ecu_is_accessible_and_healthy():
                     f"{len(matrix_list[0][0][0])}. Datos: {ecu_state_data}"
                 )
                 assert all(
-                    isinstance(val, (int, float))
-                    for val in matrix_list[0][0][0]
+                    isinstance(val, (int, float)) for val in matrix_list[0][0][0]
                 ), (
                     f"Elementos del vector [vx, vy] no son números. "
                     f"Vector: {matrix_list[0][0][0]}. Datos: {ecu_state_data}"
@@ -230,18 +220,14 @@ def test_ecu_is_accessible_and_healthy():
             f"Valor: {matrix_list[0][0][0][1]}. Datos: {ecu_state_data}"
         )
 
-    logger.info(
-        "Verificación de estructura y estado inicial de Matriz ECU PASADA."
-    )
+    logger.info("Verificación de estructura y estado inicial de Matriz ECU PASADA.")
 
 
 @pytest.mark.real_integration
 def test_malla_watcher_is_accessible_and_healthy():
     """Verificar que Malla Watcher es accesible y reporta salud."""
     is_healthy, data = check_service_health("Malla Watcher", MALLA_URL)
-    assert is_healthy, (
-        f"Malla Watcher no saludable/accesible. Última resp: {data}"
-    )
+    assert is_healthy, f"Malla Watcher no saludable/accesible. Última resp: {data}"
     # Opcional: Aserciones específicas sobre Malla
     # assert data.get("details", {}).get("mesh", {}) \
     # .get("initialized") is True, "La malla no está inicializada"
@@ -257,9 +243,7 @@ def test_harmony_controller_is_accessible_and_healthy():
     is_healthy, data = check_service_health(
         "Harmony Controller", HARMONY_CONTROLLER_URL
     )
-    assert is_healthy, (
-        f"Harmony Controller no saludable/accesible. Última resp: {data}"
-    )
+    assert is_healthy, f"Harmony Controller no saludable/accesible. Última resp: {data}"
     # Opcional: Aserciones específicas sobre HC
     # assert data.get("control_loop_running") is True, \
     # "Bucle de control de HC no corre"
@@ -269,11 +253,10 @@ def test_harmony_controller_is_accessible_and_healthy():
 def test_agent_ai_is_accessible_and_healthy():
     """Verificar que Agent AI es accesible y reporta salud."""
     is_healthy, data = check_service_health("Agent AI", AGENT_AI_URL)
-    assert is_healthy, (
-        f"Agent AI no saludable/accesible. Última resp: {data}"
-    )
+    assert is_healthy, f"Agent AI no saludable/accesible. Última resp: {data}"
     # Opcional: Aserciones específicas sobre AgentAI
     # assert data.get("status") == "success", \
     # "Agent AI no reporta estado success"
+
 
 # --- END OF FILE tests/integration/test_integration_connectivity.py ---
