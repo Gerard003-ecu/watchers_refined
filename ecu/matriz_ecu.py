@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
-"""Módulo que define la matriz ECU (Experiencia de Campo Unificado).
+"""Módulo que define la simulación de un campo cimático.
 
-Este módulo modela un campo de confinamiento magnético toroidal (tipo Tokamak)
-y la dinámica de los watchers dentro de él.
+Este módulo modela un campo cimático en una topología toroidal. La dinámica
+de las ondas en este campo se rige por principios de propagación, disipación
+e interferencia, inspirados en el estudio de la cimática (la visualización
+de ondas y vibraciones).
 
-El campo es un campo vectorial 2D en una grilla 3D toroidal, donde cada punto
-almacena un vector [vx, vy] que representa componentes de la densidad de flujo
-magnético (B).
-La interpretación exacta de vx y vy en términos de direcciones físicas
-(toroidal, poloidal, radial) se puede definir conceptualmente por analogía.
-Por ejemplo:
-vx es la componente toroidal de B.
-vy es la componente poloidal (vertical) de B.
-La dimensión de la "capa" podría representar la dirección radial.
+El campo es un campo escalar complejo en una grilla 3D toroidal, donde cada
+punto (capa, fila, columna) almacena un número complejo que representa
+la amplitud y fase de una onda local. La dinámica simula la evolución de
+este campo de ondas.
 
 Proporciona una API REST para:
-- Obtener el estado unificado del campo.
-- Recibir influencias externas (perturbaciones).
+- Obtener un mapa de densidad de energía del campo.
+- Recibir influencias externas (perturbaciones de onda).
 - Monitorear la salud del servicio.
 
 Una simulación en segundo plano actualiza continuamente la dinámica del campo.
@@ -33,10 +30,6 @@ import numpy as np
 from flask import Flask, jsonify, request
 
 # --- Configuración del Logging ---
-# El logger se configura dentro de main() para ser compatible con contenedores.
-# A nivel global, solo obtenemos la instancia del logger.
-# Los logs emitidos antes de que main() configure el logger (ej. warnings de
-# get_env_*) usarán la configuración por defecto de logging (a stderr).
 logger = logging.getLogger("matriz_ecu")
 
 # --- Funciones Auxiliares para Configuración ---
@@ -66,27 +59,26 @@ def get_env_float(var_name: str, default: float) -> float:
         return default
 
 
-# --- Constantes Configurables para el Campo Toroidal ---
+# --- Constantes Configurables para el Campo Cimático ---
 NUM_CAPAS = get_env_int("ECU_NUM_CAPAS", 3)
 NUM_FILAS = get_env_int("ECU_NUM_FILAS", 4)
 NUM_COLUMNAS = get_env_int("ECU_NUM_COLUMNAS", 5)
-DEFAULT_ALPHA_VALUE = get_env_float("ECU_DEFAULT_ALPHA", 0.5)
-DEFAULT_DAMPING_VALUE = get_env_float("ECU_DEFAULT_DAMPING", 0.05)
+DEFAULT_PROPAGATION_COEFF = get_env_float("ECU_DEFAULT_ALPHA", 0.5)
+DEFAULT_DISSIPATION_COEFF = get_env_float("ECU_DEFAULT_DAMPING", 0.05)
 SIMULATION_INTERVAL = get_env_float("ECU_SIM_INTERVAL", 1.0)
 BETA_COUPLING = get_env_float("ECU_BETA_COUPLING", 0.1)
 
 
 class ToroidalField:
     """
-    Representa un campo de confinamiento magnético toroidal discreto.
+    Representa un campo de ondas cimáticas en una topología toroidal.
 
     El campo se modela en una grilla 3D (capas x filas x columnas).
-    Cada punto de la grilla (capa, fila, columna) almacena un vector 2D
-    [vx, vy], interpretado como componentes locales de la densidad de
-    flujo magnético (B).
+    Cada punto de la grilla almacena un número complejo que representa
+    la amplitud y fase de la onda en ese punto.
     La dinámica simula la evolución de este campo bajo efectos de
-    advección/rotación, acoplamiento vertical y disipación, inspirada
-    en la física de plasmas confinados.
+    propagación de onda, acoplamiento entre capas y disipación de energía,
+    análogo a la Ecuación de Onda en un medio con disipación.
     """
 
     def __init__(
@@ -94,25 +86,22 @@ class ToroidalField:
         num_capas: int,
         num_rows: int,
         num_cols: int,
-        alphas: Optional[List[float]] = None,
-        dampings: Optional[List[float]] = None,
+        propagation_coeffs: Optional[List[float]] = None,
+        dissipation_coeffs: Optional[List[float]] = None,
     ):
         """
-        Inicializa el campo toroidal con dimensiones y parámetros por capa.
+        Inicializa el campo cimático con dimensiones y parámetros físicos por capa.
 
         Args:
-            num_capas (int): Número de capas (dimensión radial/profundidad).
-            num_rows (int): Número de filas (dimensión poloidal/vertical).
-            num_cols (int): Número de columnas (dimensión toroidal/azimutal).
-            alphas (Optional[List[float]]): Coeficientes de
-                                            advección/rotación por capa.
-                                            Relacionado con la dinámica
-                                            toroidal del campo.
-            dampings (Optional[List[float]]): Coeficientes de
-                                              disipación/amortiguación
-                                              por capa. Relacionado con la
-                                              pérdida de intensidad del
-                                              campo local.
+            num_capas (int): Número de capas (dimensión de profundidad).
+            num_rows (int): Número de filas (dimensión vertical).
+            num_cols (int): Número de columnas (dimensión azimutal).
+            propagation_coeffs (Optional[List[float]]): Coeficientes de
+                propagación de la onda por capa. Controla la velocidad
+                con que la fase de la onda evoluciona.
+            dissipation_coeffs (Optional[List[float]]): Coeficientes de
+                disipación de la onda por capa. Controla la pérdida
+                de energía (amplitud) de la onda.
         """
         if num_capas <= 0 or num_rows <= 0 or num_cols <= 0:
             raise ValueError(
@@ -128,21 +117,37 @@ class ToroidalField:
         ]
         self.lock = threading.Lock()
 
-        if alphas and len(alphas) != num_capas:
-            raise ValueError(f"La lista 'alphas' debe tener longitud {num_capas}")
-        self.alphas = alphas if alphas else [DEFAULT_ALPHA_VALUE] * num_capas
+        if propagation_coeffs and len(propagation_coeffs) != num_capas:
+            raise ValueError(
+                f"La lista 'propagation_coeffs' debe tener longitud {num_capas}"
+            )
+        self.propagation_coeffs = (
+            propagation_coeffs
+            if propagation_coeffs
+            else [DEFAULT_PROPAGATION_COEFF] * num_capas
+        )
 
-        if dampings and len(dampings) != num_capas:
-            raise ValueError(f"La lista 'dampings' debe tener longitud {num_capas}")
-        self.dampings = dampings if dampings else [DEFAULT_DAMPING_VALUE] * num_capas
+        if dissipation_coeffs and len(dissipation_coeffs) != num_capas:
+            raise ValueError(
+                f"La lista 'dissipation_coeffs' debe tener longitud {num_capas}"
+            )
+        self.dissipation_coeffs = (
+            dissipation_coeffs
+            if dissipation_coeffs
+            else [DEFAULT_DISSIPATION_COEFF] * num_capas
+        )
 
-        if not alphas:
-            logger.info("Usando alpha por defecto para todas las capas.")
-        if not dampings:
-            logger.info("Usando damping por defecto para todas las capas.")
+        if not propagation_coeffs:
+            logger.info(
+                "Usando coeficiente de propagación por defecto para todas las capas."
+            )
+        if not dissipation_coeffs:
+            logger.info(
+                "Usando coeficiente de disipación por defecto para todas las capas."
+            )
 
         logger.info(
-            "Campo toroidal inicializado: %d capas, dims=%dx%d",
+            "Campo cimático toroidal inicializado: %d capas, dims=%dx%d",
             self.num_capas,
             self.num_rows,
             self.num_cols,
@@ -152,22 +157,21 @@ class ToroidalField:
         self, capa: int, row: int, col: int, vector: complex, nombre_watcher: str
     ) -> bool:
         """
-        Aplica una influencia externa (vector 2D) a un punto específico
-        del campo.
+        Aplica una influencia externa (perturbación de onda) a un punto
+        específico del campo.
 
         Esto simula una perturbación localizada o una inyección de
-        energía/flujo en la grilla toroidal por parte de un watcher.
+        energía/amplitud en la grilla por parte de un watcher.
 
         Args:
             capa (int): Índice de la capa (0 a num_capas-1).
             row (int): Índice de la fila (0 a num_rows-1).
             col (int): Índice de la columna (0 a num_cols-1).
-            vector (complex): Número complejo que representa la influencia.
+            vector (complex): Número complejo que representa la influencia (amplitud y fase).
             nombre_watcher (str): Nombre del watcher que aplica la influencia.
 
         Returns:
-            bool: True si la influencia se aplicó correctamente,
-                  False en caso contrario.
+            bool: True si la influencia se aplicó correctamente, False en caso contrario.
         """
         if not (0 <= capa < self.num_capas):
             logger.error(
@@ -221,7 +225,7 @@ class ToroidalField:
             return True
         except Exception:
             logger.exception(
-                "Error inesperado al aplicar influenciade '%s' en (%d, %d, %d)",
+                "Error inesperado al aplicar influencia de '%s' en (%d, %d, %d)",
                 nombre_watcher,
                 capa,
                 row,
@@ -235,8 +239,6 @@ class ToroidalField:
         (arriba, abajo, izquierda, derecha) de un nodo, aplicando
         conectividad toroidal.
         """
-        # Versión NumPy-like, aunque para 4 vecinos la diferencia es mínima.
-        # Muestra un estilo de código más vectorizado.
         rows = np.array([row - 1, row + 1, row, row]) % self.num_rows
         cols = np.array([col, col, col - 1, col + 1]) % self.num_cols
         return list(zip(rows, cols, strict=False))
@@ -244,13 +246,13 @@ class ToroidalField:
     def calcular_gradiente_adaptativo(self) -> np.ndarray:
         """
         Calcula el gradiente adaptativo (diferencia de magnitud) entre
-        capas de confinamiento adyacentes. Puede interpretarse como una
-        medida de la "tensión" o "shear" del campo entre capas.
+        capas adyacentes. Puede interpretarse como una medida de la
+        "tensión" o "interferencia" entre capas de ondas.
         """
         if self.num_capas < 2:
             logger.warning(
                 "Se necesita al menos 2 capas para calcular el "
-                "gradiente de confinamiento."
+                "gradiente entre capas."
             )
             return np.array([])
 
@@ -265,50 +267,49 @@ class ToroidalField:
             magnitud_diferencia = np.abs(diferencia_vectorial)
             gradiente_entre_capas[i] = magnitud_diferencia
         logger.debug(
-            "Gradiente de confinamiento entre capas calculado "
+            "Gradiente entre capas calculado "
             f"(shape: {gradiente_entre_capas.shape})"
         )
         return gradiente_entre_capas
 
-    def obtener_campo_unificado(self) -> np.ndarray:
+    def get_energy_density_map(self) -> np.ndarray:
         """
-        Genera un mapa escalar unificado (num_rows x num_cols) ponderado
-        por capa.
+        Genera un mapa de "densidad de energía", análogo a los patrones
+        visibles en los experimentos de cimática.
 
-        Este mapa representa la intensidad o magnitud agregada del campo
-        vectorial en cada ubicación (fila, columna) a través de las capas.
-        Puede interpretarse como una medida de la "densidad de energía" o
-        "turbulencia" local del campo. Las capas más internas (índices bajos)
-        suelen tener mayor peso.
+        Este mapa representa la energía agregada de la onda (amplitud al cuadrado)
+        en cada ubicación (fila, columna) a través de las capas. Las capas
+        más internas (índices bajos) suelen tener mayor peso en la ponderación.
 
         Returns:
-            np.ndarray: Array 2D (num_rows x num_cols) del campo unificado.
+            np.ndarray: Array 2D (num_rows x num_cols) del mapa de densidad de energía.
         """
         pesos = (
             np.linspace(1.0, 0.5, self.num_capas)
             if self.num_capas > 1
             else np.array([1.0])
         )
-        campo_unificado = np.zeros((self.num_rows, self.num_cols))
+        energy_density_map = np.zeros((self.num_rows, self.num_cols))
         with self.lock:
             campo_copia = [np.copy(capa) for capa in self.campo_q]
 
         for i, capa_actual in enumerate(campo_copia):
-            magnitud_capa = np.abs(capa_actual)
-            campo_unificado += pesos[i] * magnitud_capa
-        return campo_unificado
+            # La energía es proporcional a la amplitud al cuadrado
+            magnitud_capa = np.abs(capa_actual) ** 2
+            energy_density_map += pesos[i] * magnitud_capa
+        return energy_density_map
 
-    def apply_rotational_step(self, dt: float, beta: float):
+    def apply_wave_dynamics_step(self, dt: float, beta: float):
         """
-        Aplica un paso de simulación (método numérico discreto) para la
-        dinámica del campo vectorial toroidal de forma vectorizada.
+        Simula la dinámica de la onda (advección, acoplamiento, disipación),
+        análoga a la Ecuación de Onda en un medio.
 
         Esta dinámica simula:
-        1. Advección/Rotación en la dirección toroidal (columnas),
-           controlada por `alpha` (por capa).
-        2. Acoplamiento/Transporte vertical (entre filas),
-           controlado por `beta`.
-        3. Disipación/Decaimiento local, controlada por `damping` (por capa).
+        1. Advección/Propagación de la onda en la dirección azimutal (columnas),
+           controlada por `propagation_coeffs` (por capa).
+        2. Acoplamiento/Transporte vertical (entre filas), controlado por `beta`.
+        3. Disipación de energía (decaimiento de amplitud), controlada por
+           `dissipation_coeffs` (por capa).
         """
         if beta < 0:
             logger.warning(
@@ -317,9 +318,13 @@ class ToroidalField:
 
         with self.lock:
             next_campo = []
-            # Pre-calcular arrays de alphas y dampings para broadcasting
-            alphas_array = np.array(self.alphas)[:, np.newaxis, np.newaxis]
-            dampings_array = np.array(self.dampings)[:, np.newaxis, np.newaxis]
+            # Pre-calcular arrays para broadcasting
+            propagation_coeffs_array = np.array(self.propagation_coeffs)[
+                :, np.newaxis, np.newaxis
+            ]
+            dissipation_coeffs_array = np.array(self.dissipation_coeffs)[
+                :, np.newaxis, np.newaxis
+            ]
 
             for capa_idx in range(self.num_capas):
                 capa_actual = self.campo_q[capa_idx]
@@ -330,21 +335,23 @@ class ToroidalField:
                 v_down = np.roll(capa_actual, shift=-1, axis=0)
 
                 # Cálculo vectorizado para toda la capa
-                damped = capa_actual * (1.0 - dampings_array[capa_idx] * dt)
-                advected = alphas_array[capa_idx] * v_left * dt
+                damped = capa_actual * (1.0 - dissipation_coeffs_array[capa_idx] * dt)
+                advected = propagation_coeffs_array[capa_idx] * v_left * dt
                 coupled = beta * (v_up + v_down) * dt
 
                 next_campo.append(damped + advected + coupled)
 
             self.campo_q = next_campo
 
-    def set_initial_quantum_phase(self, seed: Optional[int] = None):
+    def set_uniform_potential_field(self, seed: Optional[int] = None):
         """
-        Inicializa la fase cuántica del campo a un estado aleatorio.
+        Inicializa el campo a un estado de potencial uniforme (magnitud 1)
+        con fases aleatorias.
 
-        Asigna a cada nodo (c, r, c) un estado cuántico inicial en el
-        círculo unitario con una fase aleatoria, resultando en un
-        número complejo `e^(i * random_angle)`.
+        Asigna a cada nodo del campo un estado en el círculo unitario con una
+        fase aleatoria, resultando en un número complejo `e^(i * random_angle)`.
+        Esto representa un estado de energía potencial uniforme pero sin
+        coherencia de fase.
 
         Args:
             seed (Optional[int]): Semilla para el generador de números
@@ -358,62 +365,54 @@ class ToroidalField:
                 )
                 self.campo_q[capa_idx] = np.exp(1j * random_angles)
 
-    def apply_quantum_step(self, dt: float):
+    def apply_internal_phase_evolution(self, dt: float):
         """
-        Aplica un paso de evolución cuántica discreta al campo de forma
-        vectorizada.
+        Simula la evolución intrínseca de la fase del medio.
 
-        Este método simula la evolución de la fase de cada estado cuántico
-        en la grilla bajo un Hamiltoniano simple. La evolución sigue la
-        ecuación de Schrödinger para un paso de tiempo `dt`.
+        Este método simula la evolución de la fase de cada punto del campo
+        según sus propiedades locales. La evolución sigue la ecuación de
+        Schrödinger para un paso de tiempo `dt` con un Hamiltoniano simple.
 
-        La transformación es: |ψ(t+dt)> = e^(-i * α * dt) * |ψ(t)>,
-        donde α es un coeficiente específico de la capa.
+        La transformación es: ψ(t+dt) = e^(-i * prop_coeff * dt) * ψ(t),
+        donde `prop_coeff` es el coeficiente de propagación de la capa.
 
         Args:
             dt (float): El paso de tiempo para la evolución.
         """
         with self.lock:
-            # Convertir alphas a array NumPy para broadcasting
-            alphas_array = np.array(self.alphas)  # Shape (num_capas,)
+            # Convertir propagation_coeffs a array NumPy para broadcasting
+            propagation_coeffs_array = np.array(self.propagation_coeffs)
             # Calcular el cambio de fase para todas las capas a la vez
-            # np.newaxis agrega dimensiones para que se broadcastee
-            # con las dimensiones (rows, cols)
-            phase_changes = np.exp(-1j * alphas_array[:, np.newaxis, np.newaxis] * dt)
+            phase_changes = np.exp(
+                -1j * propagation_coeffs_array[:, np.newaxis, np.newaxis] * dt
+            )
 
             # Aplicar el cambio de fase a todas las capas
-            # Esto funciona porque campo_q es una lista de arrays 2D
             for i in range(self.num_capas):
                 self.campo_q[i] *= phase_changes[i]
 
 
 # --- Instancia Global y Lógica de Simulación ---
-# La instancia `campo_toroidal_global` y el evento `stop_event`
-# fueron eliminados por ser redundantes o no utilizados.
 try:
     # Usar las constantes globales para la instancia del servicio
     campo_toroidal_global_servicio = ToroidalField(
         num_capas=NUM_CAPAS,
         num_rows=NUM_FILAS,
         num_cols=NUM_COLUMNAS,
-        alphas=None,  # Usará los defaults internos basados en num_capas
-        dampings=None,  # Usará los defaults internos basados en num_capas
+        propagation_coeffs=None,  # Usará los defaults internos
+        dissipation_coeffs=None,  # Usará los defaults internos
     )
-    logger.info(
-        "Aplicando influencias iniciales al campo de confinamiento global (servicio)..."
-    )
+    logger.info("Aplicando influencias iniciales al campo cimático global...")
     campo_toroidal_global_servicio.aplicar_influencia(
         capa=0, row=1, col=2, vector=complex(1.0, 0.5), nombre_watcher="watcher_init_1"
     )
     campo_toroidal_global_servicio.aplicar_influencia(
         capa=2, row=3, col=0, vector=complex(0.2, -0.1), nombre_watcher="watcher_init_2"
     )
-    logger.info("Influencias iniciales aplicadas al campo global (servicio).")
+    logger.info("Influencias iniciales aplicadas al campo cimático global.")
 
 except ValueError:
-    logger.exception(
-        "Error crítico al inicializar ToroidalField global (servicio). Terminando."
-    )
+    logger.exception("Error crítico al inicializar ToroidalField global. Terminando.")
     exit(1)
 except Exception as e:
     logger.exception(f"Error inesperado durante la inicialización del servicio: {e}")
@@ -425,27 +424,21 @@ simulation_thread = None
 stop_simulation_event = threading.Event()
 
 
-def simulation_loop(dt: float, beta: float):
-    """Bucle que ejecuta la simulación dinámica periódicamente."""
-    logger.info(f"Iniciando bucle de simulación ECU con dt={dt}, beta={beta}...")
-    # Removed duplicated inner function definition.
-    # The loop now correctly belongs to the outer simulation_loop function.
-    # Also corrected stop_event to
-    # stop_simulation_event and campo_toroidal_global
-    # to campo_toroidal_global_servicio for
-    # consistency with the rest of the module.
+def cymatic_simulation_loop(dt: float, beta: float):
+    """Bucle que ejecuta la simulación de la dinámica cimática periódicamente."""
+    logger.info(f"Iniciando bucle de simulación cimática con dt={dt}, beta={beta}...")
     while not stop_simulation_event.is_set():
         try:
             start_time = time.monotonic()
-            campo_toroidal_global_servicio.apply_rotational_step(dt, beta)
-            campo_toroidal_global_servicio.apply_quantum_step(dt)
+            campo_toroidal_global_servicio.apply_wave_dynamics_step(dt, beta)
+            campo_toroidal_global_servicio.apply_internal_phase_evolution(dt)
             elapsed = time.monotonic() - start_time
             sleep_time = max(0, dt - elapsed)
             stop_simulation_event.wait(sleep_time)
         except Exception as e:
-            logger.error(f"Error en el bucle de simulación: {e}", exc_info=True)
-            # Opcional: esperar un poco antes de reintentar para
-            # evitar un bucle de error rápido
+            logger.error(
+                f"Error en el bucle de simulación cimática: {e}", exc_info=True
+            )
             stop_simulation_event.wait(5)
 
 
@@ -453,41 +446,36 @@ def simulation_loop(dt: float, beta: float):
 app = Flask(__name__)
 
 
-# ... (Endpoints /api/health, /api/ecu, /api/ecu/influence
-# sin cambios funcionales) ...
 @app.route("/api/health", methods=["GET"])
 def health_check():
     """
-    Verifica la salud del servicio ECU (Experiencia de Campo Unificado).
+    Verifica la salud del servicio de simulación cimática.
 
-    Incluye el estado de inicialización del campo toroidal y el hilo
-    de simulación.
+    Incluye el estado de inicialización del campo y el hilo de simulación.
     """
     sim_alive = simulation_thread.is_alive() if simulation_thread else False
     service_ready = campo_toroidal_global_servicio and hasattr(
         campo_toroidal_global_servicio, "num_capas"
     )
-    status_code = 503  # Service Unavailable por defecto
+    status_code = 503
     response = {
         "status": "error",
-        "message": "Servicio ECU no completamente inicializado.",
+        "message": "Servicio de simulación no completamente inicializado.",
         "simulation_running": sim_alive,
         "field_initialized": service_ready,
     }
 
     if service_ready and sim_alive:
         response["status"] = "success"
-        response["message"] = "Servicio ECU saludable y simulación activa."
+        response["message"] = "Servicio de simulación cimática saludable y activo."
         status_code = 200
     elif service_ready and not sim_alive:
         response["status"] = "warning"
-        response["message"] = (
-            "Servicio ECU inicializado pero la simulación no está activa."
-        )
-        status_code = 503  # O 200 con warning, depende de la criticidad
+        response["message"] = "Servicio inicializado pero la simulación no está activa."
+        status_code = 503
     elif not service_ready:
         response["message"] = "Error: Objeto ToroidalField no inicializado."
-        status_code = 500  # Internal server error
+        status_code = 500
 
     logger.debug(f"Health check: {response}")
     return jsonify(response), status_code
@@ -496,53 +484,42 @@ def health_check():
 @app.route("/api/ecu", methods=["GET"])
 def obtener_estado_unificado_api() -> Tuple[Any, int]:
     """
-    Endpoint REST para obtener el mapa escalar unificado del campo toroidal.
+    Endpoint REST para obtener el mapa de densidad de energía del campo cimático.
 
-    Retorna un array 2D (filas x columnas) que representa la intensidad
-    agregada del campo vectorial en cada punto, ponderada por capa.
+    Retorna un array 2D (filas x columnas) que representa la energía
+    agregada de la onda en cada punto, ponderada por capa.
     """
     try:
-        campo_unificado = campo_toroidal_global_servicio.obtener_campo_unificado()
-        # SOLUCIÓN E501: Se formatea el diccionario para mayor legibilidad.
+        energy_map = campo_toroidal_global_servicio.get_energy_density_map()
         response_data = {
             "status": "success",
-            "estado_campo_unificado": campo_unificado.tolist(),
+            "energy_density_map": energy_map.tolist(),
             "metadata": {
-                "descripcion": (
-                    "Mapa de intensidad del campo toroidal ponderado por capa"
-                ),
+                "descripcion": "Mapa de densidad de energía del campo cimático ponderado por capa",
                 "capas": campo_toroidal_global_servicio.num_capas,
                 "filas": campo_toroidal_global_servicio.num_rows,
                 "columnas": campo_toroidal_global_servicio.num_cols,
             },
         }
+        logger.info("Mapa de densidad de energía calculado y enviado.")
         return jsonify(response_data), 200
     except Exception as e:
         logger.exception("Error en endpoint /api/ecu: %s", e)
-        return jsonify(
-            {
-                "status": "error",
-                "message": "Error interno del servidor al obtener estado unificado.",
-            }
-        ), 500
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "Error interno del servidor al obtener el mapa de energía.",
+                }
+            ),
+            500,
+        )
 
 
 def _validate_and_parse_influence_payload(
     data: Optional[Dict[str, Any]],
 ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[Any, int]]]:
-    """Valida y parsea el payload de la solicitud de influencia.
-
-    Args:
-        data: El diccionario JSON de la solicitud.
-
-    Returns:
-        Una tupla `(parsed_data, error_response)`.
-        Si la validación es exitosa, `parsed_data` contiene los datos
-        validados y `error_response` es `None`.
-        Si la validación falla, `parsed_data` es `None` y `error_response`
-        contiene una tupla `(response_json, status_code)` para ser
-        retornada por el endpoint.
-    """
+    """Valida y parsea el payload de la solicitud de influencia."""
     if not data:
         return None, (
             jsonify({"status": "error", "message": "Payload JSON vacío o ausente"}),
@@ -614,16 +591,10 @@ def _validate_and_parse_influence_payload(
 
 @app.route("/api/ecu/influence", methods=["POST"])
 def recibir_influencia_malla() -> Tuple[Any, int]:
-    """Recibe y aplica una influencia externa al campo toroidal.
+    """Recibe y aplica una influencia externa (perturbación) al campo cimático.
 
-    Espera un payload JSON con 'capa', 'row', 'col', 'vector' (lista 2D),
+    Espera un payload JSON con 'capa', 'row', 'col', 'vector' ([real, imag]),
     y 'nombre_watcher'.
-
-    Returns:
-        Una tupla de respuesta JSON y código de estado HTTP.
-        - 200 OK: Si la influencia se aplicó con éxito.
-        - 400 Bad Request: Si el payload es inválido o faltan campos.
-        - 500 Internal Server Error: Si ocurre un error inesperado.
     """
     logger.info("Solicitud POST /api/ecu/influence recibida.")
     try:
@@ -649,53 +620,60 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
                 parsed_data["row"],
                 parsed_data["col"],
             )
-            return jsonify(
-                {
-                    "status": "success",
-                    "message": (
-                        f"Influencia de '{parsed_data['nombre_watcher']}' " "aplicada."
-                    ),
-                    "applied_to": {
-                        "capa": parsed_data["capa"],
-                        "row": parsed_data["row"],
-                        "col": parsed_data["col"],
-                    },
-                    "vector": [
-                        parsed_data["vector_complex"].real,
-                        parsed_data["vector_complex"].imag,
-                    ],
-                }
-            ), 200
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": (
+                            f"Influencia de '{parsed_data['nombre_watcher']}' "
+                            "aplicada."
+                        ),
+                        "applied_to": {
+                            "capa": parsed_data["capa"],
+                            "row": parsed_data["row"],
+                            "col": parsed_data["col"],
+                        },
+                        "vector": [
+                            parsed_data["vector_complex"].real,
+                            parsed_data["vector_complex"].imag,
+                        ],
+                    }
+                ),
+                200,
+            )
         else:
-            # Este caso puede ser redundante si _validate_... es exhaustivo
-            return jsonify(
-                {
-                    "status": "error",
-                    "message": "Error de validación interno al aplicar influencia.",
-                }
-            ), 400
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Error de validación interno al aplicar influencia.",
+                    }
+                ),
+                400,
+            )
 
     except Exception as e:
         logger.exception("Error inesperado en endpoint /api/ecu/influence: %s", e)
-        return jsonify(
-            {"status": "error", "message": "Error interno al procesar la influencia."}
-        ), 500
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "Error interno al procesar la influencia.",
+                }
+            ),
+            500,
+        )
 
 
-# Retorna el campo vectorial completo
 @app.route("/api/ecu/field_vector", methods=["GET"])
 def get_field_vector_api() -> Tuple[Any, int]:
     """
-    Endpoint REST para obtener
-    el campo vectorial completo de la grilla toroidal.
-    Retorna una estructura 3D (lista de listas de listas)
-    donde cada elemento es un vector 2D [vx, vy].
+    Endpoint REST para obtener el campo de ondas completo (amplitud y fase).
+    Retorna una estructura 3D donde cada elemento es [real, imag].
     Shape: [num_capas, num_rows, num_cols, 2].
     """
     try:
         with campo_toroidal_global_servicio.lock:
-            # Obtener una copia del campo para evitar modificarlo mientras
-            # se serializa
             campo_copia = [
                 [[[cell.real, cell.imag] for cell in row] for row in layer]
                 for layer in campo_toroidal_global_servicio.campo_q
@@ -703,16 +681,13 @@ def get_field_vector_api() -> Tuple[Any, int]:
 
         logger.info(
             "Solicitud GET /api/ecu/field_vector recibida. "
-            "Devolviendo campo vectorial completo."
+            "Devolviendo campo de ondas completo."
         )
         response_data = {
             "status": "success",
             "field_vector": campo_copia,
             "metadata": {
-                "descripcion": (
-                    "Campo vectorial 2D en grilla 3D toroidal "
-                    "(Analogía Densidad Flujo Magnético)"
-                ),
+                "descripcion": "Campo de ondas complejo en grilla 3D toroidal",
                 "capas": campo_toroidal_global_servicio.num_capas,
                 "filas": campo_toroidal_global_servicio.num_rows,
                 "columnas": campo_toroidal_global_servicio.num_cols,
@@ -723,7 +698,7 @@ def get_field_vector_api() -> Tuple[Any, int]:
         logger.exception(f"Error en endpoint /api/ecu/field_vector: {e_field_vector}")
         error_response = {
             "status": "error",
-            "message": "Error interno al procesar la solicitud del campo vectorial.",
+            "message": "Error interno al procesar la solicitud del campo de ondas.",
         }
         return jsonify(error_response), 500
 
@@ -731,16 +706,15 @@ def get_field_vector_api() -> Tuple[Any, int]:
 @app.route("/debug/set_random_phase", methods=["POST"])
 def set_random_phase_endpoint():
     """
-    Endpoint de depuración para reiniciar el campo a un estado de fase aleatoria.
+    Endpoint de depuración para reiniciar el campo a un estado de potencial
+    uniforme con fase aleatoria.
     Protegido para ejecutarse solo en entornos de no producción.
     """
-    # Leer la variable de entorno y loguear su valor para depuración
     flask_env = os.environ.get("FLASK_ENV", "production").lower().strip()
     logger.debug(
         f"Verificando entorno para endpoint de depuración. FLASK_ENV='{flask_env}'"
     )
 
-    # Comprobar si el entorno permite la ejecución de este endpoint
     if flask_env not in ["development", "test"]:
         logger.warning(
             "Acceso denegado a endpoint de depuración. Entorno actual: '%s'.",
@@ -760,23 +734,26 @@ def set_random_phase_endpoint():
         )
 
     try:
-        campo_toroidal_global_servicio.set_initial_quantum_phase()
+        campo_toroidal_global_servicio.set_uniform_potential_field()
         logger.info(
-            "Campo reiniciado a fase cuántica aleatoria a través de endpoint "
-            "de depuración."
+            "Campo reiniciado a potencial uniforme con fase aleatoria "
+            "a través de endpoint de depuración."
         )
         return jsonify({"status": "success", "message": "Campo reiniciado"})
     except Exception as e:
         logger.exception(f"Error en set_random_phase: {e}")
-        return jsonify(
-            {"status": "error", "message": "Error interno al reiniciar el campo."}
-        ), 500
+        return (
+            jsonify(
+                {"status": "error", "message": "Error interno al reiniciar el campo."}
+            ),
+            500,
+        )
 
 
 @app.route("/api/ecu/field_vector/region/<int:capa_idx>", methods=["GET"])
 def get_region_field_vector_api(capa_idx: int) -> Tuple[Any, int]:
     """
-    Endpoint REST para obtener el campo vectorial de una capa específica.
+    Endpoint REST para obtener el campo de ondas de una capa específica.
     """
     if not (0 <= capa_idx < campo_toroidal_global_servicio.num_capas):
         return (
@@ -794,18 +771,17 @@ def get_region_field_vector_api(capa_idx: int) -> Tuple[Any, int]:
 
     try:
         with campo_toroidal_global_servicio.lock:
-            # Obtener una copia de la capa para evitar problemas de concurrencia
             layer_copy = [
                 [[cell.real, cell.imag] for cell in row]
                 for row in campo_toroidal_global_servicio.campo_q[capa_idx]
             ]
 
-        logger.info(f"Solicitud GET para la capa {capa_idx} recibida.")
+        logger.info(f"Solicitud GET para la capa de ondas {capa_idx} recibida.")
         response_data = {
             "status": "success",
             "field_vector_region": layer_copy,
             "metadata": {
-                "descripcion": f"Campo vectorial 2D para la capa {capa_idx}",
+                "descripcion": f"Campo de ondas complejo para la capa {capa_idx}",
                 "capa_idx": capa_idx,
                 "filas": campo_toroidal_global_servicio.num_rows,
                 "columnas": campo_toroidal_global_servicio.num_cols,
@@ -814,12 +790,15 @@ def get_region_field_vector_api(capa_idx: int) -> Tuple[Any, int]:
         return jsonify(response_data), 200
     except Exception as e:
         logger.exception(f"Error en endpoint para la capa {capa_idx}: {e}")
-        return jsonify(
-            {
-                "status": "error",
-                "message": "Error interno al procesar la solicitud de la región.",
-            }
-        ), 500
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "Error interno al procesar la solicitud de la región.",
+                }
+            ),
+            500,
+        )
 
 
 # --- Función Principal y Arranque ---
@@ -827,38 +806,32 @@ def main():
     """Función principal que configura el logging y arranca la aplicación."""
     global simulation_thread
 
-    # --- Configuración del Logging ---
-    # Refactorizado para loguear siempre a stdout, siguiendo 12-Factor App.
-    # Se elimina la gestión de archivos de log y directorios.
     if not logging.getLogger("matriz_ecu").hasHandlers():
         logging.basicConfig(
             level=logging.INFO,
-            format=(
-                "%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s"
-            ),
-            handlers=[
-                logging.StreamHandler(sys.stdout)  # Redirige los logs a la consola
-            ],
+            format="%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s",
+            handlers=[logging.StreamHandler(sys.stdout)],
         )
-    # --- Fin Configuración del Logging ---
 
     logger.info(
-        f"Configuración ECU: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS}, "
+        f"Configuración de simulación cimática: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS}, "
         f"SimInterval={SIMULATION_INTERVAL}s, Beta={BETA_COUPLING}"
     )
 
-    logger.info("Creando e iniciando hilo de simulación ECU...")
+    logger.info("Creando e iniciando hilo de simulación cimática...")
     stop_simulation_event.clear()
     simulation_thread = threading.Thread(
-        target=simulation_loop,
+        target=cymatic_simulation_loop,
         args=(SIMULATION_INTERVAL, BETA_COUPLING),
         daemon=True,
-        name="ECUSimLoop",
+        name="CymaticSimLoop",
     )
     simulation_thread.start()
 
     puerto_servicio = int(os.environ.get("MATRIZ_ECU_PORT", 8000))
-    logger.info(f"Iniciando servicio Flask de ecu en puerto {puerto_servicio}...")
+    logger.info(
+        f"Iniciando servicio Flask de simulación cimática en puerto {puerto_servicio}..."
+    )
     app.run(host="0.0.0.0", port=puerto_servicio, debug=False, use_reloader=False)
 
 
@@ -869,11 +842,13 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Interrupción por teclado detectada.")
     finally:
-        logger.info("Enviando señal de detención al hilo de simulación ECU...")
+        logger.info("Enviando señal de detención al hilo de simulación cimática...")
         stop_simulation_event.set()
         if simulation_thread and simulation_thread.is_alive():
             logger.info("Esperando finalización del hilo de simulación...")
             simulation_thread.join(timeout=SIMULATION_INTERVAL * 2)
             if simulation_thread.is_alive():
-                logger.warning("El hilo de simulación ECU no terminó limpiamente.")
-        logger.info("Servicio matriz_ecu finalizado.")
+                logger.warning(
+                    "El hilo de simulación cimática no terminó limpiamente."
+                )
+        logger.info("Servicio de simulación cimática finalizado.")
