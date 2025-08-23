@@ -20,10 +20,10 @@ try:
 except ImportError:
     try:
         import logger as agent_logger
-    except ImportError:
+    except ImportError as e:
         raise ImportError(
             "No se pudo importar el módulo loggerVerifica PYTHONPATH y estructura."
-        )
+        ) from e
 
 logger_instance = logging.getLogger("agent_ai")
 

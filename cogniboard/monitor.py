@@ -83,7 +83,7 @@ def calculate_entropy():
     Una entropía de 0 indica que todos los servicios están operativos.
     """
     failures = 0
-    for name, url in SERVICES.items():
+    for _name, url in SERVICES.items():
         if not fetch_health(url):
             failures += 1
     return float(failures)

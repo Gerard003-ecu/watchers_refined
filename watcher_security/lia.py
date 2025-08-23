@@ -44,7 +44,7 @@ class LIATransformer:
             raise ValueError("Dimensionalidad del vector incorrecta")
         transformed = np.dot(self.transformation_matrix, vector)
         # Normalizar por subespacio
-        for name, subspace in self.subspaces.items():
+        for _name, subspace in self.subspaces.items():
             subspace_norm = np.linalg.norm(transformed[subspace])
             if subspace_norm > 0:
                 transformed[subspace] /= subspace_norm

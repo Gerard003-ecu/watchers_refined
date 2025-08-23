@@ -11,7 +11,6 @@ from skidl import Net, Part, generate_schematic, reset
 try:
     import pcbnew
     from pcbnew import (
-        BOARD,
         EDGE_CUTS,
         EXCELLON_WRITER,
         PCB_SHAPE,

@@ -87,8 +87,9 @@ def test_full_phase_synchronization_loop():
     """
     # --- Fase 1: Setup (Arrange) ---
     print("\n--- Phase 1: ARRANGE ---")
-    # Asegurar que el entorno de prueba esté configurado para permitir endpoints de depuración
-    # (esto se hace fuera del test, p.ej., con variables de entorno como FLASK_ENV=test)
+    # Asegurar que el entorno de prueba esté configurado para permitir
+    # endpoints de depuración (esto se hace fuera del test, p.ej., con
+    # variables de entorno como FLASK_ENV=test)
     set_ecu_to_random_phase(ECU_URL)
 
     # Darle un momento a la ECU para que se asiente si es necesario
@@ -97,7 +98,8 @@ def test_full_phase_synchronization_loop():
     initial_coherence = get_coherence_from_ecu(ECU_URL, TEST_REGION)
     print(f"Initial coherence: {initial_coherence:.4f}")
     assert initial_coherence < INITIAL_COHERENCE_THRESHOLD, (
-        f"Initial coherence {initial_coherence} was not below the threshold {INITIAL_COHERENCE_THRESHOLD}"
+        f"Initial coherence {initial_coherence} was not below the threshold "
+        f"{INITIAL_COHERENCE_THRESHOLD}"
     )
 
     # --- Fase 2: Acción (Act) ---
@@ -122,12 +124,14 @@ def test_full_phase_synchronization_loop():
         # Opcional: verificar si la coherencia está mejorando
         if current_coherence > last_coherence:
             print(
-                f"Progress: Coherence increased from {last_coherence:.4f} to {current_coherence:.4f}"
+                f"Progress: Coherence increased from {last_coherence:.4f} to "
+                f"{current_coherence:.4f}"
             )
         last_coherence = current_coherence
 
         time.sleep(POLLING_INTERVAL_SECONDS)
-    else:  # This 'else' belongs to the 'while' loop, it executes if the loop finishes without a 'break'
+    else:  # This 'else' belongs to the 'while' loop, it executes if the loop
+        # finishes without a 'break'
         pytest.fail(
             f"Test timed out after {POLLING_TIMEOUT_SECONDS} seconds. "
             f"Last measured coherence was {last_coherence:.4f}, "
@@ -138,5 +142,6 @@ def test_full_phase_synchronization_loop():
     print("\n--- Phase 4: ASSERT ---")
     print(f"Final coherence: {final_coherence:.4f}")
     assert final_coherence > FINAL_COHERENCE_THRESHOLD, (
-        f"Final coherence {final_coherence} did not meet the success threshold {FINAL_COHERENCE_THRESHOLD}"
+        f"Final coherence {final_coherence} did not meet the success threshold "
+        f"{FINAL_COHERENCE_THRESHOLD}"
     )

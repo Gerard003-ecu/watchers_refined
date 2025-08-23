@@ -508,7 +508,9 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
             "status": "success",
             "estado_campo_unificado": campo_unificado.tolist(),
             "metadata": {
-                "descripcion": "Mapa de intensidad del campo toroidal ponderado por capa",
+                "descripcion": (
+                    "Mapa de intensidad del campo toroidal ponderado por capa"
+                ),
                 "capas": campo_toroidal_global_servicio.num_capas,
                 "filas": campo_toroidal_global_servicio.num_rows,
                 "columnas": campo_toroidal_global_servicio.num_cols,
@@ -650,7 +652,9 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
             return jsonify(
                 {
                     "status": "success",
-                    "message": f"Influencia de '{parsed_data['nombre_watcher']}' aplicada.",
+                    "message": (
+                        f"Influencia de '{parsed_data['nombre_watcher']}' " "aplicada."
+                    ),
                     "applied_to": {
                         "capa": parsed_data["capa"],
                         "row": parsed_data["row"],
@@ -739,19 +743,27 @@ def set_random_phase_endpoint():
     # Comprobar si el entorno permite la ejecución de este endpoint
     if flask_env not in ["development", "test"]:
         logger.warning(
-            f"Acceso denegado a endpoint de depuración. Entorno actual: '{flask_env}'."
+            "Acceso denegado a endpoint de depuración. Entorno actual: '%s'.",
+            flask_env,
         )
-        return jsonify(
-            {
-                "status": "error",
-                "message": f"Endpoint de depuración no disponible en entorno '{flask_env}'.",
-            }
-        ), 403
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": (
+                        "Endpoint de depuración no disponible en entorno "
+                        f"'{flask_env}'."
+                    ),
+                }
+            ),
+            403,
+        )
 
     try:
         campo_toroidal_global_servicio.set_initial_quantum_phase()
         logger.info(
-            "Campo reiniciado a fase cuántica aleatoria a través de endpoint de depuración."
+            "Campo reiniciado a fase cuántica aleatoria a través de endpoint "
+            "de depuración."
         )
         return jsonify({"status": "success", "message": "Campo reiniciado"})
     except Exception as e:
@@ -767,12 +779,18 @@ def get_region_field_vector_api(capa_idx: int) -> Tuple[Any, int]:
     Endpoint REST para obtener el campo vectorial de una capa específica.
     """
     if not (0 <= capa_idx < campo_toroidal_global_servicio.num_capas):
-        return jsonify(
-            {
-                "status": "error",
-                "message": f"Índice de capa fuera de rango. Se esperaba entre 0 y {campo_toroidal_global_servicio.num_capas - 1}.",
-            }
-        ), 404
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": (
+                        "Índice de capa fuera de rango. Se esperaba entre 0 y "
+                        f"{campo_toroidal_global_servicio.num_capas - 1}."
+                    ),
+                }
+            ),
+            404,
+        )
 
     try:
         with campo_toroidal_global_servicio.lock:

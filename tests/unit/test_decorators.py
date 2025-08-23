@@ -14,7 +14,8 @@ class TestMeasurePerformanceDecorator(unittest.TestCase):
     @patch("common.decorators.requests.post")
     def test_decorator_sends_metrics_and_preserves_metadata(self, mock_post):
         """
-        Prueba que el decorador envía las métricas correctamente y preserva los metadatos.
+        Prueba que el decorador envía las métricas correctamente y preserva
+        los metadatos.
         """
         agent_ai_url = "http://fake-agent-ai:9000"
 
@@ -52,7 +53,8 @@ class TestMeasurePerformanceDecorator(unittest.TestCase):
     @patch("common.decorators.requests.post")
     def test_call_count_is_correct_across_multiple_calls(self, mock_post):
         """
-        Prueba que el contador de llamadas se incrementa correctamente en llamadas sucesivas.
+        Prueba que el contador de llamadas se incrementa correctamente en
+        llamadas sucesivas.
         """
         agent_ai_url = "http://fake-agent-ai:9000"
 
