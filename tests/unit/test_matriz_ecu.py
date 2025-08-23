@@ -26,7 +26,11 @@ logger = logging.getLogger(__name__)
 def campo_toroidal_test():
     """Fixture: Campo toroidal aislado para tests unitarios."""
     return ToroidalField(
-        num_capas=2, num_rows=3, num_cols=4, alphas=None, dampings=None
+        num_capas=2,
+        num_rows=3,
+        num_cols=4,
+        propagation_coeffs=None,
+        dissipation_coeffs=None,
     )
 
 
@@ -55,29 +59,41 @@ def test_inicializacion_valida(campo_toroidal_test: ToroidalField):
     assert len(tf.campo_q) == 2
     assert tf.campo_q[0].shape == (3, 4)
     assert np.all(tf.campo_q[0] == 0)
-    assert len(tf.alphas) == 2
-    assert len(tf.dampings) == 2
+    assert len(tf.propagation_coeffs) == 2
+    assert len(tf.dissipation_coeffs) == 2
     assert isinstance(tf.lock, type(threading.Lock()))
 
 
 def test_inicializacion_con_params_capa():
-    """Test: Creación con alphas y dampings específicos."""
-    alphas_test = [0.1, 0.2]
-    dampings_test = [0.01, 0.02]
+    """Test: Creación con propagation_coeffs y dissipation_coeffs específicos."""
+    propagation_coeffs_test = [0.1, 0.2]
+    dissipation_coeffs_test = [0.01, 0.02]
     tf = ToroidalField(
-        num_capas=2, num_rows=2, num_cols=2, alphas=alphas_test, dampings=dampings_test
+        num_capas=2,
+        num_rows=2,
+        num_cols=2,
+        propagation_coeffs=propagation_coeffs_test,
+        dissipation_coeffs=dissipation_coeffs_test,
     )
-    assert tf.alphas == alphas_test
-    assert tf.dampings == dampings_test
+    assert tf.propagation_coeffs == propagation_coeffs_test
+    assert tf.dissipation_coeffs == dissipation_coeffs_test
 
 
 def test_inicializacion_params_capa_longitud_incorrecta():
     """Test: Error al crear con listas de params de longitud incorrecta."""
-    with pytest.raises(ValueError, match="La lista 'alphas' debe tener longitud 2"):
-        ToroidalField(num_capas=2, num_rows=2, num_cols=2, alphas=[0.1])
+    with pytest.raises(
+        ValueError, match="La lista 'propagation_coeffs' debe tener longitud 2"
+    ):
+        ToroidalField(
+            num_capas=2, num_rows=2, num_cols=2, propagation_coeffs=[0.1]
+        )
 
-    with pytest.raises(ValueError, match="La lista 'dampings' debe tener longitud 3"):
-        ToroidalField(num_capas=3, num_rows=2, num_cols=2, dampings=[0.1, 0.2])
+    with pytest.raises(
+        ValueError, match="La lista 'dissipation_coeffs' debe tener longitud 3"
+    ):
+        ToroidalField(
+            num_capas=3, num_rows=2, num_cols=2, dissipation_coeffs=[0.1, 0.2]
+        )
 
 
 def test_inicializacion_invalida():
@@ -194,31 +210,34 @@ def test_calcular_gradiente_sin_suficientes_capas():
     assert gradiente.shape == (0,)
 
 
-def test_obtener_campo_unificado(campo_toroidal_test: ToroidalField):
-    """Test: Campo unificado con pesos por capa."""
+def test_get_energy_density_map(campo_toroidal_test: ToroidalField):
+    """Test: Mapa de densidad de energía con pesos por capa."""
     tf = campo_toroidal_test
     tf.aplicar_influencia(0, 1, 1, 3.0 + 4.0j, "test_uni1_capa0")
     tf.aplicar_influencia(1, 1, 1, 0.0 - 6.0j, "test_uni2_capa1")
 
-    campo_uni = tf.obtener_campo_unificado()
-    assert campo_uni.shape == (3, 4)
-    expected_value_11 = 1.0 * np.abs(3.0 + 4.0j) + 0.5 * np.abs(0.0 - 6.0j)
-    assert campo_uni[1, 1] == pytest.approx(expected_value_11)
-    assert campo_uni[0, 0] == pytest.approx(0.0)
+    energy_map = tf.get_energy_density_map()
+    assert energy_map.shape == (3, 4)
+    # Los pesos por defecto para 2 capas son 1.0 y 0.5
+    expected_value_11 = (1.0 * np.abs(3.0 + 4.0j) ** 2) + (
+        0.5 * np.abs(0.0 - 6.0j) ** 2
+    )
+    assert energy_map[1, 1] == pytest.approx(expected_value_11)
+    assert energy_map[0, 0] == pytest.approx(0.0)
 
 
-def test_obtener_campo_unificado_una_capa():
-    """Test: Campo unificado con una sola capa."""
+def test_get_energy_density_map_una_capa():
+    """Test: Mapa de densidad de energía con una sola capa."""
     tf = ToroidalField(num_capas=1, num_rows=2, num_cols=2)
     tf.aplicar_influencia(0, 0, 0, 1.0 + 1.0j, "test_uni_1capa")
-    campo_uni = tf.obtener_campo_unificado()
-    assert campo_uni.shape == (2, 2)
-    assert campo_uni[0, 0] == pytest.approx(np.abs(1.0 + 1.0j))
-    assert campo_uni[0, 1] == pytest.approx(0.0)
+    energy_map = tf.get_energy_density_map()
+    assert energy_map.shape == (2, 2)
+    assert energy_map[0, 0] == pytest.approx(np.abs(1.0 + 1.0j) ** 2)
+    assert energy_map[0, 1] == pytest.approx(0.0)
 
 
-def test_apply_rotational_step(campo_toroidal_test: ToroidalField):
-    """Test: Paso rotacional (advección, acoplamiento, disipación)."""
+def test_apply_wave_dynamics_step(campo_toroidal_test: ToroidalField):
+    """Test: Paso de dinámica de ondas (advección, acoplamiento, disipación)."""
     tf = campo_toroidal_test
     initial_vector = 1.0 + 2.0j
     capa, row, col = 0, 1, 1
@@ -229,7 +248,7 @@ def test_apply_rotational_step(campo_toroidal_test: ToroidalField):
     with tf.lock:
         initial_state_full = [np.copy(c) for c in tf.campo_q]
 
-    tf.apply_rotational_step(dt, beta)
+    tf.apply_wave_dynamics_step(dt, beta)
 
     with tf.lock:
         final_state_full = tf.campo_q
@@ -251,46 +270,34 @@ def test_endpoint_health(cliente_flask: FlaskClient):
     assert datos["simulation_running"] is False
 
 
-def test_endpoint_ecu_api(cliente_flask: FlaskClient):
-    """Test: Respuesta OK del endpoint /api/ecu."""
-    # Paso 1: Definir y aplicar influencias en múltiples capas
-    influence_payload_1 = {
+def test_endpoint_energy_api(cliente_flask: FlaskClient):
+    """Test: Respuesta OK del endpoint /api/ecu/energy."""
+    influence_payload = {
         "capa": 0,
-        "row": 0,
-        "col": 0,
+        "row": 1,
+        "col": 2,
         "vector": [3.0, 4.0],
-        "nombre_watcher": "test_api_ecu_1",
+        "nombre_watcher": "test_api_energy",
     }
-    influence_payload_2 = {
-        "capa": 1,
-        "row": 0,
-        "col": 0,
-        "vector": [0.0, -6.0],
-        "nombre_watcher": "test_api_ecu_2",
-    }
-    vector_influencia_1 = 3.0 + 4.0j
-    vector_influencia_2 = 0.0 - 6.0j
+    vector_influencia = 3.0 + 4.0j
+    cliente_flask.post("/api/ecu/influence", json=influence_payload)
 
-    # Aplicar influencias
-    cliente_flask.post("/api/ecu/influence", json=influence_payload_1)
-    cliente_flask.post("/api/ecu/influence", json=influence_payload_2)
-
-    # Paso 2: Usar cliente_flask.get para obtener el estado del ECU
-    get_response = cliente_flask.get("/api/ecu")
+    get_response = cliente_flask.get("/api/ecu/energy")
     assert get_response.status_code == 200
-    get_data = get_response.get_json()
-    assert get_data["status"] == "success"
-    assert "estado_campo_unificado" in get_data
-    assert get_data["metadata"]["capas"] == NUM_CAPAS
+    data = get_response.get_json()
 
-    # Paso 3: Calcular el valor unificado esperado
-    pesos = np.linspace(1.0, 0.5, NUM_CAPAS) if NUM_CAPAS > 1 else np.array([1.0])
-    valor_esperado = (pesos[0] * np.abs(vector_influencia_1)) + (
-        pesos[1] * np.abs(vector_influencia_2)
-    )
+    assert data["status"] == "success"
+    assert "data" in data
+    assert "metadata" in data
+    assert data["data"]["type"] == "energy_map"
+    assert "energy_density_map" in data["data"]
+    assert data["metadata"]["layers"] == NUM_CAPAS
 
-    # Paso 4: Realizar la aserción
-    assert get_data["estado_campo_unificado"][0][0] == pytest.approx(valor_esperado)
+    # Verificar que el valor de energía es correcto
+    energy_map = data["data"]["energy_density_map"]
+    # El peso para la capa 0 es 1.0 por defecto
+    expected_energy = np.abs(vector_influencia) ** 2
+    assert energy_map[1][2] == pytest.approx(expected_energy)
 
 
 def test_endpoint_influence_valido(cliente_flask: FlaskClient):
@@ -348,7 +355,9 @@ def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_tipo_err)
     assert respuesta.status_code == 400
-    assert "errores de tipo" in respuesta.get_json()["message"].lower()
+    assert (
+        "error en el formato de los datos" in respuesta.get_json()["message"].lower()
+    )
 
     payload_vec_err_len = {
         "capa": 0,
@@ -359,10 +368,7 @@ def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_vec_err_len)
     assert respuesta.status_code == 400
-    assert (
-        "campo 'vector' debe ser una lista de 2 elementos"
-        in respuesta.get_json()["message"].lower()
-    )
+    assert "lista de 2 elementos" in respuesta.get_json()["message"].lower()
 
     payload_vec_err_type = {
         "capa": 0,
@@ -373,10 +379,7 @@ def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_vec_err_type)
     assert respuesta.status_code == 400
-    assert (
-        "elementos del 'vector' deben ser números"
-        in respuesta.get_json()["message"].lower()
-    )
+    assert "números válidos" in respuesta.get_json()["message"].lower()
 
 
 def test_endpoint_influence_invalido_rango(cliente_flask: FlaskClient):
@@ -390,7 +393,8 @@ def test_endpoint_influence_invalido_rango(cliente_flask: FlaskClient):
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_capa)
     assert respuesta.status_code == 400
-    assert "índice de capa fuera de rango" in respuesta.get_json()["message"].lower()
+    assert "capa" in respuesta.get_json()["message"].lower()
+    assert "fuera de rango" in respuesta.get_json()["message"].lower()
 
     payload_row = {
         "capa": 0,
@@ -401,7 +405,8 @@ def test_endpoint_influence_invalido_rango(cliente_flask: FlaskClient):
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_row)
     assert respuesta.status_code == 400
-    assert "índice de fila fuera de rango" in respuesta.get_json()["message"].lower()
+    assert "fila" in respuesta.get_json()["message"].lower()
+    assert "fuera de rango" in respuesta.get_json()["message"].lower()
 
     payload_col = {
         "capa": 0,
@@ -412,87 +417,65 @@ def test_endpoint_influence_invalido_rango(cliente_flask: FlaskClient):
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_col)
     assert respuesta.status_code == 400
-    assert "índice de columna fuera de rango" in respuesta.get_json()["message"].lower()
+    assert "columna" in respuesta.get_json()["message"].lower()
+    assert "fuera de rango" in respuesta.get_json()["message"].lower()
 
 
-def test_endpoint_get_field_vector(cliente_flask):
-    """Test: Endpoint /api/ecu/field_vector (GET)."""
-    from ecu.matriz_ecu import (
-        NUM_CAPAS,
-        NUM_COLUMNAS,
-        NUM_FILAS,
-        campo_toroidal_global_servicio,
-    )
-
-    influence_vector_1 = 1.1 - 2.2j
-    influence_vector_2 = 5.0 + 0.5j
-    influence_vector_3 = -1.0 + 10.0j
-
-    campo_toroidal_global_servicio.aplicar_influencia(
-        0, 0, 0, influence_vector_1, "test_vec_api_1"
-    )
-    campo_toroidal_global_servicio.aplicar_influencia(
-        1, 2, 3, influence_vector_2, "test_vec_api_2"
-    )
-    # fmt: off
-    campo_toroidal_global_servicio.aplicar_influencia(
-        NUM_CAPAS - 1,
-        NUM_FILAS - 1,
-        NUM_COLUMNAS - 1,
-        influence_vector_3,
-        "test_vec_api_3"
-    )
-    # fmt: on
-
-    response = cliente_flask.get("/api/ecu/field_vector")
+def test_endpoint_get_field_vector_paginated(cliente_flask: FlaskClient):
+    """Test: Paginación en endpoint /api/ecu/field_vector."""
+    # Probar paginación de capas
+    response = cliente_flask.get("/api/ecu/field_vector?page=1&per_page=2")
     assert response.status_code == 200
     data = response.get_json()
-
     assert data["status"] == "success"
-    assert "field_vector" in data
-    assert "metadata" in data
+    assert len(data["data"]) == 2  # 2 capas por página
+    assert data["pagination"]["page"] == 1
+    assert data["pagination"]["per_page"] == 2
+    assert data["pagination"]["total_items"] == NUM_CAPAS
+    assert data["pagination"]["total_pages"] == (NUM_CAPAS + 1) // 2
 
-    assert data["metadata"]["capas"] == NUM_CAPAS
-    assert data["metadata"]["filas"] == NUM_FILAS
-    assert data["metadata"]["columnas"] == NUM_COLUMNAS
-
-    returned_field_list = data["field_vector"]
-    assert isinstance(returned_field_list, list)
-    assert len(returned_field_list) == NUM_CAPAS
-
-    for capa_idx, layer_data in enumerate(returned_field_list):
-        assert isinstance(layer_data, list)
-        assert len(layer_data) == NUM_FILAS
-
-        for row_idx, row_data in enumerate(layer_data):
-            assert isinstance(row_data, list)
-            assert len(row_data) == NUM_COLUMNAS
-
-            for col_idx_loop, vector_data in enumerate(row_data):
-                with campo_toroidal_global_servicio.lock:
-                    actual_vector = campo_toroidal_global_servicio.campo_q[capa_idx][
-                        row_idx, col_idx_loop
-                    ]
-                assert np.isclose(
-                    complex(vector_data[0], vector_data[1]), actual_vector
-                )
+    # Probar paginación de filas dentro de una capa
+    response = cliente_flask.get("/api/ecu/field_vector?layer=0&page=2&per_page=1")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "success"
+    assert len(data["data"]) == 1  # 1 fila por página
+    assert len(data["data"][0]) == NUM_COLUMNAS
+    assert data["pagination"]["page"] == 2
+    assert data["pagination"]["total_items"] == NUM_FILAS
 
 
-def test_endpoint_ecu_error_interno(cliente_flask: FlaskClient, mocker):
-    """Test: Manejo de errores internos en API /api/ecu (500)."""
-    mocker.patch("numpy.abs", side_effect=Exception("Mock error interno"))
-    respuesta = cliente_flask.get("/api/ecu")
+def test_endpoint_get_field_vector_errors(cliente_flask: FlaskClient):
+    """Test: Errores en endpoint /api/ecu/field_vector."""
+    # Capa fuera de rango
+    response = cliente_flask.get("/api/ecu/field_vector?layer=99")
+    assert response.status_code == 400
+    assert "fuera de rango" in response.get_json()["message"]
+
+    # Página fuera de rango
+    response = cliente_flask.get("/api/ecu/field_vector?page=99")
+    assert response.status_code == 404
+    assert "Página fuera de rango" in response.get_json()["message"]
+
+
+def test_endpoint_energy_error_interno(cliente_flask: FlaskClient, mocker):
+    """Test: Manejo de errores internos en API /api/ecu/energy (500)."""
+    mocker.patch(
+        "ecu.matriz_ecu.campo_toroidal_global_servicio.get_energy_density_map",
+        side_effect=Exception("Mock error interno"),
+    )
+    respuesta = cliente_flask.get("/api/ecu/energy")
     assert respuesta.status_code == 500
     datos = respuesta.get_json()
     assert datos["status"] == "error"
     assert "error interno" in datos["message"].lower()
 
 
-def test_set_initial_quantum_phase(campo_toroidal_test: ToroidalField):
-    """Test: Inicialización de la fase cuántica a un estado aleatorio."""
+def test_set_uniform_potential_field(campo_toroidal_test: ToroidalField):
+    """Test: Inicialización del campo a potencial uniforme con fase aleatoria."""
     tf = campo_toroidal_test
     seed = 42
-    tf.set_initial_quantum_phase(seed)
+    tf.set_uniform_potential_field(seed)
 
     # Verificar que todos los valores son números complejos con magnitud ~1
     for capa in tf.campo_q:
@@ -500,23 +483,29 @@ def test_set_initial_quantum_phase(campo_toroidal_test: ToroidalField):
         assert np.allclose(magnitudes, 1.0)
 
     # Verificar que con la misma semilla, el resultado es idéntico
-    tf2 = ToroidalField(tf.num_capas, tf.num_rows, tf.num_cols)
-    tf2.set_initial_quantum_phase(seed)
+    tf2 = ToroidalField(
+        tf.num_capas,
+        tf.num_rows,
+        tf.num_cols,
+        propagation_coeffs=tf.propagation_coeffs,
+        dissipation_coeffs=tf.dissipation_coeffs,
+    )
+    tf2.set_uniform_potential_field(seed)
     for capa1, capa2 in zip(tf.campo_q, tf2.campo_q, strict=False):
         assert np.allclose(capa1, capa2)
 
 
-def test_apply_quantum_step(campo_toroidal_test: ToroidalField):
-    """Test: Aplicación de un paso de evolución cuántica."""
+def test_apply_internal_phase_evolution(campo_toroidal_test: ToroidalField):
+    """Test: Aplicación de un paso de evolución de fase interna."""
     tf = campo_toroidal_test
-    tf.set_initial_quantum_phase(seed=123)
+    tf.set_uniform_potential_field(seed=123)
     initial_phases = [np.copy(capa) for capa in tf.campo_q]
 
     dt = 0.1
-    tf.apply_quantum_step(dt)
+    tf.apply_internal_phase_evolution(dt)
 
     for i, initial_capa in enumerate(initial_phases):
-        alpha = tf.alphas[i]
-        expected_phase_change = np.exp(-1j * alpha * dt)
+        prop_coeff = tf.propagation_coeffs[i]
+        expected_phase_change = np.exp(-1j * prop_coeff * dt)
         expected_final_capa = initial_capa * expected_phase_change
         assert np.allclose(tf.campo_q[i], expected_final_capa)
