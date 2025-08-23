@@ -25,18 +25,16 @@ paths:
   /api/ecu/field_vector:
     get:
       summary: Get Field Vector
-      description: Retrieves the current field vector from the ECU.
       responses:
         '200':
           description: The current field vector.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FieldVector'
+                $ref: '#/components/schemas/FieldVectorResponse'
   /api/ecu/influence:
     post:
       summary: Post Influence
-      description: Sends an influence payload to the ECU.
       requestBody:
         required: true
         content:
@@ -44,8 +42,12 @@ paths:
             schema:
               $ref: '#/components/schemas/InfluencePayload'
       responses:
-        '202':
-          description: The influence was accepted.
+        '200':
+          description: The influence was successfully applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfluenceResponse'
   /debug/set_random_phase:
     post:
       summary: Set Random Phase
@@ -56,44 +58,80 @@ paths:
 
 components:
   schemas:
-    FieldVector:
+    FieldVectorResponse:
       type: object
       properties:
-        timestamp:
+        status:
           type: string
-          format: date-time
-        vectors:
+          example: "success"
+        field_vector:
           type: array
+          description: "Array de capas. Cada capa es una matriz 2D de vectores."
           items:
             type: array
+            description: "Una capa, que es un array de filas."
             items:
-              type: number
-              format: float
-      example:
-        timestamp: "2023-10-27T10:00:00Z"
-        vectors: [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+              type: array
+              description: "Una fila, que es un array de vectores."
+              items:
+                type: array
+                description: "Un vector 2D representado como [real, imag]."
+                minItems: 2
+                maxItems: 2
+                items:
+                  type: number
+                  format: double
+        metadata:
+          type: object
+          properties:
+            capas:
+              type: integer
+            filas:
+              type: integer
+            columnas:
+              type: integer
+
     InfluencePayload:
       type: object
       required:
-        - source
-        - type
-        - data
+        - capa
+        - row
+        - col
+        - vector
+        - nombre_watcher
       properties:
-        source:
+        capa:
+          type: integer
+          description: "Índice de la capa a influenciar."
+          example: 0
+        row:
+          type: integer
+          description: "Índice de la fila a influenciar."
+          example: 1
+        col:
+          type: integer
+          description: "Índice de la columna a influenciar."
+          example: 2
+        vector:
+          type: array
+          description: "Vector de influencia [real, imag]."
+          minItems: 2
+          maxItems: 2
+          items:
+            type: number
+            format: double
+          example: [1.5, -0.5]
+        nombre_watcher:
           type: string
-          description: The source of the influence.
-          example: "agent_ai"
-        type:
+          description: "Identificador del watcher que envía la influencia."
+          example: "malla_watcher_dPhiDt_123"
+
+    InfluenceResponse:
+      type: object
+      properties:
+        status:
           type: string
-          description: The type of influence.
-          example: "boson_collision"
-        data:
-          type: object
-          properties:
-            energy_level:
-              type: number
-              format: float
-              example: 98.6
-            particle_count:
-              type: integer
-              example: 1000
+          example: "success"
+        message:
+          type: string
+          example: "Influencia aplicada."
