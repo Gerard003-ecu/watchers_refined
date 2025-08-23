@@ -39,6 +39,7 @@ from .validation.validator import (
     check_missing_dependencies,
     validate_module_registration,
 )
+from .utils.api_client import ApiClient
 
 logger = get_logger()
 
@@ -181,6 +182,11 @@ class AgentAI:
             else f"{hc_base_url}/api/harmony/register_tool"
         )
         logger.info("URL registro HC: '%s'", self.hc_register_url)
+        self.api_client = ApiClient(
+            max_retries=MAX_RETRIES,
+            base_retry_delay=BASE_RETRY_DELAY,
+            timeout=REQUESTS_TIMEOUT,
+        )
         logger.info("AgentAI inicializado.")
 
     def store_metric(self, data: Dict[str, Any]):
@@ -244,71 +250,38 @@ class AgentAI:
                 )
 
     def _get_harmony_state(self) -> Optional[Dict[str, Any]]:
+        """Obtiene el estado de Harmony Controller usando el ApiClient."""
         hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         url = f"{hc_url}/api/harmony/state"
-        for attempt in range(MAX_RETRIES):
-            try:
-                response = requests.get(url, timeout=REQUESTS_TIMEOUT)
-                response.raise_for_status()
-                json_data = response.json()
-                response_data = json_data
 
-                if response_data.get("status") == "success" and "data" in response_data:
-                    data_preview = str(response_data["data"])[:100]
-                    logger.debug("Estado válido recibido de Harmony: %s", data_preview)
-                    return response_data["data"]
-                else:
-                    logger.warning(
-                        "Respuesta inválida desde Harmony: %s", response_data
-                    )
-            except Exception as e:
-                logger.exception("Error inesperado (intento %s): %s", attempt + 1, e)
+        response_data = self.api_client.get(url)
 
-            if attempt < MAX_RETRIES - 1:
-                delay = BASE_RETRY_DELAY * (2**attempt)
-                logger.debug(
-                    "Reintentando obtener estado de Harmony en %.2fs...",
-                    delay,
-                )
-                time.sleep(delay)
+        if response_data and response_data.get("status") == "success" and "data" in response_data:
+            data_preview = str(response_data["data"])[:100]
+            logger.debug("Estado válido recibido de Harmony: %s", data_preview)
+            return response_data["data"]
 
-        logger.error(
-            "No se pudo obtener estado de Harmony tras %s intentos.",
-            MAX_RETRIES,
-        )
+        logger.error("No se pudo obtener o procesar el estado de Harmony desde %s.", url)
         return None
 
     def _get_ecu_field_vector(self) -> Optional[np.ndarray]:
-        """Obtiene el campo vectorial complejo completo de la ECU."""
-        ecu_url = self.central_urls.get(
-            "ecu_field_vector", DEFAULT_ECU_FIELD_VECTOR_URL
-        )
-        for attempt in range(MAX_RETRIES):
+        """Obtiene el campo vectorial complejo completo de la ECU usando el ApiClient."""
+        ecu_url = self.central_urls.get("ecu_field_vector", DEFAULT_ECU_FIELD_VECTOR_URL)
+        data = self.api_client.get(ecu_url)
+
+        if data and data.get("status") == "success" and "field_vector" in data:
             try:
-                response = requests.get(ecu_url, timeout=REQUESTS_TIMEOUT)
-                response.raise_for_status()
-                data = response.json()
-                if data.get("status") == "success" and "field_vector" in data:
-                    # La ECU devuelve [real, imag], necesitamos convertirlo a complejo
-                    field_data = data["field_vector"]
-                    complex_field = np.array(field_data, dtype=float)
-                    # El array es (capas, filas, cols, 2), lo convertimos a
-                    # (capas, filas, cols) de tipo complejo
-                    complex_field = complex_field[..., 0] + 1j * complex_field[..., 1]
-                    logger.debug("Campo vectorial complejo recibido de ECU.")
-                    return complex_field
-            except Exception as e:
-                logger.error(
-                    "Error al obtener campo vectorial de ECU (intento %s): %s",
-                    attempt + 1,
-                    e,
-                )
-            if attempt < MAX_RETRIES - 1:
-                time.sleep(BASE_RETRY_DELAY * (2**attempt))
-        logger.error(
-            "No se pudo obtener el campo vectorial de ECU tras %s intentos.",
-            MAX_RETRIES,
-        )
+                field_data = data["field_vector"]
+                complex_field = np.array(field_data, dtype=float)
+                # Conversión de [real, imag] a complejo
+                complex_field = complex_field[..., 0] + 1j * complex_field[..., 1]
+                logger.debug("Campo vectorial complejo recibido de ECU.")
+                return complex_field
+            except (ValueError, TypeError, IndexError) as e:
+                logger.error("Error al procesar los datos del campo vectorial de ECU: %s", e)
+                return None
+
+        logger.error("No se pudo obtener o procesar el campo vectorial de ECU desde %s.", ecu_url)
         return None
 
     def calculate_coherence(self, region: np.ndarray) -> tuple[float, float]:
@@ -354,69 +327,40 @@ class AgentAI:
     def _delegate_phase_synchronization_task(
         self, region_identifier: str, target_phase: float
     ):
-        """
-        Delega una tarea de sincronización de fase a Harmony Controller.
-        """
-        # Comprobación de permisos basada en la MIC
+        """Delega una tarea de sincronización de fase a Harmony Controller."""
         try:
             permission = self.mic["agent_ai"]["harmony_controller"]
             if permission != "CONTROL_TASK":
                 logger.error(
-                    "Violación de MIC: No se tiene permiso '%s' para controlar "
-                    "harmony_controller.",
-                    permission,
+                    "Violación de MIC: Permiso denegado para controlar harmony_controller."
                 )
                 return
         except KeyError:
-            logger.error(
-                "Violación de MIC: No hay una regla definida para agent_ai -> "
-                "harmony_controller."
-            )
+            logger.error("Violación de MIC: Regla no definida para agent_ai -> harmony_controller.")
             return
 
-        logger.info(
-            "Permiso verificado. Delegando tarea de sincronización a "
-            "harmony_controller."
-        )
-
-        task_url = f"{self.central_urls['harmony_controller']}/api/tasks/phase_sync"
+        logger.info("Permiso verificado. Delegando tarea de sincronización a HC.")
+        task_url = f"{self.central_urls['harmony_controller']}/tasks/phase_sync"
         payload = {
-            "region_identifier": region_identifier,
             "target_phase": target_phase,
-            "task_type": "phase_synchronization",
+            "region": region_identifier,
+            "pid_gains": {"p": 0.5, "i": 0.1, "d": 0.02}, # Valores por defecto
+            "tolerance": 0.05,
+            "timeout": 60.0,
         }
 
-        logger.info(
-            "Delegando tarea de sincronización para '%s' a fase %.3f rad a HC...",
-            region_identifier,
-            target_phase,
-        )
-
-        for attempt in range(MAX_RETRIES):
-            try:
-                response = requests.post(
-                    task_url, json=payload, timeout=REQUESTS_TIMEOUT
-                )
-                response.raise_for_status()
-                logger.info(
-                    "Tarea de sincronización de fase delegada exitosamente a HC."
-                )
-                return
-            except Exception as e:
-                logger.error(
-                    "Error al delegar tarea a HC (intento %s/%s): %s",
-                    attempt + 1,
-                    MAX_RETRIES,
-                    e,
-                )
-                if attempt < MAX_RETRIES - 1:
-                    delay = BASE_RETRY_DELAY * (2**attempt)
-                    time.sleep(delay)
-        logger.error(
-            "No se pudo delegar la tarea de sincronización de fase a HC tras "
-            "%s intentos.",
-            MAX_RETRIES,
-        )
+        response = self.api_client.post(task_url, json_data=payload)
+        if response and response.get("status") == "success":
+            logger.info(
+                "Tarea de sincronización de fase para '%s' delegada exitosamente a HC. Task ID: %s",
+                region_identifier,
+                response.get("task_id"),
+            )
+        else:
+            logger.error(
+                "No se pudo delegar la tarea de sincronización de fase a HC para '%s'.",
+                region_identifier,
+            )
 
     def find_resonant_frequency(self, region_identifier: str) -> Optional[float]:
         """
@@ -454,45 +398,27 @@ class AgentAI:
     def _delegate_resonance_task(
         self, region_identifier: str, resonant_frequency: float
     ):
-        """
-        Delega una tarea de excitación por resonancia a Harmony Controller.
-        """
-        task_url = f"{self.central_urls['harmony_controller']}/api/tasks/resonance"
+        """Delega una tarea de excitación por resonancia a Harmony Controller."""
+        task_url = f"{self.central_urls['harmony_controller']}/tasks/resonate"
         payload = {
-            "region_identifier": region_identifier,
-            "resonant_frequency": resonant_frequency,
-            "task_type": "resonance_excitation",
+            "frequency": resonant_frequency,
+            "amplitude": 1.0, # Amplitud por defecto
+            "duration": 10.0, # Duración por defecto
+            "region": region_identifier,
         }
 
-        logger.info(
-            "Delegando tarea de resonancia para '%s' a frecuencia %.3f Hz a HC...",
-            region_identifier,
-            resonant_frequency,
-        )
-
-        # La lógica de envío es idéntica a la de sincronización de fase
-        for attempt in range(MAX_RETRIES):
-            try:
-                response = requests.post(
-                    task_url, json=payload, timeout=REQUESTS_TIMEOUT
-                )
-                response.raise_for_status()
-                logger.info("Tarea de resonancia delegada exitosamente a HC.")
-                return
-            except Exception as e:
-                logger.error(
-                    "Error al delegar tarea de resonancia a HC (intento %s/%s): %s",
-                    attempt + 1,
-                    MAX_RETRIES,
-                    e,
-                )
-                if attempt < MAX_RETRIES - 1:
-                    delay = BASE_RETRY_DELAY * (2**attempt)
-                    time.sleep(delay)
-        logger.error(
-            "No se pudo delegar la tarea de resonancia a HC tras %s intentos.",
-            MAX_RETRIES,
-        )
+        response = self.api_client.post(task_url, json_data=payload)
+        if response and response.get("status") == "success":
+            logger.info(
+                "Tarea de resonancia para '%s' delegada exitosamente a HC. Task ID: %s",
+                region_identifier,
+                response.get("task_id"),
+            )
+        else:
+            logger.error(
+                "No se pudo delegar la tarea de resonancia a HC para '%s'.",
+                region_identifier,
+            )
 
     def analyze_pid_response(self, data: list, setpoint: float) -> dict:
         """
@@ -724,53 +650,20 @@ class AgentAI:
         return new_target_vector
 
     def _send_setpoint_to_harmony(self, setpoint_vector: List[float]):
-        """
-        Envía el setpoint vectorial calculado a Harmony Controller con
-        reintentos.
-        """
+        """Envía el setpoint vectorial a Harmony Controller usando el ApiClient."""
         hc_url = self.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         url = f"{hc_url}/api/harmony/setpoint"
         payload = {"setpoint_vector": setpoint_vector}
 
-        logger.debug(
-            "Intentando enviar setpoint a HC: %s a %s",
-            setpoint_vector,
-            url,
-        )
-
-        for attempt in range(MAX_RETRIES):
-            try:
-                response = requests.post(url, json=payload, timeout=REQUESTS_TIMEOUT)
-                response.raise_for_status()
-                logger.info(
-                    "Setpoint %s enviado exitosamente a HC. Respuesta: %s",
-                    setpoint_vector,
-                    response.status_code,
-                )
-                return
-            except Exception as e:
-                err_type = type(e).__name__
-                logger.error(
-                    "Error al enviar setpoint a HC (%s) intento %s/%s: %s - %s",
-                    url,
-                    attempt + 1,
-                    MAX_RETRIES,
-                    err_type,
-                    e,
-                )
-                if attempt < MAX_RETRIES - 1:
-                    delay = BASE_RETRY_DELAY * (2**attempt)
-                    logger.debug(
-                        "Reintentando envío de setpoint a HC en %.2fs...",
-                        delay,
-                    )
-                    time.sleep(delay)
-
-        logger.error(
-            "No se pudo enviar setpoint %s a HC después de %d intentos.",
-            setpoint_vector,
-            MAX_RETRIES,
-        )
+        response = self.api_client.post(url, json_data=payload)
+        if response and response.get("status") == "success":
+            logger.info(
+                "Setpoint %s enviado exitosamente a HC.", setpoint_vector
+            )
+        else:
+            logger.error(
+                "No se pudo enviar setpoint %s a HC.", setpoint_vector
+            )
 
     def registrar_modulo(self, modulo_info: Dict[str, Any]) -> Dict[str, str]:
         """
@@ -913,154 +806,72 @@ class AgentAI:
                 logger.error("No se encontró el módulo '%s' para validar.", nombre)
                 return
 
-            modulo_url_salud = modulo.get("url_salud")
-            modulo_url_control = modulo.get("url")
-            modulo_tipo = modulo.get("tipo")
-            modulo_aporta_a = modulo.get("aporta_a")
-            modulo_naturaleza = modulo.get("naturaleza_auxiliar")
+            url_salud = modulo.get("url_salud")
 
-        if not modulo_url_salud:
+        if not url_salud:
             logger.error("No se encontró URL de salud para validar '%s'", nombre)
             estado_salud = "error_configuracion"
         else:
-            estado_salud = "error_desconocido"
-            for attempt in range(MAX_RETRIES):
-                try:
-                    logger.debug(
-                        "Validando salud de '%s' en %s... (intento %d/%d)",
-                        nombre,
-                        modulo_url_salud,
-                        attempt + 1,
-                        MAX_RETRIES,
-                    )
-                    response = requests.get(modulo_url_salud, timeout=REQUESTS_TIMEOUT)
-                    if response.status_code == 200:
-                        estado_salud = "ok"
-                        logger.info("Módulo '%s' validado (Salud OK).", nombre)
-                        break
-                    else:
-                        estado_salud = f"error_{response.status_code}"
-                        logger.warning(
-                            "Validación fallida para '%s'. Status: %d",
-                            nombre,
-                            response.status_code,
-                        )
-                except Exception as e:
-                    estado_salud = "error_inesperado"
-                    logger.exception(
-                        "Error inesperado al validar salud de '%s': %s", nombre, e
-                    )
-
-                if estado_salud == "ok":
-                    break
-
-                if attempt < MAX_RETRIES - 1:
-                    delay = BASE_RETRY_DELAY * (2**attempt)
-                    logger.debug(
-                        "Reintentando validación para '%s' en %.2fs...",
-                        nombre,
-                        delay,
-                    )
-                    time.sleep(delay)
-                else:
-                    logger.error(
-                        "Validación para '%s' falló tras %d intentos. Estado: %s",
-                        nombre,
-                        MAX_RETRIES,
-                        estado_salud,
-                    )
+            response = self.api_client.get(url_salud)
+            if response:
+                # Asumimos que una respuesta exitosa tiene un código 2xx,
+                # lo cual es manejado por raise_for_status en el cliente.
+                # Aquí verificamos el contenido.
+                estado_salud = "ok"
+                logger.info("Módulo '%s' validado (Salud OK).", nombre)
+            else:
+                # Si el cliente devuelve None, es un fallo de red persistente.
+                estado_salud = "error_inesperado"
+                logger.error("Validación para '%s' falló tras múltiples reintentos.", nombre)
 
         with self.lock:
+            # Re-obtener el módulo por si fue eliminado mientras se validaba.
             if nombre in self.modules:
                 self.modules[nombre]["estado_salud"] = estado_salud
+                # Copiar los datos necesarios para la notificación fuera del lock
+                modulo_para_notificar = self.modules[nombre].copy()
             else:
-                logger.warning(
-                    "Módulo '%s' desapareció antes de actualizar estado.",
-                    nombre,
-                )
+                logger.warning("Módulo '%s' desapareció antes de actualizar estado.", nombre)
                 return
 
         if (
             estado_salud == "ok"
-            and modulo_tipo == "auxiliar"
-            and modulo_aporta_a
-            and modulo_naturaleza
+            and modulo_para_notificar.get("tipo") == "auxiliar"
+            and modulo_para_notificar.get("aporta_a")
+            and modulo_para_notificar.get("naturaleza_auxiliar")
         ):
-            if modulo_url_control:
+            if modulo_para_notificar.get("url"):
                 logger.info(
-                    "Módulo auxiliar '%s' saludable. Notificando a Harmony "
-                    "Controller...",
+                    "Módulo auxiliar '%s' saludable. Notificando a Harmony Controller...",
                     nombre,
                 )
                 self._notify_harmony_controller_of_tool(
                     nombre=nombre,
-                    url=modulo_url_control,
-                    aporta_a=modulo_aporta_a,
-                    naturaleza=modulo_naturaleza,
+                    url=modulo_para_notificar.get("url"),
+                    aporta_a=modulo_para_notificar.get("aporta_a"),
+                    naturaleza=modulo_para_notificar.get("naturaleza_auxiliar"),
                 )
             else:
                 logger.error(
-                    "Módulo '%s' saludable pero sin URL de control. No se "
-                    "puede notificar a HC.",
-                    nombre,
-                )
-        elif estado_salud == "ok" and modulo_tipo == "auxiliar":
-            if not modulo_aporta_a:
-                logger.warning(
-                    "Módulo aux '%s' ok pero sin 'aporta_a'. No se notificará.",
-                    nombre,
-                )
-            if not modulo_naturaleza:
-                logger.warning(
-                    "Módulo aux '%s' ok pero sin 'naturaleza_auxiliar'. No "
-                    "se notificará.",
+                    "Módulo '%s' saludable pero sin URL de control. No se puede notificar a HC.",
                     nombre,
                 )
 
     def _notify_harmony_controller_of_tool(
         self, nombre: str, url: str, aporta_a: str, naturaleza: str
     ):
+        """Notifica a Harmony Controller sobre un nuevo tool usando el ApiClient."""
         register_url = self.hc_register_url
         payload = {
-            "nombre": nombre,
-            "url": url,
-            "aporta_a": aporta_a,
-            "naturaleza": naturaleza,
+            "nombre": nombre, "url": url,
+            "aporta_a": aporta_a, "naturaleza": naturaleza,
         }
-        for attempt in range(MAX_RETRIES):
-            try:
-                logger.debug(
-                    "Notificando a HC sobre '%s' (Naturaleza: %s) en %s...",
-                    nombre,
-                    naturaleza,
-                    register_url,
-                )
-                response = requests.post(
-                    register_url, json=payload, timeout=REQUESTS_TIMEOUT
-                )
-                response.raise_for_status()
-                logger.info(
-                    "Notificación para '%s' enviada a HC. Respuesta: %d",
-                    nombre,
-                    response.status_code,
-                )
-                return
-            except Exception as e:
-                logger.exception("Error inesperado al notificar a HC: %s", e)
-                if attempt < MAX_RETRIES - 1:
-                    delay = BASE_RETRY_DELAY * (2**attempt)
-                    logger.debug(
-                        "Reintentando notificación a HC para '%s' en %.2fs...",
-                        nombre,
-                        delay,
-                    )
-                    time.sleep(delay)
-                else:
-                    logger.error(
-                        "Fallo al notificar a HC sobre '%s' tras %d intentos.",
-                        nombre,
-                        MAX_RETRIES,
-                    )
+
+        response = self.api_client.post(register_url, json_data=payload)
+        if response and response.get("status") == "success":
+            logger.info("Notificación para '%s' enviada a HC exitosamente.", nombre)
+        else:
+            logger.error("Fallo al notificar a HC sobre '%s'.", nombre)
 
     def actualizar_comando_estrategico(
         self, comando: str, valor: Any
