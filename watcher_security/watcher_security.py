@@ -20,24 +20,23 @@ Ejecución        Células efectoras           Ejecuta protocolos basados en
 """
 
 import numpy as np
-from lia import LIATransformer
 from exergy_model import ExergyModel
+from lia import LIATransformer
 
 
 class SecurityWatcher:
     def __init__(self):
         # Capa 1: Detección (Linfocitos T)
         self.detection_matrix = np.eye(10)  # 10 parámetros de monitoreo
-        self.thresholds = {'entropy': 2.5, 'exergy_loss': 0.15}
+        self.thresholds = {"entropy": 2.5, "exergy_loss": 0.15}
         # Capa 2: Adaptación (Linfocitos B)
         self.lia_transformer = LIATransformer(
-            dimensions=10,
-            subspace_mapping={'watcher_tool_*': slice(0, 5)}
+            dimensions=10, subspace_mapping={"watcher_tool_*": slice(0, 5)}
         )
         # Capa 3: Ejecución (Células Efectoras)
         self.response_protocols = {
-            'critical': self._quarantine_module,
-            'high': self._adjust_energy_allocation
+            "critical": self._quarantine_module,
+            "high": self._adjust_energy_allocation,
         }
         self.exergy_model = ExergyModel()
 
@@ -46,21 +45,23 @@ class SecurityWatcher:
         entropy = self.exergy_model.calculate_security_entropy(system_signals)
         exergy_loss = self.exergy_model.calculate_exergy(system_signals)
         detection_vector = np.dot(self.detection_matrix, system_signals)
-        if (entropy > self.thresholds['entropy'] or
-                exergy_loss > self.thresholds['exergy_loss']):
+        if (
+            entropy > self.thresholds["entropy"]
+            or exergy_loss > self.thresholds["exergy_loss"]
+        ):
             return self._analyze_anomaly(detection_vector)
         return None
 
     def _analyze_anomaly(self, vector):
         """Capa 2: Transformación LIA para generar respuesta adaptativa"""
         transformed = self.lia_transformer.transform(vector)
-        response_type = 'critical' if transformed[0] > 8 else 'high'
-        return {'type': response_type, 'vector': transformed}
+        response_type = "critical" if transformed[0] > 8 else "high"
+        return {"type": response_type, "vector": transformed}
 
     def execute_response(self, anomaly):
         """Capa 3: Ejecutar protocolo basado en prioridad exergética"""
-        action_priority = self.exergy_model.exergy_priority(anomaly['vector'])
-        return self.response_protocols[anomaly['type']](action_priority)
+        action_priority = self.exergy_model.exergy_priority(anomaly["vector"])
+        return self.response_protocols[anomaly["type"]](action_priority)
 
     def _quarantine_module(self, module_id):
         print(f"Ejecutando cuarentena en módulo {module_id}")

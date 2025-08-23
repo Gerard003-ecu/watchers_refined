@@ -7,7 +7,7 @@ del solenoide, utilizando el modelo físico implementado en solenoid_model.
 """
 
 from watchers.watchers_tools.solenoid_watcher.model.solenoid_model import (
-    simulate_solenoid
+    simulate_solenoid,
 )
 
 
@@ -46,9 +46,9 @@ class SolenoidController:
         self.integral_error += error * dt
         derivative = (error - self.last_error) / dt if dt > 0 else 0.0
         self.last_error = error
-        control_signal = (self.Kp * error +
-                          self.Ki * self.integral_error +
-                          self.Kd * derivative)
+        control_signal = (
+            self.Kp * error + self.Ki * self.integral_error + self.Kd * derivative
+        )
         return control_signal
 
     def update(self, i_amps, n, R, dt=0.1):
@@ -78,11 +78,10 @@ class SolenoidController:
 if __name__ == "__main__":
     desired_Bz = 1e-3  # Tesla
     controller = SolenoidController(desired_Bz, Kp=1000, Ki=50, Kd=10)
-    i_amps = 5.0    # Corriente en amperios
-    n = 1000   # Vueltas por metro
-    R = 0.05   # Radio en metros
+    i_amps = 5.0  # Corriente en amperios
+    n = 1000  # Vueltas por metro
+    R = 0.05  # Radio en metros
     dt = 0.1
     control_signal, measured_Bz = controller.update(i_amps, n, R, dt)
-    message = (f"Señal de control: {control_signal:.3f}, "
-               f"Bz medido: {measured_Bz:.6f} T")
+    message = f"Señal de control: {control_signal:.3f}, Bz medido: {measured_Bz:.6f} T"
     print(message)

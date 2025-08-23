@@ -1,10 +1,11 @@
 import numpy as np
 import pytest
+
 from optical_controller.optical_controller import (
     capturar_imagen,
-    procesar_imagen,
     generar_retroalimentacion,
-    retroalimentacion_optica
+    procesar_imagen,
+    retroalimentacion_optica,
 )
 
 
@@ -23,7 +24,7 @@ def test_capturar_imagen():
         "La imagen debe conservar la forma de la matriz de estado."
     )
     assert image.dtype == np.uint8, "La imagen debe estar en formato uint8."
-    assert (image.min() >= 0 and image.max() <= 255), (
+    assert image.min() >= 0 and image.max() <= 255, (
         "Los valores de la imagen deben estar en [0,255]."
     )
 

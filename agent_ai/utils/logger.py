@@ -12,15 +12,11 @@ try:
     os.makedirs(LOG_DIR, exist_ok=True)  # Ahora LOG_DIR está definido
 except OSError as e:
     print(
-        f"ADVERTENCIA: No se pudo crear el directorio de logs '{LOG_DIR}': "
-        f"{e}",
+        f"ADVERTENCIA: No se pudo crear el directorio de logs '{LOG_DIR}': {e}",
         file=sys.stderr,
     )
 
-LOG_FILE = os.path.join(
-    LOG_DIR,
-    "agent_ai.log"
-)
+LOG_FILE = os.path.join(LOG_DIR, "agent_ai.log")
 # Wrapped for length
 
 logger = logging.getLogger("agent_ai")
@@ -35,10 +31,7 @@ def setup_logger_handlers():
     """Configura los handlers si no existen o si son diferentes."""
     # global logger
     # Asegurar que usamos la instancia global - logger is module level
-    log_format = (
-        "%(asctime)s [%(levelname)s] "
-        "%(name)s: %(message)s"
-    )
+    log_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     formatter = logging.Formatter(log_format)
 
     # Verificar si ya existe un FileHandler configurado correctamente
@@ -55,9 +48,7 @@ def setup_logger_handlers():
                 logger.removeHandler(handler)
         # Añadir el nuevo
         try:
-            file_handler = logging.FileHandler(
-                LOG_FILE, mode="a", encoding="utf-8"
-            )
+            file_handler = logging.FileHandler(LOG_FILE, mode="a", encoding="utf-8")
             file_handler.setLevel(logging.DEBUG)
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
@@ -71,8 +62,7 @@ def setup_logger_handlers():
 
     # Verificar si ya existe un StreamHandler configurado correctamente
     has_console_handler = any(
-        isinstance(h, logging.StreamHandler)
-        and not isinstance(h, logging.FileHandler)
+        isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
         for h in logger.handlers
     )
 

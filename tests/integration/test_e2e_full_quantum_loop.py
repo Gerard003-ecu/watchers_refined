@@ -1,12 +1,15 @@
-import requests
 import time
+from typing import Dict, List
+
 import numpy as np
 import pytest
-from typing import Dict, List
+import requests
 
 # --- Configuración ---
 AGENT_AI_URL = "http://localhost:9000"
-HARMONY_CONTROLLER_URL = "http://localhost:7000"  # Not used directly, but good for context
+HARMONY_CONTROLLER_URL = (
+    "http://localhost:7000"  # Not used directly, but good for context
+)
 ECU_URL = "http://localhost:8000"
 TEST_REGION = {"capa": 0}  # Región de interés definida por índices
 TARGET_PHASE = 0.0  # Target phase for synchronization
@@ -17,6 +20,7 @@ FINAL_COHERENCE_THRESHOLD = 0.95
 
 
 # --- Funciones de Ayuda (Helpers) ---
+
 
 def get_ecu_field(ecu_url: str, region: Dict) -> List[complex]:
     """
@@ -40,6 +44,7 @@ def get_ecu_field(ecu_url: str, region: Dict) -> List[complex]:
 
     return field_complex
 
+
 def calculate_coherence(field: list[complex]) -> float:
     """Calcula la coherencia de un campo (magnitud del vector promedio)."""
     if not field:
@@ -53,11 +58,13 @@ def get_coherence_from_ecu(ecu_url: str, region: Dict) -> float:
     field = get_ecu_field(ecu_url, region)
     return calculate_coherence(field)
 
+
 def set_ecu_to_random_phase(ecu_url: str):
     """Pone a matriz_ecu en un estado de baja coherencia."""
     response = requests.post(f"{ecu_url}/debug/set_random_phase")
     response.raise_for_status()
     print("ECU field has been set to a random phase.")
+
 
 def trigger_synchronization_in_agent(agent_url: str, region: Dict, target_phase: float):
     """Inicia la maniobra de sincronización a través de agent_ai."""
@@ -71,6 +78,7 @@ def trigger_synchronization_in_agent(agent_url: str, region: Dict, target_phase:
 
 
 # --- Test End-to-End ---
+
 
 def test_full_phase_synchronization_loop():
     """
@@ -88,8 +96,9 @@ def test_full_phase_synchronization_loop():
 
     initial_coherence = get_coherence_from_ecu(ECU_URL, TEST_REGION)
     print(f"Initial coherence: {initial_coherence:.4f}")
-    assert initial_coherence < INITIAL_COHERENCE_THRESHOLD, \
+    assert initial_coherence < INITIAL_COHERENCE_THRESHOLD, (
         f"Initial coherence {initial_coherence} was not below the threshold {INITIAL_COHERENCE_THRESHOLD}"
+    )
 
     # --- Fase 2: Acción (Act) ---
     print("\n--- Phase 2: ACT ---")
@@ -112,7 +121,9 @@ def test_full_phase_synchronization_loop():
 
         # Opcional: verificar si la coherencia está mejorando
         if current_coherence > last_coherence:
-            print(f"Progress: Coherence increased from {last_coherence:.4f} to {current_coherence:.4f}")
+            print(
+                f"Progress: Coherence increased from {last_coherence:.4f} to {current_coherence:.4f}"
+            )
         last_coherence = current_coherence
 
         time.sleep(POLLING_INTERVAL_SECONDS)
@@ -126,5 +137,6 @@ def test_full_phase_synchronization_loop():
     # --- Fase 4: Verificación (Assert) ---
     print("\n--- Phase 4: ASSERT ---")
     print(f"Final coherence: {final_coherence:.4f}")
-    assert final_coherence > FINAL_COHERENCE_THRESHOLD, \
+    assert final_coherence > FINAL_COHERENCE_THRESHOLD, (
         f"Final coherence {final_coherence} did not meet the success threshold {FINAL_COHERENCE_THRESHOLD}"
+    )

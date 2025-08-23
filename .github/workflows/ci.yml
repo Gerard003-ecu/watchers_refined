@@ -27,10 +27,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt # Desde la raíz del proyecto
 
-      - name: Lint code with flake8
-        run: |
-          # flake8 ya está instalado desde requirements.txt
-          flake8 . # Ejecuta flake8 sobre todo el proyecto
+      - name: Run Ruff (Linter and Formatter)
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "check"
+
+      - name: Check Formatting with Ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "format --check"
 
       - name: Run unit and mocked integration tests
         run: |

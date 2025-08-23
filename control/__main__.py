@@ -1,12 +1,13 @@
+import logging
 import os
 import threading
-import logging
 
 # Importar la app y el bucle de control desde el módulo principal
 from .harmony_controller import app, harmony_control_loop
 
 # Configurar un logger básico para este punto de entrada
 logger = logging.getLogger(__name__)
+
 
 def main():
     """
@@ -38,13 +39,13 @@ def main():
     # El puerto se puede configurar a través de variables de entorno
     port = int(os.environ.get("HC_PORT", 7000))
     logger.info(
-        "Iniciando servidor Flask para Harmony Controller en el puerto %d...",
-        port
+        "Iniciando servidor Flask para Harmony Controller en el puerto %d...", port
     )
     # use_reloader=False es importante para producción y para evitar
     # que el código se ejecute dos veces.
     # debug=False es igualmente crucial por seguridad y rendimiento.
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+
 
 if __name__ == "__main__":
     main()

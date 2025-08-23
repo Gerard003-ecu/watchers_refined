@@ -8,24 +8,25 @@ los módulos auxiliares. Las pruebas cubren la inicialización, la comunicación
 la lógica de decisión basada en estrategias y la gestión de módulos.
 """
 
+import os
 import unittest
 import unittest.mock as mock
-import os
+
 import numpy as np
 import requests
 
 from agent_ai.agent_ai import (
-    AgentAI,
-    HARMONY_CONTROLLER_URL_ENV,
-    HARMONY_CONTROLLER_REGISTER_URL_ENV,
     AGENT_AI_ECU_URL_ENV,
     AGENT_AI_MALLA_URL_ENV,
-    DEFAULT_HC_URL,
     DEFAULT_ECU_URL,
+    DEFAULT_HC_URL,
     DEFAULT_MALLA_URL,
     GLOBAL_REQUIREMENTS_PATH,
+    HARMONY_CONTROLLER_REGISTER_URL_ENV,
+    HARMONY_CONTROLLER_URL_ENV,
+    MAX_RETRIES,
     REQUESTS_TIMEOUT,
-    MAX_RETRIES
+    AgentAI,
 )
 
 
@@ -90,7 +91,11 @@ class TestAgentAI(unittest.TestCase):
         self.patcher_sleep.stop()
 
     def test_initialization_defaults(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Verifica la inicialización de AgentAI con valores por defecto.
@@ -111,18 +116,18 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(len(self.agent.modules), 0)
         self.assertEqual(self.agent.current_strategy, "default")
         self.assertListEqual(self.agent.target_setpoint_vector, [1.0, 0.0])
-        self.assertEqual(
-            self.agent.central_urls["harmony_controller"], DEFAULT_HC_URL
-        )
+        self.assertEqual(self.agent.central_urls["harmony_controller"], DEFAULT_HC_URL)
         self.assertEqual(self.agent.central_urls["ecu"], DEFAULT_ECU_URL)
-        self.assertEqual(
-            self.agent.central_urls["malla_watcher"], DEFAULT_MALLA_URL
-        )
+        self.assertEqual(self.agent.central_urls["malla_watcher"], DEFAULT_MALLA_URL)
 
     # --- NUEVOS TESTS para verificar __init__ y lectura de ENV ---
 
     def test_init_central_urls_defaults(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Verifica que AgentAI usa URLs por defecto si no hay variables
@@ -161,9 +166,7 @@ class TestAgentAI(unittest.TestCase):
                 agent_test.central_urls.get("harmony_controller"),
                 DEFAULT_HC_URL,
             )
-            self.assertEqual(
-                agent_test.central_urls.get("ecu"), DEFAULT_ECU_URL
-            )
+            self.assertEqual(agent_test.central_urls.get("ecu"), DEFAULT_ECU_URL)
             self.assertEqual(
                 agent_test.central_urls.get("malla_watcher"), DEFAULT_MALLA_URL
             )
@@ -175,7 +178,11 @@ class TestAgentAI(unittest.TestCase):
             )
 
     def test_init_central_urls_from_env(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Verifica que AgentAI usa URLs de variables de entorno
@@ -224,7 +231,11 @@ class TestAgentAI(unittest.TestCase):
     # --- FIN NUEVOS TESTS ---
     # --- Tests de Comunicación con HC (sin cambios funcionales) ---
     def test_get_harmony_state_success(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Prueba la obtención exitosa del estado de Harmony Controller.
@@ -254,17 +265,20 @@ class TestAgentAI(unittest.TestCase):
         mock_requests.get.return_value = mock_response
         mock_requests.get.side_effect = None  # Limpiar side effects previos
         state = self.agent._get_harmony_state()
-        hc_url = self.agent.central_urls.get(
-            'harmony_controller', DEFAULT_HC_URL
-        )
+        hc_url = self.agent.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         expected_url = f"{hc_url}/api/harmony/state"
         mock_requests.get.assert_called_once_with(
-            expected_url, timeout=REQUESTS_TIMEOUT  # Usar la URL esperada
+            expected_url,
+            timeout=REQUESTS_TIMEOUT,  # Usar la URL esperada
         )
         self.assertEqual(state, mock_harmony_data)
 
     def test_get_harmony_state_network_error(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Prueba el manejo de errores de red al obtener el estado de Harmony.
@@ -294,7 +308,11 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(self.mock_sleep.call_count, MAX_RETRIES - 1)
 
     def test_get_harmony_state_bad_response(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Prueba el manejo de respuestas no exitosas de Harmony Controller.
@@ -323,7 +341,11 @@ class TestAgentAI(unittest.TestCase):
             self.assertIsNone(state)
 
     def test_send_setpoint_to_harmony_success(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Prueba el envío exitoso de un setpoint a Harmony Controller.
@@ -345,9 +367,7 @@ class TestAgentAI(unittest.TestCase):
         mock_requests.post.side_effect = None
         setpoint_vec = [1.5, -0.5]
         self.agent._send_setpoint_to_harmony(setpoint_vec)
-        hc_url = self.agent.central_urls.get(
-            'harmony_controller', DEFAULT_HC_URL
-        )
+        hc_url = self.agent.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         expected_url = f"{hc_url}/api/harmony/setpoint"
         mock_requests.post.assert_called_once_with(
             expected_url,  # Usar la URL esperada
@@ -356,7 +376,11 @@ class TestAgentAI(unittest.TestCase):
         )
 
     def test_send_setpoint_to_harmony_error(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Prueba el manejo de errores de red al enviar setpoint a Harmony.
@@ -384,7 +408,11 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(self.mock_sleep.call_count, MAX_RETRIES - 1)
 
     def test_determine_harmony_setpoint_simple(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Prueba la lógica de determinación del setpoint de Harmony
@@ -420,9 +448,7 @@ class TestAgentAI(unittest.TestCase):
         current_target = [1.0, 0.0]
         self.agent.target_setpoint_vector = list(current_target)
         self.agent.external_inputs["cogniboard_signal"] = None
-        new_sp = self.agent._determine_harmony_setpoint(
-            0.5, None, None, "default", {}
-        )
+        new_sp = self.agent._determine_harmony_setpoint(0.5, None, None, "default", {})
         np.testing.assert_allclose(
             new_sp,
             current_target,
@@ -435,9 +461,7 @@ class TestAgentAI(unittest.TestCase):
         expected_target = [3.0 * scale, 4.0 * scale]
         self.agent.target_setpoint_vector = list(current_target)
         self.agent.external_inputs["cogniboard_signal"] = 0.9
-        new_sp = self.agent._determine_harmony_setpoint(
-            0.5, 0.9, None, "default", {}
-        )
+        new_sp = self.agent._determine_harmony_setpoint(0.5, 0.9, None, "default", {})
         np.testing.assert_allclose(
             new_sp,
             expected_target,
@@ -571,7 +595,11 @@ class TestAgentAI(unittest.TestCase):
         # --- NUEVOS TESTS DETALLADOS --- #
 
     def test_determine_estrategia_default_sin_cambio_base(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Verifica que la estrategia 'default' no altera el setpoint base.
@@ -609,7 +637,11 @@ class TestAgentAI(unittest.TestCase):
         )
 
     def test_determine_estrategia_estabilidad_reduce_por_error_bajo(
-        self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
     ):
         """
         Verifica que la estrategia 'estabilidad' reduce la magnitud del
@@ -634,9 +666,7 @@ class TestAgentAI(unittest.TestCase):
             "last_pid_output": 0.1,
         }  # PID bajo
         modules = {}
-        measurement = (
-            initial_norm * 0.95
-        )  # Error bajo (measurement cercano a setpoint)
+        measurement = initial_norm * 0.95  # Error bajo (measurement cercano a setpoint)
 
         new_sp = self.agent._determine_harmony_setpoint(
             measurement, None, None, "estabilidad", modules
@@ -655,7 +685,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests
+        mock_requests,
     ):
         """
         Verifica que 'estabilidad' reduce magnitud del setpoint si
@@ -700,7 +730,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests
+        mock_requests,
     ):
         """
         Verifica reducción extra en 'estabilidad' si hay más reductores
@@ -765,7 +795,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests
+        mock_requests,
     ):
         """
         Verifica que la estrategia 'rendimiento' aumenta la magnitud
@@ -808,7 +838,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests
+        mock_requests,
     ):
         """
         Verifica aumento extra en 'rendimiento' si hay más
@@ -856,11 +886,7 @@ class TestAgentAI(unittest.TestCase):
         measurement = initial_norm * 0.99  # Error bajo
 
         new_sp = self.agent._determine_harmony_setpoint(
-            measurement,
-            None,
-            None,
-            "rendimiento",
-            modules
+            measurement, None, None, "rendimiento", modules
         )
         final_norm = np.linalg.norm(new_sp)
 
@@ -877,7 +903,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests
+        mock_requests,
     ):
         """
         Verifica que 'rendimiento' establece un valor mínimo si el
@@ -910,9 +936,7 @@ class TestAgentAI(unittest.TestCase):
         )
         final_norm = np.linalg.norm(new_sp)
 
-        self.assertTrue(
-            final_norm > 0, "Rendimiento/Cero: Norma debería ser > 0."
-        )
+        self.assertTrue(final_norm > 0, "Rendimiento/Cero: Norma debería ser > 0.")
         # Verificar que establece el mínimo [0.1, 0.1] (asumiendo vector 2D)
         expected_vector = [0.1] * len(initial_vector)
         np.testing.assert_allclose(new_sp, expected_vector)
@@ -922,7 +946,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests
+        mock_requests,
     ):
         """
         Verifica que 'ahorro_energia' reduce magnitud si hay
@@ -972,7 +996,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests
+        mock_requests,
     ):
         """
         Verifica que 'ahorro_energia' no cambia el setpoint
@@ -1021,7 +1045,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests
+        mock_requests,
     ):
         """
         Verifica que una señal alta de Cogniboard reduce la
@@ -1060,13 +1084,14 @@ class TestAgentAI(unittest.TestCase):
             "Cogniboard Alto: Norma debería reducirse.",
         )
         np.testing.assert_allclose(final_norm, initial_norm * 0.9, rtol=1e-6)
+
     # --- FIN NUEVOS TESTS DETALLADOS ---
 
     # --- Tests de Registro de Módulos (AJUSTADOS) ---
 
     # --- MODIFICADO: Incluir tipo, aporta_a, naturaleza_auxiliar ---
     @mock.patch("agent_ai.agent_ai.threading.Thread")
-    @mock.patch('os.path.exists', return_value=True)
+    @mock.patch("os.path.exists", return_value=True)
     def test_registrar_modulo_auxiliar_success(
         self,
         mock_os_path_exists,
@@ -1074,7 +1099,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_registration,
         mock_check_deps,
-        mock_requests
+        mock_requests,
     ):
         """
         Prueba el registro exitoso de un módulo auxiliar con
@@ -1110,22 +1135,15 @@ class TestAgentAI(unittest.TestCase):
         }
         result = self.agent.registrar_modulo(module_data)
 
-        self.assertEqual(
-            result["status"], "success", f"Resultado inesperado: {result}"
-        )
+        self.assertEqual(result["status"], "success", f"Resultado inesperado: {result}")
         self.assertIn("AuxTest", self.agent.modules)
         module_entry = self.agent.modules["AuxTest"]
         self.assertEqual(module_entry["estado_salud"], "pendiente")
         self.assertEqual(module_entry["tipo"], "auxiliar")
         self.assertEqual(module_entry["aporta_a"], "malla_watcher")
         self.assertEqual(module_entry["naturaleza_auxiliar"], "potenciador")
-        self.assertEqual(
-            module_entry["url"], "http://auxtest:1234/api/state"
-        )
-        self.assertEqual(
-            module_entry["url_salud"],
-            "http://auxtest:1234/api/health"
-        )
+        self.assertEqual(module_entry["url"], "http://auxtest:1234/api/state")
+        self.assertEqual(module_entry["url_salud"], "http://auxtest:1234/api/health")
 
         # Verificar que se intentó iniciar el hilo de validación
         mock_threading_thread.assert_called_once()
@@ -1141,7 +1159,7 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_registration,
         mock_check_deps,
-        mock_requests
+        mock_requests,
     ):
         """
         Prueba el registro exitoso de un módulo central.
@@ -1180,11 +1198,7 @@ class TestAgentAI(unittest.TestCase):
         mock_threading_thread.assert_called_once()
 
     def test_registrar_modulo_invalid_data(
-        self,
-        mock_logger,
-        mock_validate_registration,
-        mock_check_deps,
-        mock_requests
+        self, mock_logger, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba el intento de registro de un módulo con datos
@@ -1208,21 +1222,21 @@ class TestAgentAI(unittest.TestCase):
         # Mockear el validador para simular fallo
         mock_validate_registration.return_value = (
             False,
-            "Faltan campos requeridos: url, tipo"
+            "Faltan campos requeridos: url, tipo",
         )
         result = self.agent.registrar_modulo(module_data)
         self.assertEqual(result["status"], "error")
         self.assertIn("Faltan campos requeridos", result["mensaje"])
         self.assertNotIn("TestReg", self.agent.modules)
 
-    @mock.patch('os.path.exists', return_value=True)
+    @mock.patch("os.path.exists", return_value=True)
     def test_registrar_modulo_dep_fail(
         self,
         mock_os_path_exists,
         mock_thread,
         mock_validate_registration,
         mock_check_deps,
-        mock_requests
+        mock_requests,
     ):
         """
         Prueba el intento de registro de un módulo cuando falla la
@@ -1259,11 +1273,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertNotIn("TestDepFail", self.agent.modules)
 
     def test_validar_salud_modulo_ok_auxiliar_sin_naturaleza(
-        self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
-        mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba la validación de salud exitosa de un módulo auxiliar
@@ -1299,18 +1309,12 @@ class TestAgentAI(unittest.TestCase):
         self.agent._validar_salud_modulo(module_name)
 
         self.assertEqual(self.agent.modules[module_name]["estado_salud"], "ok")
-        mock_requests.get.assert_called_once_with(
-            module_url, timeout=REQUESTS_TIMEOUT
-        )
+        mock_requests.get.assert_called_once_with(module_url, timeout=REQUESTS_TIMEOUT)
         # Verificar que NO se llamó a post para notificar a HC
         mock_requests.post.assert_not_called()
 
     def test_validar_salud_modulo_ok_central(
-        self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
-        mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba la validación de salud exitosa de un módulo de tipo
@@ -1344,17 +1348,11 @@ class TestAgentAI(unittest.TestCase):
         self.agent._validar_salud_modulo(module_name)
 
         self.assertEqual(self.agent.modules[module_name]["estado_salud"], "ok")
-        mock_requests.get.assert_called_once_with(
-            module_url, timeout=REQUESTS_TIMEOUT
-        )
+        mock_requests.get.assert_called_once_with(module_url, timeout=REQUESTS_TIMEOUT)
         mock_requests.post.assert_not_called()  # No debe notificar centrales
 
     def test_validar_salud_modulo_fail_y_no_notifica(
-        self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
-        mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """Prueba la validación de salud fallida de un módulo.
 
@@ -1383,9 +1381,7 @@ class TestAgentAI(unittest.TestCase):
             "naturaleza_auxiliar": "potenciador",
             "estado_salud": "pendiente",
         }
-        mock_requests.get.side_effect = requests.exceptions.ConnectionError(
-            "Fail"
-        )
+        mock_requests.get.side_effect = requests.exceptions.ConnectionError("Fail")
 
         self.agent._validar_salud_modulo(module_name)
 
@@ -1398,11 +1394,7 @@ class TestAgentAI(unittest.TestCase):
         mock_requests.post.assert_not_called()
 
     def test_notify_hc_retry_and_fail(
-        self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
-        mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba el mecanismo de reintentos al notificar a Harmony Controller.
@@ -1420,9 +1412,7 @@ class TestAgentAI(unittest.TestCase):
             mock_requests, Mock para el módulo `requests`.
         """
         # Mockear la notificación para que siempre falle
-        mock_requests.post.side_effect = requests.exceptions.RequestException(
-            "HC down"
-        )
+        mock_requests.post.side_effect = requests.exceptions.RequestException("HC down")
 
         # Llamar directamente a la función de notificación
         self.agent._notify_harmony_controller_of_tool(
@@ -1439,11 +1429,7 @@ class TestAgentAI(unittest.TestCase):
     # --- Tests de Comandos y Estado Completo (AJUSTADOS) ---
 
     def test_actualizar_comando_estrategico(
-        self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
-        mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """
         Prueba la funcionalidad de actualizar comandos estratégicos del agente.
@@ -1483,9 +1469,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(result["status"], "success")
         self.assertEqual(self.agent.target_setpoint_vector, new_vec)
         # ... (verificación de llamada a post) ...
-        hc_url = self.agent.central_urls.get(
-            'harmony_controller', DEFAULT_HC_URL
-        )
+        hc_url = self.agent.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         expected_url = f"{hc_url}/api/harmony/setpoint"
         mock_requests.post.assert_called_once_with(
             expected_url,
@@ -1499,11 +1483,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertIn("no reconocido", result["mensaje"])
 
     def test_recibir_inputs_externos(
-        self,
-        mock_thread,
-        mock_validate_registration,
-        mock_check_deps,
-        mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
     ):
         """Prueba la recepción y almacenamiento de inputs externos y la
         actualización de la arquitectura del sistema.
@@ -1527,7 +1507,7 @@ class TestAgentAI(unittest.TestCase):
         mock_report = {
             "global_status": "OK",
             "services": {"ecu": {"status": "OK"}},
-            "mic_validation": {"status": "OK", "messages": []}
+            "mic_validation": {"status": "OK", "messages": []},
         }
         self.agent.update_system_architecture(mock_report)
 
@@ -1537,11 +1517,7 @@ class TestAgentAI(unittest.TestCase):
 
     # --- MODIFICADO: test_obtener_estado_completo incluye naturaleza ---
     def test_get_full_state_snapshot(
-        self,
-        mock_get_logger,
-        mock_validate,
-        mock_check_deps,
-        mock_requests
+        self, mock_get_logger, mock_validate, mock_check_deps, mock_requests
     ):
         """
         Verifica que `obtener_estado_completo` retorna una instantánea
@@ -1586,9 +1562,7 @@ class TestAgentAI(unittest.TestCase):
 
         self.assertListEqual(estado["target_setpoint_vector"], [0.5, -0.5])
         self.assertEqual(estado["current_strategy"], "test_strat")
-        self.assertEqual(
-            estado["external_inputs"]["cogniboard_signal"], 0.1
-        )
+        self.assertEqual(estado["external_inputs"]["cogniboard_signal"], 0.1)
         self.assertEqual(
             estado["harmony_controller_last_state"]["last_measurement"],
             0.9,
@@ -1596,9 +1570,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(len(estado["registered_modules"]), 2)
 
         mod_aux = next(
-            m
-            for m in estado["registered_modules"]
-            if m["nombre"] == "TestModAux"
+            m for m in estado["registered_modules"] if m["nombre"] == "TestModAux"
         )
         self.assertEqual(mod_aux["tipo"], "auxiliar")
         self.assertEqual(mod_aux["aporta_a"], "malla_watcher")
@@ -1606,9 +1578,7 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(mod_aux["estado_salud"], "ok")
 
         mod_central = next(
-            m
-            for m in estado["registered_modules"]
-            if m["nombre"] == "TestModCentral"
+            m for m in estado["registered_modules"] if m["nombre"] == "TestModCentral"
         )
         self.assertEqual(mod_central["tipo"], "integrador")
         self.assertNotIn("aporta_a", mod_central)
@@ -1623,19 +1593,19 @@ class TestAgentAI(unittest.TestCase):
         Verifica la lógica de cálculo de coherencia y fase dominante.
         """
         # Caso 1: Campo perfectamente coherente
-        coherent_field = np.array([1+0j, 2+0j, 3+0j], dtype=np.complex128)
+        coherent_field = np.array([1 + 0j, 2 + 0j, 3 + 0j], dtype=np.complex128)
         coherence, phase = self.agent.calculate_coherence(coherent_field)
         self.assertAlmostEqual(coherence, 1.0, places=7)
         self.assertAlmostEqual(phase, 0.0, places=7)
 
         # Caso 2: Campo con fase coherente a PI/4
-        coherent_field_pi4 = np.array([1+1j, 2+2j], dtype=np.complex128)
+        coherent_field_pi4 = np.array([1 + 1j, 2 + 2j], dtype=np.complex128)
         coherence, phase = self.agent.calculate_coherence(coherent_field_pi4)
         self.assertAlmostEqual(coherence, 1.0, places=7)
-        self.assertAlmostEqual(phase, np.pi/4, places=7)
+        self.assertAlmostEqual(phase, np.pi / 4, places=7)
 
         # Caso 3: Dos clusters opuestos (coherencia cero)
-        opposed_field = np.array([1+0j, -1+0j], dtype=np.complex128)
+        opposed_field = np.array([1 + 0j, -1 + 0j], dtype=np.complex128)
         coherence, phase = self.agent.calculate_coherence(opposed_field)
         self.assertAlmostEqual(coherence, 0.0, places=7)
         # La fase es inestable/arbitraria, pero a menudo será pi o 0
@@ -1655,14 +1625,20 @@ class TestAgentAI(unittest.TestCase):
         self.assertAlmostEqual(phase, 0.0, places=7)
 
         # Caso 6: Campo con magnitudes cero
-        mixed_field = np.array([1+0j, 0+0j, 2+0j], dtype=np.complex128)
+        mixed_field = np.array([1 + 0j, 0 + 0j, 2 + 0j], dtype=np.complex128)
         coherence, phase = self.agent.calculate_coherence(mixed_field)
         self.assertAlmostEqual(coherence, 1.0, places=7)
         self.assertAlmostEqual(phase, 0.0, places=7)
 
-    def test_store_metric(self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests):
+    def test_store_metric(
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
+    ):
         """Prueba que store_metric almacena las métricas correctamente."""
-        self.agent.performance_metrics = {} # Asegurar que esté vacío
+        self.agent.performance_metrics = {}  # Asegurar que esté vacío
         metric_data = {
             "source_service": "test_service",
             "function_name": "test_function",
@@ -1680,13 +1656,19 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(stored_metrics[0]["call_count"], 1)
         self.assertIn("timestamp", stored_metrics[0])
 
-    def test_analyze_pid_response(self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests):
+    def test_analyze_pid_response(
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
+    ):
         """Prueba el análisis de una respuesta PID con la nueva lógica robusta."""
         setpoint = 1.0
         # 11 data points, so steady state is calculated from the last 10% (last 2 points)
         timestamps = [1672531200 + i for i in range(11)]
         values = [0.0, 0.2, 0.5, 0.9, 1.1, 1.2, 1.1, 1.05, 1.02, 1.01, 1.01]
-        data = list(zip(timestamps, values))
+        data = list(zip(timestamps, values, strict=False))
 
         # steady_state_value = mean(1.01, 1.01) = 1.01
         # rise time (10% -> 0.101, 90% -> 0.909)
@@ -1708,12 +1690,18 @@ class TestAgentAI(unittest.TestCase):
 
         self.assertFalse(analysis["oscillatory"])
 
-    def test_analyze_pid_response_oscillatory(self, mock_logger, mock_validate_module_registration, mock_check_missing_dependencies, mock_requests):
+    def test_analyze_pid_response_oscillatory(
+        self,
+        mock_logger,
+        mock_validate_module_registration,
+        mock_check_missing_dependencies,
+        mock_requests,
+    ):
         """Prueba la detección de una respuesta oscilatoria con la nueva lógica."""
         setpoint = 1.0
         timestamps = [1672531200 + i for i in range(11)]
         values = [0.0, 1.2, 0.8, 1.1, 0.9, 1.05, 0.95, 1.02, 0.98, 1.01, 1.0]
-        data = list(zip(timestamps, values))
+        data = list(zip(timestamps, values, strict=False))
 
         # crossings: 0->1.2, 1.2->0.8, 0.8->1.1, 1.1->0.9, 0.9->1.05, 1.05->0.95, 0.95->1.02, 1.02->0.98, 0.98->1.01
         # many crossings.

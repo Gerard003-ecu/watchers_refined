@@ -8,26 +8,19 @@ import unittest
 # Ajustar ruta de importación
 try:
     from agent_ai.validation.validator import (
+        validate_command_response,
         validate_module_registration,
-        validate_command_response
     )
 except ImportError:
     # Fallback
-    from validator import (
-        validate_module_registration,
-        validate_command_response
-    )
+    from validator import validate_command_response, validate_module_registration
 
 
 class TestValidators(unittest.TestCase):
-
     def test_validate_module_registration_success(self):
         """Prueba registro válido (campos básicos)."""
         # Solo requiere nombre y url según el código refactorizado
-        module_data = {
-            "nombre": "TestModule",
-            "url": "http://example.com/api/health"
-        }
+        module_data = {"nombre": "TestModule", "url": "http://example.com/api/health"}
         valido, mensaje = validate_module_registration(module_data)
         self.assertTrue(valido, mensaje)
         # Ajustar mensaje esperado si cambia

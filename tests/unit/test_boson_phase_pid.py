@@ -5,8 +5,9 @@ test_boson_phase_pid.py
 Pruebas unitarias para el controlador PID de fase `BosonPhasePID`.
 """
 
-import pytest
 import numpy as np
+import pytest
+
 from control.boson_phase import BosonPhasePID
 
 
@@ -108,8 +109,9 @@ def test_derivative_kick_prevention(pid_controller):
     expected_i = pid_controller.Ki * error * 0.1
     expected_output = expected_p + expected_i
 
-    assert np.isclose(output, expected_output, atol=1e-4), \
+    assert np.isclose(output, expected_output, atol=1e-4), (
         "La salida no debe tener componente derivativa al cambiar el setpoint"
+    )
 
 
 def test_pid_proportional_term(pid_controller):

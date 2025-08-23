@@ -8,12 +8,13 @@ Proporciona interfaces para obtener el estado, enviar comandos, registrar
 módulos y recibir señales de control y configuración.
 """
 
-from flask import Flask, request, jsonify
-from ..utils.logger import get_logger
-from .. import agent_ai as agent_ai_core
-
 # import logging # No se usa directamente si usamos get_logger
 import os
+
+from flask import Flask, jsonify, request
+
+from .. import agent_ai as agent_ai_core
+from ..utils.logger import get_logger
 
 app = Flask(__name__)
 logger = get_logger()  # Usar el logger central configurado
@@ -59,9 +60,17 @@ def receive_metrics():
     Recibe métricas de rendimiento de otros servicios.
     """
     data = request.get_json()
-    if not data or not all(k in data for k in ["source_service", "function_name", "execution_time", "call_count"]):
+    if not data or not all(
+        k in data
+        for k in ["source_service", "function_name", "execution_time", "call_count"]
+    ):
         logger.warning("Solicitud a /api/metrics con payload inválido: %s", data)
-        return jsonify({"status": "error", "mensaje": "Payload JSON inválido o faltan claves requeridas."}), 400
+        return jsonify(
+            {
+                "status": "error",
+                "mensaje": "Payload JSON inválido o faltan claves requeridas.",
+            }
+        ), 400
 
     try:
         # Delegar el almacenamiento a la instancia de AgentAI
@@ -69,7 +78,9 @@ def receive_metrics():
         return jsonify({"status": "success", "mensaje": "Métrica recibida."}), 200
     except Exception as e:
         logger.exception("Error al procesar métrica: %s", data)
-        return jsonify({"status": "error", "mensaje": f"Error interno al procesar la métrica: {e}"}), 500
+        return jsonify(
+            {"status": "error", "mensaje": f"Error interno al procesar la métrica: {e}"}
+        ), 500
 
 
 @app.route("/api/command", methods=["POST"])
@@ -107,9 +118,7 @@ def post_command():
     if not comando:
         logger.warning("Solicitud a /api/command sin 'comando'")
         return (
-            jsonify(
-                {"status": "error", "mensaje": "Falta el campo 'comando'"}
-            ),
+            jsonify({"status": "error", "mensaje": "Falta el campo 'comando'"}),
             400,
         )
 
@@ -122,14 +131,14 @@ def post_command():
         status_code = 200 if resultado.get("status") == "success" else 400
         return jsonify(resultado), status_code
     except Exception:
-        logger.exception(
-            "Error al procesar comando estratégico: %s", comando
-        )
+        logger.exception("Error al procesar comando estratégico: %s", comando)
         return (
-            jsonify({
-                "status": "error",
-                "mensaje": f"Error interno al procesar comando '{comando}'"
-            }),
+            jsonify(
+                {
+                    "status": "error",
+                    "mensaje": f"Error interno al procesar comando '{comando}'",
+                }
+            ),
             500,
         )
 
@@ -141,10 +150,13 @@ def synchronize_region_command():
     """
     data = request.get_json()
     if not data or "region" not in data or "target_phase" not in data:
-        logger.warning(
-            "Payload inválido para /commands/synchronize_region: %s", data
-        )
-        return jsonify({"status": "error", "message": "Payload inválido, se requiere 'region' y 'target_phase'"}), 400
+        logger.warning("Payload inválido para /commands/synchronize_region: %s", data)
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Payload inválido, se requiere 'region' y 'target_phase'",
+            }
+        ), 400
 
     try:
         region = data["region"]
@@ -170,8 +182,13 @@ def synchronize_region_command():
             "Error de valor en /commands/synchronize_region: 'target_phase' no es un flotante válido. Payload: %s",
             data,
         )
-        return jsonify({"status": "error", "message": "El campo 'target_phase' debe ser un número."}), 400
-    except Exception as e:
+        return jsonify(
+            {
+                "status": "error",
+                "message": "El campo 'target_phase' debe ser un número.",
+            }
+        ), 400
+    except Exception:
         logger.exception("Error al procesar el comando synchronize_region")
         return (
             jsonify(
@@ -332,9 +349,7 @@ def control_input():
             control_signal
         )  # Pasar la señal
         return (
-            jsonify(
-                {"status": "success", "mensaje": "Señal de control recibida"}
-            ),
+            jsonify({"status": "success", "mensaje": "Señal de control recibida"}),
             200,
         )
     except Exception:
@@ -359,9 +374,18 @@ def config_report_input():
     pasa a la instancia de AgentAI para su procesamiento y almacenamiento.
     """
     report = request.get_json()
-    if not report or not all(k in report for k in ["global_status", "services", "mic_validation"]):
-        logger.warning("Solicitud a /api/config_report con payload inválido: %s", report)
-        return jsonify({"status": "error", "message": "Payload JSON inválido o faltan claves requeridas."}), 400
+    if not report or not all(
+        k in report for k in ["global_status", "services", "mic_validation"]
+    ):
+        logger.warning(
+            "Solicitud a /api/config_report con payload inválido: %s", report
+        )
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Payload JSON inválido o faltan claves requeridas.",
+            }
+        ), 400
 
     try:
         # Delegar el procesamiento a la instancia de AgentAI
@@ -370,7 +394,9 @@ def config_report_input():
         return jsonify({"status": "report_received"}), 200
     except Exception as e:
         logger.exception("Error al procesar el informe de configuración: %s", e)
-        return jsonify({"status": "error", "message": f"Error interno al procesar el informe: {e}"}), 500
+        return jsonify(
+            {"status": "error", "message": f"Error interno al procesar el informe: {e}"}
+        ), 500
 
 
 # --- Punto de Entrada (si se ejecuta como script) ---
@@ -378,9 +404,7 @@ if __name__ == "__main__":
     port = int(
         os.environ.get("PORT", 9000)
     )  # Usar PORT genérico si AGENT_AI_PORT no está
-    logger.info(
-        f"Iniciando servidor Flask para AgentAI API en puerto {port}..."
-    )
+    logger.info(f"Iniciando servidor Flask para AgentAI API en puerto {port}...")
 
     # Iniciar el bucle estratégico de AgentAI.
     logger.info("Iniciando bucle estratégico de AgentAI desde endpoints.py...")
@@ -391,9 +415,7 @@ if __name__ == "__main__":
         # Ejemplo con Waitress:
         # from waitress import serve
         # serve(app, host="0.0.0.0", port=port)
-        app.run(
-            host="0.0.0.0", port=port, debug=False, use_reloader=False
-        )
+        app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
     finally:
         # Limpieza al salir
         logger.info("Deteniendo AgentAI API...")

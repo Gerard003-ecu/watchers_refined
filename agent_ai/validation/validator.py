@@ -5,7 +5,9 @@ validator.py
 
 Funciones de validación en tiempo de ejecución para agent_ai.
 """
+
 import logging
+
 # import os  # Necesario si se implementa check_missing_dependencies -> F401
 
 logger = logging.getLogger("agent_ai.validator")
@@ -64,7 +66,8 @@ def check_missing_dependencies(module_req_path, global_req_path):
     """
     logger.warning(
         "Validación de dependencias no implementada (%s vs %s). Asumiendo OK.",
-        module_req_path, global_req_path
+        module_req_path,
+        global_req_path,
     )
     # Aquí iría la lógica real de comparación de archivos requirements.txt
     # Ejemplo muy básico (no robusto):

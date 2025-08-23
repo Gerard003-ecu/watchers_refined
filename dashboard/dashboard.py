@@ -16,16 +16,16 @@ Características principales:
 """
 
 import logging
-import numpy as np
-from typing import Dict, List, Union  # Any removed
 from functools import wraps
+from typing import Dict, List, Union  # Any removed
 
 import dash
-from dash import dcc, html, Input, Output  # State removed
 import dash_bootstrap_components as dbc
+import numpy as np
 import plotly.graph_objs as go
 import requests
-from flask import request, jsonify
+from dash import Input, Output, dcc, html  # State removed
+from flask import jsonify, request
 
 # Configuración centralizada
 logging.basicConfig(
@@ -207,9 +207,7 @@ def crear_grafico_barras(
         )
     return go.Figure(
         data=data,
-        layout=go.Layout(
-            title="Amplitud Promedio por Malla", showlegend=False
-        ),
+        layout=go.Layout(title="Amplitud Promedio por Malla", showlegend=False),
     )
 
 
@@ -233,9 +231,7 @@ def crear_mapa_calor(malla: List[List[Dict]]) -> go.Figure:
     """
     if not malla:
         return go.Figure()
-    z_values = [
-        [celda.get("amplitude", 0) for celda in fila] for fila in malla
-    ]
+    z_values = [[celda.get("amplitude", 0) for celda in fila] for fila in malla]
     return go.Figure(
         data=go.Heatmap(z=z_values, colorscale="Viridis"),
         layout=go.Layout(title="Distribución de Amplitud - Malla A"),
@@ -279,18 +275,13 @@ def control_update():
             # Ensuring the jsonify call and its dictionary are formatted
             # to prevent long lines.
             return (
-                jsonify({
-                    "status": "error",
-                    "mensaje": "Falta 'control_signal'"
-                }),
+                jsonify({"status": "error", "mensaje": "Falta 'control_signal'"}),
                 400,
             )
         # Actualizar el estado global del dashboard (o una variable interna)
         # con la señal recibida.
         app_state["control_signal"] = control_signal
-        logger.info(
-            f"Recibida señal de control desde cogniboard: {control_signal}"
-        )
+        logger.info(f"Recibida señal de control desde cogniboard: {control_signal}")
         return (
             jsonify({"status": "success", "control_signal": control_signal}),
             200,
@@ -320,9 +311,7 @@ app.layout = dbc.Container(
                                     id="btn-sim",
                                     color="primary",
                                 ),
-                                dbc.Button(
-                                    "Modo Real", id="btn-real", color="danger"
-                                ),
+                                dbc.Button("Modo Real", id="btn-real", color="danger"),
                             ],
                             className="mb-3",
                         ),
@@ -432,18 +421,10 @@ def actualizar_graficos(n: int, malla_seleccionada: str) -> tuple:
             data = obtener_datos_reales(ENDPOINTS["wave_malla"])
         promedios = {
             "A": np.mean(
-                [
-                    celda["amplitude"]
-                    for fila in data["malla_A"]
-                    for celda in fila
-                ]
+                [celda["amplitude"] for fila in data["malla_A"] for celda in fila]
             ),
             "B": np.mean(
-                [
-                    celda["amplitude"]
-                    for fila in data["malla_B"]
-                    for celda in fila
-                ]
+                [celda["amplitude"] for fila in data["malla_B"] for celda in fila]
             ),
         }
         return (
@@ -512,9 +493,7 @@ def generar_controles_modulos(n: int) -> Union[List[dbc.Card], str, html.Div]:
     if app_state["modo"] == "sim":
         return "No hay módulos en modo simulado"
     try:
-        modulos = obtener_datos_reales(ENDPOINTS["agent_status"]).get(
-            "modulos", []
-        )
+        modulos = obtener_datos_reales(ENDPOINTS["agent_status"]).get("modulos", [])
         return [
             dbc.Card(
                 [
@@ -591,9 +570,7 @@ def obtener_estado_agent() -> Dict:
               si la solicitud falla.
     """
     try:
-        r = requests.get(
-            "http://agent_ai:9000/api/status", timeout=API_TIMEOUT
-        )
+        r = requests.get("http://agent_ai:9000/api/status", timeout=API_TIMEOUT)
         r.raise_for_status()
         return r.json()
     except Exception as e:

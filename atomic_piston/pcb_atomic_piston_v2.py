@@ -1,34 +1,56 @@
 # watchers_refined/atomic_piston/pcb_atomic_piston.py
 
-import os
-import sys
-import math
 import logging
+import math
+import os
 import subprocess
-from itertools import combinations
-from skidl import Part, Net, generate_schematic, reset
+import sys
+
+from skidl import Net, Part, generate_schematic, reset
 
 try:
     import pcbnew
-    from pcbnew import (BOARD, PCB_SHAPE, PCB_TRACK, PCB_VIA, ZONE,
-                        PLOT_CONTROLLER, EXCELLON_WRITER,
-                        wxPoint, wxPointMM, FromMM, GetBuildVersion,
-                        EDGE_CUTS, F_Cu, B_Cu, In1_Cu, In2_Cu, F_Paste,
-                        B_Paste, F_SilkS, B_SilkS, F_Mask, B_Mask,
-                        PLOT_FORMAT_GERBER)
+    from pcbnew import (
+        BOARD,
+        EDGE_CUTS,
+        EXCELLON_WRITER,
+        PCB_SHAPE,
+        PCB_TRACK,
+        PCB_VIA,
+        PLOT_CONTROLLER,
+        PLOT_FORMAT_GERBER,
+        ZONE,
+        B_Cu,
+        B_Mask,
+        B_Paste,
+        B_SilkS,
+        F_Cu,
+        F_Mask,
+        F_Paste,
+        F_SilkS,
+        FromMM,
+        GetBuildVersion,
+        In1_Cu,
+        In2_Cu,
+        wxPoint,
+        wxPointMM,
+    )
 except ImportError:
     print("Error: No se pudo importar la librería 'pcbnew' de KiCad.")
-    print("Asegúrate de ejecutar este script con el intérprete de Python que "
-          "viene con KiCad.")
-    print("Ejemplo en Windows: "
-          "\"C:\\Program Files\\KiCad\\9.0\\bin\\python.exe\" "
-          "pcb_atomic_piston_v2.py")
+    print(
+        "Asegúrate de ejecutar este script con el intérprete de Python que "
+        "viene con KiCad."
+    )
+    print(
+        "Ejemplo en Windows: "
+        '"C:\\Program Files\\KiCad\\9.0\\bin\\python.exe" '
+        "pcb_atomic_piston_v2.py"
+    )
     sys.exit(1)
 
 # Import configuration
 try:
-    from .config import (BOARD_WIDTH, BOARD_HEIGHT, LAYER_CONFIG,
-                         FOOTPRINTS, PLACEMENTS)
+    from .config import BOARD_HEIGHT, BOARD_WIDTH, FOOTPRINTS, LAYER_CONFIG, PLACEMENTS
 except ImportError:
     print("Error: No se pudo importar el archivo de configuración 'config.py'.")
     raise
@@ -36,8 +58,7 @@ except ImportError:
 
 # Configuración de logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -51,52 +72,66 @@ def create_schematic_file(filename="atomic_piston.kicad_sch"):
     try:
         # Definición de componentes
         esp32 = Part(
-            'Module', 'ESP32-WROOM-32',
-            footprint=FOOTPRINTS['ESP32'], dest='TEMPLATE'
+            "Module", "ESP32-WROOM-32", footprint=FOOTPRINTS["ESP32"], dest="TEMPLATE"
         )
         gate_driver = Part(
-            'Driver_Gate', 'UCC21520',
-            footprint=FOOTPRINTS['GATE_DRIVER'], dest='TEMPLATE'
+            "Driver_Gate",
+            "UCC21520",
+            footprint=FOOTPRINTS["GATE_DRIVER"],
+            dest="TEMPLATE",
         )
         q1_mosfet = Part(
-            'Device', 'Q_NMOS_GDS',
-            footprint=FOOTPRINTS['MOSFET_POWER'], dest='TEMPLATE'
+            "Device",
+            "Q_NMOS_GDS",
+            footprint=FOOTPRINTS["MOSFET_POWER"],
+            dest="TEMPLATE",
         )
         supercap = Part(
-            'Device', 'C', value='3000F',
-            footprint=FOOTPRINTS['SUPERCAP'], dest='TEMPLATE'
+            "Device",
+            "C",
+            value="3000F",
+            footprint=FOOTPRINTS["SUPERCAP"],
+            dest="TEMPLATE",
         )
         inductor = Part(
-            'Device', 'L', value='100uH',
-            footprint=FOOTPRINTS['INDUCTOR_POWER'], dest='TEMPLATE'
+            "Device",
+            "L",
+            value="100uH",
+            footprint=FOOTPRINTS["INDUCTOR_POWER"],
+            dest="TEMPLATE",
         )
         pv_connector = Part(
-            'Connector', 'Conn_01x02',
-            footprint=FOOTPRINTS['CONN_PV'], dest='TEMPLATE'
+            "Connector", "Conn_01x02", footprint=FOOTPRINTS["CONN_PV"], dest="TEMPLATE"
         )
         precharge_res = Part(
-            'Device', 'R', value='100',
-            footprint=FOOTPRINTS['PRE_CHARGE_RES'], dest='TEMPLATE'
+            "Device",
+            "R",
+            value="100",
+            footprint=FOOTPRINTS["PRE_CHARGE_RES"],
+            dest="TEMPLATE",
         )
         star_point = Part(
-            'Device', 'TestPoint', value='STAR_POINT',
-            footprint=FOOTPRINTS['STAR_POINT'], dest='TEMPLATE'
+            "Device",
+            "TestPoint",
+            value="STAR_POINT",
+            footprint=FOOTPRINTS["STAR_POINT"],
+            dest="TEMPLATE",
         )
 
         # Definición de redes (Nets) principales
-        gnd_digital = Net('GND_DIGITAL')
-        gnd_power = Net('GND_POWER')
-        vcc_3v3 = Net('+3V3')
-        pv_plus = Net('PV+')
-        pv_minus = Net('PV-')
-        sw_node = Net('SWITCH_NODE')
-        gpio_ctrl = Net('GPIO22_CTRL')
+        gnd_digital = Net("GND_DIGITAL")
+        gnd_power = Net("GND_POWER")
+        vcc_3v3 = Net("+3V3")
+        pv_plus = Net("PV+")
+        pv_minus = Net("PV-")
+        sw_node = Net("SWITCH_NODE")
+        gpio_ctrl = Net("GPIO22_CTRL")
 
         # Conexiones de la etapa de control
-        gnd_digital += esp32['GND'], gate_driver['GND']
-        vcc_3v3 += esp32['3V3'], gate_driver['VCC']
-        esp32['GPIO22'] += gpio_ctrl
-        gpio_ctrl += gate_driver['INA']
+        gnd_digital += esp32["GND"], gate_driver["GND"]
+        vcc_3v3 += esp32["3V3"], gate_driver["VCC"]
+        esp32["GPIO22"] += gpio_ctrl
+        gpio_ctrl += gate_driver["INA"]
 
         # Conexiones de la etapa de potencia
         pv_plus += pv_connector[1]
@@ -104,9 +139,9 @@ def create_schematic_file(filename="atomic_piston.kicad_sch"):
         precharge_res[2] += supercap[1]
         pv_plus += inductor[1]
         inductor[2] += sw_node
-        sw_node += q1_mosfet['D']
-        q1_mosfet['S'] += gnd_power
-        gate_driver['OUTA'] += q1_mosfet['G']
+        sw_node += q1_mosfet["D"]
+        q1_mosfet["S"] += gnd_power
+        gate_driver["OUTA"] += q1_mosfet["G"]
         sw_node += supercap[1]
         gnd_power += supercap[2]
         gnd_digital += star_point[1]
@@ -145,7 +180,7 @@ def create_project_files(project_name="atomic_piston"):
     if not os.path.exists(pcb_filename):
         # Create a minimal valid PCB file for KiCad 9
         with open(pcb_filename, "w") as f:
-            f.write('(kicad_pcb (version 9) (generator pcbnew))\n')
+            f.write("(kicad_pcb (version 9) (generator pcbnew))\n")
         logger.info(f"Archivo PCB '{pcb_filename}' creado.")
     else:
         logger.info(f"Archivo PCB '{pcb_filename}' ya existe.")
@@ -162,7 +197,13 @@ def create_pcb_design(schematic_file, pcb_file):
         # Sincronizar esquemático con PCB usando kicad-cli
         logger.info("Sincronizando esquemático con PCB via kicad-cli...")
         cli_command = [
-            "kicad-cli", "sch", "pcb", "update", "--schematic", schematic_file, pcb_file
+            "kicad-cli",
+            "sch",
+            "pcb",
+            "update",
+            "--schematic",
+            schematic_file,
+            pcb_file,
         ]
 
         result = subprocess.run(
@@ -209,7 +250,11 @@ def create_board_outline(board):
     """Crea el contorno de la placa en la capa Edge.Cuts."""
     logger.info("Creando contorno de la placa...")
     outline_points = [
-        (0, 0), (BOARD_WIDTH, 0), (BOARD_WIDTH, BOARD_HEIGHT), (0, BOARD_HEIGHT), (0, 0)
+        (0, 0),
+        (BOARD_WIDTH, 0),
+        (BOARD_WIDTH, BOARD_HEIGHT),
+        (0, BOARD_HEIGHT),
+        (0, 0),
     ]
     for i in range(len(outline_points) - 1):
         start = wxPointMM(*outline_points[i])
@@ -230,10 +275,10 @@ def place_components(board):
         ref = module.GetReference()
         placement = PLACEMENTS.get(ref) or PLACEMENTS.get(module.GetValue())
         if placement:
-            pos = wxPointMM(*placement['pos'])
+            pos = wxPointMM(*placement["pos"])
             module.SetPosition(pos)
-            module.SetOrientationDegrees(placement['rot'])
-            if placement['side'] == 'bottom':
+            module.SetOrientationDegrees(placement["rot"])
+            if placement["side"] == "bottom":
                 module.Flip(pos)
 
 
@@ -241,22 +286,25 @@ def route_critical_nets(board):
     """Enruta manualmente las redes críticas con una estrategia de cadena."""
     logger.info("Enrutando pistas críticas con estrategia daisy-chain...")
     net_configs = {
-        "PV+": FromMM(LAYER_CONFIG['power_track_width']),
-        "SWITCH_NODE": FromMM(LAYER_CONFIG['power_track_width']),
-        "GND_POWER": FromMM(LAYER_CONFIG['power_track_width']),
-        "GPIO22_CTRL": FromMM(LAYER_CONFIG['signal_track_width']),
-        "+3V3": FromMM(LAYER_CONFIG['signal_track_width']),
-        "GND_DIGITAL": FromMM(LAYER_CONFIG['signal_track_width']),
+        "PV+": FromMM(LAYER_CONFIG["power_track_width"]),
+        "SWITCH_NODE": FromMM(LAYER_CONFIG["power_track_width"]),
+        "GND_POWER": FromMM(LAYER_CONFIG["power_track_width"]),
+        "GPIO22_CTRL": FromMM(LAYER_CONFIG["signal_track_width"]),
+        "+3V3": FromMM(LAYER_CONFIG["signal_track_width"]),
+        "GND_DIGITAL": FromMM(LAYER_CONFIG["signal_track_width"]),
     }
     for net_name, width in net_configs.items():
         net = find_net(board, net_name)
-        if not net: continue
+        if not net:
+            continue
         pads = list(net.Pads())
         if len(pads) < 2:
             logger.warning(f"Red '{net_name}' tiene < 2 pads, no se puede enrutar.")
             continue
         for i in range(len(pads) - 1):
-            create_track(board, pads[i].GetCenter(), pads[i+1].GetCenter(), net, width, F_Cu)
+            create_track(
+                board, pads[i].GetCenter(), pads[i + 1].GetCenter(), net, width, F_Cu
+            )
     logger.info("Enrutado de pistas críticas completado.")
 
 
@@ -265,10 +313,30 @@ def create_power_planes(board):
     logger.info("Creando planos de potencia...")
     gnd_digital_net = find_net(board, "GND_DIGITAL")
     if gnd_digital_net:
-        create_zone(board, In1_Cu, gnd_digital_net, [(2, 2), (BOARD_WIDTH / 2 - 5, 2), (BOARD_WIDTH / 2 - 5, BOARD_HEIGHT - 2), (2, BOARD_HEIGHT - 2)])
+        create_zone(
+            board,
+            In1_Cu,
+            gnd_digital_net,
+            [
+                (2, 2),
+                (BOARD_WIDTH / 2 - 5, 2),
+                (BOARD_WIDTH / 2 - 5, BOARD_HEIGHT - 2),
+                (2, BOARD_HEIGHT - 2),
+            ],
+        )
     gnd_power_net = find_net(board, "GND_POWER")
     if gnd_power_net:
-        create_zone(board, In2_Cu, gnd_power_net, [(BOARD_WIDTH / 2 + 5, 2), (BOARD_WIDTH - 2, 2), (BOARD_WIDTH - 2, BOARD_HEIGHT - 2), (BOARD_WIDTH / 2 + 5, BOARD_HEIGHT - 2)])
+        create_zone(
+            board,
+            In2_Cu,
+            gnd_power_net,
+            [
+                (BOARD_WIDTH / 2 + 5, 2),
+                (BOARD_WIDTH - 2, 2),
+                (BOARD_WIDTH - 2, BOARD_HEIGHT - 2),
+                (BOARD_WIDTH / 2 + 5, BOARD_HEIGHT - 2),
+            ],
+        )
 
 
 def add_thermal_management(board):
@@ -279,15 +347,27 @@ def add_thermal_management(board):
         mosfet = find_component(board, ref)
         if mosfet:
             position = mosfet.GetPosition()
-            for i in range(LAYER_CONFIG['thermal']['via_count']):
-                angle = 2 * math.pi * i / LAYER_CONFIG['thermal']['via_count']
+            for i in range(LAYER_CONFIG["thermal"]["via_count"]):
+                angle = 2 * math.pi * i / LAYER_CONFIG["thermal"]["via_count"]
                 radius = FromMM(3.5)
                 x_offset = int(radius * math.cos(angle))
                 y_offset = int(radius * math.sin(angle))
-                create_via(board, position + wxPoint(x_offset, y_offset), find_net(board, "GND_POWER"), FromMM(LAYER_CONFIG['thermal']['via_drill']), FromMM(LAYER_CONFIG['thermal']['via_diameter']))
+                create_via(
+                    board,
+                    position + wxPoint(x_offset, y_offset),
+                    find_net(board, "GND_POWER"),
+                    FromMM(LAYER_CONFIG["thermal"]["via_drill"]),
+                    FromMM(LAYER_CONFIG["thermal"]["via_diameter"]),
+                )
     gnd_power_net = find_net(board, "GND_POWER")
     if gnd_power_net:
-        create_zone(board, B_Cu, gnd_power_net, [(90, 15), (120, 15), (120, 35), (90, 35)], thermal_gap=FromMM(LAYER_CONFIG['thermal']['clearance']))
+        create_zone(
+            board,
+            B_Cu,
+            gnd_power_net,
+            [(90, 15), (120, 15), (120, 35), (90, 35)],
+            thermal_gap=FromMM(LAYER_CONFIG["thermal"]["clearance"]),
+        )
 
 
 def add_silkscreen_labels(board):
@@ -358,8 +438,8 @@ def create_zone(board, layer, net, corners, thermal_gap=None):
     zone.SetDoNotAllowCopperPour(False)
     zone.SetDoNotAllowTracks(False)
     zone.SetDoNotAllowVias(False)
-    zone.SetZoneClearance(FromMM(LAYER_CONFIG['zones']['clearance']))
-    zone.SetMinThickness(FromMM(LAYER_CONFIG['zones']['min_width']))
+    zone.SetZoneClearance(FromMM(LAYER_CONFIG["zones"]["clearance"]))
+    zone.SetMinThickness(FromMM(LAYER_CONFIG["zones"]["min_width"]))
     if thermal_gap:
         zone.SetThermalReliefGap(thermal_gap)
         zone.SetThermalReliefCopperBridge(FromMM(0.3))
@@ -402,10 +482,17 @@ def generate_gerber_files(board):
     plot_options.SetSubtractMaskFromSilk(True)
     plot_options.SetGerberPrecision(6)
     layers = [
-        (F_Cu, "F.Cu", "Top Copper"), (In1_Cu, "In1.Cu", "Inner 1"), (In2_Cu, "In2.Cu", "Inner 2"),
-        (B_Cu, "B.Cu", "Bottom Copper"), (F_Paste, "F.Paste", "Paste"), (B_Paste, "B.Paste", "Paste"),
-        (F_SilkS, "F.SilkS", "SilkS"), (B_SilkS, "B.SilkS", "SilkS"), (F_Mask, "F.Mask", "Mask"),
-        (B_Mask, "B.Mask", "Mask"), (EDGE_CUTS, "Edge.Cuts", "Outline")
+        (F_Cu, "F.Cu", "Top Copper"),
+        (In1_Cu, "In1.Cu", "Inner 1"),
+        (In2_Cu, "In2.Cu", "Inner 2"),
+        (B_Cu, "B.Cu", "Bottom Copper"),
+        (F_Paste, "F.Paste", "Paste"),
+        (B_Paste, "B.Paste", "Paste"),
+        (F_SilkS, "F.SilkS", "SilkS"),
+        (B_SilkS, "B.SilkS", "SilkS"),
+        (F_Mask, "F.Mask", "Mask"),
+        (B_Mask, "B.Mask", "Mask"),
+        (EDGE_CUTS, "Edge.Cuts", "Outline"),
     ]
     for layer_id, layer_name, desc in layers:
         plot_controller.SetLayer(layer_id)

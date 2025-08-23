@@ -15,13 +15,14 @@ Endpoints:
 - /api/acoustic (GET/POST): estado y control de ondas ultrasónicas.
 """
 
-import math
 import logging
-import time
-import threading
+import math
 import os
-from flask import Flask, request, jsonify
+import threading
+import time
+
 import requests
+from flask import Flask, jsonify, request
 
 logging.basicConfig(
     level=logging.INFO,
@@ -94,14 +95,11 @@ def register_with_agent_ai(
         # Podrías añadir más metadata si AgentAI la usa
     }
     logger.info(
-        f"Intentando registrar '{module_name}' en AgentAI "
-        f"({AGENT_AI_REGISTER_URL})..."
+        f"Intentando registrar '{module_name}' en AgentAI ({AGENT_AI_REGISTER_URL})..."
     )
     for attempt in range(MAX_REGISTRATION_RETRIES):
         try:
-            response = requests.post(
-                AGENT_AI_REGISTER_URL, json=payload, timeout=4.0
-            )
+            response = requests.post(AGENT_AI_REGISTER_URL, json=payload, timeout=4.0)
             response.raise_for_status()  # Lanza excepción para errores 4xx/5xx
             if response.status_code == 200:
                 logger.info(f"Registro de '{module_name}' exitoso en AgentAI.")
@@ -109,10 +107,7 @@ def register_with_agent_ai(
             else:
                 # Esto no debería ocurrir si raise_for_status funciona, pero
                 # por si acaso
-                msg = (
-                    "Registro de '%s' con status %s. "
-                    "Respuesta: %s"
-                )
+                msg = "Registro de '%s' con status %s. Respuesta: %s"
                 logger.warning(
                     msg, module_name, response.status_code, response.text[:20]
                 )  # Truncate
@@ -241,9 +236,7 @@ def set_wave_control():
         )
 
     except (ValueError, TypeError):
-        logger.error(
-            "Error al procesar control_signal: %s - Data: %s", data, data
-        )
+        logger.error("Error al procesar control_signal: %s - Data: %s", data, data)
         return (
             jsonify(
                 {
@@ -280,8 +273,7 @@ def wave_foton():
             # Recalcular omega_local inmediatamente si depende de lambda
             state["omega_local"] = get_omega_local(new_lambda)
         logger.info(
-            "[Foton] lambda_foton actualizado a %.2f, "
-            "omega_local a %.3f",
+            "[Foton] lambda_foton actualizado a %.2f, omega_local a %.3f",
             new_lambda,
             state["omega_local"],
         )
@@ -290,9 +282,7 @@ def wave_foton():
             200,
         )
     except (ValueError, TypeError):
-        logger.error(
-            "Valor inválido para lambda_foton: %s", data.get("lambda_foton")
-        )
+        logger.error("Valor inválido para lambda_foton: %s", data.get("lambda_foton"))
         return (
             jsonify(
                 {
@@ -331,8 +321,7 @@ def acoustic():
                         {
                             "status": "error",
                             "message": (
-                                "Frecuencia fuera del rango ultrasónico "
-                                "(20kHz-100kHz)"
+                                "Frecuencia fuera del rango ultrasónico (20kHz-100kHz)"
                             ),
                         }
                     ),
@@ -340,14 +329,10 @@ def acoustic():
                 )
             with acoustic_lock:
                 acoustic_state["freq_current"] = new_freq
-            logger.info(
-                f"[Acoustic] freq_current ajustada a {new_freq:.2f} Hz"
-            )
+            logger.info(f"[Acoustic] freq_current ajustada a {new_freq:.2f} Hz")
             return jsonify({"status": "success", "frecuencia": new_freq}), 200
         except (ValueError, TypeError):
-            logger.error(
-                "Valor inválido para frecuencia: %s", data.get("frecuencia")
-            )
+            logger.error("Valor inválido para frecuencia: %s", data.get("frecuencia"))
             return (
                 jsonify(
                     {
@@ -383,9 +368,7 @@ def get_omega_local(lambda_foton):
     return max(0.1, omega)
 
 
-def derivatives(
-    t, current_x, current_y, current_vx, current_vy, omega_local, c_local
-):
+def derivatives(t, current_x, current_y, current_vx, current_vy, omega_local, c_local):
     """Calcula las derivadas del oscilador 2D amortiguado."""
     dxdt = current_vx
     dydt = current_vy
@@ -394,9 +377,7 @@ def derivatives(
     return dxdt, dydt, dvxdt, dvydt
 
 
-def rk4_step(
-    t, current_x, current_y, current_vx, current_vy, dt, omega_local, c_local
-):
+def rk4_step(t, current_x, current_y, current_vx, current_vy, dt, omega_local, c_local):
     """Un paso de integración RK4."""
     dx1, dy1, dvx1, dvy1 = derivatives(
         t, current_x, current_y, current_vx, current_vy, omega_local, c_local
@@ -422,9 +403,7 @@ def rk4_step(
     vx4 = current_vx + dvx3 * dt
     vy4 = current_vy + dvy3 * dt
 
-    dx4, dy4, dvx4, dvy4 = derivatives(
-        t + dt, x4, y4, vx4, vy4, omega_local, c_local
-    )
+    dx4, dy4, dvx4, dvy4 = derivatives(t + dt, x4, y4, vx4, vy4, omega_local, c_local)
 
     x_new = current_x + (dt / 6.0) * (dx1 + 2 * dx2 + 2 * dx3 + dx4)
     y_new = current_y + (dt / 6.0) * (dy1 + 2 * dy2 + 2 * dy3 + dy4)
@@ -479,10 +458,7 @@ def simulate_wave_infinite():
         if amplitude >= amplitude_threshold:
             try:
                 with open(OUTPUT_FILE, "a", encoding="utf-8") as f:
-                    f.write(
-                        f"[WaveEvent] amplitude={amplitude:.3f}, "
-                        f"t={t_new:.2f}\n"
-                    )
+                    f.write(f"[WaveEvent] amplitude={amplitude:.3f}, t={t_new:.2f}\n")
                 logger.info(
                     f"[WaveEvent] Umbral de amplitud superado: "
                     f"{amplitude:.3f} en t={t_new:.2f}"
@@ -516,9 +492,7 @@ if __name__ == "__main__":
     APORTA_A = "malla_watcher"  # ¿Afecta a la malla? ¿O a ECU?
     # ¿Aumenta la oscilación? ¿O la reduce (reductor)? ¿O la modula?
     NATURALEZA = "potenciador"
-    DESCRIPTION = (
-        "Simulador de oscilador 2D amortiguado con ultrasonido."
-    )
+    DESCRIPTION = "Simulador de oscilador 2D amortiguado con ultrasonido."
 
     registration_successful = register_with_agent_ai(
         MODULE_NAME,
@@ -530,9 +504,7 @@ if __name__ == "__main__":
         DESCRIPTION,
     )
     if not registration_successful:
-        logger.warning(
-            "Módulo '%s' sin registro exitoso en AgentAI.", MODULE_NAME
-        )
+        logger.warning("Módulo '%s' sin registro exitoso en AgentAI.", MODULE_NAME)
     # ------------------------------------
     # Iniciar simulación en un hilo
     sim_thread = threading.Thread(

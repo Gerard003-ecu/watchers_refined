@@ -3,9 +3,8 @@ from schemathesis import Case
 
 # Cargar el esquema OpenAPI desde el archivo.
 # La URL base se tomará de la sección `servers` del esquema.
-schema = schemathesis.openapi.from_path(
-    "api-contracts/matriz_ecu.v1.yml"
-)
+schema = schemathesis.openapi.from_path("api-contracts/matriz_ecu.v1.yml")
+
 
 @schema.parametrize()
 def test_api_contract(case: Case):
