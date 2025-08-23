@@ -232,7 +232,8 @@ class AgentAI:
                 self.is_architecture_validated = True
                 self.operational_status = "OPERATIONAL"
                 logger.info(
-                    "Arquitectura del sistema validada. Estado: OK. El sistema está operativo."
+                    "Arquitectura del sistema validada. Estado: OK. "
+                    "El sistema está operativo."
                 )
             else:  # "ERROR" or "VIOLATION"
                 self.is_architecture_validated = False
@@ -291,7 +292,8 @@ class AgentAI:
                     # La ECU devuelve [real, imag], necesitamos convertirlo a complejo
                     field_data = data["field_vector"]
                     complex_field = np.array(field_data, dtype=float)
-                    # El array es (capas, filas, cols, 2), lo convertimos a (capas, filas, cols) de tipo complejo
+                    # El array es (capas, filas, cols, 2), lo convertimos a
+                    # (capas, filas, cols) de tipo complejo
                     complex_field = complex_field[..., 0] + 1j * complex_field[..., 1]
                     logger.debug("Campo vectorial complejo recibido de ECU.")
                     return complex_field
@@ -320,7 +322,8 @@ class AgentAI:
         Returns:
             tuple[float, float]: Una tupla conteniendo:
                 - coherencia (float): Magnitud del vector de fase promedio (0 a 1).
-                - fase_dominante (float): Ángulo del vector de fase promedio (en radianes).
+                - fase_dominante (float): Ángulo del vector de fase promedio
+                  (en radianes).
         """
         if region.size == 0:
             return 0.0, 0.0
@@ -359,17 +362,21 @@ class AgentAI:
             permission = self.mic["agent_ai"]["harmony_controller"]
             if permission != "CONTROL_TASK":
                 logger.error(
-                    f"Violación de MIC: No se tiene permiso '{permission}' para controlar harmony_controller."
+                    "Violación de MIC: No se tiene permiso '%s' para controlar "
+                    "harmony_controller.",
+                    permission,
                 )
                 return
         except KeyError:
             logger.error(
-                "Violación de MIC: No hay una regla definida para agent_ai -> harmony_controller."
+                "Violación de MIC: No hay una regla definida para agent_ai -> "
+                "harmony_controller."
             )
             return
 
         logger.info(
-            "Permiso verificado. Delegando tarea de sincronización a harmony_controller."
+            "Permiso verificado. Delegando tarea de sincronización a "
+            "harmony_controller."
         )
 
         task_url = f"{self.central_urls['harmony_controller']}/api/tasks/phase_sync"
@@ -406,7 +413,8 @@ class AgentAI:
                     delay = BASE_RETRY_DELAY * (2**attempt)
                     time.sleep(delay)
         logger.error(
-            "No se pudo delegar la tarea de sincronización de fase a HC tras %s intentos.",
+            "No se pudo delegar la tarea de sincronización de fase a HC tras "
+            "%s intentos.",
             MAX_RETRIES,
         )
 
@@ -423,7 +431,8 @@ class AgentAI:
             region_identifier (str): El identificador de la región (ej. "capa_0").
 
         Returns:
-            Optional[float]: La frecuencia de resonancia (alpha), o None si no se puede determinar.
+            Optional[float]: La frecuencia de resonancia (alpha), o None si no
+            se puede determinar.
         """
         # Simulación: En un caso real, esto sería una llamada API a la ECU.
         # Por ejemplo: `self._get_ecu_parameter(region_identifier, 'alpha')`
@@ -514,7 +523,8 @@ class AgentAI:
             values = np.array(values)
             timestamps = np.array(timestamps) - timestamps[0]  # Normalizar tiempo a 0
 
-            # Calcular valor de estado estacionario como el promedio del último 10% de los datos
+            # Calcular valor de estado estacionario como el promedio del último
+            # 10% de los datos
             steady_state_start_index = int(len(values) * 0.9)
             steady_state_value = np.mean(values[steady_state_start_index:])
 
@@ -548,7 +558,8 @@ class AgentAI:
                 else 0.0
             )
 
-            # Settling Time (tiempo para que la respuesta permanezca dentro del 5% del valor de estado estacionario)
+            # Settling Time (tiempo para que la respuesta permanezca dentro del 5%
+            # del valor de estado estacionario)
             settling_band_upper = steady_state_value * 1.05
             settling_band_lower = steady_state_value * 0.95
 
@@ -1193,8 +1204,11 @@ def strategic_loop(agent_instance: AgentAI):
 
             # --- 2. Determinar y Enviar Nuevo Setpoint Estratégico ---
             with agent_instance.lock:
-                # Copiar todos los datos necesarios para la decisión en una sola sección crítica
-                current_measurement = agent_instance.harmony_state.get("last_measurement", 0.0)
+                # Copiar todos los datos necesarios para la decisión en una
+                # sola sección crítica
+                current_measurement = agent_instance.harmony_state.get(
+                    "last_measurement", 0.0
+                )
                 cogniboard_signal = agent_instance.external_inputs["cogniboard_signal"]
                 config_status = agent_instance.external_inputs["config_status"]
                 strategy = agent_instance.current_strategy
@@ -1211,7 +1225,9 @@ def strategic_loop(agent_instance: AgentAI):
             )
 
             # Comprobar si el setpoint ha cambiado y actualizar/enviar si es necesario
-            if not np.allclose(current_setpoint, new_setpoint_vector, rtol=1e-5, atol=1e-8):
+            if not np.allclose(
+                current_setpoint, new_setpoint_vector, rtol=1e-5, atol=1e-8
+            ):
                 with agent_instance.lock:
                     agent_instance.target_setpoint_vector = new_setpoint_vector
 
@@ -1222,7 +1238,8 @@ def strategic_loop(agent_instance: AgentAI):
                 agent_instance._send_setpoint_to_harmony(new_setpoint_vector)
 
             # --- 3. Lógica Cuántica: Analizar y Actuar sobre el Campo ECU ---
-            # CORRECCIÓN: Toda la lógica que depende del campo se mueve dentro de este bloque.
+            # CORRECCIÓN: Toda la lógica que depende del campo se mueve
+            # dentro de este bloque.
             field_vector = agent_instance._get_ecu_field_vector()
             if field_vector is not None:
                 # Si tenemos el campo, calculamos la coherencia.
@@ -1232,11 +1249,12 @@ def strategic_loop(agent_instance: AgentAI):
                 )
                 logger.info(
                     "Coherencia Capa 0: %.3f, Fase Dominante: %.3f rad",
-                    coherencia,
+                    coherence,
                     dominant_phase,
                 )
 
-                # Ahora, tomamos decisiones basadas en la coherencia que acabamos de calcular.
+                # Ahora, tomamos decisiones basadas en la coherencia que
+                # acabamos de calcular.
                 if coherence < 0.8:
                     logger.warning(
                         "Coherencia (%.3f) por debajo del umbral. "
@@ -1252,12 +1270,20 @@ def strategic_loop(agent_instance: AgentAI):
                         "Coherencia alta (%.3f). Intentando maniobra de resonancia.",
                         coherence,
                     )
-                    resonant_frequency = agent_instance.find_resonant_frequency("capa_0")
+                    resonant_frequency = agent_instance.find_resonant_frequency(
+                        "capa_0"
+                    )
                     if resonant_frequency is not None:
-                        agent_instance._delegate_resonance_task("capa_0", resonant_frequency)
+                        agent_instance._delegate_resonance_task(
+                            "capa_0", resonant_frequency
+                        )
             else:
-                # Si no pudimos obtener el campo, lo registramos y continuamos el bucle.
-                logger.error("No se pudo obtener el campo de ECU. Omitiendo la lógica cuántica en este ciclo.")
+                # Si no pudimos obtener el campo, lo registramos y continuamos
+                # el bucle.
+                logger.error(
+                    "No se pudo obtener el campo de ECU. Omitiendo la lógica "
+                    "cuántica en este ciclo."
+                )
 
         except Exception as e:
             logger.exception("Error inesperado en el bucle estratégico: %s", e)

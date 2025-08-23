@@ -13,7 +13,7 @@ Principales Funcionalidades:
 - Ejecuta la simulación física en un hilo de fondo continuo.
 """
 
-import csv  # Keep csv for export method, though it might not be used by the service itself
+import csv  # Keep csv for export method, not used by the service itself
 import logging
 import math
 import os
@@ -88,7 +88,8 @@ def simulation_loop() -> None:
 
     if not config:
         logger.error(
-            "La configuración global no está disponible. Deteniendo el hilo de simulación."
+            "La configuración global no está disponible. "
+            "Deteniendo el hilo de simulación."
         )
         return
 
@@ -161,7 +162,9 @@ def register_with_agent_ai(
     }
 
     logger.info(
-        f"Intentando registrar '{module_name}' en AgentAI ({config.agent_ai_register_url})..."
+        "Intentando registrar '%s' en AgentAI (%s)...",
+        module_name,
+        config.agent_ai_register_url,
     )
     for attempt in range(config.max_registration_retries):
         try:
@@ -173,12 +176,14 @@ def register_with_agent_ai(
             )
             response.raise_for_status()
             if response.status_code == 200:
-                logger.info(f"Registro de '{module_name}' exitoso en AgentAI.")
+                logger.info("Registro de '%s' exitoso en AgentAI.", module_name)
                 return True
             else:
                 logger.warning(
-                    f"Registro de '{module_name}' recibido con status {response.status_code}. "
-                    f"Respuesta: {response.text}"
+                    "Registro de '%s' recibido con status %d. Respuesta: %s",
+                    module_name,
+                    response.status_code,
+                    response.text,
                 )
         except requests.exceptions.RequestException as e:
             logger.error(
@@ -332,8 +337,11 @@ class AtomicPiston:
         self.friction_force_history: deque = deque(maxlen=self.max_history_size)
 
         logger.info(
-            f"AtomicPiston inicializado en modo {self.mode.value} "
-            f"con transductor {self.transducer_type.value} y fricción {self.friction_model.value}."
+            "AtomicPiston inicializado en modo %s con transductor %s y "
+            "fricción %s.",
+            self.mode.value,
+            self.transducer_type.value,
+            self.friction_model.value,
         )
 
     def _set_transducer_params(self) -> None:
@@ -416,14 +424,16 @@ class AtomicPiston:
         # Fricción estática (cuando la velocidad es casi cero)
         else:
             if self.friction_model == FrictionModel.COULOMB:
-                # La fricción estática se opone a la fuerza impulsora hasta su límite máximo.
+                # La fricción estática se opone a la fuerza impulsora hasta
+                # su límite máximo.
                 return -np.sign(driving_force) * min(
                     abs(driving_force), self.coulomb_friction
                 )
 
             elif self.friction_model == FrictionModel.STRIBECK:
                 f_static, _, _ = self.stribeck_coeffs
-                # La fricción estática se opone a la fuerza impulsora hasta su límite estático.
+                # La fricción estática se opone a la fuerza impulsora hasta
+                # su límite estático.
                 return -np.sign(driving_force) * min(abs(driving_force), f_static)
 
         # Si el modelo no es ni Coulomb ni Stribeck, no hay fricción seca.
@@ -684,13 +694,16 @@ class AtomicPiston:
         if self.current_charge <= 1e-5:
             self.battery_is_discharging = False
             logger.info(
-                "Descarga BATTERY: Carga agotada o insignificante. Descarga desactivada."
+                "Descarga BATTERY: Carga agotada o insignificante. "
+                "Descarga desactivada."
             )
-            # Aseguramos que la posición quede en 0 para evitar cargas residuales.
+            # Aseguramos que la posición quede en 0 para evitar cargas
+            # residuales.
             self.position = 0.0
             return None
 
-        # 2. Si pasamos la comprobación anterior, significa que hay carga y debemos descargar.
+        # 2. Si pasamos la comprobación anterior, significa que hay carga y
+        # debemos descargar.
         # La descarga máxima es un 80% para evitar que se vacíe en un solo paso.
         max_discharge = self.current_charge * 0.8
         discharge_amount = min(self.battery_discharge_rate * dt, max_discharge)
@@ -736,10 +749,11 @@ class AtomicPiston:
         discharge_energy = discharge_current**2 * load_resistance * dt
 
         if abs(self.position) > 1e-6 and self.k > 0:
-            # La energía potencial es E = 0.5*k*x². El cambio en posición es dx = dE / (k*x).
-            # La energía se disipa, por lo que dE es negativo (la energía almacenada disminuye).
-            # Para una posición negativa (compresión), dE/ (k*x) resulta en un dx positivo,
-            # moviendo la posición hacia cero, lo cual es correcto.
+            # La energía potencial es E = 0.5*k*x². El cambio en posición es
+            # dx = dE / (k*x). La energía se disipa, por lo que dE es negativo
+            # (la energía almacenada disminuye). Para una posición negativa
+            # (compresión), dE / (k*x) resulta en un dx positivo, moviendo la
+            # posición hacia cero, lo cual es correcto.
             position_change = -discharge_energy / (self.k * self.position)
         else:
             position_change = 0.0
@@ -966,7 +980,8 @@ class AtomicPiston:
         velocity_history = []
         acceleration_history = []
 
-        # Aplicar el impulso como un cambio instantáneo en la velocidad (p = m*v -> Δv = I/m)
+        # Aplicar el impulso como un cambio instantáneo en la velocidad
+        # (p = m*v -> Δv = I/m)
         self.velocity += impulse_magnitude / self.m
 
         for _ in time_series:
@@ -1234,7 +1249,9 @@ def set_piston_control():
         current_target = ipu_instance.target_energy
 
     logger.info(
-        f"Señal de control recibida: {signal}. Nuevo objetivo de energía: {current_target:.2f} J"
+        "Señal de control recibida: %s. Nuevo objetivo de energía: %.2f J",
+        signal,
+        current_target,
     )
 
     return jsonify(
@@ -1301,7 +1318,9 @@ def get_piston_config():
                 "converter_efficiency": ipu_instance.converter_efficiency,
             },
             "operational_params": {
-                "capacitor_discharge_threshold": ipu_instance.capacitor_discharge_threshold,
+                "capacitor_discharge_threshold": (
+                    ipu_instance.capacitor_discharge_threshold
+                ),
                 "hysteresis_factor": ipu_instance.hysteresis_factor,
             },
             "pid_gains": {
@@ -1361,7 +1380,7 @@ def execute_piston_command():
             elif command == "trigger_discharge":
                 if not isinstance(value, bool):
                     raise ValueError(
-                        "El valor para 'trigger_discharge' debe ser booleano (true/false)."
+                        "El valor para 'trigger_discharge' debe ser booleano."
                     )
                 ipu_instance.trigger_discharge(value)
                 status = "activada" if value else "desactivada"
@@ -1450,7 +1469,10 @@ def main():
     hostname = os.environ.get("HOSTNAME", module_name)
     module_url = f"http://{hostname}:{config.service_port}"
     health_url = f"{module_url}/api/health"
-    description = "Microservicio que simula una Unidad de Potencia Inteligente (IPU) y expone una API para su control."
+    description = (
+        "Microservicio que simula una Unidad de Potencia Inteligente (IPU) y "
+        "expone una API para su control."
+    )
 
     registration_successful = register_with_agent_ai(
         module_name, module_url, health_url, description

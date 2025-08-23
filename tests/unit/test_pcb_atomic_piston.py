@@ -3,13 +3,11 @@ from unittest.mock import MagicMock, call
 
 # Mock pcbnew and skidl before they are imported by the script under test
 # This is crucial for running tests without KiCad installed
-sys.modules["pcbnew"] = MagicMock()
-sys.modules["skidl"] = MagicMock()
-
-# Now we can import the script to be tested
 from atomic_piston import pcb_atomic_piston_v2
 from atomic_piston.config import BOARD_HEIGHT, BOARD_WIDTH, PLACEMENTS
-from atomic_piston.constants import *
+
+sys.modules["pcbnew"] = MagicMock()
+sys.modules["skidl"] = MagicMock()
 
 
 def test_create_schematic_netlist(mocker):
@@ -126,7 +124,7 @@ def test_place_components(mocker):
 
     # Assert
     mock_wxPointMM.assert_has_calls(expected_pos_calls, any_order=True)
-    for i, (ref, placement) in enumerate(PLACEMENTS.items()):
+    for i, (_ref, placement) in enumerate(PLACEMENTS.items()):
         mock_module = mock_modules[i]
         mock_module.SetPosition.assert_called_once()
         mock_module.SetOrientationDegrees.assert_called_once_with(placement["rot"])

@@ -1,11 +1,11 @@
 import os
 import sys
 
+from atomic_piston.generate_schematic import create_schematic_netlist
+
 # Añadir la carpeta del proyecto al path para que las importaciones funcionen
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(project_root)
-
-from atomic_piston.generate_schematic import create_schematic_netlist
 
 
 def main():
@@ -15,7 +15,6 @@ def main():
     # Definir rutas
     piston_dir = os.path.join(project_root, "atomic_piston")
     netlist_file = os.path.join(piston_dir, "atomic_piston.net")
-    pcb_file = os.path.join(piston_dir, "atomic_piston_layout.kicad_pcb")
 
     # --- PASO 1: Generar la netlist con SKiDL ---
     try:
@@ -41,13 +40,16 @@ def main():
     print("1. El archivo 'atomic_piston.net' ha sido creado.")
     print("2. Ahora, abre KiCad, crea un proyecto nuevo.")
     print(
-        "3. En el editor de esquemáticos, ve a Herramientas -> Importar -> Netlist y selecciona el archivo."
+        "3. En el editor de esquemáticos, ve a Herramientas -> Importar -> "
+        "Netlist y selecciona el archivo."
     )
     print(
-        "4. Luego, en el editor de esquemáticos, ve a Herramientas -> Actualizar PCB desde el Esquema."
+        "4. Luego, en el editor de esquemáticos, ve a Herramientas -> "
+        "Actualizar PCB desde el Esquema."
     )
     print(
-        "5. Finalmente, puedes ejecutar el script de refinamiento en la consola de KiCad."
+        "5. Finalmente, puedes ejecutar el script de refinamiento en la "
+        "consola de KiCad."
     )
 
 

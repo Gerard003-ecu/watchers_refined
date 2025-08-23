@@ -438,10 +438,12 @@ class TestAgentAI(unittest.TestCase):
             la magnitud del setpoint se reduce.
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock del módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock del módulo `requests`.
         """
 
         # Caso default: sin cambios
@@ -610,10 +612,12 @@ class TestAgentAI(unittest.TestCase):
         debe ser igual al setpoint objetivo actual del agente.
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [1.5, -0.5]
         self.agent.target_setpoint_vector = list(initial_vector)
@@ -653,10 +657,12 @@ class TestAgentAI(unittest.TestCase):
         reduzca en un factor predeterminado (0.98).
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -697,10 +703,12 @@ class TestAgentAI(unittest.TestCase):
         un factor predeterminado (0.98), independientemente del error actual.
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -743,10 +751,12 @@ class TestAgentAI(unittest.TestCase):
         (factor 0.97 sobre la reducción anterior).
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -807,10 +817,12 @@ class TestAgentAI(unittest.TestCase):
         en un factor predeterminado (1.02).
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -851,10 +863,12 @@ class TestAgentAI(unittest.TestCase):
         (factor 1.01 sobre el aumento anterior).
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -916,10 +930,12 @@ class TestAgentAI(unittest.TestCase):
         (ej. [0.1, 0.1] para un vector 2D) para iniciar la actividad.
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [0.0, 0.0]  # Setpoint inicial cero
         initial_norm = 0.0
@@ -958,10 +974,12 @@ class TestAgentAI(unittest.TestCase):
         debe reducirse en un factor predeterminado (0.95).
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -1008,10 +1026,12 @@ class TestAgentAI(unittest.TestCase):
         cambiar respecto al setpoint objetivo actual del agente.
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [2.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -1058,10 +1078,12 @@ class TestAgentAI(unittest.TestCase):
         debería reducir la magnitud a un 90% de la original.
 
         Args:
-            mock_logger, Mock para el logger.
-            mock_validate_module_registration, Mock de la función de validación de registro.
-            mock_check_missing_dependencies, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock para el módulo `requests`.
+            mock_logger: Mock para el logger.
+            mock_validate_module_registration: Mock de la función de
+                validación de registro.
+            mock_check_missing_dependencies: Mock de la función de chequeo de
+                dependencias.
+            mock_requests: Mock para el módulo `requests`.
         """
         initial_vector = [5.0, 0.0]
         initial_norm = np.linalg.norm(initial_vector)
@@ -1665,7 +1687,8 @@ class TestAgentAI(unittest.TestCase):
     ):
         """Prueba el análisis de una respuesta PID con la nueva lógica robusta."""
         setpoint = 1.0
-        # 11 data points, so steady state is calculated from the last 10% (last 2 points)
+        # 11 data points, so steady state is calculated from the last 10%
+        # (last 2 points)
         timestamps = [1672531200 + i for i in range(11)]
         values = [0.0, 0.2, 0.5, 0.9, 1.1, 1.2, 1.1, 1.05, 1.02, 1.01, 1.01]
         data = list(zip(timestamps, values, strict=False))
@@ -1674,8 +1697,10 @@ class TestAgentAI(unittest.TestCase):
         # rise time (10% -> 0.101, 90% -> 0.909)
         # time_10 = 1, time_90 = 4. rise_time = 3
         # peak = 1.2. overshoot = (1.2 - 1.01)/1.01 * 100 = 18.81%
-        # settling band [0.9595, 1.0605]. last outside is 1.2 at t=5. settling_time = 5
-        # crossings: 0.0 -> 1.2 (1), 1.2 -> 1.05 (none), 1.05 -> 1.0 (none). 1 crossing. Not oscillatory.
+        # settling band [0.9595, 1.0605]. last outside is 1.2 at t=5.
+        # settling_time = 5
+        # crossings: 0.0 -> 1.2 (1), 1.2 -> 1.05 (none), 1.05 -> 1.0 (none).
+        # 1 crossing. Not oscillatory.
 
         analysis = self.agent.analyze_pid_response(data, setpoint)
 
@@ -1703,7 +1728,8 @@ class TestAgentAI(unittest.TestCase):
         values = [0.0, 1.2, 0.8, 1.1, 0.9, 1.05, 0.95, 1.02, 0.98, 1.01, 1.0]
         data = list(zip(timestamps, values, strict=False))
 
-        # crossings: 0->1.2, 1.2->0.8, 0.8->1.1, 1.1->0.9, 0.9->1.05, 1.05->0.95, 0.95->1.02, 1.02->0.98, 0.98->1.01
+        # crossings: 0->1.2, 1.2->0.8, 0.8->1.1, 1.1->0.9, 0.9->1.05,
+        # 1.05->0.95, 0.95->1.02, 1.02->0.98, 0.98->1.01
         # many crossings.
         analysis = self.agent.analyze_pid_response(data, setpoint)
         self.assertTrue(analysis["oscillatory"])

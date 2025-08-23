@@ -47,7 +47,10 @@ COMPOSE_PATH = "docker-compose.yml"
 
 
 def discover_interactions(service_data: Dict[str, Any]) -> List[str]:
-    """Parsea las variables de entorno de un servicio para encontrar URLs de otros servicios."""
+    """
+    Parsea las variables de entorno de un servicio para encontrar URLs de
+    otros servicios.
+    """
     interactions = []
     env_vars = service_data.get("environment", [])
     if not env_vars:
@@ -92,7 +95,9 @@ def build_report():
     for name, data in deployed_services.items():
         if name not in defined_services:
             logger.warning(
-                f"El servicio '{name}' se está desplegando pero no está definido en la topología."
+                "El servicio '%s' se está desplegando pero no está "
+                "definido en la topología.",
+                name,
             )
             continue
 
@@ -137,7 +142,8 @@ def send_report(report: Dict[str, Any], retries: int = 3, delay: int = 5):
             response = requests.post(AGENT_AI_CONFIG_ENDPOINT, json=report, timeout=15)
             response.raise_for_status()
             logger.info(
-                f"Informe de configuración enviado a agent_ai. Respuesta: {response.status_code}"
+                "Informe de configuración enviado a agent_ai. Respuesta: %s",
+                response.status_code,
             )
             return  # Envío exitoso, salimos de la función
         except requests.exceptions.RequestException as e:
@@ -149,7 +155,9 @@ def send_report(report: Dict[str, Any], retries: int = 3, delay: int = 5):
                 time.sleep(delay)
             else:
                 logger.error(
-                    f"No se pudo enviar el informe de configuración a agent_ai después de {retries} intentos."
+                    "No se pudo enviar el informe de configuración a agent_ai "
+                    "después de %s intentos.",
+                    retries,
                 )
                 break  # Salir del bucle después del último intento
 

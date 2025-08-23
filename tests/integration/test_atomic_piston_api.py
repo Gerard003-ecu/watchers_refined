@@ -6,7 +6,8 @@ import threading
 
 import pytest
 
-# Se importa el módulo directamente para poder modificar sus variables globales en el entorno de prueba
+# Se importa el módulo directamente para poder modificar sus variables globales
+# en el entorno de prueba
 from atomic_piston import atomic_piston_service
 from atomic_piston.atomic_piston_service import AtomicPiston
 from atomic_piston.atomic_piston_service import app as agent_api
@@ -38,7 +39,8 @@ def reset_ipu_instance():
     # Se inicializa el objeto de configuración que el servicio espera
     atomic_piston_service.config = PistonConfig()
 
-    # Se modifica la instancia directamente en el módulo del servicio para que los endpoints la vean.
+    # Se modifica la instancia directamente en el módulo del servicio para que
+    # los endpoints la vean.
     atomic_piston_service.ipu_instance = AtomicPiston(
         capacity=10.0,
         elasticity=100.0,
@@ -47,8 +49,9 @@ def reset_ipu_instance():
         # Usar el modelo de fricción de la configuración por defecto para consistencia
         friction_model=atomic_piston_service.config.friction_model,
     )
-    # Se usa un mock de hilo no vivo para que `is_alive()` devuelva False, haciendo que
-    # el detalle 'simulation_running' en /api/health sea un booleano False en lugar de None.
+    # Se usa un mock de hilo no vivo para que `is_alive()` devuelva False,
+    # haciendo que el detalle 'simulation_running' en /api/health sea un
+    # booleano False en lugar de None.
     atomic_piston_service.simulation_thread = threading.Thread()
 
 
@@ -80,7 +83,8 @@ class TestStateEndpoint:
 
     def test_get_state_success(self, client):
         """
-        Verifica que se puede obtener el estado del pistón y que tiene la estructura correcta.
+        Verifica que se puede obtener el estado del pistón y que tiene la
+        estructura correcta.
         """
         # WHEN
         response = client.get("/api/state")

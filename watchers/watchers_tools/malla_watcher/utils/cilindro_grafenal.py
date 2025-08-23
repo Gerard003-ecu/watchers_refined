@@ -15,7 +15,8 @@ try:
     from scipy.spatial import cKDTree
 except ImportError:
     logger.warning(
-        "Scipy no está instalado. El rendimiento de la búsqueda de vecinos en Z se verá afectado."
+        "Scipy no está instalado. El rendimiento de la búsqueda de vecinos "
+        "en Z se verá afectado."
     )
     cKDTree = None
 
@@ -301,7 +302,6 @@ class HexCylindricalMesh:
             # La coordenada q se envuelve para manejar la periodicidad
             # circunferencial. Esto asegura que la malla se conecte
             # correctamente alrededor del cilindro.
-            q_for_x_flat = self._wrap_q(q)
 
             x_flat_unwrapped, y_flat_unwrapped = axial_to_cartesian_flat(
                 q, r, self.hex_size

@@ -20,7 +20,7 @@ def create_schematic_netlist(filename="atomic_piston.net"):
     try:
         # (Pega aquí todo el contenido de tu función create_schematic_netlist)
         # ...
-        esp32 = Part(
+        Part(
             "Module", "ESP32-WROOM-32", footprint=FOOTPRINTS["ESP32"], dest="TEMPLATE"
         )
         # ... (resto de la definición de componentes y redes) ...

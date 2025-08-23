@@ -44,7 +44,7 @@ def task_manager_cleanup():
     """
     # Clean up before the test runs
     with task_manager.lock:
-        for task_id, task_info in list(task_manager.tasks.items()):
+        for _task_id, task_info in list(task_manager.tasks.items()):
             if task_info["thread"].is_alive():
                 task_info["stop_event"].set()
                 task_info["thread"].join(timeout=1)
@@ -55,7 +55,7 @@ def task_manager_cleanup():
     finally:
         # Clean up after the test has run
         with task_manager.lock:
-            for task_id, task_info in list(task_manager.tasks.items()):
+            for _task_id, task_info in list(task_manager.tasks.items()):
                 if task_info["thread"].is_alive():
                     task_info["stop_event"].set()
                     task_info["thread"].join(timeout=1)

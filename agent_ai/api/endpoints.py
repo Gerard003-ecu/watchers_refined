@@ -171,7 +171,10 @@ def synchronize_region_command():
             jsonify(
                 {
                     "status": "command_accepted",
-                    "message": f"Sincronización de fase iniciada para la región '{region}'.",
+                    "message": (
+                        "Sincronización de fase iniciada para la región "
+                        f"'{region}'."
+                    ),
                 }
             ),
             202,
@@ -179,7 +182,8 @@ def synchronize_region_command():
 
     except ValueError:
         logger.warning(
-            "Error de valor en /commands/synchronize_region: 'target_phase' no es un flotante válido. Payload: %s",
+            "Error de valor en /commands/synchronize_region: 'target_phase' "
+            "no es un flotante válido. Payload: %s",
             data,
         )
         return jsonify(

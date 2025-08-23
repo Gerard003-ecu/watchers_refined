@@ -1,8 +1,4 @@
 [tool.ruff]
-# Enable Flake8 (E, F), isort (I), and Bugbear (B) rules
-select = ["E", "F", "I", "B"]
-ignore = []
-
 # Exclude common directories
 exclude = [
     ".bzr",
@@ -30,6 +26,10 @@ exclude = [
 # Line length
 line-length = 88
 target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = []
 
 [tool.ruff.format]
 # Black-compatible

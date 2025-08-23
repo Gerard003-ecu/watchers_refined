@@ -327,7 +327,8 @@ class TaskManager:
         with self.lock:
             if task_id in self.tasks:
                 self.tasks[task_id]["status"] = status
-                # Guardamos el estado final por si se consulta después de que el hilo muera
+                # Guardamos el estado final por si se consulta después de que
+                # el hilo muera
                 self.tasks[task_id]["final_status"] = status
                 logger.info(
                     "Estado de la tarea '%s' actualizado a: %s", task_id, status
@@ -522,7 +523,8 @@ def run_resonance_task(
 ):
     """Lógica de la tarea para la amplificación por resonancia."""
     logger.info(
-        "[%s] Iniciando tarea de resonancia en '%s' (Freq: %.2f Hz, Amp: %.2f, Dur: %.1fs)",
+        "[%s] Iniciando tarea de resonancia en '%s' (Freq: %.2f Hz, Amp: %.2f, "
+        "Dur: %.1fs)",
         task_id,
         region,
         frequency,
@@ -982,12 +984,18 @@ def set_harmony_setpoint():
                 }
             ), 200
         else:
-            return jsonify(
-                {
-                    "status": "error",
-                    "message": "Se requiere 'setpoint_vector' o 'setpoint_value' en JSON.",
-                }
-            ), 400
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": (
+                            "Se requiere 'setpoint_vector' o 'setpoint_value' "
+                            "en JSON."
+                        ),
+                    }
+                ),
+                400,
+            )
     except (ValueError, TypeError) as e:
         logger.error("Error al procesar nuevo setpoint: %s", e)
         return jsonify(
