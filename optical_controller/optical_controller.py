@@ -67,7 +67,7 @@ def capturar_imagen(matriz_estado: List[List[float]]) -> np.ndarray:
         return imagen
     except Exception as e:
         logger.error(f"Error capturando imagen: {str(e)}")
-        raise ValueError("Error al procesar la matriz de estado.")
+        raise ValueError("Error al procesar la matriz de estado.") from e
 
 
 def procesar_imagen(imagen: np.ndarray) -> np.ndarray:
@@ -94,7 +94,7 @@ def procesar_imagen(imagen: np.ndarray) -> np.ndarray:
         return imagen_reflejada
     except Exception as e:
         logger.error(f"Error procesando imagen: {str(e)}")
-        raise ValueError("Error al aplicar transformación óptica.")
+        raise ValueError("Error al aplicar transformación óptica.") from e
 
 
 def generar_retroalimentacion(imagen_procesada: np.ndarray) -> float:
@@ -123,7 +123,7 @@ def generar_retroalimentacion(imagen_procesada: np.ndarray) -> float:
         return retroalimentacion
     except Exception as e:
         logger.error(f"Error generando retroalimentación: {str(e)}")
-        raise ValueError("Error al calcular la retroalimentación.")
+        raise ValueError("Error al calcular la retroalimentación.") from e
 
 
 def retroalimentacion_optica(matriz_estado: List[List[float]]) -> float:

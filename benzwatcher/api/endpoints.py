@@ -37,7 +37,7 @@ def catalyze_signal(request: CatalysisRequest):
         return CatalysisResponse(adjusted_value=adjusted)
     except Exception as e:
         metrics.record_failure()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Endpoint para exponer las métricas en formato compatible con Prometheus

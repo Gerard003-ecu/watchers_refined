@@ -315,7 +315,7 @@ def test_apply_external_field_to_mesh_logic(malla_para_test_aplicar_campo):
     apply_ext_field_func(mesh_instance, external_field_list)
 
     changed_count = 0
-    for coords, cell in mesh_instance.cells.items():
+    for _coords, cell in mesh_instance.cells.items():
         assert isinstance(cell.q_vector, np.ndarray)
         assert cell.q_vector.shape == (2,)
         is_zero_vector = np.array_equal(cell.q_vector, np.zeros(2))
@@ -1442,7 +1442,6 @@ def test_api_malla_influence_push_invalid_payload(client, reset_globals):
     Test: /api/malla/influence (push)
     maneja payloads inválidos.
     """
-    reset_globals
     response_missing_key = client.post(
         "/api/malla/influence", json={"otro_dato": "valor"}
     )

@@ -1,3 +1,5 @@
+import csv
+import os
 from unittest.mock import patch
 
 import numpy as np
@@ -12,9 +14,6 @@ DEFAULT_ELASTICITY = 10.0
 DEFAULT_DAMPING = 1.0
 DEFAULT_PISTON_MASS = 1.0
 DT = 0.01  # Time step for updates
-
-import csv
-import os
 
 # Path for patching time.monotonic
 TIME_PATCH_PATH = "atomic_piston.atomic_piston_service.time.monotonic"

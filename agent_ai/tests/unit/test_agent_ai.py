@@ -95,10 +95,12 @@ class SleepCalled(Exception):
 def test_strategic_loop_pauses_when_architecture_is_not_validated(mocker):
     """
     Tests that the strategic loop pauses if the architecture is not validated.
+
     We mock time.sleep to raise an exception to break the loop for the test.
     """
     agent = AgentAI()
-    # By default, agent.is_architecture_validated is False, so the gate should be active.
+    # By default, agent.is_architecture_validated is False, so the gate
+    # should be active.
 
     mock_sleep = mocker.patch("time.sleep", side_effect=SleepCalled)
 

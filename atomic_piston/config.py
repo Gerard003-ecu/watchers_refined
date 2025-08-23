@@ -23,7 +23,8 @@ class PistonConfig:
             self.friction_model = FrictionModel[friction_model_str]
         except KeyError:
             print(
-                f"Warning: Modelo de fricción '{friction_model_str}' inválido. Usando VISCOUS por defecto."
+                f"Warning: Modelo de fricción '{friction_model_str}' "
+                "inválido. Usando VISCOUS por defecto."
             )
             self.friction_model = FrictionModel.VISCOUS
 
