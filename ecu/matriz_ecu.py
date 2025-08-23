@@ -30,7 +30,26 @@ import numpy as np
 from flask import Flask, jsonify, request
 
 # --- Configuración del Logging ---
-logger = logging.getLogger("matriz_ecu")
+def setup_logging():
+    """Configuración centralizada del logging."""
+    logger = logging.getLogger("matriz_ecu")
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(
+        '%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s'
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    # Nivel de logging configurable por entorno
+    log_level = os.environ.get('ECU_LOG_LEVEL', 'INFO').upper()
+    logger.setLevel(getattr(logging, log_level, logging.INFO))
+
+    return logger
+
+logger = setup_logging()
 
 # --- Funciones Auxiliares para Configuración ---
 
@@ -300,48 +319,33 @@ class ToroidalField:
         return energy_density_map
 
     def apply_wave_dynamics_step(self, dt: float, beta: float):
-        """
-        Simula la dinámica de la onda (advección, acoplamiento, disipación),
-        análoga a la Ecuación de Onda en un medio.
-
-        Esta dinámica simula:
-        1. Advección/Propagación de la onda en la dirección azimutal (columnas),
-           controlada por `propagation_coeffs` (por capa).
-        2. Acoplamiento/Transporte vertical (entre filas), controlado por `beta`.
-        3. Disipación de energía (decaimiento de amplitud), controlada por
-           `dissipation_coeffs` (por capa).
-        """
+        """Versión optimizada con operaciones vectorizadas."""
         if beta < 0:
-            logger.warning(
-                "El factor beta (acoplamiento vertical) debería ser no negativo."
-            )
+            logger.warning("El factor beta (acoplamiento vertical) debería ser no negativo.")
 
         with self.lock:
-            next_campo = []
-            # Pre-calcular arrays para broadcasting
-            propagation_coeffs_array = np.array(self.propagation_coeffs)[
-                :, np.newaxis, np.newaxis
-            ]
-            dissipation_coeffs_array = np.array(self.dissipation_coeffs)[
-                :, np.newaxis, np.newaxis
-            ]
+            # Precalcular arrays para broadcasting
+            propagation_coeffs_array = np.array(self.propagation_coeffs)[:, np.newaxis, np.newaxis]
+            dissipation_coeffs_array = np.array(self.dissipation_coeffs)[:, np.newaxis, np.newaxis]
 
-            for capa_idx in range(self.num_capas):
-                capa_actual = self.campo_q[capa_idx]
+            # Crear array 3D para operaciones vectorizadas
+            campo_3d = np.stack(self.campo_q)
 
-                # Vecindad con condiciones toroidales usando np.roll
-                v_left = np.roll(capa_actual, shift=1, axis=1)
-                v_up = np.roll(capa_actual, shift=1, axis=0)
-                v_down = np.roll(capa_actual, shift=-1, axis=0)
+            # Calcular vecinos con roll (condiciones toroidales)
+            v_left = np.roll(campo_3d, shift=1, axis=2)
+            v_up = np.roll(campo_3d, shift=1, axis=1)
+            v_down = np.roll(campo_3d, shift=-1, axis=1)
 
-                # Cálculo vectorizado para toda la capa
-                damped = capa_actual * (1.0 - dissipation_coeffs_array[capa_idx] * dt)
-                advected = propagation_coeffs_array[capa_idx] * v_left * dt
-                coupled = beta * (v_up + v_down) * dt
+            # Cálculos vectorizados
+            damped = campo_3d * (1.0 - dissipation_coeffs_array * dt)
+            advected = propagation_coeffs_array * v_left * dt
+            coupled = beta * (v_up + v_down) * dt
 
-                next_campo.append(damped + advected + coupled)
+            # Actualizar campo
+            nuevo_campo_3d = damped + advected + coupled
 
-            self.campo_q = next_campo
+            # Convertir de vuelta a lista de arrays 2D
+            self.campo_q = [nuevo_campo_3d[i] for i in range(self.num_capas)]
 
     def set_uniform_potential_field(self, seed: Optional[int] = None):
         """
@@ -424,22 +428,42 @@ simulation_thread = None
 stop_simulation_event = threading.Event()
 
 
-def cymatic_simulation_loop(dt: float, beta: float):
-    """Bucle que ejecuta la simulación de la dinámica cimática periódicamente."""
-    logger.info(f"Iniciando bucle de simulación cimática con dt={dt}, beta={beta}...")
+def cymatic_simulation_loop_adaptive(dt: float, beta: float):
+    """Bucle de simulación con paso de tiempo adaptable."""
+    logger.info(f"Iniciando bucle de simulación adaptativa con dt={dt}, beta={beta}...")
+
+    # Estadísticas de rendimiento
+    simulation_times = []
+
     while not stop_simulation_event.is_set():
         try:
             start_time = time.monotonic()
+
+            # Ejecutar paso de simulación
             campo_toroidal_global_servicio.apply_wave_dynamics_step(dt, beta)
             campo_toroidal_global_servicio.apply_internal_phase_evolution(dt)
+
+            # Calcular tiempo de ejecución
             elapsed = time.monotonic() - start_time
+            simulation_times.append(elapsed)
+
+            # Mantener solo las últimas 10 mediciones
+            if len(simulation_times) > 10:
+                simulation_times.pop(0)
+
+            # Ajustar dt si es necesario (no menos del 50% del valor original)
+            avg_time = sum(simulation_times) / len(simulation_times) if simulation_times else elapsed
+            if avg_time > dt * 0.8:  # Si usa más del 80% del tiempo disponible
+                new_dt = dt * 0.9  # Reducir dt un 10%
+                logger.info(f"Ajustando dt de {dt} a {new_dt} por sobrecarga")
+                dt = max(new_dt, SIMULATION_INTERVAL * 0.5)  # No menos de la mitad del original
+
             sleep_time = max(0, dt - elapsed)
             stop_simulation_event.wait(sleep_time)
+
         except Exception as e:
-            logger.error(
-                f"Error en el bucle de simulación cimática: {e}", exc_info=True
-            )
-            stop_simulation_event.wait(5)
+            logger.error("Error en el bucle de simulación: %s", e, exc_info=True)
+            stop_simulation_event.wait(5)  # Esperar antes de reintentar
 
 
 # --- Servidor Flask ---
@@ -481,226 +505,161 @@ def health_check():
     return jsonify(response), status_code
 
 
-@app.route("/api/ecu", methods=["GET"])
-def obtener_estado_unificado_api() -> Tuple[Any, int]:
+@app.route("/api/ecu/energy", methods=["GET"])
+def obtener_mapa_energia() -> Tuple[Any, int]:
     """
-    Endpoint REST para obtener el mapa de densidad de energía del campo cimático.
+    Obtiene el mapa de densidad de energía del campo cimático.
 
-    Retorna un array 2D (filas x columnas) que representa la energía
-    agregada de la onda en cada punto, ponderada por capa.
+    Returns:
+        JSON con el mapa de energía y metadatos
     """
     try:
         energy_map = campo_toroidal_global_servicio.get_energy_density_map()
         response_data = {
             "status": "success",
-            "energy_density_map": energy_map.tolist(),
+            "data": {
+                "energy_density_map": energy_map.tolist(),
+                "type": "energy_map"
+            },
             "metadata": {
-                "descripcion": "Mapa de densidad de energía del campo cimático ponderado por capa",
-                "capas": campo_toroidal_global_servicio.num_capas,
-                "filas": campo_toroidal_global_servicio.num_rows,
-                "columnas": campo_toroidal_global_servicio.num_cols,
+                "description": "Mapa de densidad de energía del campo cimático",
+                "layers": campo_toroidal_global_servicio.num_capas,
+                "rows": campo_toroidal_global_servicio.num_rows,
+                "columns": campo_toroidal_global_servicio.num_cols,
+                "timestamp": time.time()
             },
         }
         logger.info("Mapa de densidad de energía calculado y enviado.")
         return jsonify(response_data), 200
     except Exception as e:
-        logger.exception("Error en endpoint /api/ecu: %s", e)
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "Error interno del servidor al obtener el mapa de energía.",
-                }
-            ),
-            500,
-        )
+        logger.exception("Error en endpoint /api/ecu/energy: %s", e)
+        return jsonify({
+            "status": "error",
+            "message": "Error interno del servidor al obtener el mapa de energía.",
+            "error_code": "INTERNAL_SERVER_ERROR"
+        }), 500
 
 
-def _validate_and_parse_influence_payload(
-    data: Optional[Dict[str, Any]],
-) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[Any, int]]]:
-    """Valida y parsea el payload de la solicitud de influencia."""
-    if not data:
-        return None, (
-            jsonify({"status": "error", "message": "Payload JSON vacío o ausente"}),
-            400,
-        )
-
-    required_fields = {
-        "capa": int,
-        "row": int,
-        "col": int,
-        "vector": list,
-        "nombre_watcher": str,
-    }
-    missing = [f for f in required_fields if f not in data]
-    if missing:
-        msg = f"Faltan campos requeridos en el JSON: {', '.join(missing)}"
-        return None, (jsonify({"status": "error", "message": msg}), 400)
-
-    errors = []
-    for field, expected_type in required_fields.items():
-        if not isinstance(data[field], expected_type):
-            errors.append(
-                f"Campo '{field}' debe ser {expected_type.__name__}, "
-                f"recibido {type(data[field]).__name__}"
-            )
-
-    vec_data = data.get("vector")
-    vec_complex = None
-    if isinstance(vec_data, list):
-        if len(vec_data) != 2:
-            errors.append("Campo 'vector' debe ser una lista de 2 elementos.")
-        elif not all(isinstance(v, (int, float)) for v in vec_data):
-            errors.append("Elementos del 'vector' deben ser números.")
-        else:
-            vec_complex = complex(vec_data[0], vec_data[1])
-
-    if errors:
-        msg = "Errores de tipo en JSON: " + "; ".join(errors).lower()
-        return None, (jsonify({"status": "error", "message": msg}), 400)
-
-    parsed = {
-        "capa": data["capa"],
-        "row": data["row"],
-        "col": data["col"],
-        "vector_complex": vec_complex,
-        "nombre_watcher": data["nombre_watcher"],
-    }
-
-    if not (0 <= parsed["capa"] < campo_toroidal_global_servicio.num_capas):
-        return None, (
-            jsonify({"status": "error", "message": "Índice de capa fuera de rango."}),
-            400,
-        )
-    if not (0 <= parsed["row"] < campo_toroidal_global_servicio.num_rows):
-        return None, (
-            jsonify({"status": "error", "message": "Índice de fila fuera de rango."}),
-            400,
-        )
-    if not (0 <= parsed["col"] < campo_toroidal_global_servicio.num_cols):
-        return None, (
-            jsonify(
-                {"status": "error", "message": "Índice de columna fuera de rango."}
-            ),
-            400,
-        )
-
-    return parsed, None
-
+from .validator import InfluenceValidator
 
 @app.route("/api/ecu/influence", methods=["POST"])
 def recibir_influencia_malla() -> Tuple[Any, int]:
-    """Recibe y aplica una influencia externa (perturbación) al campo cimático.
-
-    Espera un payload JSON con 'capa', 'row', 'col', 'vector' ([real, imag]),
-    y 'nombre_watcher'.
-    """
+    """Recibe y aplica una influencia externa (perturbación) al campo cimático."""
     logger.info("Solicitud POST /api/ecu/influence recibida.")
-    try:
-        data = request.get_json()
-        parsed_data, error_response = _validate_and_parse_influence_payload(data)
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "Payload JSON vacío o ausente"}), 400
 
-        if error_response:
-            return error_response
+    required_fields = ["capa", "row", "col", "vector", "nombre_watcher"]
+    missing = [f for f in required_fields if f not in data]
+    if missing:
+        return jsonify({"status": "error", "message": f"Faltan campos: {', '.join(missing)}"}), 400
+
+    try:
+        capa, row, col = data["capa"], data["row"], data["col"]
+        coord_errors = InfluenceValidator.validate_coordinates(
+            capa, row, col, campo_toroidal_global_servicio
+        )
+        if coord_errors:
+            return jsonify({"status": "error", "message": "; ".join(coord_errors)}), 400
+
+        vector, vec_error = InfluenceValidator.validate_vector(data["vector"])
+        if vec_error:
+            return jsonify({"status": "error", "message": vec_error}), 400
 
         success = campo_toroidal_global_servicio.aplicar_influencia(
-            capa=parsed_data["capa"],
-            row=parsed_data["row"],
-            col=parsed_data["col"],
-            vector=parsed_data["vector_complex"],
-            nombre_watcher=parsed_data["nombre_watcher"],
+            capa=capa,
+            row=row,
+            col=col,
+            vector=vector,
+            nombre_watcher=data["nombre_watcher"],
         )
 
         if success:
-            logger.info(
-                "Influencia de '%s' aplicada exitosamente via API en (%d, %d, %d).",
-                parsed_data["nombre_watcher"],
-                parsed_data["capa"],
-                parsed_data["row"],
-                parsed_data["col"],
-            )
-            return (
-                jsonify(
-                    {
-                        "status": "success",
-                        "message": (
-                            f"Influencia de '{parsed_data['nombre_watcher']}' "
-                            "aplicada."
-                        ),
-                        "applied_to": {
-                            "capa": parsed_data["capa"],
-                            "row": parsed_data["row"],
-                            "col": parsed_data["col"],
-                        },
-                        "vector": [
-                            parsed_data["vector_complex"].real,
-                            parsed_data["vector_complex"].imag,
-                        ],
-                    }
-                ),
-                200,
-            )
+            return jsonify({
+                "status": "success",
+                "message": f"Influencia de '{data['nombre_watcher']}' aplicada.",
+                "applied_to": {"capa": capa, "row": row, "col": col},
+                "vector": [vector.real, vector.imag],
+            }), 200
         else:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Error de validación interno al aplicar influencia.",
-                    }
-                ),
-                400,
-            )
+            # Este caso puede ser redundante si la validación es exhaustiva
+            return jsonify({"status": "error", "message": "Error interno al aplicar influencia."}), 400
 
+    except (TypeError, ValueError) as e:
+        logger.warning("Error de tipo/valor en payload de influencia: %s", e)
+        return jsonify({"status": "error", "message": "Error en el formato de los datos del payload."}), 400
     except Exception as e:
         logger.exception("Error inesperado en endpoint /api/ecu/influence: %s", e)
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "Error interno al procesar la influencia.",
-                }
-            ),
-            500,
-        )
+        return jsonify({"status": "error", "message": "Error interno del servidor."}), 500
 
 
 @app.route("/api/ecu/field_vector", methods=["GET"])
-def get_field_vector_api() -> Tuple[Any, int]:
+def get_field_vector_paginated() -> Tuple[Any, int]:
     """
-    Endpoint REST para obtener el campo de ondas completo (amplitud y fase).
-    Retorna una estructura 3D donde cada elemento es [real, imag].
-    Shape: [num_capas, num_rows, num_cols, 2].
+    Endpoint con soporte para paginación de campos grandes.
+
+    Query Parameters:
+        page: Número de página (por defecto 1)
+        per_page: Elementos por página (por defecto 100)
+        layer: Filtro opcional por capa específica
     """
     try:
-        with campo_toroidal_global_servicio.lock:
-            campo_copia = [
-                [[[cell.real, cell.imag] for cell in row] for row in layer]
-                for layer in campo_toroidal_global_servicio.campo_q
-            ]
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 100, type=int)
+        layer_filter = request.args.get('layer', type=int)
 
-        logger.info(
-            "Solicitud GET /api/ecu/field_vector recibida. "
-            "Devolviendo campo de ondas completo."
-        )
-        response_data = {
+        with campo_toroidal_global_servicio.lock:
+            if layer_filter is not None:
+                if not 0 <= layer_filter < campo_toroidal_global_servicio.num_capas:
+                    return jsonify({
+                        "status": "error",
+                        "message": f"La capa {layer_filter} está fuera de rango"
+                    }), 400
+
+                # Paginación sobre filas de una capa específica
+                layer_data = campo_toroidal_global_servicio.campo_q[layer_filter]
+                total_items = campo_toroidal_global_servicio.num_rows
+                start_index = (page - 1) * per_page
+                end_index = start_index + per_page
+                paginated_rows = layer_data[start_index:end_index]
+
+                campo_data = [[[cell.real, cell.imag] for cell in row]
+                             for row in paginated_rows]
+
+            else:
+                # Paginación sobre las capas completas
+                total_items = campo_toroidal_global_servicio.num_capas
+                start_index = (page - 1) * per_page
+                end_index = start_index + per_page
+                paginated_layers = campo_toroidal_global_servicio.campo_q[start_index:end_index]
+
+                campo_data = [
+                    [[[cell.real, cell.imag] for cell in row] for row in layer]
+                    for layer in paginated_layers
+                ]
+
+        total_pages = (total_items + per_page - 1) // per_page
+        if page > total_pages and total_items > 0:
+            return jsonify({"status": "error", "message": "Página fuera de rango"}), 404
+
+        return jsonify({
             "status": "success",
-            "field_vector": campo_copia,
-            "metadata": {
-                "descripcion": "Campo de ondas complejo en grilla 3D toroidal",
-                "capas": campo_toroidal_global_servicio.num_capas,
-                "filas": campo_toroidal_global_servicio.num_rows,
-                "columnas": campo_toroidal_global_servicio.num_cols,
-            },
-        }
-        return jsonify(response_data), 200
-    except Exception as e_field_vector:
-        logger.exception(f"Error en endpoint /api/ecu/field_vector: {e_field_vector}")
-        error_response = {
+            "data": campo_data,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total_items": total_items,
+                "total_pages": total_pages
+            }
+        }), 200
+
+    except Exception as e:
+        logger.exception("Error en endpoint paginado: %s", e)
+        return jsonify({
             "status": "error",
-            "message": "Error interno al procesar la solicitud del campo de ondas.",
-        }
-        return jsonify(error_response), 500
+            "message": "Error interno al procesar la solicitud"
+        }), 500
 
 
 @app.route("/debug/set_random_phase", methods=["POST"])
@@ -803,25 +762,18 @@ def get_region_field_vector_api(capa_idx: int) -> Tuple[Any, int]:
 
 # --- Función Principal y Arranque ---
 def main():
-    """Función principal que configura el logging y arranca la aplicación."""
+    """Función principal que arranca la aplicación y el bucle de simulación."""
     global simulation_thread
 
-    if not logging.getLogger("matriz_ecu").hasHandlers():
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s",
-            handlers=[logging.StreamHandler(sys.stdout)],
-        )
-
     logger.info(
-        f"Configuración de simulación cimática: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS}, "
-        f"SimInterval={SIMULATION_INTERVAL}s, Beta={BETA_COUPLING}"
+        f"Configuración de simulación: {NUM_CAPAS}x{NUM_FILAS}x{NUM_COLUMNAS}, "
+        f"Intervalo={SIMULATION_INTERVAL}s, Beta={BETA_COUPLING}"
     )
 
-    logger.info("Creando e iniciando hilo de simulación cimática...")
+    logger.info("Creando e iniciando hilo de simulación adaptativa...")
     stop_simulation_event.clear()
     simulation_thread = threading.Thread(
-        target=cymatic_simulation_loop,
+        target=cymatic_simulation_loop_adaptive,
         args=(SIMULATION_INTERVAL, BETA_COUPLING),
         daemon=True,
         name="CymaticSimLoop",
@@ -829,9 +781,7 @@ def main():
     simulation_thread.start()
 
     puerto_servicio = int(os.environ.get("MATRIZ_ECU_PORT", 8000))
-    logger.info(
-        f"Iniciando servicio Flask de simulación cimática en puerto {puerto_servicio}..."
-    )
+    logger.info(f"Iniciando servicio Flask en puerto {puerto_servicio}...")
     app.run(host="0.0.0.0", port=puerto_servicio, debug=False, use_reloader=False)
 
 
