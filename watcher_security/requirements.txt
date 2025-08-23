@@ -5,4 +5,4 @@
 #    pip-compile --output-file=./watcher_security/requirements.txt ./watcher_security/requirements.in
 #
 numpy==2.0.2
-    # via -r ./watcher_security/requirements.in
+    # via -r watcher_security/requirements.in

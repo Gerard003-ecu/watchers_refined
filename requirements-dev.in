@@ -10,6 +10,7 @@ pytest-mock
 responses
 requests
 pyyaml
+schemathesis
 
 # Linting and code formatting
 flake8

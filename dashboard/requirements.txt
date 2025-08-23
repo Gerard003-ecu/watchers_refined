@@ -14,13 +14,13 @@ click==8.1.8
     # via flask
 dash==3.0.4
     # via
-    #   -r ./dashboard/requirements.in
+    #   -r dashboard/requirements.in
     #   dash-bootstrap-components
 dash-bootstrap-components==2.0.3
-    # via -r ./dashboard/requirements.in
+    # via -r dashboard/requirements.in
 flask==3.0.3
     # via
-    #   -r ./dashboard/requirements.in
+    #   -r dashboard/requirements.in
     #   dash
 idna==3.10
     # via requests
@@ -39,16 +39,16 @@ narwhals==1.44.0
 nest-asyncio==1.6.0
     # via dash
 numpy==2.0.2
-    # via -r ./dashboard/requirements.in
+    # via -r dashboard/requirements.in
 packaging==25.0
     # via plotly
 plotly==6.1.2
     # via
-    #   -r ./dashboard/requirements.in
+    #   -r dashboard/requirements.in
     #   dash
 requests==2.32.4
     # via
-    #   -r ./dashboard/requirements.in
+    #   -r dashboard/requirements.in
     #   dash
 retrying==1.4.0
     # via dash

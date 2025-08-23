@@ -4,36 +4,92 @@
 #
 #    pip-compile --output-file=requirements-dev.txt requirements-dev.in
 #
+anyio==4.10.0
+    # via
+    #   httpx
+    #   starlette
+arrow==1.3.0
+    # via isoduration
 attrs==25.3.0
     # via
+    #   hypothesis
     #   jsonschema
+    #   pytest-subtests
     #   referencing
+backoff==2.2.1
+    # via schemathesis
 black==25.1.0
     # via -r requirements-dev.in
 build==1.3.0
     # via pip-tools
 certifi==2025.8.3
-    # via requests
+    # via
+    #   httpcore
+    #   httpx
+    #   requests
 charset-normalizer==3.4.3
     # via requests
 click==8.2.1
     # via
     #   black
     #   pip-tools
+    #   schemathesis
+colorama==0.4.6
+    # via schemathesis
 coverage[toml]==7.10.4
     # via pytest-cov
 flake8==7.3.0
     # via -r requirements-dev.in
+fqdn==1.5.1
+    # via jsonschema
+graphql-core==3.2.6
+    # via hypothesis-graphql
+h11==0.16.0
+    # via httpcore
+harfile==0.3.1
+    # via schemathesis
+httpcore==1.0.9
+    # via httpx
+httpx==0.28.1
+    # via schemathesis
+hypothesis==6.138.2
+    # via
+    #   hypothesis-graphql
+    #   hypothesis-jsonschema
+    #   schemathesis
+hypothesis-graphql==0.11.1
+    # via schemathesis
+hypothesis-jsonschema==0.23.1
+    # via schemathesis
 idna==3.10
-    # via requests
+    # via
+    #   anyio
+    #   httpx
+    #   jsonschema
+    #   requests
 iniconfig==2.1.0
     # via pytest
-jsonschema==4.25.0
-    # via -r requirements-dev.in
+isoduration==20.11.0
+    # via jsonschema
+jsonpointer==3.0.0
+    # via jsonschema
+jsonschema[format]==4.25.0
+    # via
+    #   -r requirements-dev.in
+    #   hypothesis-jsonschema
+    #   schemathesis
 jsonschema-specifications==2025.4.1
     # via jsonschema
+junit-xml==1.9
+    # via schemathesis
+markdown-it-py==4.0.0
+    # via rich
+markupsafe==3.0.2
+    # via werkzeug
 mccabe==0.7.0
     # via flake8
+mdurl==0.1.2
+    # via markdown-it-py
 mypy-extensions==1.1.0
     # via black
 packaging==25.0
@@ -56,24 +112,35 @@ pycodestyle==2.14.0
 pyflakes==3.4.0
     # via flake8
 pygments==2.19.2
-    # via pytest
+    # via
+    #   pytest
+    #   rich
 pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
+pyrate-limiter==3.9.0
+    # via schemathesis
 pytest==8.4.1
     # via
     #   -r requirements-dev.in
     #   pytest-cov
     #   pytest-mock
+    #   pytest-subtests
+    #   schemathesis
 pytest-cov==6.2.1
     # via -r requirements-dev.in
 pytest-mock==3.14.1
     # via -r requirements-dev.in
+pytest-subtests==0.14.2
+    # via schemathesis
+python-dateutil==2.9.0.post0
+    # via arrow
 pyyaml==6.0.2
     # via
     #   -r requirements-dev.in
     #   responses
+    #   schemathesis
 referencing==0.36.2
     # via
     #   jsonschema
@@ -82,18 +149,55 @@ requests==2.32.4
     # via
     #   -r requirements-dev.in
     #   responses
+    #   schemathesis
+    #   starlette-testclient
 responses==0.25.8
     # via -r requirements-dev.in
+rfc3339-validator==0.1.4
+    # via jsonschema
+rfc3987==1.3.8
+    # via jsonschema
+rich==14.1.0
+    # via schemathesis
 rpds-py==0.27.0
     # via
     #   jsonschema
     #   referencing
+schemathesis==4.1.0
+    # via -r requirements-dev.in
+six==1.17.0
+    # via
+    #   junit-xml
+    #   python-dateutil
+    #   rfc3339-validator
+sniffio==1.3.1
+    # via anyio
+sortedcontainers==2.4.0
+    # via hypothesis
+starlette==0.47.2
+    # via starlette-testclient
+starlette-testclient==0.4.1
+    # via schemathesis
+tomli==2.2.1
+    # via schemathesis
+types-python-dateutil==2.9.0.20250822
+    # via arrow
 typing-extensions==4.14.1
-    # via referencing
+    # via
+    #   anyio
+    #   referencing
+    #   schemathesis
+    #   starlette
+uri-template==1.3.0
+    # via jsonschema
 urllib3==2.5.0
     # via
     #   requests
     #   responses
+webcolors==24.11.1
+    # via jsonschema
+werkzeug==3.1.3
+    # via schemathesis
 wheel==0.45.1
     # via pip-tools
 
