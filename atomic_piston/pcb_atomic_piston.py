@@ -1,18 +1,23 @@
 # watchers_refined/atomic_piston/pcb_atomic_piston.py
 
+import math
 import os
 import sys
-import math
-from skidl import Part, Net, generate_netlist, reset
+
+from skidl import Net, Part, generate_netlist, reset
 
 try:
     import pcbnew
 except ImportError:
     print("Error: No se pudo importar la librería 'pcbnew' de KiCad.")
-    print("Asegúrate de ejecutar este script con el intérprete de Python que "
-          "viene con KiCad.")
-    print("Ejemplo en Windows: \"C:\\Program Files\\KiCad\\6.0\\bin\\python.exe\" "
-          "pcb_atomic_piston.py")
+    print(
+        "Asegúrate de ejecutar este script con el intérprete de Python que "
+        "viene con KiCad."
+    )
+    print(
+        'Ejemplo en Windows: "C:\\Program Files\\KiCad\\6.0\\bin\\python.exe" '
+        "pcb_atomic_piston.py"
+    )
     sys.exit(1)
 
 print(f"Usando KiCad (pcbnew) versión: {pcbnew.GetBuildVersion()}")
@@ -28,16 +33,16 @@ THERMAL_VIA_COUNT = 8  # por componente caliente
 
 # Mapeo de componentes a footprints
 FOOTPRINTS = {
-    'ESP32': 'Module:ESP32-WROOM-32',
-    'MOSFET_POWER': 'Package_TO_SOT_THT:TO-247-3_Vertical',
-    'GATE_DRIVER': 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm',
-    'SUPERCAP': 'Capacitor_THT:CP_Radial_D25.0mm_P10.00mm',
-    'INDUCTOR_POWER': 'Inductor_THT:L_Toroid_D33.0mm_P17.30mm_Vertical',
-    'CONN_POWER': 'Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical',
-    'CONN_PV': 'Connector_Wire:SolderWire-1.5mm_1x02_P7.62mm_Drill1.5mm',
-    'RESISTOR_SHUNT': 'Resistor_THT:R_Axial_DIN0617_L17.0mm_D6.0mm_P22.86mm_Horizontal',
-    'BMS_IC': 'Package_SO:SOIC-16_3.9x9.9mm_P1.27mm',
-    'PRE_CHARGE_RES': 'Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Horizontal'
+    "ESP32": "Module:ESP32-WROOM-32",
+    "MOSFET_POWER": "Package_TO_SOT_THT:TO-247-3_Vertical",
+    "GATE_DRIVER": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
+    "SUPERCAP": "Capacitor_THT:CP_Radial_D25.0mm_P10.00mm",
+    "INDUCTOR_POWER": "Inductor_THT:L_Toroid_D33.0mm_P17.30mm_Vertical",
+    "CONN_POWER": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+    "CONN_PV": "Connector_Wire:SolderWire-1.5mm_1x02_P7.62mm_Drill1.5mm",
+    "RESISTOR_SHUNT": "Resistor_THT:R_Axial_DIN0617_L17.0mm_D6.0mm_P22.86mm_Horizontal",
+    "BMS_IC": "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm",
+    "PRE_CHARGE_RES": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Horizontal",
 }
 
 
@@ -47,31 +52,30 @@ def create_schematic_netlist(filename="atomic_piston.net"):
     reset()
 
     # Definición de componentes
-    esp32 = Part('Module', 'ESP32-WROOM-32', footprint=FOOTPRINTS['ESP32'])
-    gate_driver = Part('Driver_Gate', 'UCC21520', footprint=FOOTPRINTS['GATE_DRIVER'])
-    q1_mosfet = Part('Device', 'Q_NMOS_GDS',
-                     footprint=FOOTPRINTS['MOSFET_POWER'])
-    supercap = Part('Device', 'C', value='3000F',
-                    footprint=FOOTPRINTS['SUPERCAP'])
-    inductor = Part('Device', 'L', value='100uH',
-                    footprint=FOOTPRINTS['INDUCTOR_POWER'])
-    pv_connector = Part('Connector', 'Conn_01x02',
-                        footprint=FOOTPRINTS['CONN_PV'])
-    precharge_res = Part('Device', 'R', value='100',
-                         footprint=FOOTPRINTS['PRE_CHARGE_RES'])
+    esp32 = Part("Module", "ESP32-WROOM-32", footprint=FOOTPRINTS["ESP32"])
+    gate_driver = Part("Driver_Gate", "UCC21520", footprint=FOOTPRINTS["GATE_DRIVER"])
+    q1_mosfet = Part("Device", "Q_NMOS_GDS", footprint=FOOTPRINTS["MOSFET_POWER"])
+    supercap = Part("Device", "C", value="3000F", footprint=FOOTPRINTS["SUPERCAP"])
+    inductor = Part(
+        "Device", "L", value="100uH", footprint=FOOTPRINTS["INDUCTOR_POWER"]
+    )
+    pv_connector = Part("Connector", "Conn_01x02", footprint=FOOTPRINTS["CONN_PV"])
+    precharge_res = Part(
+        "Device", "R", value="100", footprint=FOOTPRINTS["PRE_CHARGE_RES"]
+    )
 
     # Definición de redes (Nets) principales
-    gnd_digital = Net('GND_DIGITAL')
-    gnd_power = Net('GND_POWER')
-    vcc_3v3 = Net('+3V3')
-    pv_plus = Net('PV+')
-    pv_minus = Net('PV-')
-    sw_node = Net('SWITCH_NODE')
+    gnd_digital = Net("GND_DIGITAL")
+    gnd_power = Net("GND_POWER")
+    vcc_3v3 = Net("+3V3")
+    pv_plus = Net("PV+")
+    pv_minus = Net("PV-")
+    sw_node = Net("SWITCH_NODE")
 
     # Conexiones de la etapa de control (ESP32 y Gate Driver)
-    gnd_digital += esp32['GND'], gate_driver['GND']
-    vcc_3v3 += esp32['3V3'], gate_driver['VCC']
-    esp32[22] += gate_driver['INA']  # GPIO22 controla el gate driver
+    gnd_digital += esp32["GND"], gate_driver["GND"]
+    vcc_3v3 += esp32["3V3"], gate_driver["VCC"]
+    esp32[22] += gate_driver["INA"]  # GPIO22 controla el gate driver
 
     # Conexiones de la etapa de potencia
     pv_plus += pv_connector[1]
@@ -80,16 +84,16 @@ def create_schematic_netlist(filename="atomic_piston.net"):
 
     pv_plus += inductor[1]
     inductor[2] += sw_node
-    sw_node += q1_mosfet['D']  # Drain del MOSFET al inductor
-    q1_mosfet['S'] += gnd_power  # Source del MOSFET a tierra de potencia
-    gate_driver['OUTA'] += q1_mosfet['G']  # Salida del driver al Gate del MOSFET
+    sw_node += q1_mosfet["D"]  # Drain del MOSFET al inductor
+    q1_mosfet["S"] += gnd_power  # Source del MOSFET a tierra de potencia
+    gate_driver["OUTA"] += q1_mosfet["G"]  # Salida del driver al Gate del MOSFET
 
     # Conexión del supercapacitor
     sw_node += supercap[1]  # Conexión directa después de precarga
     gnd_power += supercap[2]
 
     # Conexión a tierra común a través de un punto único
-    star_point = Part('Device', 'TestPoint', value='STAR_POINT')
+    star_point = Part("Device", "TestPoint", value="STAR_POINT")
     gnd_digital += star_point[1]
     gnd_power += star_point[1]
 
@@ -140,13 +144,16 @@ def create_board_outline(board):
     """Crea el contorno de la placa en la capa Edge.Cuts."""
     edge_layer = pcbnew.Edge_Cuts
     edge_points = [
-        (0, 0), (BOARD_WIDTH, 0), (BOARD_WIDTH, BOARD_HEIGHT),
-        (0, BOARD_HEIGHT), (0, 0)
+        (0, 0),
+        (BOARD_WIDTH, 0),
+        (BOARD_WIDTH, BOARD_HEIGHT),
+        (0, BOARD_HEIGHT),
+        (0, 0),
     ]
 
     for i in range(len(edge_points) - 1):
         start = pcbnew.wxPointMM(edge_points[i][0], edge_points[i][1])
-        end = pcbnew.wxPointMM(edge_points[i+1][0], edge_points[i+1][1])
+        end = pcbnew.wxPointMM(edge_points[i + 1][0], edge_points[i + 1][1])
         segment = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
         segment.SetStart(start)
         segment.SetEnd(end)
@@ -162,24 +169,24 @@ def place_components(board):
 
     # Definir posiciones y rotaciones
     placements = {
-        'U1': {'pos': (30, 50), 'rot': 0, 'side': 'top'},     # ESP32
-        'U2': {'pos': (60, 50), 'rot': 90, 'side': 'top'},    # Gate Driver
-        'Q1': {'pos': (100, 25), 'rot': 180, 'side': 'top'},  # MOSFET
-        'C1': {'pos': (125, 50), 'rot': 0, 'side': 'top'},    # Supercap
-        'L1': {'pos': (100, 75), 'rot': 0, 'side': 'top'},    # Inductor
-        'J1': {'pos': (140, 85), 'rot': 270, 'side': 'top'},  # PV Connector
-        'R1': {'pos': (115, 40), 'rot': 0, 'side': 'top'},    # Precharge Res
+        "U1": {"pos": (30, 50), "rot": 0, "side": "top"},  # ESP32
+        "U2": {"pos": (60, 50), "rot": 90, "side": "top"},  # Gate Driver
+        "Q1": {"pos": (100, 25), "rot": 180, "side": "top"},  # MOSFET
+        "C1": {"pos": (125, 50), "rot": 0, "side": "top"},  # Supercap
+        "L1": {"pos": (100, 75), "rot": 0, "side": "top"},  # Inductor
+        "J1": {"pos": (140, 85), "rot": 270, "side": "top"},  # PV Connector
+        "R1": {"pos": (115, 40), "rot": 0, "side": "top"},  # Precharge Res
     }
 
     for comp in components:
         ref = comp.GetReference()
         if ref in placements:
             placement = placements[ref]
-            pos = pcbnew.wxPointMM(*placement['pos'])
+            pos = pcbnew.wxPointMM(*placement["pos"])
             comp.SetPosition(pos)
-            comp.SetOrientationDegrees(placement['rot'])
+            comp.SetOrientationDegrees(placement["rot"])
 
-            if placement['side'] == 'bottom':
+            if placement["side"] == "bottom":
                 comp.Flip(pos, False)
 
 
@@ -196,19 +203,20 @@ def route_critical_nets(board):
             continue
 
         # Ancho de pista basado en la red
-        width = pcbnew.FromMM(POWER_TRACK_WIDTH if "PV+" in net_name
-                              else POWER_TRACK_WIDTH * 0.8)
+        width = pcbnew.FromMM(
+            POWER_TRACK_WIDTH if "PV+" in net_name else POWER_TRACK_WIDTH * 0.8
+        )
 
         # Obtener todos los pads de esta red
         pads = [pad for pad in net.Pads()]
 
         # Enrutar conexiones entre pads principales
-        for i in range(len(pads)-1):
+        for i in range(len(pads) - 1):
             track = pcbnew.PCB_TRACK(board)
             track.SetNet(net)
             track.SetWidth(width)
             track.SetStart(pads[i].GetCenter())
-            track.SetEnd(pads[i+1].GetCenter())
+            track.SetEnd(pads[i + 1].GetCenter())
             track.SetLayer(pcbnew.F_Cu)  # Capa superior
             board.Add(track)
 
@@ -217,12 +225,12 @@ def route_critical_nets(board):
     for net_name in control_nets:
         net = board.FindNet(net_name)
         if net:
-            for i in range(len(net.Pads())-1):
+            for i in range(len(net.Pads()) - 1):
                 track = pcbnew.PCB_TRACK(board)
                 track.SetNet(net)
                 track.SetWidth(pcbnew.FromMM(SIGNAL_TRACK_WIDTH))
                 track.SetStart(net.Pads()[i].GetCenter())
-                track.SetEnd(net.Pads()[i+1].GetCenter())
+                track.SetEnd(net.Pads()[i + 1].GetCenter())
                 track.SetLayer(pcbnew.F_Cu)
                 board.Add(track)
 
@@ -285,8 +293,8 @@ def create_power_planes(board):
         outline = pcbnew.wxPoint_Vector()
         padding = 2  # mm
         outline.append(pcbnew.wxPointMM(padding, padding))
-        outline.append(pcbnew.wxPointMM(BOARD_WIDTH/2 - 5, padding))
-        outline.append(pcbnew.wxPointMM(BOARD_WIDTH/2 - 5, BOARD_HEIGHT - padding))
+        outline.append(pcbnew.wxPointMM(BOARD_WIDTH / 2 - 5, padding))
+        outline.append(pcbnew.wxPointMM(BOARD_WIDTH / 2 - 5, BOARD_HEIGHT - padding))
         outline.append(pcbnew.wxPointMM(padding, BOARD_HEIGHT - padding))
         gnd_zone.AddPolygon(outline)
         board.Add(gnd_zone)
@@ -303,10 +311,10 @@ def create_power_planes(board):
 
         outline = pcbnew.wxPoint_Vector()
         padding = 2  # mm
-        outline.append(pcbnew.wxPointMM(BOARD_WIDTH/2 + 5, padding))
+        outline.append(pcbnew.wxPointMM(BOARD_WIDTH / 2 + 5, padding))
         outline.append(pcbnew.wxPointMM(BOARD_WIDTH - padding, padding))
         outline.append(pcbnew.wxPointMM(BOARD_WIDTH - padding, BOARD_HEIGHT - padding))
-        outline.append(pcbnew.wxPointMM(BOARD_WIDTH/2 + 5, BOARD_HEIGHT - padding))
+        outline.append(pcbnew.wxPointMM(BOARD_WIDTH / 2 + 5, BOARD_HEIGHT - padding))
         gnd_zone.AddPolygon(outline)
         board.Add(gnd_zone)
 

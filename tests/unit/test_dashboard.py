@@ -2,14 +2,16 @@
 Pruebas integrales para el dashboard de Watchers.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from dashboard.dashboard import (
+    app,
+    crear_control,
+    crear_grafico_barras,
     obtener_datos_reales,
     obtener_estado_malla_sim,
-    crear_grafico_barras,
-    crear_control,
-    app,
 )
 
 
@@ -36,7 +38,7 @@ def test_crear_grafico_barras():
 
 
 # Pruebas de integración con mocks
-@patch('dashboard.dashboard.requests.get')  # Corrected patch target
+@patch("dashboard.dashboard.requests.get")  # Corrected patch target
 def test_obtener_datos_reales_success(mock_get):
     mock_resp = MagicMock()
     mock_resp.json.return_value = {"status": "success"}
@@ -47,7 +49,7 @@ def test_obtener_datos_reales_success(mock_get):
     assert result["status"] == "success"
 
 
-@patch('dashboard.dashboard.requests.get')  # Corrected patch target
+@patch("dashboard.dashboard.requests.get")  # Corrected patch target
 def test_obtener_datos_reales_error(mock_get):
     mock_get.side_effect = Exception("Error de conexión")
     result = obtener_datos_reales("http://fake.api/status")
@@ -60,21 +62,15 @@ def test_dash_layout(dash_client):
     response = dash_client.get("/")
     assert response.status_code == 200
     # Using a substring as the full string assertion is proving problematic
-    assert "Watchers Dashboard - SonicHarmonizer v2.0" in response.data.decode('utf-8')
+    assert "Watchers Dashboard - SonicHarmonizer v2.0" in response.data.decode("utf-8")
 
 
 def test_dash_interaction(dash_client):
     payload = {
         "output": "control-signal-panel.children",
         "outputs": {"id": "control-signal-panel", "property": "children"},
-        "inputs": [
-            {
-                "id": "refresh-interval",
-                "property": "n_intervals",
-                "value": 1
-            }
-        ],
-        "changedPropIds": ["refresh-interval.n_intervals"]
+        "inputs": [{"id": "refresh-interval", "property": "n_intervals", "value": 1}],
+        "changedPropIds": ["refresh-interval.n_intervals"],
     }
     response = dash_client.post("/_dash-update-component", json=payload)
     assert response.status_code == 200
@@ -87,9 +83,7 @@ def test_crear_control_button():
 
 
 def test_crear_control_slider():
-    control = crear_control(
-        {"ui_type": "slider", "config": {"min": 0, "max": 100}}
-    )
+    control = crear_control({"ui_type": "slider", "config": {"min": 0, "max": 100}})
     assert "Slider" in str(control)
 
 

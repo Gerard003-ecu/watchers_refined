@@ -10,17 +10,17 @@ Endpoints:
 - /api/focus (GET): Endpoint original (ahora redundante con /api/state).
 """
 
-import os
-import math
-import time
-import threading
 import logging
+import math
+import os
+import threading
+import time
+
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("watcher_focus")  # Usar logger específico
 
@@ -41,13 +41,12 @@ current_state = {
     "z": 0.5,  # Variable de control interna z
     "phase": 0.0,  # Fase calculada
     "z_error": 0.5,  # Error de z respecto a Z_TARGET
-    "mu0_current": MU0_BASE  # Parámetro mu actual
+    "mu0_current": MU0_BASE,  # Parámetro mu actual
 }
 state_lock = threading.Lock()
 
 AGENT_AI_REGISTER_URL = os.environ.get(
-    "AGENT_AI_REGISTER_URL",
-    "http://agent_ai:9000/api/register"
+    "AGENT_AI_REGISTER_URL", "http://agent_ai:9000/api/register"
 )
 MAX_REGISTRATION_RETRIES = 5  # Intentar registrarse varias veces al inicio
 RETRY_DELAY = 5  # Segundos entre reintentos
@@ -60,7 +59,7 @@ def register_with_agent_ai(
     module_type: str,
     aporta_a: str,
     naturaleza: str,
-    description: str = ""
+    description: str = "",
 ):
     """Intenta registrar este módulo con AgentAI, con reintentos."""
     payload = {
@@ -70,25 +69,18 @@ def register_with_agent_ai(
         "tipo": module_type,
         "aporta_a": aporta_a,
         "naturaleza_auxiliar": naturaleza,
-        "descripcion": description
+        "descripcion": description,
         # Podrías añadir más metadata si AgentAI la usa
     }
     logger.info(
-        f"Intentando registrar '{module_name}' en AgentAI "
-        f"({AGENT_AI_REGISTER_URL})..."
+        f"Intentando registrar '{module_name}' en AgentAI ({AGENT_AI_REGISTER_URL})..."
     )
     for attempt in range(MAX_REGISTRATION_RETRIES):
         try:
-            response = requests.post(
-                AGENT_AI_REGISTER_URL,
-                json=payload,
-                timeout=4.0
-            )
+            response = requests.post(AGENT_AI_REGISTER_URL, json=payload, timeout=4.0)
             response.raise_for_status()  # Lanza excepción para errores 4xx/5xx
             if response.status_code == 200:
-                logger.info(
-                    f"Registro de '{module_name}' exitoso en AgentAI."
-                )
+                logger.info(f"Registro de '{module_name}' exitoso en AgentAI.")
                 return True  # Salir si el registro es exitoso
             else:
                 # Esto no debería ocurrir si raise_for_status funciona
@@ -124,25 +116,29 @@ app_focus = Flask(__name__)
 
 
 # --- Endpoint de Salud ---
-@app_focus.route('/api/health', methods=['GET'])
+@app_focus.route("/api/health", methods=["GET"])
 def health():
     sim_alive = any(
-        t.name == "FocusSimLoop" and t.is_alive()
-        for t in threading.enumerate()
+        t.name == "FocusSimLoop" and t.is_alive() for t in threading.enumerate()
     )
     status = "success" if sim_alive else "warning"
-    message = ("Módulo Watcher_focus operativo." if sim_alive
-               else "Advertencia: Hilo de simulación no activo.")
-    return jsonify({
-        "status": status,
-        "module": "Watcher_focus",
-        "message": message,
-        "simulation_running": sim_alive
-    }), 200 if status == "success" else 503
+    message = (
+        "Módulo Watcher_focus operativo."
+        if sim_alive
+        else "Advertencia: Hilo de simulación no activo."
+    )
+    return jsonify(
+        {
+            "status": status,
+            "module": "Watcher_focus",
+            "message": message,
+            "simulation_running": sim_alive,
+        }
+    ), 200 if status == "success" else 503
 
 
 # --- NUEVO: Endpoint de Estado para Harmony Controller ---
-@app_focus.route('/api/state', methods=['GET'])
+@app_focus.route("/api/state", methods=["GET"])
 def get_focus_state():
     """Devuelve el estado actual relevante para el control."""
     with state_lock:
@@ -152,22 +148,20 @@ def get_focus_state():
             "internal_control": {"z": current_state["z"]},
             "phase": current_state["phase"],
             "z_error": current_state["z_error"],
-            "mu0_current": current_state["mu0_current"]
+            "mu0_current": current_state["mu0_current"],
         }
     logger.debug(f"Devolviendo estado: {state_data}")
     return jsonify({"status": "success", "state": state_data})
 
 
 # --- NUEVO: Endpoint de Control para Harmony Controller ---
-@app_focus.route('/api/control', methods=['POST'])
+@app_focus.route("/api/control", methods=["POST"])
 def set_focus_control():
     """Recibe una señal de control y ajusta el parámetro 'MU0_current'."""
     data = request.get_json()
     if not data or "control_signal" not in data:
         logger.error("Solicitud a /api/control sin 'control_signal'")
-        return jsonify(
-            {"status": "error", "message": "Falta 'control_signal'"}
-        ), 400
+        return jsonify({"status": "error", "message": "Falta 'control_signal'"}), 400
 
     try:
         # La señal de control ajustará el parámetro mu0
@@ -185,11 +179,13 @@ def set_focus_control():
             f"[Control] control_signal={control_signal:.3f} -> "
             f"MU0_current ajustado a {mu0_adjusted:.3f}"
         )
-        return jsonify({
-            "status": "success",
-            "message": f"Parámetro MU0 ajustado a {mu0_adjusted:.3f}",
-            "MU0_current": mu0_adjusted
-        }), 200
+        return jsonify(
+            {
+                "status": "success",
+                "message": f"Parámetro MU0 ajustado a {mu0_adjusted:.3f}",
+                "MU0_current": mu0_adjusted,
+            }
+        ), 200
 
     except (ValueError, TypeError) as e:
         logger.error(f"Error al procesar control_signal: {e} - Data: {data}")
@@ -204,15 +200,13 @@ def set_focus_control():
 
 
 # --- Endpoint Original (puede ser redundante ahora) ---
-@app_focus.route('/api/focus', methods=['GET'])
+@app_focus.route("/api/focus", methods=["GET"])
 def get_focus():
     """Devuelve el estado completo (similar a /api/state)."""
     with state_lock:
         state_copy = current_state.copy()
     # Podrías mantenerlo por compatibilidad o redirigir/eliminar
-    logger.warning(
-        "Llamada a endpoint obsoleto /api/focus, usar /api/state."
-    )
+    logger.warning("Llamada a endpoint obsoleto /api/focus, usar /api/state.")
     return jsonify({"status": "success", "focus_state": state_copy}), 200
 
 
@@ -226,29 +220,26 @@ def derivatives(t, x, y, z, current_mu0):
     dydt = mu * (1 - x**2) * y - x
     # La dinámica de z intenta llevar x,y al círculo unitario (THRESHOLD=1.0)
     # y z hacia Z_TARGET (0.0)
-    dzdt = (
-        -ALPHA * (z - Z_TARGET)
-        + BETA * (math.sqrt(x**2 + y**2) - THRESHOLD)
-    )
+    dzdt = -ALPHA * (z - Z_TARGET) + BETA * (math.sqrt(x**2 + y**2) - THRESHOLD)
     return dxdt, dydt, dzdt
 
 
 def rk4_step(t, x, y, z, dt, current_mu0):
     """Un paso de integración RK4."""
     dx1, dy1, dz1 = derivatives(t, x, y, z, current_mu0)
-    x2, y2, z2 = x + dx1*dt/2, y + dy1*dt/2, z + dz1*dt/2
+    x2, y2, z2 = x + dx1 * dt / 2, y + dy1 * dt / 2, z + dz1 * dt / 2
 
-    dx2, dy2, dz2 = derivatives(t + dt/2, x2, y2, z2, current_mu0)
-    x3, y3, z3 = x + dx2*dt/2, y + dy2*dt/2, z + dz2*dt/2
+    dx2, dy2, dz2 = derivatives(t + dt / 2, x2, y2, z2, current_mu0)
+    x3, y3, z3 = x + dx2 * dt / 2, y + dy2 * dt / 2, z + dz2 * dt / 2
 
-    dx3, dy3, dz3 = derivatives(t + dt/2, x3, y3, z3, current_mu0)
-    x4, y4, z4 = x + dx3*dt, y + dy3*dt, z + dz3*dt
+    dx3, dy3, dz3 = derivatives(t + dt / 2, x3, y3, z3, current_mu0)
+    x4, y4, z4 = x + dx3 * dt, y + dy3 * dt, z + dz3 * dt
 
     dx4, dy4, dz4 = derivatives(t + dt, x4, y4, z4, current_mu0)
 
-    x_new = x + (dt/6)*(dx1 + 2*dx2 + 2*dx3 + dx4)
-    y_new = y + (dt/6)*(dy1 + 2*dy2 + 2*dy3 + dy4)
-    z_new = z + (dt/6)*(dz1 + 2*dz2 + 2*dz3 + dz4)
+    x_new = x + (dt / 6) * (dx1 + 2 * dx2 + 2 * dx3 + dx4)
+    y_new = y + (dt / 6) * (dy1 + 2 * dy2 + 2 * dy3 + dy4)
+    z_new = z + (dt / 6) * (dz1 + 2 * dz2 + 2 * dz3 + dz4)
     return x_new, y_new, z_new
 
 
@@ -294,8 +285,7 @@ def simulate_watcher_focus_infinite(dt=0.01):
                 # Asegurarse de que mu0_current también esté actualizado
                 current_state["mu0_current"] = mu0
             logger.info(
-                f"[FocusOsc] t={t:.2f} x={x:.3f} y={y:.3f} "
-                f"z={z:.3f} mu0={mu0:.3f}"
+                f"[FocusOsc] t={t:.2f} x={x:.3f} y={y:.3f} z={z:.3f} mu0={mu0:.3f}"
             )
 
         time.sleep(dt)
@@ -320,20 +310,22 @@ if __name__ == "__main__":
     DESCRIPTION = "Simulador de oscilador Van der Pol con control interno."
 
     registration_successful = register_with_agent_ai(
-        MODULE_NAME, MODULE_URL, HEALTH_URL, "auxiliar",
-        APORTA_A, NATURALEZA, DESCRIPTION
+        MODULE_NAME,
+        MODULE_URL,
+        HEALTH_URL,
+        "auxiliar",
+        APORTA_A,
+        NATURALEZA,
+        DESCRIPTION,
     )
     if not registration_successful:
         logger.warning(
-            f"El módulo '{MODULE_NAME}' continuará sin registro "
-            "exitoso en AgentAI."
+            f"El módulo '{MODULE_NAME}' continuará sin registro exitoso en AgentAI."
         )
     # ------------------------------------
     # Iniciar simulación en hilo
     sim_thread = threading.Thread(
-        target=simulate_watcher_focus_infinite,
-        daemon=True,
-        name="FocusSimLoop"
+        target=simulate_watcher_focus_infinite, daemon=True, name="FocusSimLoop"
     )
     sim_thread.start()
 

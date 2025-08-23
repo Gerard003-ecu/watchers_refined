@@ -3,17 +3,19 @@
 test_watcher_focus.py
 """
 
+import os
+import threading
+import time
+from unittest.mock import patch
+
 import pytest
 import requests
-from unittest.mock import patch
+
 # Import current_state directly as it's used elsewhere and seems fine
 from watchers.watchers_tools.watcher_focus.watcher_focus import (
     current_state,
-    simulate_watcher_focus_infinite
+    simulate_watcher_focus_infinite,
 )
-import threading
-import time
-import os
 
 # Parametrizar la URL base para el módulo watcher_focus.
 FOCUS_URL = os.environ.get("WATCHER_FOCUS_URL", "http://localhost:6000")
@@ -28,7 +30,7 @@ def watcher_focus_thread_manager():
     thread = threading.Thread(
         target=simulate_watcher_focus_infinite,  # Usar la función directamente
         args=(0.001,),
-        daemon=True
+        daemon=True,
     )
     thread.start()
     # Dar tiempo al hilo para que se inicie y posiblemente ejecute un ciclo
@@ -42,8 +44,9 @@ def watcher_focus_thread_manager():
 def test_simulate_watcher_focus(watcher_focus_thread_manager):
     """Verifica que el estado se actualice después de iniciar la simulación."""
     state = current_state
-    assert state["x"] is not None and \
-           state["y"] is not None, "El estado no se actualizó correctamente."
+    assert state["x"] is not None and state["y"] is not None, (
+        "El estado no se actualizó correctamente."
+    )
 
 
 @patch("requests.get")
@@ -58,10 +61,11 @@ def test_get_focus_endpoint(mock_get):
             "y": 0.0,
             "z": 0.5,
             "phase": 0.0,
-            "z_error": 0.5
-        }
+            "z_error": 0.5,
+        },
     }
     response = requests.get(FOCUS_URL + "/api/focus")
     mock_get.assert_called_once()
-    assert response.status_code == 200, \
+    assert response.status_code == 200, (
         "El endpoint /api/focus no respondió correctamente."
+    )

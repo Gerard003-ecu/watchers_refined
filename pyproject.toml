@@ -1,0 +1,36 @@
+[tool.ruff]
+# Enable Flake8 (E, F), isort (I), and Bugbear (B) rules
+select = ["E", "F", "I", "B"]
+ignore = []
+
+# Exclude common directories
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "watchers_env",
+]
+
+# Line length
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.format]
+# Black-compatible
+quote-style = "double"

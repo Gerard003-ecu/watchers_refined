@@ -1,33 +1,34 @@
 # --- START OF FILE test_malla_watcher.py
 # (REFINADO para Osciladores Acoplados) ---
 
-import pytest
-import os
-import numpy as np
+# Configurar logging para pruebas
+import logging
 import math
+import os
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
+
+from watchers.watchers_tools.malla_watcher.malla_watcher import (
+    Electron,
+    PhosWave,
+    app,
+    calculate_flux,
+    fetch_and_apply_torus_field,
+    map_cylinder_to_torus_coords,
+    send_influence_to_torus,
+    simular_paso_malla,
+    simulation_loop,
+    update_aggregate_state,
+)
 
 # Importaciones del módulo bajo prueba
 from watchers.watchers_tools.malla_watcher.utils.cilindro_grafenal import (
-    HexCylindricalMesh,
     Cell,
+    HexCylindricalMesh,
 )
-from watchers.watchers_tools.malla_watcher.malla_watcher import (
-    PhosWave,
-    Electron,
-    simular_paso_malla,
-    update_aggregate_state,
-    map_cylinder_to_torus_coords,
-    send_influence_to_torus,
-    calculate_flux,
-    app,
-    simulation_loop,
-    fetch_and_apply_torus_field,
-)
-
-# Configurar logging para pruebas
-import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -87,87 +88,98 @@ def reset_globals():
     """Fixture: Mocks global state for API tests."""
     # Patch de variables globales
     patcher_mesh = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".malla_cilindrica_global")
+        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global"
+    )
     patcher_resonador = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".resonador_global")
+        "watchers.watchers_tools.malla_watcher.malla_watcher.resonador_global"
+    )
     patcher_electron = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".electron_global")
+        "watchers.watchers_tools.malla_watcher.malla_watcher.electron_global"
+    )
     patcher_agg_state = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".aggregate_state", new_callable=dict)
+        "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state",
+        new_callable=dict,
+    )
     patcher_agg_lock = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".aggregate_state_lock")
+        "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock"
+    )
     patcher_ctrl_params = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".control_params", new_callable=dict)
+        "watchers.watchers_tools.malla_watcher.malla_watcher.control_params",
+        new_callable=dict,
+    )
     patcher_ctrl_lock = patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".control_lock")
+        "watchers.watchers_tools.malla_watcher.malla_watcher.control_lock"
+    )
 
     # Patch de constantes
     patchers_const = {
         "MATRIZ_ECU_BASE_URL": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000"),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
+            "http://mock-ecu:8000",
+        ),
         "TORUS_NUM_CAPAS": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".TORUS_NUM_CAPAS", 3),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_CAPAS", 3
+        ),
         "TORUS_NUM_FILAS": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".TORUS_NUM_FILAS", 4),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS", 4
+        ),
         "TORUS_NUM_COLUMNAS": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".TORUS_NUM_COLUMNAS", 5),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", 5
+        ),
         "AMPLITUDE_INFLUENCE_THRESHOLD": patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".AMPLITUDE_INFLUENCE_THRESHOLD", 5.0),
+            ".AMPLITUDE_INFLUENCE_THRESHOLD",
+            5.0,
+        ),
         "MAX_AMPLITUDE_FOR_NORMALIZATION": patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MAX_AMPLITUDE_FOR_NORMALIZATION", 20.0),
+            ".MAX_AMPLITUDE_FOR_NORMALIZATION",
+            20.0,
+        ),
         "SIMULATION_INTERVAL": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".SIMULATION_INTERVAL", 0.5),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL",
+            0.5,
+        ),
         "DPHI_DT_INFLUENCE_THRESHOLD": patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".DPHI_DT_INFLUENCE_THRESHOLD", 1.0),
+            ".DPHI_DT_INFLUENCE_THRESHOLD",
+            1.0,
+        ),
         "BASE_COUPLING_T": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".BASE_COUPLING_T", 0.6),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.BASE_COUPLING_T", 0.6
+        ),
         "BASE_DAMPING_E": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".BASE_DAMPING_E", 0.1),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.BASE_DAMPING_E", 0.1
+        ),
         "K_GAIN_COUPLING": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".K_GAIN_COUPLING", 0.1),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.K_GAIN_COUPLING", 0.1
+        ),
         "K_GAIN_DAMPING": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".K_GAIN_DAMPING", 0.05),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.K_GAIN_DAMPING", 0.05
+        ),
         "REQUESTS_TIMEOUT": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".REQUESTS_TIMEOUT", 2.0),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 2.0
+        ),
         "MESH_RADIUS": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MESH_RADIUS", 7.7),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MESH_RADIUS", 7.7
+        ),
         "MESH_HEIGHT_SEGMENTS": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MESH_HEIGHT_SEGMENTS", 2),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MESH_HEIGHT_SEGMENTS",
+            2,
+        ),
         "MESH_CIRCUMFERENCE_SEGMENTS": patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MESH_CIRCUMFERENCE_SEGMENTS", 11),
+            ".MESH_CIRCUMFERENCE_SEGMENTS",
+            11,
+        ),
         "MESH_HEX_SIZE": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MESH_HEX_SIZE", 0.8),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MESH_HEX_SIZE", 0.8
+        ),
         "MESH_PERIODIC_Z": patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MESH_PERIODIC_Z", False),
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MESH_PERIODIC_Z", False
+        ),
     }
-    started_patchers_const = {
-        name: p.start() for name, p in patchers_const.items()
-    }
+    started_patchers_const = {name: p.start() for name, p in patchers_const.items()}
 
     mock_mesh = patcher_mesh.start()
     mock_resonador = patcher_resonador.start()
@@ -312,12 +324,8 @@ def test_apply_external_field_to_mesh_logic(malla_para_test_aplicar_campo):
 
     if len(mesh_instance.cells) > 0:
         assert changed_count > 0 or any(
-            np.linalg.norm(c.q_vector) > 1e-9
-            for c in mesh_instance.cells.values()
-        ), (
-            "apply_external_field_to_mesh no modificó ningún q_vector de "
-            "forma no nula."
-        )
+            np.linalg.norm(c.q_vector) > 1e-9 for c in mesh_instance.cells.values()
+        ), "apply_external_field_to_mesh no modificó ningún q_vector de forma no nula."
     logger.info(
         f"{changed_count} de {len(mesh_instance.cells)} celdas actualizaron "
         "su q_vector a no-cero."
@@ -331,27 +339,43 @@ def mock_malla_sim():
     Fixture: Configura una pequeña malla mockeada para simulación.
     """
     cell_center = Cell(
-        r=5.0, theta=0.0, z=0.0, q_axial=0, r_axial=0, amplitude=10.0,
-        velocity=0.0, q_vector=np.array([0.1, 0.2])
+        r=5.0,
+        theta=0.0,
+        z=0.0,
+        q_axial=0,
+        r_axial=0,
+        amplitude=10.0,
+        velocity=0.0,
+        q_vector=np.array([0.1, 0.2]),
     )
     cell_neighbor1 = Cell(
-        r=5.0, theta=0.5, z=0.0, q_axial=1, r_axial=0, amplitude=0.0,
-        velocity=0.0, q_vector=np.array([-0.1, -0.2])
+        r=5.0,
+        theta=0.5,
+        z=0.0,
+        q_axial=1,
+        r_axial=0,
+        amplitude=0.0,
+        velocity=0.0,
+        q_vector=np.array([-0.1, -0.2]),
     )
     cell_neighbor2 = Cell(
-        r=5.0, theta=-0.5, z=0.0, q_axial=-1, r_axial=0, amplitude=0.0,
-        velocity=0.0, q_vector=np.array([0.0, 0.0])
+        r=5.0,
+        theta=-0.5,
+        z=0.0,
+        q_axial=-1,
+        r_axial=0,
+        amplitude=0.0,
+        velocity=0.0,
+        q_vector=np.array([0.0, 0.0]),
     )
 
     mock_mesh = MagicMock(spec=HexCylindricalMesh)
     mock_mesh.cells = {
         (0, 0): cell_center,
         (1, 0): cell_neighbor1,
-        (-1, 0): cell_neighbor2
+        (-1, 0): cell_neighbor2,
     }
-    mock_mesh.get_all_cells.return_value = [
-        cell_center, cell_neighbor1, cell_neighbor2
-    ]
+    mock_mesh.get_all_cells.return_value = [cell_center, cell_neighbor1, cell_neighbor2]
 
     def mock_get_neighbors(q, r):
         if (q, r) == (0, 0):
@@ -374,18 +398,25 @@ def mock_malla_sim():
 
     mock_sim_interval = 0.1
 
-    with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".malla_cilindrica_global", mock_mesh), \
+    with (
         patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".resonador_global", mock_resonador), \
+            ".malla_cilindrica_global",
+            mock_mesh,
+        ),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".electron_global", mock_electron), \
+            "watchers.watchers_tools.malla_watcher.malla_watcher.resonador_global",
+            mock_resonador,
+        ),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".SIMULATION_INTERVAL", mock_sim_interval):
+            "watchers.watchers_tools.malla_watcher.malla_watcher.electron_global",
+            mock_electron,
+        ),
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL",
+            mock_sim_interval,
+        ),
+    ):
         yield (
             cell_center,
             cell_neighbor1,
@@ -425,29 +456,19 @@ def test_simular_paso_malla_propagation(mock_malla_sim):
     norm_q_center = np.linalg.norm(cell_center.q_vector)
     modulated_C_center = mock_resonador.C * max(0.0, 1.0 + norm_q_center)
     expected_next_vel_c = -20 * modulated_C_center * dt
-    expected_next_amp_c = (
-        cell_center.amplitude + expected_next_vel_c * dt
-    )
+    expected_next_amp_c = cell_center.amplitude + expected_next_vel_c * dt
 
     norm_q_n1 = np.linalg.norm(cell_neighbor1.q_vector)
     modulated_C_n1 = mock_resonador.C * max(0.0, 1.0 + norm_q_n1)
-    F_coupling_n1 = modulated_C_n1 * (
-        cell_center.amplitude - cell_neighbor1.amplitude
-    )
+    F_coupling_n1 = modulated_C_n1 * (cell_center.amplitude - cell_neighbor1.amplitude)
     expected_next_vel_n1 = F_coupling_n1 * dt
-    expected_next_amp_n1 = (
-        cell_neighbor1.amplitude + expected_next_vel_n1 * dt
-    )
+    expected_next_amp_n1 = cell_neighbor1.amplitude + expected_next_vel_n1 * dt
 
     norm_q_n2 = np.linalg.norm(cell_neighbor2.q_vector)
     modulated_C_n2 = mock_resonador.C * max(0.0, 1.0 + norm_q_n2)
-    F_coupling_n2 = modulated_C_n2 * (
-        cell_center.amplitude - cell_neighbor2.amplitude
-    )
+    F_coupling_n2 = modulated_C_n2 * (cell_center.amplitude - cell_neighbor2.amplitude)
     expected_next_vel_n2 = F_coupling_n2 * dt
-    expected_next_amp_n2 = (
-        cell_neighbor2.amplitude + expected_next_vel_n2 * dt
-    )
+    expected_next_amp_n2 = cell_neighbor2.amplitude + expected_next_vel_n2 * dt
 
     simular_paso_malla()
 
@@ -505,19 +526,18 @@ def test_simular_paso_malla_damping(mock_malla_sim):
 def test_calculate_flux():
     """Test: calculate_flux suma la componente vy de q_vector."""
     mesh = HexCylindricalMesh(
-        radius=1.0, height_segments=1,
-        circumference_segments_target=3, hex_size=1.0
+        radius=1.0, height_segments=1, circumference_segments_target=3, hex_size=1.0
     )
     mesh.cells.clear()
     cell1 = Cell(
-        r=1.0, theta=0.0, z=0.0, q_axial=0, r_axial=0,
-        q_vector=np.array([1.0, 2.0]))
+        r=1.0, theta=0.0, z=0.0, q_axial=0, r_axial=0, q_vector=np.array([1.0, 2.0])
+    )
     cell2 = Cell(
-        r=1.0, theta=np.pi, z=0.0, q_axial=1, r_axial=0,
-        q_vector=np.array([-0.5, 3.0]))
+        r=1.0, theta=np.pi, z=0.0, q_axial=1, r_axial=0, q_vector=np.array([-0.5, 3.0])
+    )
     cell3 = Cell(
-        r=1.0, theta=0.0, z=1.0, q_axial=0, r_axial=1,
-        q_vector=np.array([0.0, -1.5]))
+        r=1.0, theta=0.0, z=1.0, q_axial=0, r_axial=1, q_vector=np.array([0.0, -1.5])
+    )
     mesh.cells[(0, 0)] = cell1
     mesh.cells[(1, 0)] = cell2
     mesh.cells[(0, 1)] = cell3
@@ -525,8 +545,7 @@ def test_calculate_flux():
     actual_flux = calculate_flux(mesh)
     assert actual_flux == pytest.approx(expected_flux)
     mesh_empty = HexCylindricalMesh(
-        radius=1.0, height_segments=1,
-        circumference_segments_target=3, hex_size=1.0
+        radius=1.0, height_segments=1, circumference_segments_target=3, hex_size=1.0
     )
     mesh_empty.cells.clear()
     assert calculate_flux(mesh_empty) == pytest.approx(0.0)
@@ -540,30 +559,45 @@ def test_map_cylinder_to_torus_coords_raises_exception(mock_malla_map):
     cell = Cell(r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20)
 
     # Patch TORUS_NUM_CAPAS to an invalid value
-    with patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_CAPAS", 0):
+    with patch(
+        "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_CAPAS", 0
+    ):
         with pytest.raises(ValueError, match="Dimensiones del toroide inválidas"):
             map_cylinder_to_torus_coords(cell)
 
     # Patch malla_cilindrica_global to None
-    with patch("watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", None):
+    with patch(
+        "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global",
+        None,
+    ):
         with pytest.raises(ValueError, match="Malla no inicializada"):
             map_cylinder_to_torus_coords(cell)
 
 
 def test_simulation_loop_logic(mock_malla_sim):
     """Test: El bucle de simulación refactorizado llama a sus helpers."""
-    (
-        _, _, _, mock_mesh, _, _, dt
-    ) = mock_malla_sim
+    (_, _, _, mock_mesh, _, _, dt) = mock_malla_sim
 
     # Mockear los helpers y funciones llamadas dentro del bucle
     with (
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.fetch_and_apply_torus_field") as mock_fetch,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher._calculate_flux_change") as mock_calc_flux,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.simular_paso_malla") as mock_sim_step,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.update_aggregate_state") as mock_update_state,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher._send_influence_if_needed") as mock_send_influence,
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.stop_simulation_event") as mock_stop_event
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.fetch_and_apply_torus_field"
+        ) as mock_fetch,
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher._calculate_flux_change"
+        ) as mock_calc_flux,
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.simular_paso_malla"
+        ) as mock_sim_step,
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.update_aggregate_state"
+        ) as mock_update_state,
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher._send_influence_if_needed"
+        ) as mock_send_influence,
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.stop_simulation_event"
+        ) as mock_stop_event,
     ):
         # Simular una sola ejecución del bucle
         mock_stop_event.is_set.side_effect = [False, True]
@@ -585,10 +619,19 @@ def test_send_influence_to_torus(mock_requests_post):
     mock_post = mock_requests_post
     dphi_dt_value = 7.5
     with (
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS", 10),  # noqa: E501
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", 15),  # noqa: E501
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000") as mock_base_url,  # noqa: E501
-        patch("watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 2.0)  # noqa: E501
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS", 10
+        ),  # noqa: E501
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", 15
+        ),  # noqa: E501
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
+            "http://mock-ecu:8000",
+        ) as mock_base_url,  # noqa: E501
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 2.0
+        ),  # noqa: E501
     ):
         expected_target_capa = 0
         expected_target_row = 10 // 2
@@ -604,9 +647,7 @@ def test_send_influence_to_torus(mock_requests_post):
             "nombre_watcher": watcher_name,
         }
         mock_post.assert_called_once_with(
-            expected_url,
-            json=expected_json,
-            timeout=pytest.approx(2.0)
+            expected_url, json=expected_json, timeout=pytest.approx(2.0)
         )
 
 
@@ -622,7 +663,7 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
     mock_response.status_code = 200
     mock_response.json.return_value = {
         "status": "success",
-        "field_vector": mock_ecu_field_data
+        "field_vector": mock_ecu_field_data,
     }
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
@@ -635,21 +676,21 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
             "watchers.watchers_tools.malla_watcher.malla_watcher.apply_external_field_to_mesh"  # noqa: E501
         ) as mock_apply_func,
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000"  # noqa: E501
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
+            "http://mock-ecu:8000",  # noqa: E501
         ) as mock_base_url,
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 3.0)  # noqa: E501
+            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 3.0
+        ),  # noqa: E501
     ):
-        mock_mesh_global_instance.configure_mock(
-            cells={(0, 0): "dummy_cell"})
+        mock_mesh_global_instance.configure_mock(cells={(0, 0): "dummy_cell"})
         fetch_and_apply_torus_field()
         expected_url = f"{mock_base_url}/api/ecu/field_vector"
-        mock_get.assert_called_once_with(
-            expected_url,
-            timeout=pytest.approx(3.0))
+        mock_get.assert_called_once_with(expected_url, timeout=pytest.approx(3.0))
         mock_get.return_value.raise_for_status.assert_called_once()
         mock_apply_func.assert_called_once_with(
-            mock_mesh_global_instance, mock_ecu_field_data)
+            mock_mesh_global_instance, mock_ecu_field_data
+        )
 
 
 # Tests para Estado Agregado
@@ -657,46 +698,81 @@ def test_fetch_and_apply_torus_field(mock_requests_get):
 def mock_malla_state():
     """Configura malla mockeada con amplitudes para estado agregado."""
     cell1 = Cell(
-        r=5.0, theta=0.0, z=0.0, q_axial=0, r_axial=0, amplitude=10.0,
-        velocity=1.0, q_vector=np.array([0.1, 0.2]))
+        r=5.0,
+        theta=0.0,
+        z=0.0,
+        q_axial=0,
+        r_axial=0,
+        amplitude=10.0,
+        velocity=1.0,
+        q_vector=np.array([0.1, 0.2]),
+    )
     cell2 = Cell(
-        r=5.0, theta=0.5, z=0.0, q_axial=1, r_axial=0, amplitude=-5.0,
-        velocity=-2.0, q_vector=np.array([-0.1, -0.2]))
+        r=5.0,
+        theta=0.5,
+        z=0.0,
+        q_axial=1,
+        r_axial=0,
+        amplitude=-5.0,
+        velocity=-2.0,
+        q_vector=np.array([-0.1, -0.2]),
+    )
     cell3 = Cell(
-        r=5.0, theta=1.0, z=0.0, q_axial=2, r_axial=0, amplitude=2.0,
-        velocity=0.1, q_vector=np.array([0.0, 0.0]))
+        r=5.0,
+        theta=1.0,
+        z=0.0,
+        q_axial=2,
+        r_axial=0,
+        amplitude=2.0,
+        velocity=0.1,
+        q_vector=np.array([0.0, 0.0]),
+    )
     cell4 = Cell(
-        r=5.0, theta=1.5, z=0.0, q_axial=3, r_axial=0, amplitude=6.0,
-        velocity=3.0, q_vector=np.array([0.3, 0.4]))
+        r=5.0,
+        theta=1.5,
+        z=0.0,
+        q_axial=3,
+        r_axial=0,
+        amplitude=6.0,
+        velocity=3.0,
+        q_vector=np.array([0.3, 0.4]),
+    )
 
     mock_mesh = MagicMock(spec=HexCylindricalMesh)
-    mock_mesh.cells = {
-        (0, 0): cell1,
-        (1, 0): cell2,
-        (2, 0): cell3,
-        (3, 0): cell4
-    }
+    mock_mesh.cells = {(0, 0): cell1, (1, 0): cell2, (2, 0): cell3, (3, 0): cell4}
     mock_mesh.get_all_cells.return_value = [cell1, cell2, cell3, cell4]
     mock_mesh.previous_flux = 0.0
 
     with (
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global", mock_mesh),  # noqa: E501
+            "watchers.watchers_tools.malla_watcher.malla_watcher.malla_cilindrica_global",
+            mock_mesh,
+        ),  # noqa: E501
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.AMPLITUDE_INFLUENCE_THRESHOLD", 5.0),  # noqa: E501
+            "watchers.watchers_tools.malla_watcher.malla_watcher.AMPLITUDE_INFLUENCE_THRESHOLD",
+            5.0,
+        ),  # noqa: E501
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.DPHI_DT_INFLUENCE_THRESHOLD", 1.0),  # noqa: E501
+            "watchers.watchers_tools.malla_watcher.malla_watcher.DPHI_DT_INFLUENCE_THRESHOLD",
+            1.0,
+        ),  # noqa: E501
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL", 0.5),  # noqa: E501
+            "watchers.watchers_tools.malla_watcher.malla_watcher.SIMULATION_INTERVAL",
+            0.5,
+        ),  # noqa: E501
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock")  # noqa: E501
+            "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock"
+        ),  # noqa: E501
     ):
-        yield mock_mesh, [
-            cell1,
-            cell2,
-            cell3,
-            cell4,
-        ]
+        yield (
+            mock_mesh,
+            [
+                cell1,
+                cell2,
+                cell3,
+                cell4,
+            ],
+        )
 
 
 def test_update_aggregate_state(mock_malla_state):
@@ -708,7 +784,7 @@ def test_update_aggregate_state(mock_malla_state):
     expected_avg_vel = (1.0 - 2.0 + 0.1 + 3.0) / 4.0
     expected_max_vel = 3.0
     # KE = 0.5 * m * v^2. Assuming m=1 for simplicity in test
-    ke_values = [0.5 * 1.0**2, 0.5 * (-2.0)**2, 0.5 * 0.1**2, 0.5 * 3.0**2]
+    ke_values = [0.5 * 1.0**2, 0.5 * (-2.0) ** 2, 0.5 * 0.1**2, 0.5 * 3.0**2]
     expected_avg_ke = sum(ke_values) / 4.0
     expected_max_ke = max(ke_values)
 
@@ -726,8 +802,7 @@ def test_update_aggregate_state(mock_malla_state):
 
     update_aggregate_state()
 
-    from watchers.watchers_tools.malla_watcher.malla_watcher import (
-        aggregate_state)
+    from watchers.watchers_tools.malla_watcher.malla_watcher import aggregate_state
 
     assert aggregate_state["avg_amplitude"] == pytest.approx(expected_avg_amp)
     assert aggregate_state["max_amplitude"] == pytest.approx(expected_max_amp)
@@ -735,8 +810,12 @@ def test_update_aggregate_state(mock_malla_state):
     assert aggregate_state["max_velocity"] == pytest.approx(expected_max_vel)
     assert aggregate_state["avg_kinetic_energy"] == pytest.approx(expected_avg_ke)  # noqa: E501
     assert aggregate_state["max_kinetic_energy"] == pytest.approx(expected_max_ke)  # noqa: E501
-    assert aggregate_state["avg_activity_magnitude"] == pytest.approx(expected_avg_activity)  # noqa: E501
-    assert aggregate_state["max_activity_magnitude"] == pytest.approx(expected_max_activity)  # noqa: E501
+    assert aggregate_state["avg_activity_magnitude"] == pytest.approx(
+        expected_avg_activity
+    )  # noqa: E501
+    assert aggregate_state["max_activity_magnitude"] == pytest.approx(
+        expected_max_activity
+    )  # noqa: E501
     assert aggregate_state["cells_over_threshold"] == expected_over_thresh
 
     # Test case for empty mesh
@@ -744,12 +823,16 @@ def test_update_aggregate_state(mock_malla_state):
     mock_mesh_empty.cells = {}
     mock_mesh_empty.get_all_cells.return_value = []
 
-    with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".malla_cilindrica_global", mock_mesh_empty), \
+    with (
         patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".aggregate_state_lock"):
+            ".malla_cilindrica_global",
+            mock_mesh_empty,
+        ),
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.aggregate_state_lock"
+        ),
+    ):
         update_aggregate_state()
         assert aggregate_state["avg_amplitude"] == 0.0
         assert aggregate_state["max_amplitude"] == 0.0
@@ -758,7 +841,7 @@ def test_update_aggregate_state(mock_malla_state):
         assert aggregate_state["avg_kinetic_energy"] == 0.0
         assert aggregate_state["max_kinetic_energy"] == 0.0
         assert aggregate_state["avg_activity_magnitude"] == 0.0
-        assert (aggregate_state["max_activity_magnitude"] == 0.0)
+        assert aggregate_state["max_activity_magnitude"] == 0.0
         assert aggregate_state["cells_over_threshold"] == 0
 
 
@@ -777,23 +860,31 @@ def mock_malla_map():
     mock_torus_filas = 10
     mock_torus_columnas = 15
 
-    with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher"
-        ".malla_cilindrica_global", mock_mesh), \
+    with (
         patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".TORUS_NUM_CAPAS", mock_torus_capas), \
+            ".malla_cilindrica_global",
+            mock_mesh,
+        ),
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_CAPAS",
+            mock_torus_capas,
+        ),
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS",
+            mock_torus_filas,
+        ),
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS",
+            mock_torus_columnas,
+        ),
         patch(
             "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".TORUS_NUM_FILAS", mock_torus_filas), \
-        patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".TORUS_NUM_COLUMNAS", mock_torus_columnas), \
-        patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MAX_AMPLITUDE_FOR_NORMALIZATION", 20.0):
-        yield (mock_mesh, mock_torus_capas, mock_torus_filas,
-               mock_torus_columnas)
+            ".MAX_AMPLITUDE_FOR_NORMALIZATION",
+            20.0,
+        ),
+    ):
+        yield (mock_mesh, mock_torus_capas, mock_torus_filas, mock_torus_columnas)
 
 
 def test_map_cylinder_to_torus_coords(mock_malla_map):
@@ -801,32 +892,61 @@ def test_map_cylinder_to_torus_coords(mock_malla_map):
     mock_mesh, num_capas, num_filas, num_columnas = mock_malla_map
 
     cell = Cell(
-        r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20,
-        amplitude=10.0, velocity=1.0, q_vector=np.array([0.0, 0.0]))
+        r=5.0,
+        theta=np.pi,
+        z=0.0,
+        q_axial=10,
+        r_axial=20,
+        amplitude=10.0,
+        velocity=1.0,
+        q_vector=np.array([0.0, 0.0]),
+    )
     mock_mesh.cells[(-99, -99)] = Cell(
-        r=0.0, theta=0.0, z=0.0, q_axial=-99, r_axial=-99)
+        r=0.0, theta=0.0, z=0.0, q_axial=-99, r_axial=-99
+    )
 
     expected_coords = (2, 4, 7)
     actual_coords = map_cylinder_to_torus_coords(cell)
     assert actual_coords == expected_coords
 
     cell_zero_act = Cell(
-        r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20,
-        amplitude=0.0, velocity=0.0, q_vector=np.array([0.0, 0.0]))
+        r=5.0,
+        theta=np.pi,
+        z=0.0,
+        q_axial=10,
+        r_axial=20,
+        amplitude=0.0,
+        velocity=0.0,
+        q_vector=np.array([0.0, 0.0]),
+    )
     expected_coords_zero = (4, 4, 7)
     actual_coords_zero = map_cylinder_to_torus_coords(cell_zero_act)
     assert actual_coords_zero == expected_coords_zero
 
     cell_max_act = Cell(
-        r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20,
-        amplitude=20.0, velocity=0.0, q_vector=np.array([0.0, 0.0]))
+        r=5.0,
+        theta=np.pi,
+        z=0.0,
+        q_axial=10,
+        r_axial=20,
+        amplitude=20.0,
+        velocity=0.0,
+        q_vector=np.array([0.0, 0.0]),
+    )
     expected_coords_max = (0, 4, 7)
     actual_coords_max = map_cylinder_to_torus_coords(cell_max_act)
     assert actual_coords_max == expected_coords_max
 
     cell_high_act = Cell(
-        r=5.0, theta=np.pi, z=0.0, q_axial=10, r_axial=20,
-        amplitude=15.0, velocity=15.0, q_vector=np.array([0.0, 0.0]))
+        r=5.0,
+        theta=np.pi,
+        z=0.0,
+        q_axial=10,
+        r_axial=20,
+        amplitude=15.0,
+        velocity=15.0,
+        q_vector=np.array([0.0, 0.0]),
+    )
     expected_coords_high = (0, 4, 7)
     actual_coords_high = map_cylinder_to_torus_coords(cell_high_act)
     assert actual_coords_high == expected_coords_high
@@ -836,21 +956,24 @@ def test_map_cylinder_to_torus_coords(mock_malla_map):
 @pytest.fixture
 def mock_send_influence():
     """Fixture: Configura mocks para probar send_influence_to_torus."""
-    with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher.requests.post"
-    ) as mock_post, \
+    with (
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".MATRIZ_ECU_BASE_URL", "http://mock-ecu:8000"), \
+            "watchers.watchers_tools.malla_watcher.malla_watcher.requests.post"
+        ) as mock_post,
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".TORUS_NUM_FILAS", 10), \
+            "watchers.watchers_tools.malla_watcher.malla_watcher.MATRIZ_ECU_BASE_URL",
+            "http://mock-ecu:8000",
+        ),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".TORUS_NUM_COLUMNAS", 15), \
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_FILAS", 10
+        ),
         patch(
-            "watchers.watchers_tools.malla_watcher.malla_watcher"
-            ".REQUESTS_TIMEOUT", 2.0):
+            "watchers.watchers_tools.malla_watcher.malla_watcher.TORUS_NUM_COLUMNAS", 15
+        ),
+        patch(
+            "watchers.watchers_tools.malla_watcher.malla_watcher.REQUESTS_TIMEOUT", 2.0
+        ),
+    ):
         mock_post.return_value.raise_for_status.return_value = None
         yield mock_post
 
@@ -867,8 +990,7 @@ def test_api_health(client, reset_globals):
         (0, 1): Cell(r=1.0, theta=1.0, z=1.0, q_axial=0, r_axial=1),
     }
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
-    mock_mesh.verify_connectivity.side_effect = (
-        lambda: {6: len(mock_mesh.cells)})
+    mock_mesh.verify_connectivity.side_effect = lambda: {6: len(mock_mesh.cells)}
 
     with patch(
         "watchers.watchers_tools.malla_watcher.malla_watcher.simulation_thread"
@@ -897,8 +1019,7 @@ def test_api_health_no_simulation_thread(client, reset_globals):
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
 
     with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher."
-        "simulation_thread"
+        "watchers.watchers_tools.malla_watcher.malla_watcher.simulation_thread"
     ) as mock_sim_thread:
         mock_sim_thread.is_alive.return_value = False
         response = client.get("/api/health")
@@ -916,18 +1037,15 @@ def test_api_health_empty_mesh(client, reset_globals):
     mock_mesh.get_all_cells.return_value = []
 
     with patch(
-        "watchers.watchers_tools.malla_watcher.malla_watcher."
-        "simulation_thread"
+        "watchers.watchers_tools.malla_watcher.malla_watcher.simulation_thread"
     ) as mock_sim_thread:
         mock_sim_thread.is_alive.return_value = True
         response = client.get("/api/health")
         assert response.status_code == 500
         data = response.get_json()
         assert data["status"] == "error"
-        assert (
-            "Malla inicializada pero contiene 0 celdas" in data["message"])
-        assert (
-            data["details"]["mesh"]["num_cells"] == 0)
+        assert "Malla inicializada pero contiene 0 celdas" in data["message"]
+        assert data["details"]["mesh"]["num_cells"] == 0
 
 
 def test_api_state(client, reset_globals):
@@ -963,8 +1081,7 @@ def test_api_state(client, reset_globals):
     expected_D = 0.25
     mock_resonador.C = expected_C
     mock_electron.D = expected_D
-    mock_ctrl_params.update(
-        {"phoswave_C": expected_C, "electron_D": expected_D})
+    mock_ctrl_params.update({"phoswave_C": expected_C, "electron_D": expected_D})
 
     response = client.get("/api/state")
     assert response.status_code == 200
@@ -981,11 +1098,9 @@ def test_api_state(client, reset_globals):
     assert state_data["max_activity_magnitude"] == pytest.approx(46.0)
     assert state_data["cells_over_threshold"] == 7
     assert state_data["num_cells"] == expected_num_cells
-    assert (
-        state_data["control_params"]["phoswave_C"] == pytest.approx(expected_C)
-    )
+    assert state_data["control_params"]["phoswave_C"] == pytest.approx(expected_C)
     assert state_data["control_params"]["electron_D"] == pytest.approx(
-        expected_D                                      # noqa: E129
+        expected_D  # noqa: E129
     )
 
 
@@ -1000,84 +1115,82 @@ def test_api_control_success(client, reset_globals):
     )
 
     mock_resonador.ajustar_coeficientes.side_effect = lambda val: setattr(
-        mock_resonador, "C", max(0.0, val))
+        mock_resonador, "C", max(0.0, val)
+    )
     mock_electron.ajustar_coeficientes.side_effect = lambda val: setattr(
-        mock_electron, "D", max(0.0, val))
+        mock_electron, "D", max(0.0, val)
+    )
 
     signal_pos = 10.0
     expected_C_pos = BASE_COUPLING_T + K_GAIN_COUPLING * signal_pos
     expected_D_pos = BASE_DAMPING_E - K_GAIN_DAMPING * signal_pos
 
-    response_pos = client.post(
-        "/api/control", json={"control_signal": signal_pos})
+    response_pos = client.post("/api/control", json={"control_signal": signal_pos})
     assert response_pos.status_code == 200
     data_pos = response_pos.get_json()
     assert data_pos["status"] == "success"
     assert "Parámetros ajustados" in data_pos["message"]
     mock_resonador.ajustar_coeficientes.assert_called_with(
-        pytest.approx(max(0.0, expected_C_pos)))
+        pytest.approx(max(0.0, expected_C_pos))
+    )
     mock_electron.ajustar_coeficientes.assert_called_with(
-        pytest.approx(max(0.0, expected_D_pos)))
+        pytest.approx(max(0.0, expected_D_pos))
+    )
     assert mock_resonador.C == pytest.approx(max(0.0, expected_C_pos))
     assert mock_electron.D == pytest.approx(max(0.0, expected_D_pos))
-    assert mock_ctrl_params["phoswave_C"] == pytest.approx(
-        max(0.0, expected_C_pos)
-    )
-    assert mock_ctrl_params["electron_D"] == pytest.approx(
-        max(0.0, expected_D_pos)
-    )
+    assert mock_ctrl_params["phoswave_C"] == pytest.approx(max(0.0, expected_C_pos))
+    assert mock_ctrl_params["electron_D"] == pytest.approx(max(0.0, expected_D_pos))
 
     mock_resonador.ajustar_coeficientes.reset_mock()
     mock_electron.ajustar_coeficientes.reset_mock()
     mock_resonador.C = BASE_COUPLING_T
     mock_electron.D = BASE_DAMPING_E
     mock_ctrl_params.update(
-        {"phoswave_C": BASE_COUPLING_T, "electron_D": BASE_DAMPING_E})
+        {"phoswave_C": BASE_COUPLING_T, "electron_D": BASE_DAMPING_E}
+    )
 
     signal_neg = -5.0
     expected_C_neg = BASE_COUPLING_T + K_GAIN_COUPLING * signal_neg
     expected_D_neg = BASE_DAMPING_E - K_GAIN_DAMPING * signal_neg
 
-    response_neg = client.post(
-        "/api/control", json={"control_signal": signal_neg})
+    response_neg = client.post("/api/control", json={"control_signal": signal_neg})
     assert response_neg.status_code == 200
     data_neg = response_neg.get_json()
     assert data_neg["status"] == "success"
     mock_resonador.ajustar_coeficientes.assert_called_with(
-        pytest.approx(max(0.0, expected_C_neg)))
+        pytest.approx(max(0.0, expected_C_neg))
+    )
     mock_electron.ajustar_coeficientes.assert_called_with(
-        pytest.approx(max(0.0, expected_D_neg)))
+        pytest.approx(max(0.0, expected_D_neg))
+    )
     assert mock_resonador.C == pytest.approx(max(0.0, expected_C_neg))
     assert mock_electron.D == pytest.approx(max(0.0, expected_D_neg))
-    assert mock_ctrl_params["phoswave_C"] == pytest.approx(
-        max(0.0, expected_C_neg)
-    )
-    assert mock_ctrl_params["electron_D"] == pytest.approx(
-        max(0.0, expected_D_neg)
-    )
+    assert mock_ctrl_params["phoswave_C"] == pytest.approx(max(0.0, expected_C_neg))
+    assert mock_ctrl_params["electron_D"] == pytest.approx(max(0.0, expected_D_neg))
 
 
 def test_api_control_invalid_input(client):
     """Test: /api/control maneja JSON inválido o campos faltantes."""
     response_no_json = client.post(
-        "/api/control",
-        data="no es json",
-        content_type="application/json")
+        "/api/control", data="no es json", content_type="application/json"
+    )
     assert response_no_json.status_code == 400
-    assert ("Payload JSON vacío, inválido o falta" in
-            response_no_json.get_json()["message"])
+    assert (
+        "Payload JSON vacío, inválido o falta" in response_no_json.get_json()["message"]
+    )
 
-    response_missing_field = client.post(
-        "/api/control", json={"otro_campo": 123})
+    response_missing_field = client.post("/api/control", json={"otro_campo": 123})
     assert response_missing_field.status_code == 400
-    assert "falta 'control_signal'" in \
-        response_missing_field.get_json()["message"]
+    assert "falta 'control_signal'" in response_missing_field.get_json()["message"]
 
     response_wrong_type = client.post(
-        "/api/control", json={"control_signal": "no_numero"})
+        "/api/control", json={"control_signal": "no_numero"}
+    )
     assert response_wrong_type.status_code == 400
-    assert "El campo 'control_signal' debe ser un número" in \
-        response_wrong_type.get_json()["message"]
+    assert (
+        "El campo 'control_signal' debe ser un número"
+        in response_wrong_type.get_json()["message"]
+    )
 
 
 def test_api_event_pulse(client, reset_globals):
@@ -1092,21 +1205,22 @@ def test_api_event_pulse(client, reset_globals):
         z=1.0,
         q_axial=cell_coords_q,
         r_axial=cell_coords_r,
-        velocity=initial_velocity)
+        velocity=initial_velocity,
+    )
     mock_mesh.cells = {(cell_coords_q, cell_coords_r): target_cell}
     mock_mesh.get_cell.side_effect = lambda q, r: mock_mesh.cells.get((q, r))
 
     payload = {
         "type": "pulse",
         "coords": {"q": cell_coords_q, "r": cell_coords_r},
-        "magnitude": pulse_magnitude}
+        "magnitude": pulse_magnitude,
+    }
     response = client.post("/api/event", json=payload)
     assert response.status_code == 200
     data = response.get_json()
     assert data["status"] == "success"
     assert data["message"] == "Evento procesado"
-    assert target_cell.velocity == pytest.approx(
-        initial_velocity + pulse_magnitude)
+    assert target_cell.velocity == pytest.approx(initial_velocity + pulse_magnitude)
 
 
 def test_api_event_pulse_cell_not_found(client, reset_globals):
@@ -1114,8 +1228,7 @@ def test_api_event_pulse_cell_not_found(client, reset_globals):
     mock_mesh, _, _, _, _ = reset_globals
     mock_mesh.cells = {}
     mock_mesh.get_cell.return_value = None
-    payload = {
-        "type": "pulse", "coords": {"q": 99, "r": 99}, "magnitude": 1.0}
+    payload = {"type": "pulse", "coords": {"q": 99, "r": 99}, "magnitude": 1.0}
     response = client.post("/api/event", json=payload)
     assert response.status_code == 503
     data = response.get_json()
@@ -1123,8 +1236,7 @@ def test_api_event_pulse_cell_not_found(client, reset_globals):
     assert "Malla no inicializada o vacía" in data["message"]
 
 
-def test_api_event_pulse_cell_not_found_in_populated_mesh(
-        client, reset_globals):
+def test_api_event_pulse_cell_not_found_in_populated_mesh(client, reset_globals):
     """Test: /api/event devuelve 404 si la celda no existe."""
     mock_mesh, _, _, _, _ = reset_globals
     existing_cell_coords_q, existing_cell_coords_r = 0, 0
@@ -1133,9 +1245,9 @@ def test_api_event_pulse_cell_not_found_in_populated_mesh(
         theta=0.0,
         z=0.0,
         q_axial=existing_cell_coords_q,
-        r_axial=existing_cell_coords_r)
-    mock_mesh.cells = {(
-        existing_cell_coords_q, existing_cell_coords_r): existing_cell}
+        r_axial=existing_cell_coords_r,
+    )
+    mock_mesh.cells = {(existing_cell_coords_q, existing_cell_coords_r): existing_cell}
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
 
     coords_to_find_q, coords_to_find_r = 99, 99
@@ -1152,7 +1264,8 @@ def test_api_event_pulse_cell_not_found_in_populated_mesh(
     payload = {
         "type": "pulse",
         "coords": {"q": coords_to_find_q, "r": coords_to_find_r},
-        "magnitude": 1.0}
+        "magnitude": 1.0,
+    }
     response = client.post("/api/event", json=payload)
     assert response.status_code == 404
     data = response.get_json()
@@ -1165,10 +1278,26 @@ def test_api_event_pulse_cell_not_found_in_populated_mesh(
 def test_api_malla(client, reset_globals):
     """Test: /api/malla devuelve la estructura completa de la malla."""
     mock_mesh, _, _, _, _ = reset_globals
-    cell_a = Cell(r=mock_mesh.radius, theta=0.1, z=0.5, q_axial=0, r_axial=0,
-                  amplitude=1, velocity=0.1, q_vector=np.array([0.1, 0.1]))
-    cell_b = Cell(r=mock_mesh.radius, theta=0.2, z=1.5, q_axial=1, r_axial=0,
-                  amplitude=2, velocity=0.2, q_vector=np.array([0.2, 0.2]))
+    cell_a = Cell(
+        r=mock_mesh.radius,
+        theta=0.1,
+        z=0.5,
+        q_axial=0,
+        r_axial=0,
+        amplitude=1,
+        velocity=0.1,
+        q_vector=np.array([0.1, 0.1]),
+    )
+    cell_b = Cell(
+        r=mock_mesh.radius,
+        theta=0.2,
+        z=1.5,
+        q_axial=1,
+        r_axial=0,
+        amplitude=2,
+        velocity=0.2,
+        q_vector=np.array([0.2, 0.2]),
+    )
     mock_mesh.cells = {(0, 0): cell_a, (1, 0): cell_b}
     mock_mesh.get_all_cells.return_value = list(mock_mesh.cells.values())
     mock_mesh.min_z = 0.5
@@ -1186,11 +1315,11 @@ def test_api_malla(client, reset_globals):
     cells_data = data["cells"]
     assert len(cells_data) == 2
     assert any(
-        cd["axial_coords"]["q"] == 0 and cd["amplitude"] == 1
-        for cd in cells_data)
+        cd["axial_coords"]["q"] == 0 and cd["amplitude"] == 1 for cd in cells_data
+    )
     assert any(
-        cd["axial_coords"]["q"] == 1 and cd["amplitude"] == 2
-        for cd in cells_data)
+        cd["axial_coords"]["q"] == 1 and cd["amplitude"] == 2 for cd in cells_data
+    )
     for cell_data_item in cells_data:
         assert "q_vector" in cell_data_item
         assert isinstance(cell_data_item["q_vector"], list)
@@ -1219,18 +1348,18 @@ def test_api_config(client, reset_globals):
 
     with patch("os.environ.get", side_effect=mock_environ_get_for_config):
         from watchers.watchers_tools.malla_watcher.malla_watcher import (
-            MATRIZ_ECU_BASE_URL,
-            TORUS_NUM_CAPAS,
-            TORUS_NUM_FILAS,
-            TORUS_NUM_COLUMNAS,
             AMPLITUDE_INFLUENCE_THRESHOLD,
-            MAX_AMPLITUDE_FOR_NORMALIZATION,
-            SIMULATION_INTERVAL,
             BASE_COUPLING_T,
             BASE_DAMPING_E,
+            DPHI_DT_INFLUENCE_THRESHOLD,
             K_GAIN_COUPLING,
             K_GAIN_DAMPING,
-            DPHI_DT_INFLUENCE_THRESHOLD,
+            MATRIZ_ECU_BASE_URL,
+            MAX_AMPLITUDE_FOR_NORMALIZATION,
+            SIMULATION_INTERVAL,
+            TORUS_NUM_CAPAS,
+            TORUS_NUM_COLUMNAS,
+            TORUS_NUM_FILAS,
         )
 
         mock_resonador.C = 0.88
@@ -1242,33 +1371,34 @@ def test_api_config(client, reset_globals):
         assert data["status"] == "success"
         config_data = data["config"]
         m_cfg = config_data["malla_config"]
-        assert m_cfg["radius"] == \
-            float(expected_malla_config_values["MW_RADIUS"])
-        assert m_cfg["height_segments"] == \
-            int(expected_malla_config_values["MW_HEIGHT_SEG"])
-        assert m_cfg["circumference_segments_target"] == \
-            int(expected_malla_config_values["MW_CIRCUM_SEG"])
-        assert m_cfg["circumference_segments_actual"] == \
-            mock_mesh.circumference_segments_actual
-        assert m_cfg["hex_size"] == \
-            float(expected_malla_config_values["MW_HEX_SIZE"])
-        assert m_cfg["periodic_z"] == \
-            (expected_malla_config_values["MW_PERIODIC_Z"].lower() == "true")
+        assert m_cfg["radius"] == float(expected_malla_config_values["MW_RADIUS"])
+        assert m_cfg["height_segments"] == int(
+            expected_malla_config_values["MW_HEIGHT_SEG"]
+        )
+        assert m_cfg["circumference_segments_target"] == int(
+            expected_malla_config_values["MW_CIRCUM_SEG"]
+        )
+        assert (
+            m_cfg["circumference_segments_actual"]
+            == mock_mesh.circumference_segments_actual
+        )
+        assert m_cfg["hex_size"] == float(expected_malla_config_values["MW_HEX_SIZE"])
+        assert m_cfg["periodic_z"] == (
+            expected_malla_config_values["MW_PERIODIC_Z"].lower() == "true"
+        )
 
         comm_cfg = config_data["communication_config"]
         assert comm_cfg["matriz_ecu_url"] == MATRIZ_ECU_BASE_URL
         torus_dims_expected = (
-            f"{TORUS_NUM_CAPAS}x{TORUS_NUM_FILAS}x{TORUS_NUM_COLUMNAS}")
+            f"{TORUS_NUM_CAPAS}x{TORUS_NUM_FILAS}x{TORUS_NUM_COLUMNAS}"
+        )
         assert comm_cfg["torus_dims"] == torus_dims_expected
-        assert comm_cfg["influence_threshold"] == \
-            AMPLITUDE_INFLUENCE_THRESHOLD
-        assert comm_cfg["max_activity_normalization"] == \
-            MAX_AMPLITUDE_FOR_NORMALIZATION
+        assert comm_cfg["influence_threshold"] == AMPLITUDE_INFLUENCE_THRESHOLD
+        assert comm_cfg["max_activity_normalization"] == MAX_AMPLITUDE_FOR_NORMALIZATION
 
         sim_cfg = config_data["simulation_config"]
         assert sim_cfg["interval"] == SIMULATION_INTERVAL
-        assert sim_cfg["dphi_dt_influence_threshold"] == \
-            DPHI_DT_INFLUENCE_THRESHOLD
+        assert sim_cfg["dphi_dt_influence_threshold"] == DPHI_DT_INFLUENCE_THRESHOLD
 
         ctrl_cfg = config_data["control_config"]
         assert ctrl_cfg["base_coupling_t"] == BASE_COUPLING_T
@@ -1286,8 +1416,7 @@ def test_api_malla_influence_push(client, reset_globals):
     """
     mock_mesh, _, _, _, _ = reset_globals
     if not mock_mesh.cells:
-        mock_mesh.cells[(0, 0)] = Cell(
-            r=1.0, theta=0.0, z=0.0, q_axial=0, r_axial=0)
+        mock_mesh.cells[(0, 0)] = Cell(r=1.0, theta=0.0, z=0.0, q_axial=0, r_axial=0)
 
     test_field_vector_payload = [
         [[[1.1, 2.2]], [[3.3, 4.4]]],
@@ -1299,15 +1428,13 @@ def test_api_malla_influence_push(client, reset_globals):
         ".apply_external_field_to_mesh"
     ) as mock_apply_func:
         response = client.post(
-            "/api/malla/influence",
-            json={"field_vector": test_field_vector_payload}
+            "/api/malla/influence", json={"field_vector": test_field_vector_payload}
         )
         assert response.status_code == 200
         data = response.get_json()
         assert data["status"] == "success"
         assert "CV externo aplicado a q_vector de las celdas." in data["message"]
-        mock_apply_func.assert_called_once_with(
-            mock_mesh, test_field_vector_payload)
+        mock_apply_func.assert_called_once_with(mock_mesh, test_field_vector_payload)
 
 
 def test_api_malla_influence_push_invalid_payload(client, reset_globals):
@@ -1317,7 +1444,8 @@ def test_api_malla_influence_push_invalid_payload(client, reset_globals):
     """
     reset_globals
     response_missing_key = client.post(
-        "/api/malla/influence", json={"otro_dato": "valor"})
+        "/api/malla/influence", json={"otro_dato": "valor"}
+    )
     assert response_missing_key.status_code == 400
     data_missing = response_missing_key.get_json()
     assert data_missing["status"] == "error"
@@ -1332,11 +1460,13 @@ def test_api_malla_influence_push_invalid_payload(client, reset_globals):
 
 def test_simulation_loop_integration(reset_globals, tmp_path):
     """Ejecuta simulation_loop durante 2 iteraciones reales."""
-    from watchers.watchers_tools.malla_watcher.malla_watcher import (
-        simulation_loop, stop_simulation_event
-    )
     import threading
     import time
+
+    from watchers.watchers_tools.malla_watcher.malla_watcher import (
+        simulation_loop,
+        stop_simulation_event,
+    )
 
     stop_simulation_event.clear()
     thread = threading.Thread(target=simulation_loop, daemon=True)
@@ -1355,11 +1485,13 @@ def test_performance_simular_paso_malla():
         height_segments=10,
         circumference_segments_target=30,
         hex_size=1.0,
-        periodic_z=False
+        periodic_z=False,
     )
     assert len(mesh.cells) >= 1000
     start = time.perf_counter()
     simular_paso_malla()
     elapsed = time.perf_counter() - start
     assert elapsed < 1.0  # Umbral ajustable
+
+
 # -- END OF FILE test_malla_watcher.py (REFINADO para Osciladores Acoplados) --

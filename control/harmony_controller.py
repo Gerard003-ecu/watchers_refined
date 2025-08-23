@@ -21,29 +21,28 @@ Funcionalidades Principales:
       watcher_tools y la ECU de manera robusta, incluyendo reintentos.
 """
 
-import time
-import threading
-import logging
-import requests
-import numpy as np
-import os
 import json
+import logging
+import os
+import threading
+import time
 import uuid
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import requests
 from flask import Flask, jsonify, request
-from typing import Dict, List, Any, Optional
+
+from common.decorators import measure_performance
 
 from .boson_phase import BosonPhasePID as BosonPhase
-from common.decorators import measure_performance
 
 ECU_API_URL = os.environ.get("ECU_API_URL", "http://ecu:8000/api/ecu")
 AGENT_AI_URL = os.environ.get("AGENT_AI_URL", "http://agent_ai:9000")
 
 logging.basicConfig(
     level=logging.INFO,
-    format=(
-        "%(asctime)s [%(levelname)s] [%(threadName)s] "
-        "%(name)s: %(message)s"
-    ),
+    format=("%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s"),
 )
 logger = logging.getLogger("harmony_controller")
 
@@ -54,18 +53,15 @@ KD_INIT = float(os.environ.get("HC_KD", 0.05))
 
 SETPOINT_VECTOR_JSON = os.environ.get("HC_SETPOINT_VECTOR", "[1.0, 0.0]")
 try:
-    setpoint_vector_init = np.array(
-        json.loads(SETPOINT_VECTOR_JSON), dtype=float
-    )
+    setpoint_vector_init = np.array(json.loads(SETPOINT_VECTOR_JSON), dtype=float)
     setpoint_init = np.linalg.norm(setpoint_vector_init)
     logger.info(
         "SP inicial (norma): %.3f (vec: %s)",
-        setpoint_init, setpoint_vector_init.tolist()
+        setpoint_init,
+        setpoint_vector_init.tolist(),
     )
 except (json.JSONDecodeError, ValueError):
-    logger.error(
-        "Error HC_SETPOINT_VECTOR: %s. Usando SP=1.0", SETPOINT_VECTOR_JSON
-    )
+    logger.error("Error HC_SETPOINT_VECTOR: %s. Usando SP=1.0", SETPOINT_VECTOR_JSON)
     setpoint_vector_init = np.array([1.0, 0.0])
     setpoint_init = 1.0
 
@@ -130,9 +126,7 @@ class HarmonyControllerState:
                 Vector de setpoint inicial.
                 Por defecto es setpoint_vector_init.
         """
-        self.pid_controller = BosonPhase(
-            kp, ki, kd
-        )
+        self.pid_controller = BosonPhase(kp, ki, kd)
         self.pid_controller.set_target(initial_setpoint)
         self.current_setpoint = initial_setpoint
         if isinstance(initial_setpoint_vector, np.ndarray):
@@ -203,18 +197,17 @@ class HarmonyControllerState:
                 self.managed_tools_details[nombre] = {}
                 logger.info(
                     "Registrando tool: '%s' (URL: %s, Aporta: %s, Nat: %s)",
-                    nombre, url, aporta_a, naturaleza
+                    nombre,
+                    url,
+                    aporta_a,
+                    naturaleza,
                 )
             else:
-                logger.info(
-                    "Actualizando información del tool: '%s'", nombre
-                )
+                logger.info("Actualizando información del tool: '%s'", nombre)
             self.managed_tools_details[nombre]["url"] = url
             self.managed_tools_details[nombre]["aporta_a"] = aporta_a
             self.managed_tools_details[nombre]["naturaleza"] = naturaleza
-            self.managed_tools_details[nombre]["last_state"] = {
-                "status": "unknown"
-            }
+            self.managed_tools_details[nombre]["last_state"] = {"status": "unknown"}
             self.managed_tools_details[nombre]["last_control"] = 0.0
 
     def unregister_managed_tool(self, nombre: str):
@@ -233,9 +226,7 @@ class HarmonyControllerState:
                 logger.info("Eliminando tool gestionado: '%s'", nombre)
                 del self.managed_tools_details[nombre]
             else:
-                logger.warning(
-                    "Intento de eliminar tool no gestionado: '%s'", nombre
-                )
+                logger.warning("Intento de eliminar tool no gestionado: '%s'", nombre)
 
     def get_state_snapshot(self) -> Dict[str, Any]:
         """Obtiene una instantánea completa del estado actual del controlador.
@@ -258,9 +249,7 @@ class HarmonyControllerState:
                     "url": details.get("url"),
                     "aporta_a": details.get("aporta_a"),
                     "naturaleza": details.get("naturaleza"),
-                    "last_state": details.get(
-                        "last_state", {"status": "unknown"}
-                    ),
+                    "last_state": details.get("last_state", {"status": "unknown"}),
                     "last_control": details.get("last_control", 0.0),
                 }
                 for name, details in self.managed_tools_details.items()
@@ -331,7 +320,6 @@ class TaskManager:
                 else:
                     task["status"] = "unknown_completed"
 
-
             return task["status"]
 
     def update_task_status(self, task_id: str, status: str):
@@ -341,8 +329,9 @@ class TaskManager:
                 self.tasks[task_id]["status"] = status
                 # Guardamos el estado final por si se consulta después de que el hilo muera
                 self.tasks[task_id]["final_status"] = status
-                logger.info("Estado de la tarea '%s' actualizado a: %s", task_id, status)
-
+                logger.info(
+                    "Estado de la tarea '%s' actualizado a: %s", task_id, status
+                )
 
     def abort_task(self, task_id: str) -> str:
         """Solicita la detención de una tarea en ejecución."""
@@ -358,10 +347,12 @@ class TaskManager:
             logger.info("Enviada señal de aborto a la tarea '%s'", task_id)
             return "abort_sent"
 
+
 task_manager = TaskManager()
 
 
 # --- Placeholders y Utilitidades para Tareas ---
+
 
 def get_field_from_ecu(region: str) -> Optional[np.ndarray]:
     """
@@ -376,6 +367,7 @@ def get_field_from_ecu(region: str) -> Optional[np.ndarray]:
     magnitudes = rng.uniform(0.8, 1.2, size=(10, 10))
     return magnitudes * np.exp(1j * base_angles)
 
+
 def apply_influence_to_ecu(region: str, vector: complex):
     """
     Placeholder para aplicar una influencia (un vector complejo) a la ECU.
@@ -384,10 +376,11 @@ def apply_influence_to_ecu(region: str, vector: complex):
     logger.info(
         "[TASK_UTIL] Aplicando influencia a la región '%s': vector=%s",
         region,
-        f"{vector.real:.3f}{vector.imag:+.3f}j"
+        f"{vector.real:.3f}{vector.imag:+.3f}j",
     )
     # No hace nada más que loguear.
     pass
+
 
 def calculate_dominant_phase(field: np.ndarray) -> float:
     """
@@ -418,16 +411,20 @@ def run_phase_sync_task(
     logger.info(
         "[%s] Iniciando tarea de sincronización de fase para la región '%s' "
         "hacia %.3f rad.",
-        task_id, region, target_phase
+        task_id,
+        region,
+        target_phase,
     )
     start_time = time.time()
 
     # PID simple para esta tarea
-    p, i, d = pid_gains.get('p', 0.5), pid_gains.get('i', 0.1), pid_gains.get('d', 0.02)
+    p, i, d = pid_gains.get("p", 0.5), pid_gains.get("i", 0.1), pid_gains.get("d", 0.02)
     integral = 0
     last_error = 0
 
-    control_interval = pid_gains.get('control_interval', 1.0)  # 1 segundo por ciclo de control
+    control_interval = pid_gains.get(
+        "control_interval", 1.0
+    )  # 1 segundo por ciclo de control
 
     while not stop_event.is_set():
         # 0. Comprobar si la tarea ha sido abortada
@@ -443,7 +440,9 @@ def run_phase_sync_task(
         # 2. Obtener estado actual
         field = get_field_from_ecu(region)
         if field is None:
-            logger.error("[%s] No se pudo obtener el campo de la ECU. Reintentando...", task_id)
+            logger.error(
+                "[%s] No se pudo obtener el campo de la ECU. Reintentando...", task_id
+            )
             time.sleep(control_interval)
             continue
 
@@ -461,7 +460,9 @@ def run_phase_sync_task(
         if abs(error) < tolerance:
             logger.info(
                 "[%s] Sincronización de fase completada. Error %.4f < Tol %.4f.",
-                task_id, abs(error), tolerance
+                task_id,
+                abs(error),
+                tolerance,
             )
             task_manager.update_task_status(task_id, "completed")
             return
@@ -486,16 +487,22 @@ def run_phase_sync_task(
         # Logging de depuración detallado según lo solicitado
         logger.debug(
             "[PID Sync] Setpoint: %.2f, Current: %.2f, Error: %.2f",
-            target_phase, current_phase, error
+            target_phase,
+            current_phase,
+            error,
         )
         logger.debug(
             "[PID Sync] Terms (P: %.2f, I: %.2f, D: %.2f) -> Total Output: %.2f",
-            p_term, i_term, d_term, control_output
+            p_term,
+            i_term,
+            d_term,
+            control_output,
         )
-        influence_vector_str = f"({influence_vector.real:.2f}{influence_vector.imag:+.2f}j)"
+        influence_vector_str = (
+            f"({influence_vector.real:.2f}{influence_vector.imag:+.2f}j)"
+        )
         logger.debug(
-            "[PID Sync] Applying influence vector: %s to ECU",
-            influence_vector_str
+            "[PID Sync] Applying influence vector: %s to ECU", influence_vector_str
         )
 
         # 7. Esperar
@@ -516,7 +523,11 @@ def run_resonance_task(
     """Lógica de la tarea para la amplificación por resonancia."""
     logger.info(
         "[%s] Iniciando tarea de resonancia en '%s' (Freq: %.2f Hz, Amp: %.2f, Dur: %.1fs)",
-        task_id, region, frequency, amplitude, duration
+        task_id,
+        region,
+        frequency,
+        amplitude,
+        duration,
     )
     start_time = time.time()
 
@@ -588,23 +599,22 @@ def get_ecu_state() -> Optional[List[List[float]]]:
                 ):
                     rows = len(state_list)
                     cols = len(state_list[0]) if rows > 0 else 0
-                    logger.debug(
-                        "Estado ECU recibido: %dx%d puntos", rows, cols
-                    )
+                    logger.debug("Estado ECU recibido: %dx%d puntos", rows, cols)
                     return state_list
                 else:
                     logger.error(
-                        "Clave 'estado_campo_unificado' no es lista de "
-                        "listas: %s",
-                        type(state_list)
+                        "Clave 'estado_campo_unificado' no es lista de listas: %s",
+                        type(state_list),
                     )
             else:
-                msg = data.get('message', 'Formato desconocido')
+                msg = data.get("message", "Formato desconocido")
                 logger.warning("Respuesta de ECU no exitosa: %s", msg)
         except BaseException as e:
             logger.error(
                 "Error al obtener estado de ECU (%s) intento %d: %s",
-                ECU_API_URL, attempt + 1, e
+                ECU_API_URL,
+                attempt + 1,
+                e,
             )
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
@@ -638,13 +648,9 @@ def get_tool_state(tool_name: str, base_url: str) -> Dict[str, Any]:
             data = response.json()
             # Ensuring the logger.debug call is compliant
             logger.debug(
-                "Estado recibido de %s: %s",
-                tool_name,
-                data.get('state', data)
+                "Estado recibido de %s: %s", tool_name, data.get("state", data)
             )
-            return data.get("state", {
-                "status": "success", "raw_data": data
-            })
+            return data.get("state", {"status": "success", "raw_data": data})
         except Exception as e:
             # Ensuring the logger.warning call is compliant
             logger.warning(
@@ -652,7 +658,7 @@ def get_tool_state(tool_name: str, base_url: str) -> Dict[str, Any]:
                 tool_name,
                 state_url,
                 attempt + 1,
-                e
+                e,
             )
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
@@ -663,11 +669,7 @@ def get_tool_state(tool_name: str, base_url: str) -> Dict[str, Any]:
     }
 
 
-def send_tool_control(
-    tool_name: str,
-    base_url: str,
-    control_signal: float
-) -> bool:
+def send_tool_control(tool_name: str, base_url: str, control_signal: float) -> bool:
     """Envía una señal de control a un watcher_tool específico.
 
     Realiza una solicitud POST al endpoint '/api/control' del watcher_tool
@@ -695,20 +697,26 @@ def send_tool_control(
             response.raise_for_status()
             logger.info(
                 "Señal de control %.3f enviada a %s. Respuesta: %d",
-                control_signal, tool_name, response.status_code
+                control_signal,
+                tool_name,
+                response.status_code,
             )
             return True
         except Exception as e:
             logger.warning(
                 "Error al enviar control a %s (%s) intento %d: %s",
-                tool_name, control_url, attempt + 1, e
+                tool_name,
+                control_url,
+                attempt + 1,
+                e,
             )
             if attempt < MAX_RETRIES - 1:
                 delay = BASE_RETRY_DELAY * (2**attempt)
                 time.sleep(delay)
     logger.error(
         "No se pudo enviar señal de control a %s tras %d intentos.",
-        tool_name, MAX_RETRIES
+        tool_name,
+        MAX_RETRIES,
     )
     return False
 
@@ -761,49 +769,45 @@ def harmony_control_loop():
                     np.linalg.norm(ecu_array) if ecu_array.size > 0 else 0.0
                 )
                 last_ecu_state_to_store = ecu_state_data
-                logger.debug(
-                    "[ControlLoop] ECU State Norm=%.3f", current_measurement
-                )
+                logger.debug("[ControlLoop] ECU State Norm=%.3f", current_measurement)
             except (ValueError, TypeError) as e:
                 logger.error("Error al procesar datos de ECU: %s", e)
         else:
-            logger.warning(
-                "[ControlLoop] No se pudo obtener estado de ECU, usando 0.0"
-            )
+            logger.warning("[ControlLoop] No se pudo obtener estado de ECU, usando 0.0")
 
         pid_output = 0.0
         if hasattr(controller_state, "pid_controller"):
             # Corregido: Se llama al método `update` en lugar de `compute`
             # y se pasan los argumentos correctos (`measurement`, `dt`).
-            pid_output = controller_state.pid_controller.update(
-                current_measurement, dt
-            )
+            pid_output = controller_state.pid_controller.update(current_measurement, dt)
             logger.debug(
                 "[CtrlLoop] SP=%.3f, PV=%.3f, PIDOut=%.3f",
-                current_sp_norm, current_measurement, pid_output
+                current_sp_norm,
+                current_measurement,
+                pid_output,
             )
         else:
             logger.error("Instancia PID no encontrada en controller_state.")
 
         control_weights = [1.0 / num_control_axes] * num_control_axes
         if len(current_sp_vec) >= num_control_axes:
-            rel_sp_comps = [
-                current_sp_vec[i] for i in range(num_control_axes)
-            ]
+            rel_sp_comps = [current_sp_vec[i] for i in range(num_control_axes)]
             abs_comps = np.abs(rel_sp_comps)
             sum_abs_comps = np.sum(abs_comps)
             if sum_abs_comps > 1e-9:
                 control_weights = abs_comps / sum_abs_comps
                 logger.debug(
                     "[CtrlLoop] SPComps: %s, Wgts: %s",
-                    rel_sp_comps, control_weights.tolist()
+                    rel_sp_comps,
+                    control_weights.tolist(),
                 )
             else:
                 logger.debug("[CtrlLoop] RelSPComps zero. Equal wgts.")
         else:
             logger.warning(
                 "[CtrlLoop] SPVec (len=%d) insuff. dims (%d). Eq Wgts.",
-                len(current_sp_vec), num_control_axes
+                len(current_sp_vec),
+                num_control_axes,
             )
 
         control_signals_sent: Dict[str, Any] = {}
@@ -814,9 +818,7 @@ def harmony_control_loop():
             naturaleza = details.get("naturaleza")
 
             if not tool_url:
-                logger.error(
-                    "No hay URL definida para '%s'. Saltando.", name
-                )
+                logger.error("No hay URL definida para '%s'. Saltando.", name)
                 continue
 
             signal_to_send = 0.0
@@ -833,8 +835,7 @@ def harmony_control_loop():
                     signal_to_send = base_signal
             else:
                 logger.warning(
-                    "[CtrlDiff] Afinidad '%s'/'%s' sin mapeo. Sig 0.0.",
-                    aporta_a, name
+                    "[CtrlDiff] Afinidad '%s'/'%s' sin mapeo. Sig 0.0.", aporta_a, name
                 )
 
             if send_tool_control(name, tool_url, signal_to_send):
@@ -848,9 +849,9 @@ def harmony_control_loop():
             controller_state.last_pid_output = pid_output
             for name, control_val in control_signals_sent.items():
                 if name in controller_state.managed_tools_details:
-                    controller_state.managed_tools_details[name][
-                        "last_control"
-                    ] = control_val
+                    controller_state.managed_tools_details[name]["last_control"] = (
+                        control_val
+                    )
 
         elapsed_time = time.monotonic() - start_time
         sleep_time = max(0, dt - elapsed_time)
@@ -859,7 +860,8 @@ def harmony_control_loop():
         else:
             logger.warning(
                 "El ciclo de control (%.3f)s excedió el intervalo (%.3f)s.",
-                elapsed_time, dt
+                elapsed_time,
+                dt,
             )
 
 
@@ -886,15 +888,16 @@ def health_check():
             El código de estado HTTP es 200.
     """
     control_loop_alive = any(
-        t.name == "HarmonyControlLoop" and t.is_alive()
-        for t in threading.enumerate()
+        t.name == "HarmonyControlLoop" and t.is_alive() for t in threading.enumerate()
     )
-    return jsonify({
-        "status": "healthy" if control_loop_alive else "warning",
-        "service": "harmony_controller",
-        "control_loop_running": control_loop_alive,
-        "timestamp": time.time(),
-    }), 200
+    return jsonify(
+        {
+            "status": "healthy" if control_loop_alive else "warning",
+            "service": "harmony_controller",
+            "control_loop_running": control_loop_alive,
+            "timestamp": time.time(),
+        }
+    ), 200
 
 
 @app.route("/api/harmony/state", methods=["GET"])
@@ -912,10 +915,9 @@ def get_harmony_state():
               `controller_state.get_state_snapshot()`.
             El código de estado HTTP es 200.
     """
-    return jsonify({
-        "status": "success",
-        "data": controller_state.get_state_snapshot()
-    }), 200
+    return jsonify(
+        {"status": "success", "data": controller_state.get_state_snapshot()}
+    ), 200
 
 
 @app.route("/api/harmony/setpoint", methods=["POST"])
@@ -945,10 +947,9 @@ def set_harmony_setpoint():
     """
     data = request.get_json()
     if not data:
-        return jsonify({
-            "status": "error",
-            "message": "Payload JSON vacío o ausente."
-        }), 400
+        return jsonify(
+            {"status": "error", "message": "Payload JSON vacío o ausente."}
+        ), 400
 
     new_vector = data.get("setpoint_vector")
     new_value = data.get("setpoint_value")
@@ -958,35 +959,43 @@ def set_harmony_setpoint():
             vec = np.array(new_vector, dtype=float)
             val = np.linalg.norm(vec)
             controller_state.update_setpoint(val, vec.tolist())
-            return jsonify({
-                "status": "success",
-                "message": f"Setpoint norma({val:.3f}) desde vector.",
-                "new_setpoint_value": val,
-                "new_setpoint_vector": vec.tolist(),
-            }), 200
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": f"Setpoint norma({val:.3f}) desde vector.",
+                    "new_setpoint_value": val,
+                    "new_setpoint_vector": vec.tolist(),
+                }
+            ), 200
         elif new_value is not None and isinstance(new_value, (int, float)):
             # Si se proporciona setpoint_value, el vector no se actualiza
             # explícitamente aquí, se mantiene el existente o el default si no hay.
             # La norma es directamente el valor proporcionado.
             controller_state.update_setpoint(float(new_value))
-            return jsonify({
-                "status": "success",
-                "message": f"Setpoint actualizado a valor: {float(new_value):.3f}.",
-                "new_setpoint_value": float(new_value),
-                # Devuelve el vector actual del estado para consistencia
-                "new_setpoint_vector": controller_state.setpoint_vector,
-            }), 200
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": f"Setpoint actualizado a valor: {float(new_value):.3f}.",
+                    "new_setpoint_value": float(new_value),
+                    # Devuelve el vector actual del estado para consistencia
+                    "new_setpoint_vector": controller_state.setpoint_vector,
+                }
+            ), 200
         else:
-            return jsonify({
-                "status": "error",
-                "message": "Se requiere 'setpoint_vector' o 'setpoint_value' en JSON."
-            }), 400
+            return jsonify(
+                {
+                    "status": "error",
+                    "message": "Se requiere 'setpoint_vector' o 'setpoint_value' en JSON.",
+                }
+            ), 400
     except (ValueError, TypeError) as e:
         logger.error("Error al procesar nuevo setpoint: %s", e)
-        return jsonify({
-            "status": "error",
-            "message": f"Error en el formato de los datos: {e}",
-        }), 400
+        return jsonify(
+            {
+                "status": "error",
+                "message": f"Error en el formato de los datos: {e}",
+            }
+        ), 400
 
 
 @app.route("/api/harmony/register_tool", methods=["POST"])
@@ -1021,41 +1030,43 @@ def register_tool_from_ai():
     data = request.get_json()
     if not data:
         logger.error("Solicitud a /register_tool sin payload JSON.")
-        return jsonify({
-            "status": "error",
-            "message": "Payload JSON vacío o ausente."
-        }), 400
+        return jsonify(
+            {"status": "error", "message": "Payload JSON vacío o ausente."}
+        ), 400
 
     required_fields = ["nombre", "url", "aporta_a", "naturaleza"]
     if not all(field in data for field in required_fields):
         missing = [f for f in required_fields if f not in data]
-        return jsonify({
-            "status": "error",
-            "message": f"Faltan campos requeridos: {', '.join(missing)}"
-        }), 400
+        return jsonify(
+            {
+                "status": "error",
+                "message": f"Faltan campos requeridos: {', '.join(missing)}",
+            }
+        ), 400
 
     if not isinstance(data.get("url"), str):
-        return jsonify({
-            "status": "error",
-            "message": "Campo 'url' debe ser una cadena de texto (string)."
-        }), 400
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Campo 'url' debe ser una cadena de texto (string).",
+            }
+        ), 400
 
     try:
         controller_state.register_managed_tool(
             data["nombre"], data["url"], data["aporta_a"], data["naturaleza"]
         )
-        return jsonify({
-            "status": "success",
-            "message": f"Tool '{data['nombre']}' registrado/actualizado."
-        }), 200
+        return jsonify(
+            {
+                "status": "success",
+                "message": f"Tool '{data['nombre']}' registrado/actualizado.",
+            }
+        ), 200
     except Exception as e:
-        logger.exception(
-            "Error al registrar tool '%s': %s", data["nombre"], e
-        )
-        return jsonify({
-            "status": "error",
-            "message": "Error interno al registrar el tool."
-        }), 500
+        logger.exception("Error al registrar tool '%s': %s", data["nombre"], e)
+        return jsonify(
+            {"status": "error", "message": "Error interno al registrar el tool."}
+        ), 500
 
 
 @app.route("/api/harmony/pid/reset", methods=["POST"])
@@ -1079,19 +1090,16 @@ def reset_pid():
     try:
         if hasattr(controller_state, "pid_controller"):
             controller_state.pid_controller.reset()
-            return jsonify({
-                "status": "success", "message": "PID reiniciado."
-            }), 200
+            return jsonify({"status": "success", "message": "PID reiniciado."}), 200
         else:
-            return jsonify({
-                "status": "error",
-                "message": "Controlador PID no encontrado."
-            }), 500
+            return jsonify(
+                {"status": "error", "message": "Controlador PID no encontrado."}
+            ), 500
     except Exception as e:
         logger.exception("Error inesperado al reiniciar PID: %s", e)
-        return jsonify({
-            "status": "error", "message": "Error interno del servidor."
-        }), 500
+        return jsonify(
+            {"status": "error", "message": "Error interno del servidor."}
+        ), 500
 
 
 @app.route("/tasks/phase_sync", methods=["POST"])
@@ -1103,7 +1111,9 @@ def start_phase_sync_task():
 
     required = ["target_phase", "region", "pid_gains", "tolerance", "timeout"]
     if not all(k in data for k in required):
-        return jsonify({"status": "error", "message": "Faltan parámetros requeridos."}), 400
+        return jsonify(
+            {"status": "error", "message": "Faltan parámetros requeridos."}
+        ), 400
 
     try:
         task_id = task_manager.start_task(
@@ -1118,7 +1128,9 @@ def start_phase_sync_task():
         )
         return jsonify({"status": "success", "task_id": task_id}), 202
     except (ValueError, TypeError) as e:
-        return jsonify({"status": "error", "message": f"Parámetros inválidos: {e}"}), 400
+        return jsonify(
+            {"status": "error", "message": f"Parámetros inválidos: {e}"}
+        ), 400
 
 
 @app.route("/tasks/resonate", methods=["POST"])
@@ -1130,7 +1142,9 @@ def start_resonance_task():
 
     required = ["frequency", "amplitude", "duration", "region"]
     if not all(k in data for k in required):
-        return jsonify({"status": "error", "message": "Faltan parámetros requeridos."}), 400
+        return jsonify(
+            {"status": "error", "message": "Faltan parámetros requeridos."}
+        ), 400
 
     try:
         task_id = task_manager.start_task(
@@ -1144,7 +1158,9 @@ def start_resonance_task():
         )
         return jsonify({"status": "success", "task_id": task_id}), 202
     except (ValueError, TypeError) as e:
-        return jsonify({"status": "error", "message": f"Parámetros inválidos: {e}"}), 400
+        return jsonify(
+            {"status": "error", "message": f"Parámetros inválidos: {e}"}
+        ), 400
 
 
 @app.route("/tasks/status/<task_id>", methods=["GET"])
@@ -1153,7 +1169,9 @@ def get_task_status_api(task_id: str):
     status = task_manager.get_task_status(task_id)
     if status == "not_found":
         return jsonify({"status": "error", "message": "Tarea no encontrada."}), 404
-    return jsonify({"status": "success", "task_id": task_id, "task_status": status}), 200
+    return jsonify(
+        {"status": "success", "task_id": task_id, "task_status": status}
+    ), 200
 
 
 @app.route("/tasks/abort/<task_id>", methods=["POST"])
@@ -1163,7 +1181,9 @@ def abort_task_api(task_id: str):
     if result == "not_found":
         return jsonify({"status": "error", "message": "Tarea no encontrada."}), 404
     if result == "not_running":
-        return jsonify({"status": "success", "message": "La tarea no estaba en ejecución."}), 200
+        return jsonify(
+            {"status": "success", "message": "La tarea no estaba en ejecución."}
+        ), 200
     return jsonify({"status": "success", "message": "Señal de aborto enviada."}), 200
 
 

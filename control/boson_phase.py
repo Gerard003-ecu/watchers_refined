@@ -9,6 +9,7 @@ asegurando estabilidad y robustez.
 """
 
 import logging
+
 import numpy as np
 
 logging.basicConfig(
@@ -48,9 +49,7 @@ class BosonPhasePID:
         self.last_measurement = 0.0
         self.integral_max = integral_max
         self.integral_min = integral_min
-        logging.debug(
-            f"PID inicializado: Kp={self.Kp}, Ki={self.Ki}, Kd={self.Kd}"
-        )
+        logging.debug(f"PID inicializado: Kp={self.Kp}, Ki={self.Ki}, Kd={self.Kd}")
 
     def set_target(self, new_setpoint):
         """
@@ -78,9 +77,7 @@ class BosonPhasePID:
         self.Kp = Kp
         self.Ki = Ki
         self.Kd = Kd
-        logging.info(
-            f"Gancias actualizadas: Kp={self.Kp}, Ki={self.Ki}, Kd={self.Kd}"
-        )
+        logging.info(f"Gancias actualizadas: Kp={self.Kp}, Ki={self.Ki}, Kd={self.Kd}")
 
     def update(self, measurement, dt):
         """
@@ -107,17 +104,13 @@ class BosonPhasePID:
 
         # 2. Término integral con anti-windup
         self.integral += error * dt
-        self.integral = max(
-            min(self.integral, self.integral_max), self.integral_min
-        )
+        self.integral = max(min(self.integral, self.integral_max), self.integral_min)
 
         # 3. Término derivativo sobre la medición (previene "derivative kick")
         derivative = -(measurement - self.last_measurement) / dt
 
         # 4. Calcular la salida del controlador
-        output = (self.Kp * error +
-                  self.Ki * self.integral +
-                  self.Kd * derivative)
+        output = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
 
         # 5. Actualizar estado para el próximo ciclo
         self.last_error = error

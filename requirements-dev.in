@@ -13,6 +13,5 @@ pyyaml
 schemathesis
 
 # Linting and code formatting
-flake8
-black
+ruff
 jsonschema

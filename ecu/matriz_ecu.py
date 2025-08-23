@@ -129,15 +129,12 @@ class ToroidalField:
         self.lock = threading.Lock()
 
         if alphas and len(alphas) != num_capas:
-            raise ValueError(
-                f"La lista 'alphas' debe tener longitud {num_capas}")
+            raise ValueError(f"La lista 'alphas' debe tener longitud {num_capas}")
         self.alphas = alphas if alphas else [DEFAULT_ALPHA_VALUE] * num_capas
 
         if dampings and len(dampings) != num_capas:
-            raise ValueError(
-                f"La lista 'dampings' debe tener longitud {num_capas}")
-        self.dampings = dampings if dampings else [
-            DEFAULT_DAMPING_VALUE] * num_capas
+            raise ValueError(f"La lista 'dampings' debe tener longitud {num_capas}")
+        self.dampings = dampings if dampings else [DEFAULT_DAMPING_VALUE] * num_capas
 
         if not alphas:
             logger.info("Usando alpha por defecto para todas las capas.")
@@ -146,12 +143,13 @@ class ToroidalField:
 
         logger.info(
             "Campo toroidal inicializado: %d capas, dims=%dx%d",
-            self.num_capas, self.num_rows, self.num_cols
+            self.num_capas,
+            self.num_rows,
+            self.num_cols,
         )
 
     def aplicar_influencia(
-        self, capa: int, row: int, col: int, vector: complex,
-        nombre_watcher: str
+        self, capa: int, row: int, col: int, vector: complex, nombre_watcher: str
     ) -> bool:
         """
         Aplica una influencia externa (vector 2D) a un punto específico
@@ -175,28 +173,35 @@ class ToroidalField:
             logger.error(
                 "Error al aplicar influencia de '%s': índice de capa fuera "
                 "de rango (%d). Rango válido: 0-%d.",
-                nombre_watcher, capa, self.num_capas - 1
+                nombre_watcher,
+                capa,
+                self.num_capas - 1,
             )
             return False
         if not (0 <= row < self.num_rows):
             logger.error(
                 "Error al aplicar influencia de '%s': índice de fila fuera "
                 "de rango (%d). Rango válido: 0-%d.",
-                nombre_watcher, row, self.num_rows - 1
+                nombre_watcher,
+                row,
+                self.num_rows - 1,
             )
             return False
         if not (0 <= col < self.num_cols):
             logger.error(
                 "Error al aplicar influencia de '%s': índice de columna "
                 "fuera de rango (%d). Rango válido: 0-%d.",
-                nombre_watcher, col, self.num_cols - 1
+                nombre_watcher,
+                col,
+                self.num_cols - 1,
             )
             return False
         if not isinstance(vector, complex):
             logger.error(
                 "Error al aplicar influencia de '%s': vector de influencia "
                 "inválido. Debe ser un número complejo. Recibido: %s",
-                nombre_watcher, type(vector)
+                nombre_watcher,
+                type(vector),
             )
             return False
 
@@ -205,20 +210,22 @@ class ToroidalField:
                 self.campo_q[capa][row, col] += vector
                 valor_actual = self.campo_q[capa][row, col]
             logger.info(
-                "'%s' aplicó influencia en capa %d, nodo (%d, %d): %s. "
-                "Nuevo valor: %s",
+                "'%s' aplicó influencia en capa %d, nodo (%d, %d): %s. Nuevo valor: %s",
                 nombre_watcher,
                 capa,
                 row,
                 col,
                 vector,
-                valor_actual)
+                valor_actual,
+            )
             return True
         except Exception:
             logger.exception(
-                "Error inesperado al aplicar influencia"
-                "de '%s' en (%d, %d, %d)",
-                nombre_watcher, capa, row, col
+                "Error inesperado al aplicar influenciade '%s' en (%d, %d, %d)",
+                nombre_watcher,
+                capa,
+                row,
+                col,
             )
             return False
 
@@ -232,7 +239,7 @@ class ToroidalField:
         # Muestra un estilo de código más vectorizado.
         rows = np.array([row - 1, row + 1, row, row]) % self.num_rows
         cols = np.array([col, col, col - 1, col + 1]) % self.num_cols
-        return list(zip(rows, cols))
+        return list(zip(rows, cols, strict=False))
 
     def calcular_gradiente_adaptativo(self) -> np.ndarray:
         """
@@ -250,8 +257,9 @@ class ToroidalField:
         with self.lock:
             campo_copia = [np.copy(capa) for capa in self.campo_q]
 
-        gradiente_entre_capas = np.zeros((self.num_capas - 1,
-                                          self.num_rows, self.num_cols))
+        gradiente_entre_capas = np.zeros(
+            (self.num_capas - 1, self.num_rows, self.num_cols)
+        )
         for i in range(self.num_capas - 1):
             diferencia_vectorial = campo_copia[i] - campo_copia[i + 1]
             magnitud_diferencia = np.abs(diferencia_vectorial)
@@ -277,7 +285,8 @@ class ToroidalField:
             np.ndarray: Array 2D (num_rows x num_cols) del campo unificado.
         """
         pesos = (
-            np.linspace(1.0, 0.5, self.num_capas) if self.num_capas > 1
+            np.linspace(1.0, 0.5, self.num_capas)
+            if self.num_capas > 1
             else np.array([1.0])
         )
         campo_unificado = np.zeros((self.num_rows, self.num_cols))
@@ -310,8 +319,7 @@ class ToroidalField:
             next_campo = []
             # Pre-calcular arrays de alphas y dampings para broadcasting
             alphas_array = np.array(self.alphas)[:, np.newaxis, np.newaxis]
-            dampings_array = np.array(
-                self.dampings)[:, np.newaxis, np.newaxis]
+            dampings_array = np.array(self.dampings)[:, np.newaxis, np.newaxis]
 
             for capa_idx in range(self.num_capas):
                 capa_actual = self.campo_q[capa_idx]
@@ -371,9 +379,7 @@ class ToroidalField:
             # Calcular el cambio de fase para todas las capas a la vez
             # np.newaxis agrega dimensiones para que se broadcastee
             # con las dimensiones (rows, cols)
-            phase_changes = np.exp(
-                -1j * alphas_array[:, np.newaxis, np.newaxis] * dt
-            )
+            phase_changes = np.exp(-1j * alphas_array[:, np.newaxis, np.newaxis] * dt)
 
             # Aplicar el cambio de fase a todas las capas
             # Esto funciona porque campo_q es una lista de arrays 2D
@@ -391,32 +397,26 @@ try:
         num_rows=NUM_FILAS,
         num_cols=NUM_COLUMNAS,
         alphas=None,  # Usará los defaults internos basados en num_capas
-        dampings=None  # Usará los defaults internos basados en num_capas
+        dampings=None,  # Usará los defaults internos basados en num_capas
     )
     logger.info(
-        "Aplicando influencias iniciales al campo de "
-        "confinamiento global (servicio)..."
+        "Aplicando influencias iniciales al campo de confinamiento global (servicio)..."
     )
     campo_toroidal_global_servicio.aplicar_influencia(
-        capa=0, row=1, col=2, vector=complex(1.0, 0.5),
-        nombre_watcher="watcher_init_1"
+        capa=0, row=1, col=2, vector=complex(1.0, 0.5), nombre_watcher="watcher_init_1"
     )
     campo_toroidal_global_servicio.aplicar_influencia(
-        capa=2, row=3, col=0, vector=complex(0.2, -0.1),
-        nombre_watcher="watcher_init_2"
+        capa=2, row=3, col=0, vector=complex(0.2, -0.1), nombre_watcher="watcher_init_2"
     )
     logger.info("Influencias iniciales aplicadas al campo global (servicio).")
 
 except ValueError:
     logger.exception(
-        "Error crítico al inicializar ToroidalField global (servicio). "
-        "Terminando."
+        "Error crítico al inicializar ToroidalField global (servicio). Terminando."
     )
     exit(1)
 except Exception as e:
-    logger.exception(
-        f"Error inesperado durante la inicialización del servicio: {e}"
-    )
+    logger.exception(f"Error inesperado durante la inicialización del servicio: {e}")
     exit(1)
 
 
@@ -427,8 +427,7 @@ stop_simulation_event = threading.Event()
 
 def simulation_loop(dt: float, beta: float):
     """Bucle que ejecuta la simulación dinámica periódicamente."""
-    logger.info(f"Iniciando bucle de simulación ECU con dt={dt}, "
-                f"beta={beta}...")
+    logger.info(f"Iniciando bucle de simulación ECU con dt={dt}, beta={beta}...")
     # Removed duplicated inner function definition.
     # The loop now correctly belongs to the outer simulation_loop function.
     # Also corrected stop_event to
@@ -456,7 +455,7 @@ app = Flask(__name__)
 
 # ... (Endpoints /api/health, /api/ecu, /api/ecu/influence
 # sin cambios funcionales) ...
-@app.route('/api/health', methods=['GET'])
+@app.route("/api/health", methods=["GET"])
 def health_check():
     """
     Verifica la salud del servicio ECU (Experiencia de Campo Unificado).
@@ -465,16 +464,15 @@ def health_check():
     de simulación.
     """
     sim_alive = simulation_thread.is_alive() if simulation_thread else False
-    service_ready = (
-        campo_toroidal_global_servicio and
-        hasattr(campo_toroidal_global_servicio, 'num_capas')
+    service_ready = campo_toroidal_global_servicio and hasattr(
+        campo_toroidal_global_servicio, "num_capas"
     )
     status_code = 503  # Service Unavailable por defecto
     response = {
         "status": "error",
         "message": "Servicio ECU no completamente inicializado.",
         "simulation_running": sim_alive,
-        "field_initialized": service_ready
+        "field_initialized": service_ready,
     }
 
     if service_ready and sim_alive:
@@ -483,8 +481,9 @@ def health_check():
         status_code = 200
     elif service_ready and not sim_alive:
         response["status"] = "warning"
-        response["message"] = ("Servicio ECU inicializado pero la "
-                               "simulación no está activa.")
+        response["message"] = (
+            "Servicio ECU inicializado pero la simulación no está activa."
+        )
         status_code = 503  # O 200 con warning, depende de la criticidad
     elif not service_ready:
         response["message"] = "Error: Objeto ToroidalField no inicializado."
@@ -509,8 +508,7 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
             "status": "success",
             "estado_campo_unificado": campo_unificado.tolist(),
             "metadata": {
-                "descripcion":
-                    "Mapa de intensidad del campo toroidal ponderado por capa",
+                "descripcion": "Mapa de intensidad del campo toroidal ponderado por capa",
                 "capas": campo_toroidal_global_servicio.num_capas,
                 "filas": campo_toroidal_global_servicio.num_rows,
                 "columnas": campo_toroidal_global_servicio.num_cols,
@@ -522,13 +520,13 @@ def obtener_estado_unificado_api() -> Tuple[Any, int]:
         return jsonify(
             {
                 "status": "error",
-                "message": "Error interno del servidor al obtener estado unificado."
+                "message": "Error interno del servidor al obtener estado unificado.",
             }
         ), 500
 
 
 def _validate_and_parse_influence_payload(
-    data: Optional[Dict[str, Any]]
+    data: Optional[Dict[str, Any]],
 ) -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[Any, int]]]:
     """Valida y parsea el payload de la solicitud de influencia.
 
@@ -544,13 +542,17 @@ def _validate_and_parse_influence_payload(
         retornada por el endpoint.
     """
     if not data:
-        return None, (jsonify({
-            "status": "error", "message": "Payload JSON vacío o ausente"
-        }), 400)
+        return None, (
+            jsonify({"status": "error", "message": "Payload JSON vacío o ausente"}),
+            400,
+        )
 
     required_fields = {
-        "capa": int, "row": int, "col": int,
-        "vector": list, "nombre_watcher": str
+        "capa": int,
+        "row": int,
+        "col": int,
+        "vector": list,
+        "nombre_watcher": str,
     }
     missing = [f for f in required_fields if f not in data]
     if missing:
@@ -580,23 +582,30 @@ def _validate_and_parse_influence_payload(
         return None, (jsonify({"status": "error", "message": msg}), 400)
 
     parsed = {
-        "capa": data["capa"], "row": data["row"], "col": data["col"],
+        "capa": data["capa"],
+        "row": data["row"],
+        "col": data["col"],
         "vector_complex": vec_complex,
-        "nombre_watcher": data["nombre_watcher"]
+        "nombre_watcher": data["nombre_watcher"],
     }
 
     if not (0 <= parsed["capa"] < campo_toroidal_global_servicio.num_capas):
-        return None, (jsonify({
-            "status": "error", "message": "Índice de capa fuera de rango."
-        }), 400)
+        return None, (
+            jsonify({"status": "error", "message": "Índice de capa fuera de rango."}),
+            400,
+        )
     if not (0 <= parsed["row"] < campo_toroidal_global_servicio.num_rows):
-        return None, (jsonify({
-            "status": "error", "message": "Índice de fila fuera de rango."
-        }), 400)
+        return None, (
+            jsonify({"status": "error", "message": "Índice de fila fuera de rango."}),
+            400,
+        )
     if not (0 <= parsed["col"] < campo_toroidal_global_servicio.num_cols):
-        return None, (jsonify({
-            "status": "error", "message": "Índice de columna fuera de rango."
-        }), 400)
+        return None, (
+            jsonify(
+                {"status": "error", "message": "Índice de columna fuera de rango."}
+            ),
+            400,
+        )
 
     return parsed, None
 
@@ -617,8 +626,7 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
     logger.info("Solicitud POST /api/ecu/influence recibida.")
     try:
         data = request.get_json()
-        parsed_data, error_response = _validate_and_parse_influence_payload(
-            data)
+        parsed_data, error_response = _validate_and_parse_influence_payload(data)
 
         if error_response:
             return error_response
@@ -628,41 +636,46 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
             row=parsed_data["row"],
             col=parsed_data["col"],
             vector=parsed_data["vector_complex"],
-            nombre_watcher=parsed_data["nombre_watcher"]
+            nombre_watcher=parsed_data["nombre_watcher"],
         )
 
         if success:
             logger.info(
                 "Influencia de '%s' aplicada exitosamente via API en (%d, %d, %d).",
-                parsed_data['nombre_watcher'], parsed_data['capa'],
-                parsed_data['row'], parsed_data['col']
+                parsed_data["nombre_watcher"],
+                parsed_data["capa"],
+                parsed_data["row"],
+                parsed_data["col"],
             )
-            return jsonify({
-                "status": "success",
-                "message": f"Influencia de '{parsed_data['nombre_watcher']}' aplicada.",
-                "applied_to": {
-                    "capa": parsed_data["capa"],
-                    "row": parsed_data["row"],
-                    "col": parsed_data["col"]},
-                "vector": [
-                    parsed_data["vector_complex"].real,
-                    parsed_data["vector_complex"].imag
-                ]
-            }), 200
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": f"Influencia de '{parsed_data['nombre_watcher']}' aplicada.",
+                    "applied_to": {
+                        "capa": parsed_data["capa"],
+                        "row": parsed_data["row"],
+                        "col": parsed_data["col"],
+                    },
+                    "vector": [
+                        parsed_data["vector_complex"].real,
+                        parsed_data["vector_complex"].imag,
+                    ],
+                }
+            ), 200
         else:
             # Este caso puede ser redundante si _validate_... es exhaustivo
-            return jsonify({
-                "status": "error",
-                "message": "Error de validación interno al aplicar influencia."
-            }), 400
+            return jsonify(
+                {
+                    "status": "error",
+                    "message": "Error de validación interno al aplicar influencia.",
+                }
+            ), 400
 
     except Exception as e:
-        logger.exception(
-            "Error inesperado en endpoint /api/ecu/influence: %s", e)
-        return jsonify({
-            "status": "error",
-            "message": "Error interno al procesar la influencia."
-        }), 500
+        logger.exception("Error inesperado en endpoint /api/ecu/influence: %s", e)
+        return jsonify(
+            {"status": "error", "message": "Error interno al procesar la influencia."}
+        ), 500
 
 
 # Retorna el campo vectorial completo
@@ -699,17 +712,14 @@ def get_field_vector_api() -> Tuple[Any, int]:
                 "capas": campo_toroidal_global_servicio.num_capas,
                 "filas": campo_toroidal_global_servicio.num_rows,
                 "columnas": campo_toroidal_global_servicio.num_cols,
-            }
+            },
         }
         return jsonify(response_data), 200
     except Exception as e_field_vector:
-        logger.exception(
-            f"Error en endpoint /api/ecu/field_vector: {e_field_vector}"
-        )
+        logger.exception(f"Error en endpoint /api/ecu/field_vector: {e_field_vector}")
         error_response = {
             "status": "error",
-            "message": "Error interno al procesar la solicitud del "
-                       "campo vectorial."
+            "message": "Error interno al procesar la solicitud del campo vectorial.",
         }
         return jsonify(error_response), 500
 
@@ -722,25 +732,33 @@ def set_random_phase_endpoint():
     """
     # Leer la variable de entorno y loguear su valor para depuración
     flask_env = os.environ.get("FLASK_ENV", "production").lower().strip()
-    logger.debug(f"Verificando entorno para endpoint de depuración. FLASK_ENV='{flask_env}'")
+    logger.debug(
+        f"Verificando entorno para endpoint de depuración. FLASK_ENV='{flask_env}'"
+    )
 
     # Comprobar si el entorno permite la ejecución de este endpoint
     if flask_env not in ["development", "test"]:
         logger.warning(
             f"Acceso denegado a endpoint de depuración. Entorno actual: '{flask_env}'."
         )
-        return jsonify({
-            "status": "error",
-            "message": f"Endpoint de depuración no disponible en entorno '{flask_env}'."
-        }), 403
+        return jsonify(
+            {
+                "status": "error",
+                "message": f"Endpoint de depuración no disponible en entorno '{flask_env}'.",
+            }
+        ), 403
 
     try:
         campo_toroidal_global_servicio.set_initial_quantum_phase()
-        logger.info("Campo reiniciado a fase cuántica aleatoria a través de endpoint de depuración.")
+        logger.info(
+            "Campo reiniciado a fase cuántica aleatoria a través de endpoint de depuración."
+        )
         return jsonify({"status": "success", "message": "Campo reiniciado"})
     except Exception as e:
         logger.exception(f"Error en set_random_phase: {e}")
-        return jsonify({"status": "error", "message": "Error interno al reiniciar el campo."}), 500
+        return jsonify(
+            {"status": "error", "message": "Error interno al reiniciar el campo."}
+        ), 500
 
 
 @app.route("/api/ecu/field_vector/region/<int:capa_idx>", methods=["GET"])
@@ -749,10 +767,12 @@ def get_region_field_vector_api(capa_idx: int) -> Tuple[Any, int]:
     Endpoint REST para obtener el campo vectorial de una capa específica.
     """
     if not (0 <= capa_idx < campo_toroidal_global_servicio.num_capas):
-        return jsonify({
-            "status": "error",
-            "message": f"Índice de capa fuera de rango. Se esperaba entre 0 y {campo_toroidal_global_servicio.num_capas - 1}."
-        }), 404
+        return jsonify(
+            {
+                "status": "error",
+                "message": f"Índice de capa fuera de rango. Se esperaba entre 0 y {campo_toroidal_global_servicio.num_capas - 1}.",
+            }
+        ), 404
 
     try:
         with campo_toroidal_global_servicio.lock:
@@ -771,15 +791,17 @@ def get_region_field_vector_api(capa_idx: int) -> Tuple[Any, int]:
                 "capa_idx": capa_idx,
                 "filas": campo_toroidal_global_servicio.num_rows,
                 "columnas": campo_toroidal_global_servicio.num_cols,
-            }
+            },
         }
         return jsonify(response_data), 200
     except Exception as e:
         logger.exception(f"Error en endpoint para la capa {capa_idx}: {e}")
-        return jsonify({
-            "status": "error",
-            "message": "Error interno al procesar la solicitud de la región."
-        }), 500
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Error interno al procesar la solicitud de la región.",
+            }
+        ), 500
 
 
 # --- Función Principal y Arranque ---
@@ -794,12 +816,11 @@ def main():
         logging.basicConfig(
             level=logging.INFO,
             format=(
-                "%(asctime)s [%(levelname)s] [%(threadName)s] "
-                "%(name)s: %(message)s"
+                "%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s"
             ),
             handlers=[
                 logging.StreamHandler(sys.stdout)  # Redirige los logs a la consola
-            ]
+            ],
         )
     # --- Fin Configuración del Logging ---
 
@@ -814,18 +835,13 @@ def main():
         target=simulation_loop,
         args=(SIMULATION_INTERVAL, BETA_COUPLING),
         daemon=True,
-        name="ECUSimLoop"
+        name="ECUSimLoop",
     )
     simulation_thread.start()
 
     puerto_servicio = int(os.environ.get("MATRIZ_ECU_PORT", 8000))
-    logger.info(
-        f"Iniciando servicio Flask de ecu en puerto {puerto_servicio}..."
-    )
-    app.run(
-        host="0.0.0.0", port=puerto_servicio,
-        debug=False, use_reloader=False
-    )
+    logger.info(f"Iniciando servicio Flask de ecu en puerto {puerto_servicio}...")
+    app.run(host="0.0.0.0", port=puerto_servicio, debug=False, use_reloader=False)
 
 
 # --- Punto de Entrada ---
@@ -839,11 +855,7 @@ if __name__ == "__main__":
         stop_simulation_event.set()
         if simulation_thread and simulation_thread.is_alive():
             logger.info("Esperando finalización del hilo de simulación...")
-            simulation_thread.join(
-                timeout=SIMULATION_INTERVAL * 2
-            )
+            simulation_thread.join(timeout=SIMULATION_INTERVAL * 2)
             if simulation_thread.is_alive():
-                logger.warning(
-                    "El hilo de simulación ECU no terminó limpiamente."
-                )
+                logger.warning("El hilo de simulación ECU no terminó limpiamente.")
         logger.info("Servicio matriz_ecu finalizado.")
