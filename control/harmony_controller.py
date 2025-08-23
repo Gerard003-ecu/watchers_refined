@@ -357,30 +357,83 @@ task_manager = TaskManager()
 
 def get_field_from_ecu(region: str) -> Optional[np.ndarray]:
     """
-    Placeholder para obtener el campo de números complejos de la ECU para una región.
-    En una implementación real, esto haría una llamada a la API de matriz_ecu.
+    Obtiene el campo de números complejos de la ECU para una región específica.
+    Realiza una llamada a la API de matriz_ecu con reintentos.
     """
-    logger.info("[TASK_UTIL] Solicitando campo de la ECU para la región: %s", region)
-    # Simulación: Devolvemos un campo aleatorio de 10x10
-    # con una fase dominante alrededor de 1.0 radianes para pruebas.
-    rng = np.random.default_rng()
-    base_angles = rng.normal(loc=1.0, scale=0.5, size=(10, 10))
-    magnitudes = rng.uniform(0.8, 1.2, size=(10, 10))
-    return magnitudes * np.exp(1j * base_angles)
+    try:
+        # Extrae el índice de la capa del string 'capa_X'
+        layer_index = int(region.split("_")[1])
+    except (IndexError, ValueError):
+        logger.error(f"Formato de región inválido: '{region}'. Se esperaba 'capa_X'.")
+        return None
+
+    # Construye la URL del endpoint específico para la región
+    url = f"{ECU_API_URL}/field_vector/region/{layer_index}"
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.get(url, timeout=REQUESTS_TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+            if data.get("status") == "success" and "field_vector_region" in data:
+                field_data = data["field_vector_region"]
+                # Convierte la lista de listas de [real, imag] a un array de complejos
+                complex_field = np.array(field_data, dtype=float)
+                complex_field = complex_field[..., 0] + 1j * complex_field[..., 1]
+                logger.debug(f"Campo complejo recibido de ECU para la región {region}.")
+                return complex_field
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error al obtener campo de ECU para '{region}' (intento {attempt + 1}): {e}")
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(BASE_RETRY_DELAY * (2 ** attempt))
+
+    logger.error(f"No se pudo obtener el campo de ECU para '{region}' tras {MAX_RETRIES} intentos.")
+    return None
 
 
 def apply_influence_to_ecu(region: str, vector: complex):
     """
-    Placeholder para aplicar una influencia (un vector complejo) a la ECU.
-    En una implementación real, esto haría una llamada a la API de matriz_ecu.
+    Aplica una influencia (un vector complejo) a la ECU en una región.
+    Realiza una llamada a la API de matriz_ecu con reintentos.
     """
-    logger.info(
-        "[TASK_UTIL] Aplicando influencia a la región '%s': vector=%s",
-        region,
-        f"{vector.real:.3f}{vector.imag:+.3f}j",
-    )
-    # No hace nada más que loguear.
-    pass
+    try:
+        layer_index = int(region.split("_")[1])
+    except (IndexError, ValueError):
+        logger.error(f"Formato de región inválido: '{region}'. Se esperaba 'capa_X'.")
+        return
+
+    # La API de matriz_ecu espera las coordenadas (capa, row, col)
+    # Como esta función no tiene coordenadas específicas, aplicamos la influencia
+    # en el centro de la región como una aproximación.
+    # NOTA: Esto es una simplificación. Una implementación más robusta podría
+    # requerir pasar las coordenadas exactas o que la ECU aplique a toda la región.
+    from ecu.matriz_ecu import NUM_FILAS, NUM_COLUMNAS
+    target_row = NUM_FILAS // 2
+    target_col = NUM_COLUMNAS // 2
+
+    url = f"{ECU_API_URL}/influence"
+    payload = {
+        "capa": layer_index,
+        "row": target_row,
+        "col": target_col,
+        "vector": [vector.real, vector.imag],
+        "nombre_watcher": "harmony_controller_task"
+    }
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.post(url, json=payload, timeout=REQUESTS_TIMEOUT)
+            response.raise_for_status()
+            logger.info(
+                f"Influencia aplicada a la región '{region}' en ECU. Vector: {vector.real:.3f}{vector.imag:+.3f}j"
+            )
+            return
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error al aplicar influencia en '{region}' (intento {attempt + 1}): {e}")
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(BASE_RETRY_DELAY * (2 ** attempt))
+
+    logger.error(f"No se pudo aplicar influencia en '{region}' tras {MAX_RETRIES} intentos.")
 
 
 def calculate_dominant_phase(field: np.ndarray) -> float:
@@ -418,14 +471,14 @@ def run_phase_sync_task(
     )
     start_time = time.time()
 
-    # PID simple para esta tarea
-    p, i, d = pid_gains.get("p", 0.5), pid_gains.get("i", 0.1), pid_gains.get("d", 0.02)
-    integral = 0
-    last_error = 0
+    # Usar la clase BosonPhasePID para el control
+    p = pid_gains.get("p", 0.5)
+    i = pid_gains.get("i", 0.1)
+    d = pid_gains.get("d", 0.02)
+    pid_controller = BosonPhase(p, i, d)
+    pid_controller.set_target(target_phase)
 
-    control_interval = pid_gains.get(
-        "control_interval", 1.0
-    )  # 1 segundo por ciclo de control
+    control_interval = pid_gains.get("control_interval", 1.0)
 
     while not stop_event.is_set():
         # 0. Comprobar si la tarea ha sido abortada
@@ -449,9 +502,9 @@ def run_phase_sync_task(
 
         # 3. Calcular fase actual y error
         current_phase = calculate_dominant_phase(field)
-        error = target_phase - current_phase
 
-        # Manejar el salto de -pi a pi
+        # El error se calcula dentro del PID, pero lo necesitamos para la condición de éxito
+        error = target_phase - current_phase
         if error > np.pi:
             error -= 2 * np.pi
         elif error < -np.pi:
@@ -469,34 +522,18 @@ def run_phase_sync_task(
             return
 
         # 5. Calcular salida del PID
-        integral += error * control_interval
-        derivative = (error - last_error) / control_interval
-        last_error = error
-
-        # Calcular términos individuales para el logging
-        p_term = p * error
-        i_term = i * integral
-        d_term = d * derivative
-        control_output = p_term + i_term + d_term
+        control_output = pid_controller.update(current_phase, control_interval)
 
         # 6. Aplicar influencia
-        # La influencia es un vector complejo. Usamos la salida del control
-        # para ajustar la fase de una influencia de magnitud constante.
         influence_vector = 1.0 * np.exp(1j * control_output)
         apply_influence_to_ecu(region, influence_vector)
 
-        # Logging de depuración detallado según lo solicitado
+        # Logging de depuración detallado
         logger.debug(
-            "[PID Sync] Setpoint: %.2f, Current: %.2f, Error: %.2f",
+            "[PID Sync] Setpoint: %.2f, Current: %.2f, Error: %.2f, PID Output: %.3f",
             target_phase,
             current_phase,
             error,
-        )
-        logger.debug(
-            "[PID Sync] Terms (P: %.2f, I: %.2f, D: %.2f) -> Total Output: %.2f",
-            p_term,
-            i_term,
-            d_term,
             control_output,
         )
         influence_vector_str = (
@@ -723,29 +760,82 @@ def send_tool_control(tool_name: str, base_url: str, control_signal: float) -> b
     return False
 
 
+def _calculate_control_weights(
+    setpoint_vector: List[float], num_axes: int
+) -> np.ndarray:
+    """Calcula los pesos de distribución de control basados en el vector de setpoint."""
+    if len(setpoint_vector) >= num_axes:
+        rel_sp_comps = [setpoint_vector[i] for i in range(num_axes)]
+        abs_comps = np.abs(rel_sp_comps)
+        sum_abs_comps = np.sum(abs_comps)
+        if sum_abs_comps > 1e-9:
+            weights = abs_comps / sum_abs_comps
+            logger.debug(
+                "[CtrlLoop] SPComps: %s, Wgts: %s",
+                rel_sp_comps,
+                weights.tolist(),
+            )
+            return weights
+        else:
+            logger.debug("[CtrlLoop] RelSPComps zero. Using equal weights.")
+    else:
+        logger.warning(
+            "[CtrlLoop] SPVec (len=%d) has insufficient dims for axes (%d). Using equal weights.",
+            len(setpoint_vector),
+            num_axes,
+        )
+    # Default to equal weights
+    return np.array([1.0 / num_axes] * num_axes)
+
+
+def _distribute_signals_to_tools(
+    tools: Dict[str, Any],
+    pid_output: float,
+    weights: np.ndarray,
+    affinity_map: Dict[str, int],
+) -> Dict[str, Any]:
+    """Calcula y envía las señales de control a todos los watcher_tools gestionados."""
+    signals_sent = {}
+    for name, details in tools.items():
+        tool_url = details.get("url")
+        aporta_a = details.get("aporta_a")
+        naturaleza = details.get("naturaleza")
+
+        if not tool_url:
+            logger.error("No hay URL definida para '%s'. Saltando.", name)
+            signals_sent[name] = "no_url"
+            continue
+
+        signal_to_send = 0.0
+        control_index = affinity_map.get(aporta_a)
+
+        if control_index is not None:
+            weight = weights[control_index]
+            base_signal = pid_output * weight
+            if naturaleza == "reductor":
+                signal_to_send = -base_signal
+            elif naturaleza in ("sensor", "convertidor"):
+                signal_to_send = 0.0  # Los sensores no reciben señal de actuador
+            else:
+                signal_to_send = base_signal
+        else:
+            logger.warning(
+                "[CtrlDist] Afinidad '%s' para '%s' sin mapeo. Señal será 0.0.",
+                aporta_a,
+                name,
+            )
+
+        if send_tool_control(name, tool_url, signal_to_send):
+            signals_sent[name] = signal_to_send
+        else:
+            signals_sent[name] = "send_failed"
+
+    return signals_sent
+
+
 @measure_performance(agent_ai_url=AGENT_AI_URL, source_service="harmony_controller")
 def harmony_control_loop():
-    """Ejecuta el bucle principal de control táctico del Harmony Controller.
-
-    Es el corazón operativo del controlador. Se ejecuta en un hilo de fondo
-    dedicado y realiza las siguientes acciones en cada iteración:
-    1. Obtiene el estado actual de la ECU (Matriz de Estado Unificado).
-    2. Procesa el estado de la ECU para obtener una medición escalar (norma).
-    3. Calcula la salida del controlador PID basándose en el setpoint actual,
-       la medición y el tiempo transcurrido (dt).
-    4. Determina cómo distribuir la salida del PID entre los diferentes
-       watcher_tools gestionados. Esto se basa en un vector de setpoint
-       multidimensional y la afinidad de cada tool a los componentes de
-       este vector.
-    5. Envía las señales de control calculadas a cada watcher_tool.
-    6. Actualiza el estado interno del controlador (última medición,
-    salida PID, etc.).
-    7. Espera hasta el próximo intervalo de control.
-
-    El bucle se ejecuta indefinidamente hasta que el programa principal acaba.
-    Toda la comunicación con los componentes externos (ECU, watcher_tools)
-    utiliza las funciones de utilidad que implementan reintentos.
-    """
+    """Ejecuta el bucle principal de control táctico del Harmony Controller."""
     logger.info("Iniciando bucle de control Harmony...")
 
     affinity_to_setpoint_index = {"malla_watcher": 0, "matriz_ecu": 1}
@@ -777,73 +867,22 @@ def harmony_control_loop():
         else:
             logger.warning("[ControlLoop] No se pudo obtener estado de ECU, usando 0.0")
 
-        pid_output = 0.0
-        if hasattr(controller_state, "pid_controller"):
-            # Corregido: Se llama al método `update` en lugar de `compute`
-            # y se pasan los argumentos correctos (`measurement`, `dt`).
-            pid_output = controller_state.pid_controller.update(current_measurement, dt)
-            logger.debug(
-                "[CtrlLoop] SP=%.3f, PV=%.3f, PIDOut=%.3f",
-                current_sp_norm,
-                current_measurement,
-                pid_output,
-            )
-        else:
-            logger.error("Instancia PID no encontrada en controller_state.")
+        pid_output = controller_state.pid_controller.update(current_measurement, dt)
+        logger.debug(
+            "[CtrlLoop] SP=%.3f, PV=%.3f, PIDOut=%.3f",
+            current_sp_norm,
+            current_measurement,
+            pid_output,
+        )
 
-        control_weights = [1.0 / num_control_axes] * num_control_axes
-        if len(current_sp_vec) >= num_control_axes:
-            rel_sp_comps = [current_sp_vec[i] for i in range(num_control_axes)]
-            abs_comps = np.abs(rel_sp_comps)
-            sum_abs_comps = np.sum(abs_comps)
-            if sum_abs_comps > 1e-9:
-                control_weights = abs_comps / sum_abs_comps
-                logger.debug(
-                    "[CtrlLoop] SPComps: %s, Wgts: %s",
-                    rel_sp_comps,
-                    control_weights.tolist(),
-                )
-            else:
-                logger.debug("[CtrlLoop] RelSPComps zero. Equal wgts.")
-        else:
-            logger.warning(
-                "[CtrlLoop] SPVec (len=%d) insuff. dims (%d). Eq Wgts.",
-                len(current_sp_vec),
-                num_control_axes,
-            )
+        control_weights = _calculate_control_weights(current_sp_vec, num_control_axes)
 
-        control_signals_sent: Dict[str, Any] = {}
-
-        for name, details in tools_copy.items():
-            tool_url = details.get("url")
-            aporta_a = details.get("aporta_a")
-            naturaleza = details.get("naturaleza")
-
-            if not tool_url:
-                logger.error("No hay URL definida para '%s'. Saltando.", name)
-                continue
-
-            signal_to_send = 0.0
-            control_index = affinity_to_setpoint_index.get(aporta_a)
-
-            if control_index is not None:
-                weight = control_weights[control_index]
-                base_signal = pid_output * weight
-                if naturaleza == "reductor":
-                    signal_to_send = -base_signal
-                elif naturaleza in ("sensor", "convertidor"):
-                    signal_to_send = 0.0
-                else:
-                    signal_to_send = base_signal
-            else:
-                logger.warning(
-                    "[CtrlDiff] Afinidad '%s'/'%s' sin mapeo. Sig 0.0.", aporta_a, name
-                )
-
-            if send_tool_control(name, tool_url, signal_to_send):
-                control_signals_sent[name] = signal_to_send
-            else:
-                control_signals_sent[name] = "send_failed"
+        control_signals_sent = _distribute_signals_to_tools(
+            tools_copy,
+            pid_output,
+            control_weights,
+            affinity_to_setpoint_index,
+        )
 
         with controller_state.lock:
             controller_state.last_ecu_state = last_ecu_state_to_store
