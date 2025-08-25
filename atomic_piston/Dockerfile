@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 3. Optimización de Caché de Dependencias:
-COPY requirements/atomic_piston.txt .
-RUN pip install --no-cache-dir -r atomic_piston.txt
+COPY atomic_piston/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia el resto del código de la aplicación.
 COPY . .

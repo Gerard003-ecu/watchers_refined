@@ -17,8 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl build-esse
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
-COPY requirements/agent_ai.txt .
-RUN pip install --no-cache-dir -r agent_ai.txt
+COPY agent_ai/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
 COPY agent_ai/ /app/agent_ai/

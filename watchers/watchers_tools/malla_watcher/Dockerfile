@@ -17,8 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
-COPY requirements/watchers_tools_malla_watcher.txt .
-RUN pip install --no-cache-dir -r watchers_tools_malla_watcher.txt
+COPY watchers/watchers_tools/malla_watcher/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
 # Se copia el directorio 'watchers' completo para preservar la estructura de paquetes anidada

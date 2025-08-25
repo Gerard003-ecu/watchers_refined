@@ -1,4 +1,0 @@
--c base.txt
-fastapi
-prometheus-client
-uvicorn

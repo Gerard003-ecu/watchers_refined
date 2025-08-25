@@ -18,8 +18,8 @@ RUN groupadd -r appgroup -g 1001 && \
     useradd -r -u 1001 -g appgroup appuser
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
-COPY requirements/watchers_tools_watchers_wave.txt .
-RUN pip install --no-cache-dir -r watchers_tools_watchers_wave.txt
+COPY watchers/watchers_tools/watchers_wave/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
 COPY watchers/ /app/watchers/
