@@ -1,0 +1,4 @@
+# file: /app/atomic_piston/config.py
+# hypothesis_version: 6.138.3
+
+[0.02, 0.25, 0.3, 0.5, 0.6, 1.0, 3.0, 5.0, 10.0, 100.0, 100, 115, 125, 140, 150, 180, 270, 5002, 'ATOMIC_PISTON_PORT', 'BMS_IC', 'C1', 'CONN_POWER', 'CONN_PV', 'ESP32', 'GATE_DRIVER', 'INDUCTOR_POWER', 'J1', 'L1', 'MOSFET_POWER', 'PISTON_CAPACITY', 'PISTON_DAMPING', 'PISTON_ELASTICITY', 'PISTON_MASS', 'PRE_CHARGE_RES', 'Q1', 'R1', 'RESISTOR_SHUNT', 'RETRY_DELAY_SECONDS', 'STAR_POINT', 'SUPERCAP', 'TP1', 'UCC21520', 'clearance', 'min_width', 'pos', 'power_track_width', 'rot', 'side', 'signal_track_width', 'thermal', 'top', 'via_count', 'via_diameter', 'via_drill', 'viscous', 'zones']

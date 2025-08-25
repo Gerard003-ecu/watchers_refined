@@ -5,8 +5,8 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Copiar el código del agente y sus dependencias
-COPY config_agent/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements/config_agent.txt .
+RUN pip install --no-cache-dir -r config_agent.txt
 
 # Copiar el código del agente y el módulo común
 COPY config_agent/ /app/config_agent/

@@ -8,3 +8,12 @@ pytest-mock
 schemathesis
 requests
 numpy
+flask
+responses
+dash
+dash-bootstrap-components
+plotly
+opencv-python
+skidl
+scipy
+simple-pid

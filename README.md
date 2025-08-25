@@ -305,31 +305,8 @@ Para poner en marcha el ecosistema de Watchers, necesitarás el siguiente softwa
 - **Python 3.10+:** El lenguaje principal del proyecto.
 - **pip-tools:** Para la gestión de dependencias de Python.
 
-## Instalación y Configuración
+## Configuración del Entorno de Desarrollo Local
 
-Sigue estos pasos para configurar tu entorno de desarrollo:
-
-1.  **Clona el repositorio:**
-    ```bash
-    git clone https://github.com/tu-usuario/watchers.git
-    cd watchers
-    ```
-
-2.  **Crea y activa el entorno virtual:**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate
-    ```
-
-3.  **Instala las herramientas de desarrollo:**
-    ```bash
-    pip install pip-tools
-    ```
-
-4.  **Compila e instala las dependencias:**
-    ```bash
-    pip-compile requirements-dev.in
-    pip install -r requirements-dev.txt
-    ```
-
-Ahora estás listo para explorar y contribuir al ecosistema Watchers. ¡Bienvenido!
+1.  Crea y activa un entorno virtual.
+2.  Ejecuta el script de compilación: `./scripts/compile_requirements.sh`
+3.  Instala las dependencias de desarrollo: `pip install -r requirements/dev.txt`

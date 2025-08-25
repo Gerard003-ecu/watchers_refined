@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
-COPY control/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements/control.txt .
+RUN pip install --no-cache-dir -r control.txt
 
 # Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
 # Esto asegura que la estructura de paquetes se mantiene dentro del contenedor
