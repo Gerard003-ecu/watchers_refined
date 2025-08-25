@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 3. Optimización de Caché de Dependencias:
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements/watchers_tools_solenoid_watcher_model.txt .
+RUN pip install --no-cache-dir -r watchers_tools_solenoid_watcher_model.txt
 
 # Copia el resto del código de la aplicación.
 COPY . .

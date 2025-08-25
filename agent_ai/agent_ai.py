@@ -31,7 +31,8 @@ from typing import Any, Dict, List, Optional
 
 # Third-party imports
 import numpy as np
-import requests
+
+from .utils.api_client import ApiClient
 
 # Local application imports
 from .utils.logger import get_logger
@@ -39,7 +40,6 @@ from .validation.validator import (
     check_missing_dependencies,
     validate_module_registration,
 )
-from .utils.api_client import ApiClient
 
 logger = get_logger()
 
@@ -256,17 +256,25 @@ class AgentAI:
 
         response_data = self.api_client.get(url)
 
-        if response_data and response_data.get("status") == "success" and "data" in response_data:
+        if (
+            response_data
+            and response_data.get("status") == "success"
+            and "data" in response_data
+        ):
             data_preview = str(response_data["data"])[:100]
             logger.debug("Estado válido recibido de Harmony: %s", data_preview)
             return response_data["data"]
 
-        logger.error("No se pudo obtener o procesar el estado de Harmony desde %s.", url)
+        logger.error(
+            "No se pudo obtener o procesar el estado de Harmony desde %s.", url
+        )
         return None
 
     def _get_ecu_field_vector(self) -> Optional[np.ndarray]:
-        """Obtiene el campo vectorial complejo completo de la ECU usando el ApiClient."""
-        ecu_url = self.central_urls.get("ecu_field_vector", DEFAULT_ECU_FIELD_VECTOR_URL)
+        """Obtiene el campo vectorial complejo de la ECU usando el ApiClient."""
+        ecu_url = self.central_urls.get(
+            "ecu_field_vector", DEFAULT_ECU_FIELD_VECTOR_URL
+        )
         data = self.api_client.get(ecu_url)
 
         if data and data.get("status") == "success" and "field_vector" in data:
@@ -278,10 +286,14 @@ class AgentAI:
                 logger.debug("Campo vectorial complejo recibido de ECU.")
                 return complex_field
             except (ValueError, TypeError, IndexError) as e:
-                logger.error("Error al procesar los datos del campo vectorial de ECU: %s", e)
+                logger.error(
+                    "Error al procesar los datos del campo vectorial de ECU: %s", e
+                )
                 return None
 
-        logger.error("No se pudo obtener o procesar el campo vectorial de ECU desde %s.", ecu_url)
+        logger.error(
+            "No se pudo obtener o procesar el campo vectorial de ECU desde %s.", ecu_url
+        )
         return None
 
     def calculate_coherence(self, region: np.ndarray) -> tuple[float, float]:
@@ -332,11 +344,15 @@ class AgentAI:
             permission = self.mic["agent_ai"]["harmony_controller"]
             if permission != "CONTROL_TASK":
                 logger.error(
-                    "Violación de MIC: Permiso denegado para controlar harmony_controller."
+                    "Violación de MIC: Permiso denegado para controlar "
+                    "harmony_controller."
                 )
                 return
         except KeyError:
-            logger.error("Violación de MIC: Regla no definida para agent_ai -> harmony_controller.")
+            logger.error(
+                "Violación de MIC: Regla no definida para "
+                "agent_ai -> harmony_controller."
+            )
             return
 
         logger.info("Permiso verificado. Delegando tarea de sincronización a HC.")
@@ -344,7 +360,7 @@ class AgentAI:
         payload = {
             "target_phase": target_phase,
             "region": region_identifier,
-            "pid_gains": {"p": 0.5, "i": 0.1, "d": 0.02}, # Valores por defecto
+            "pid_gains": {"p": 0.5, "i": 0.1, "d": 0.02},  # Valores por defecto
             "tolerance": 0.05,
             "timeout": 60.0,
         }
@@ -352,7 +368,7 @@ class AgentAI:
         response = self.api_client.post(task_url, json_data=payload)
         if response and response.get("status") == "success":
             logger.info(
-                "Tarea de sincronización de fase para '%s' delegada exitosamente a HC. Task ID: %s",
+                "Tarea de sync de fase para '%s' delegada a HC. Task ID: %s",
                 region_identifier,
                 response.get("task_id"),
             )
@@ -402,8 +418,8 @@ class AgentAI:
         task_url = f"{self.central_urls['harmony_controller']}/tasks/resonate"
         payload = {
             "frequency": resonant_frequency,
-            "amplitude": 1.0, # Amplitud por defecto
-            "duration": 10.0, # Duración por defecto
+            "amplitude": 1.0,  # Amplitud por defecto
+            "duration": 10.0,  # Duración por defecto
             "region": region_identifier,
         }
 
@@ -657,13 +673,9 @@ class AgentAI:
 
         response = self.api_client.post(url, json_data=payload)
         if response and response.get("status") == "success":
-            logger.info(
-                "Setpoint %s enviado exitosamente a HC.", setpoint_vector
-            )
+            logger.info("Setpoint %s enviado exitosamente a HC.", setpoint_vector)
         else:
-            logger.error(
-                "No se pudo enviar setpoint %s a HC.", setpoint_vector
-            )
+            logger.error("No se pudo enviar setpoint %s a HC.", setpoint_vector)
 
     def registrar_modulo(self, modulo_info: Dict[str, Any]) -> Dict[str, str]:
         """
@@ -822,7 +834,9 @@ class AgentAI:
             else:
                 # Si el cliente devuelve None, es un fallo de red persistente.
                 estado_salud = "error_inesperado"
-                logger.error("Validación para '%s' falló tras múltiples reintentos.", nombre)
+                logger.error(
+                    "Validación para '%s' falló tras múltiples reintentos.", nombre
+                )
 
         with self.lock:
             # Re-obtener el módulo por si fue eliminado mientras se validaba.
@@ -831,7 +845,9 @@ class AgentAI:
                 # Copiar los datos necesarios para la notificación fuera del lock
                 modulo_para_notificar = self.modules[nombre].copy()
             else:
-                logger.warning("Módulo '%s' desapareció antes de actualizar estado.", nombre)
+                logger.warning(
+                    "Módulo '%s' desapareció antes de actualizar estado.", nombre
+                )
                 return
 
         if (
@@ -842,7 +858,7 @@ class AgentAI:
         ):
             if modulo_para_notificar.get("url"):
                 logger.info(
-                    "Módulo auxiliar '%s' saludable. Notificando a Harmony Controller...",
+                    "Módulo auxiliar '%s' saludable. Notificando a HC...",
                     nombre,
                 )
                 self._notify_harmony_controller_of_tool(
@@ -853,7 +869,8 @@ class AgentAI:
                 )
             else:
                 logger.error(
-                    "Módulo '%s' saludable pero sin URL de control. No se puede notificar a HC.",
+                    "Módulo '%s' saludable pero sin URL de control. "
+                    "No se puede notificar a HC.",
                     nombre,
                 )
 
@@ -863,8 +880,10 @@ class AgentAI:
         """Notifica a Harmony Controller sobre un nuevo tool usando el ApiClient."""
         register_url = self.hc_register_url
         payload = {
-            "nombre": nombre, "url": url,
-            "aporta_a": aporta_a, "naturaleza": naturaleza,
+            "nombre": nombre,
+            "url": url,
+            "aporta_a": aporta_a,
+            "naturaleza": naturaleza,
         }
 
         response = self.api_client.post(register_url, json_data=payload)

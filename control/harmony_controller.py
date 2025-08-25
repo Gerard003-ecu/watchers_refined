@@ -383,11 +383,17 @@ def get_field_from_ecu(region: str) -> Optional[np.ndarray]:
                 logger.debug(f"Campo complejo recibido de ECU para la región {region}.")
                 return complex_field
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error al obtener campo de ECU para '{region}' (intento {attempt + 1}): {e}")
+            logger.error(
+                f"Error al obtener campo de ECU para '{region}' "
+                f"(intento {attempt + 1}): {e}"
+            )
             if attempt < MAX_RETRIES - 1:
-                time.sleep(BASE_RETRY_DELAY * (2 ** attempt))
+                time.sleep(BASE_RETRY_DELAY * (2**attempt))
 
-    logger.error(f"No se pudo obtener el campo de ECU para '{region}' tras {MAX_RETRIES} intentos.")
+    logger.error(
+        f"No se pudo obtener el campo de ECU para '{region}' "
+        f"tras {MAX_RETRIES} intentos."
+    )
     return None
 
 
@@ -407,7 +413,8 @@ def apply_influence_to_ecu(region: str, vector: complex):
     # en el centro de la región como una aproximación.
     # NOTA: Esto es una simplificación. Una implementación más robusta podría
     # requerir pasar las coordenadas exactas o que la ECU aplique a toda la región.
-    from ecu.matriz_ecu import NUM_FILAS, NUM_COLUMNAS
+    from ecu.matriz_ecu import NUM_COLUMNAS, NUM_FILAS
+
     target_row = NUM_FILAS // 2
     target_col = NUM_COLUMNAS // 2
 
@@ -417,7 +424,7 @@ def apply_influence_to_ecu(region: str, vector: complex):
         "row": target_row,
         "col": target_col,
         "vector": [vector.real, vector.imag],
-        "nombre_watcher": "harmony_controller_task"
+        "nombre_watcher": "harmony_controller_task",
     }
 
     for attempt in range(MAX_RETRIES):
@@ -425,15 +432,21 @@ def apply_influence_to_ecu(region: str, vector: complex):
             response = requests.post(url, json=payload, timeout=REQUESTS_TIMEOUT)
             response.raise_for_status()
             logger.info(
-                f"Influencia aplicada a la región '{region}' en ECU. Vector: {vector.real:.3f}{vector.imag:+.3f}j"
+                f"Influencia aplicada a '{region}' en ECU. "
+                f"Vector: {vector.real:.3f}{vector.imag:+.3f}j"
             )
             return
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error al aplicar influencia en '{region}' (intento {attempt + 1}): {e}")
+            logger.error(
+                f"Error al aplicar influencia en '{region}' "
+                f"(intento {attempt + 1}): {e}"
+            )
             if attempt < MAX_RETRIES - 1:
-                time.sleep(BASE_RETRY_DELAY * (2 ** attempt))
+                time.sleep(BASE_RETRY_DELAY * (2**attempt))
 
-    logger.error(f"No se pudo aplicar influencia en '{region}' tras {MAX_RETRIES} intentos.")
+    logger.error(
+        f"No se pudo aplicar influencia en '{region}' tras {MAX_RETRIES} intentos."
+    )
 
 
 def calculate_dominant_phase(field: np.ndarray) -> float:
@@ -503,7 +516,7 @@ def run_phase_sync_task(
         # 3. Calcular fase actual y error
         current_phase = calculate_dominant_phase(field)
 
-        # El error se calcula dentro del PID, pero lo necesitamos para la condición de éxito
+        # El error se recalcula aquí para la condición de éxito.
         error = target_phase - current_phase
         if error > np.pi:
             error -= 2 * np.pi
@@ -780,7 +793,7 @@ def _calculate_control_weights(
             logger.debug("[CtrlLoop] RelSPComps zero. Using equal weights.")
     else:
         logger.warning(
-            "[CtrlLoop] SPVec (len=%d) has insufficient dims for axes (%d). Using equal weights.",
+            "[CtrlLoop] SPVec (len=%d) too short for axes (%d). Using equal weights.",
             len(setpoint_vector),
             num_axes,
         )
@@ -1028,8 +1041,7 @@ def set_harmony_setpoint():
                     {
                         "status": "error",
                         "message": (
-                            "Se requiere 'setpoint_vector' o 'setpoint_value' "
-                            "en JSON."
+                            "Se requiere 'setpoint_vector' o 'setpoint_value' en JSON."
                         ),
                     }
                 ),

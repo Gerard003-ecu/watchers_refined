@@ -22,9 +22,7 @@ class ApiClient:
         timeout (float): El tiempo de espera en segundos para las peticiones.
     """
 
-    def __init__(
-        self, max_retries: int, base_retry_delay: float, timeout: float
-    ):
+    def __init__(self, max_retries: int, base_retry_delay: float, timeout: float):
         """
         Inicializa el ApiClient.
 
@@ -85,9 +83,7 @@ class ApiClient:
         """
         for attempt in range(self.max_retries):
             try:
-                response = requests.post(
-                    url, json=json_data, timeout=self.timeout
-                )
+                response = requests.post(url, json=json_data, timeout=self.timeout)
                 response.raise_for_status()
                 return response.json()
             except requests.RequestException as e:

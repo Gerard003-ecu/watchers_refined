@@ -126,7 +126,7 @@ class TestAgentAI(unittest.TestCase):
         mock_validate_module_registration,
         mock_check_missing_dependencies,
     ):
-        """Verifica que AgentAI usa URLs de variables de entorno cuando están definidas."""
+        """Verifica que AgentAI usa URLs de variables de entorno si están definidas."""
         test_hc_url = "http://test-hc:111"
         test_ecu_url = "http://test-ecu:222"
         test_malla_url = "http://test-malla:333"
@@ -155,7 +155,7 @@ class TestAgentAI(unittest.TestCase):
         mock_validate_module_registration,
         mock_check_missing_dependencies,
     ):
-        """Prueba la obtención exitosa del estado de Harmony Controller con ApiClient."""
+        """Prueba la obtención exitosa del estado de HC con ApiClient."""
         mock_harmony_data = {
             "last_measurement": 0.5,
             "last_ecu_state": [[0.4], [0.3]],
@@ -178,12 +178,14 @@ class TestAgentAI(unittest.TestCase):
         mock_validate_module_registration,
         mock_check_missing_dependencies,
     ):
-        """Prueba el manejo de errores de red al obtener el estado de Harmony con ApiClient."""
+        """Prueba el manejo de errores de red al obtener el estado de HC."""
         self.mock_api_client_instance.get.return_value = None
 
         state = self.agent._get_harmony_state()
 
-        self.assertIsNone(state, "Debe devolver None en caso de error de red persistente")
+        self.assertIsNone(
+            state, "Debe devolver None en caso de error de red persistente"
+        )
         self.mock_api_client_instance.get.assert_called_once()
 
     def test_get_harmony_state_bad_response(
@@ -243,7 +245,7 @@ class TestAgentAI(unittest.TestCase):
         mock_validate_module_registration,
         mock_check_missing_dependencies,
     ):
-        """Prueba el manejo de errores de red al enviar setpoint a Harmony con ApiClient."""
+        """Prueba el manejo de errores de red al enviar setpoint a HC con ApiClient."""
         self.mock_api_client_instance.post.return_value = None
         setpoint_vec = [1.5, -0.5]
         self.agent._send_setpoint_to_harmony(setpoint_vec)

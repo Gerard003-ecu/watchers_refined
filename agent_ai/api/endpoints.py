@@ -172,8 +172,7 @@ def synchronize_region_command():
                 {
                     "status": "command_accepted",
                     "message": (
-                        "Sincronización de fase iniciada para la región "
-                        f"'{region}'."
+                        f"Sincronización de fase iniciada para la región '{region}'."
                     ),
                 }
             ),

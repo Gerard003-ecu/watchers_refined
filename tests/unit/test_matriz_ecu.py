@@ -84,9 +84,7 @@ def test_inicializacion_params_capa_longitud_incorrecta():
     with pytest.raises(
         ValueError, match="La lista 'propagation_coeffs' debe tener longitud 2"
     ):
-        ToroidalField(
-            num_capas=2, num_rows=2, num_cols=2, propagation_coeffs=[0.1]
-        )
+        ToroidalField(num_capas=2, num_rows=2, num_cols=2, propagation_coeffs=[0.1])
 
     with pytest.raises(
         ValueError, match="La lista 'dissipation_coeffs' debe tener longitud 3"
@@ -355,9 +353,7 @@ def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_tipo_err)
     assert respuesta.status_code == 400
-    assert (
-        "error en el formato de los datos" in respuesta.get_json()["message"].lower()
-    )
+    assert "error en el formato de los datos" in respuesta.get_json()["message"].lower()
 
     payload_vec_err_len = {
         "capa": 0,

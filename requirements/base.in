@@ -1,0 +1,4 @@
+# Common dependencies for all services
+flask
+numpy
+requests
