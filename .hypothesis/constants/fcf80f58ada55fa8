@@ -1,0 +1,4 @@
+# file: /app/watchers_env/bin/pytest
+# hypothesis_version: 6.138.3
+
+['__main__']

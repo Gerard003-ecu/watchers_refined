@@ -1,9 +1,6 @@
 # Dockerfile para el servicio Watcher Focus
 FROM python:3.12-slim
 
-# Dockerfile para el servicio Watcher Focus
-FROM python:3.12-slim
-
 # Establecer variables de entorno para Python
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
@@ -21,8 +18,8 @@ RUN groupadd -r appgroup -g 1001 && \
     useradd -r -u 1001 -g appgroup appuser
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
-COPY watchers/watchers_tools/watcher_focus/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements/watchers_tools_watcher_focus.txt .
+RUN pip install --no-cache-dir -r watchers_tools_watcher_focus.txt
 
 # Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
 COPY watchers/ /app/watchers/

@@ -1,9 +1,6 @@
 # Dockerfile para el servicio ECU
 FROM python:3.12-slim
 
-# Dockerfile para el servicio ECU
-FROM python:3.12-slim
-
 # Establecer variables de entorno para Python
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
@@ -20,8 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
-COPY ecu/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements/ecu.txt .
+RUN pip install --no-cache-dir -r ecu.txt
 
 # Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
 COPY ecu/ /app/ecu/
