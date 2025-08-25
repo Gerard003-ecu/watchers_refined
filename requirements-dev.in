@@ -1,4 +1,5 @@
 # High-level dependencies for development, linting, and testing.
+-c requirements.txt
 
 # Used to compile .in files into .txt files.
 pip-tools
@@ -8,10 +9,24 @@ pytest
 pytest-cov
 pytest-mock
 responses
-requests
-pyyaml
 schemathesis
+dash
+dash-bootstrap-components
+plotly
+simple-pid
+prometheus-client
+uvicorn
+fastapi
 
 # Linting and code formatting
 ruff
 jsonschema
+
+# Application dependencies needed for tests
+numpy
+flask
+requests
+pyyaml
+skidl
+scipy
+opencv-python

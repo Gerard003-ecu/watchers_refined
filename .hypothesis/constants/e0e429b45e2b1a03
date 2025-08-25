@@ -1,4 +1,0 @@
-# file: /app/atomic_piston/constants.py
-# hypothesis_version: 6.138.3
-
-['battery', 'capacitor', 'coulomb', 'electrostatic', 'fuzzy', 'magnetostrictive', 'pid', 'piezoelectric', 'stribeck', 'viscous']

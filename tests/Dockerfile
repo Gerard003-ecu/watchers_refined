@@ -12,11 +12,11 @@ RUN apt-get update && \
 ENV PIP_DEFAULT_TIMEOUT=100
 
 # Copiar el archivo unificado de requerimientos para aprovechar la caché de Docker
-COPY requirements/dev.txt .
+COPY requirements-dev.txt .
 
 # Actualizar pip y luego instalar las dependencias sin utilizar la caché interna de pip
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r dev.txt
+    pip install --no-cache-dir -r requirements-dev.txt
 
 # Copiar el resto del código fuente
 COPY . .
