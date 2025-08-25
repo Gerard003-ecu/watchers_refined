@@ -1,0 +1,10 @@
+# Dependencias para desarrollo, linting y pruebas
+-c base.txt  # Restringir a las versiones de la base
+
+pip-tools
+ruff
+pytest
+pytest-mock
+schemathesis
+requests
+numpy

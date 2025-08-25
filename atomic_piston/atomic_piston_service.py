@@ -337,8 +337,7 @@ class AtomicPiston:
         self.friction_force_history: deque = deque(maxlen=self.max_history_size)
 
         logger.info(
-            "AtomicPiston inicializado en modo %s con transductor %s y "
-            "fricción %s.",
+            "AtomicPiston inicializado en modo %s con transductor %s y fricción %s.",
             self.mode.value,
             self.transducer_type.value,
             self.friction_model.value,

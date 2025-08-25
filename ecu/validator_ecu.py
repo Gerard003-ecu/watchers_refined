@@ -7,22 +7,20 @@ class InfluenceValidator:
     """Clase dedicada a validar influencias con métodos más específicos."""
 
     @staticmethod
-    def validate_coordinates(
-        capa: int, row: int, col: int, field
-    ) -> List[str]:
+    def validate_coordinates(capa: int, row: int, col: int, field) -> List[str]:
         """Valida que las coordenadas estén dentro del rango permitido."""
         errors = []
         if not (0 <= capa < field.num_capas):
             errors.append(
-                f"Índice de capa {capa} fuera de rango [0, {field.num_capas-1}]"
+                f"Índice de capa {capa} fuera de rango [0, {field.num_capas - 1}]"
             )
         if not (0 <= row < field.num_rows):
             errors.append(
-                f"Índice de fila {row} fuera de rango [0, {field.num_rows-1}]"
+                f"Índice de fila {row} fuera de rango [0, {field.num_rows - 1}]"
             )
         if not (0 <= col < field.num_cols):
             errors.append(
-                f"Índice de columna {col} fuera de rango [0, {field.num_cols-1}]"
+                f"Índice de columna {col} fuera de rango [0, {field.num_cols - 1}]"
             )
         return errors
 

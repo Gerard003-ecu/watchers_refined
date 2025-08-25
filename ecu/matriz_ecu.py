@@ -27,10 +27,13 @@ import os
 import sys
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 from flask import Flask, jsonify, request
+
+from .validator_ecu import InfluenceValidator
+
 
 # --- Configuración del Logging ---
 def setup_logging():
@@ -41,16 +44,17 @@ def setup_logging():
 
     handler = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter(
-        '%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s'
+        "%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s"
     )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
     # Nivel de logging configurable por entorno
-    log_level = os.environ.get('ECU_LOG_LEVEL', 'INFO').upper()
+    log_level = os.environ.get("ECU_LOG_LEVEL", "INFO").upper()
     logger.setLevel(getattr(logging, log_level, logging.INFO))
 
     return logger
+
 
 logger = setup_logging()
 
@@ -203,11 +207,11 @@ class ToroidalField:
             capa (int): Índice de la capa (0 a num_capas-1).
             row (int): Índice de la fila (0 a num_rows-1).
             col (int): Índice de la columna (0 a num_cols-1).
-            vector (complex): Número complejo que representa la influencia (amplitud y fase).
+            vector (complex): Influencia como número complejo (amplitud y fase).
             nombre_watcher (str): Nombre del watcher que aplica la influencia.
 
         Returns:
-            bool: True si la influencia se aplicó correctamente, False en caso contrario.
+            bool: True si la influencia se aplicó, False en caso contrario.
         """
         if not (0 <= capa < self.num_capas):
             logger.error(
@@ -287,8 +291,7 @@ class ToroidalField:
         """
         if self.num_capas < 2:
             logger.warning(
-                "Se necesita al menos 2 capas para calcular el "
-                "gradiente entre capas."
+                "Se necesita al menos 2 capas para calcular el gradiente entre capas."
             )
             return np.array([])
 
@@ -303,8 +306,7 @@ class ToroidalField:
             magnitud_diferencia = np.abs(diferencia_vectorial)
             gradiente_entre_capas[i] = magnitud_diferencia
         logger.debug(
-            "Gradiente entre capas calculado "
-            f"(shape: {gradiente_entre_capas.shape})"
+            f"Gradiente entre capas calculado (shape: {gradiente_entre_capas.shape})"
         )
         return gradiente_entre_capas
 
@@ -340,7 +342,7 @@ class ToroidalField:
         return energy_density_map
 
     def apply_wave_dynamics_step(self, dt: float, beta: float):
-        """Avanza un paso en la dinámica de la onda, simulando propagación e interferencia.
+        """Avanza un paso en la dinámica de la onda (propagación e interferencia).
 
         Analogía: Este método es el corazón de la simulación. Simula cómo las
         ondas se propagan a través de la grilla (advección), interactúan con
@@ -350,7 +352,7 @@ class ToroidalField:
         Ecuación Conceptual: Resuelve numéricamente una Ecuación Diferencial
         Parcial (PDE) para la evolución del campo de ondas ψ. Conceptualmente,
         la ecuación es de la forma:
-        ∂ψ/∂t ≈ -α * ∇ψ (propagación) + β * (ψ_vecinos) (interferencia) - γ * ψ (disipación)
+        ∂ψ/∂t ≈ -α*∇ψ (prop) + β*(vecinos) (interf) - γ*ψ (disipación)
         donde α es `propagation_coeffs`, β es el factor de acoplamiento y γ es
         `dissipation_coeffs`.
 
@@ -360,12 +362,18 @@ class ToroidalField:
                 entre capas adyacentes.
         """
         if beta < 0:
-            logger.warning("El factor beta (acoplamiento vertical) debería ser no negativo.")
+            logger.warning(
+                "El factor beta (acoplamiento vertical) debería ser no negativo."
+            )
 
         with self.lock:
             # Precalcular arrays para broadcasting
-            propagation_coeffs_array = np.array(self.propagation_coeffs)[:, np.newaxis, np.newaxis]
-            dissipation_coeffs_array = np.array(self.dissipation_coeffs)[:, np.newaxis, np.newaxis]
+            propagation_coeffs_array = np.array(self.propagation_coeffs)[
+                :, np.newaxis, np.newaxis
+            ]
+            dissipation_coeffs_array = np.array(self.dissipation_coeffs)[
+                :, np.newaxis, np.newaxis
+            ]
 
             # Crear array 3D para operaciones vectorizadas
             campo_3d = np.stack(self.campo_q)
@@ -493,11 +501,17 @@ def cymatic_simulation_loop_adaptive(dt: float, beta: float):
                 simulation_times.pop(0)
 
             # Ajustar dt si es necesario (no menos del 50% del valor original)
-            avg_time = sum(simulation_times) / len(simulation_times) if simulation_times else elapsed
+            avg_time = (
+                sum(simulation_times) / len(simulation_times)
+                if simulation_times
+                else elapsed
+            )
             if avg_time > dt * 0.8:  # Si usa más del 80% del tiempo disponible
                 new_dt = dt * 0.9  # Reducir dt un 10%
                 logger.info(f"Ajustando dt de {dt} a {new_dt} por sobrecarga")
-                dt = max(new_dt, SIMULATION_INTERVAL * 0.5)  # No menos de la mitad del original
+                dt = max(
+                    new_dt, SIMULATION_INTERVAL * 0.5
+                )  # No menos de la mitad del original
 
             sleep_time = max(0, dt - elapsed)
             stop_simulation_event.wait(sleep_time)
@@ -558,30 +572,27 @@ def obtener_mapa_energia() -> Tuple[Any, int]:
         energy_map = campo_toroidal_global_servicio.get_energy_density_map()
         response_data = {
             "status": "success",
-            "data": {
-                "energy_density_map": energy_map.tolist(),
-                "type": "energy_map"
-            },
+            "data": {"energy_density_map": energy_map.tolist(), "type": "energy_map"},
             "metadata": {
                 "description": "Mapa de densidad de energía del campo cimático",
                 "layers": campo_toroidal_global_servicio.num_capas,
                 "rows": campo_toroidal_global_servicio.num_rows,
                 "columns": campo_toroidal_global_servicio.num_cols,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             },
         }
         logger.info("Mapa de densidad de energía calculado y enviado.")
         return jsonify(response_data), 200
     except Exception as e:
         logger.exception("Error en endpoint /api/ecu/energy: %s", e)
-        return jsonify({
-            "status": "error",
-            "message": "Error interno del servidor al obtener el mapa de energía.",
-            "error_code": "INTERNAL_SERVER_ERROR"
-        }), 500
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Error interno del servidor al obtener el mapa de energía.",
+                "error_code": "INTERNAL_SERVER_ERROR",
+            }
+        ), 500
 
-
-from .validator_ecu import InfluenceValidator
 
 @app.route("/api/ecu/influence", methods=["POST"])
 def recibir_influencia_malla() -> Tuple[Any, int]:
@@ -589,12 +600,16 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
     logger.info("Solicitud POST /api/ecu/influence recibida.")
     data = request.get_json()
     if not data:
-        return jsonify({"status": "error", "message": "Payload JSON vacío o ausente"}), 400
+        return jsonify(
+            {"status": "error", "message": "Payload JSON vacío o ausente"}
+        ), 400
 
     required_fields = ["capa", "row", "col", "vector", "nombre_watcher"]
     missing = [f for f in required_fields if f not in data]
     if missing:
-        return jsonify({"status": "error", "message": f"Faltan campos: {', '.join(missing)}"}), 400
+        return jsonify(
+            {"status": "error", "message": f"Faltan campos: {', '.join(missing)}"}
+        ), 400
 
     try:
         capa, row, col = data["capa"], data["row"], data["col"]
@@ -617,22 +632,33 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
         )
 
         if success:
-            return jsonify({
-                "status": "success",
-                "message": f"Influencia de '{data['nombre_watcher']}' aplicada.",
-                "applied_to": {"capa": capa, "row": row, "col": col},
-                "vector": [vector.real, vector.imag],
-            }), 200
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": f"Influencia de '{data['nombre_watcher']}' aplicada.",
+                    "applied_to": {"capa": capa, "row": row, "col": col},
+                    "vector": [vector.real, vector.imag],
+                }
+            ), 200
         else:
             # Este caso puede ser redundante si la validación es exhaustiva
-            return jsonify({"status": "error", "message": "Error interno al aplicar influencia."}), 400
+            return jsonify(
+                {"status": "error", "message": "Error interno al aplicar influencia."}
+            ), 400
 
     except (TypeError, ValueError) as e:
         logger.warning("Error de tipo/valor en payload de influencia: %s", e)
-        return jsonify({"status": "error", "message": "Error en el formato de los datos del payload."}), 400
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Error en el formato de los datos del payload.",
+            }
+        ), 400
     except Exception as e:
         logger.exception("Error inesperado en endpoint /api/ecu/influence: %s", e)
-        return jsonify({"status": "error", "message": "Error interno del servidor."}), 500
+        return jsonify(
+            {"status": "error", "message": "Error interno del servidor."}
+        ), 500
 
 
 @app.route("/api/ecu/field_vector", methods=["GET"])
@@ -646,17 +672,19 @@ def get_field_vector_paginated() -> Tuple[Any, int]:
         layer: Filtro opcional por capa específica
     """
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 100, type=int)
-        layer_filter = request.args.get('layer', type=int)
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 100, type=int)
+        layer_filter = request.args.get("layer", type=int)
 
         with campo_toroidal_global_servicio.lock:
             if layer_filter is not None:
                 if not 0 <= layer_filter < campo_toroidal_global_servicio.num_capas:
-                    return jsonify({
-                        "status": "error",
-                        "message": f"La capa {layer_filter} está fuera de rango"
-                    }), 400
+                    return jsonify(
+                        {
+                            "status": "error",
+                            "message": f"La capa {layer_filter} está fuera de rango",
+                        }
+                    ), 400
 
                 # Paginación sobre filas de una capa específica
                 layer_data = campo_toroidal_global_servicio.campo_q[layer_filter]
@@ -665,15 +693,18 @@ def get_field_vector_paginated() -> Tuple[Any, int]:
                 end_index = start_index + per_page
                 paginated_rows = layer_data[start_index:end_index]
 
-                campo_data = [[[cell.real, cell.imag] for cell in row]
-                             for row in paginated_rows]
+                campo_data = [
+                    [[cell.real, cell.imag] for cell in row] for row in paginated_rows
+                ]
 
             else:
                 # Paginación sobre las capas completas
                 total_items = campo_toroidal_global_servicio.num_capas
                 start_index = (page - 1) * per_page
                 end_index = start_index + per_page
-                paginated_layers = campo_toroidal_global_servicio.campo_q[start_index:end_index]
+                paginated_layers = campo_toroidal_global_servicio.campo_q[
+                    start_index:end_index
+                ]
 
                 campo_data = [
                     [[[cell.real, cell.imag] for cell in row] for row in layer]
@@ -684,23 +715,24 @@ def get_field_vector_paginated() -> Tuple[Any, int]:
         if page > total_pages and total_items > 0:
             return jsonify({"status": "error", "message": "Página fuera de rango"}), 404
 
-        return jsonify({
-            "status": "success",
-            "data": campo_data,
-            "pagination": {
-                "page": page,
-                "per_page": per_page,
-                "total_items": total_items,
-                "total_pages": total_pages
+        return jsonify(
+            {
+                "status": "success",
+                "data": campo_data,
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total_items": total_items,
+                    "total_pages": total_pages,
+                },
             }
-        }), 200
+        ), 200
 
     except Exception as e:
         logger.exception("Error en endpoint paginado: %s", e)
-        return jsonify({
-            "status": "error",
-            "message": "Error interno al procesar la solicitud"
-        }), 500
+        return jsonify(
+            {"status": "error", "message": "Error interno al procesar la solicitud"}
+        ), 500
 
 
 @app.route("/debug/set_random_phase", methods=["POST"])
@@ -839,7 +871,5 @@ if __name__ == "__main__":
             logger.info("Esperando finalización del hilo de simulación...")
             simulation_thread.join(timeout=SIMULATION_INTERVAL * 2)
             if simulation_thread.is_alive():
-                logger.warning(
-                    "El hilo de simulación cimática no terminó limpiamente."
-                )
+                logger.warning("El hilo de simulación cimática no terminó limpiamente.")
         logger.info("Servicio de simulación cimática finalizado.")
