@@ -307,6 +307,18 @@ Para poner en marcha el ecosistema de Watchers, necesitarás el siguiente softwa
 
 ## Configuración del Entorno de Desarrollo Local
 
-1.  Crea y activa un entorno virtual.
-2.  Ejecuta el script de compilación: `./scripts/compile_requirements.sh`
-3.  Instala las dependencias de desarrollo: `pip install -r requirements/dev.txt`
+Para trabajar en el proyecto localmente (ejecutar tests, linters, etc.), sigue estos pasos:
+
+1.  **Crea y activa un entorno virtual:**
+    ```bash
+    python3 -m venv watchers_env
+    source watchers_env/bin/activate
+    ```
+
+2.  **Compila e instala todas las dependencias:**
+    *   Este script compilará todos los archivos `requirements.in` a `requirements.txt`.
+    *   Luego, instalará todas las dependencias necesarias para el desarrollo.
+    ```bash
+    ./scripts/compile_requirements.sh
+    pip install -r requirements-dev.txt
+    ```

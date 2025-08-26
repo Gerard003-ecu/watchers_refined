@@ -1,19 +1,32 @@
 #!/bin/bash
 set -e
+
+# --- Función de Bootstrap ---
+# Asegura que pip-tools esté instalado para poder ejecutar el script.
+ensure_pip_tools() {
+    if ! command -v pip-compile &> /dev/null; then
+        echo "pip-compile no encontrado. Instalando pip-tools..."
+        python3 -m pip install pip-tools
+    fi
+}
+
+# --- Ejecución Principal ---
 echo "--- Compilando Archivos de Requisitos del Monorepo ---"
 
-# 1. Compilar los requisitos base y de desarrollo en la raíz
+# 1. Asegurar que las herramientas necesarias existan
+ensure_pip_tools
+
+# 2. Compilar los requisitos base y de desarrollo en la raíz
 echo "Compilando requisitos raíz (base y dev)..."
 pip-compile requirements.in -o requirements.txt
 pip-compile requirements-dev.in -o requirements-dev.txt
 
-# 2. Descubrir y compilar los requisitos de cada servicio
-# Usamos find para buscar todos los requirements.in, excluyendo la raíz y el venv
+# 3. Descubrir y compilar los requisitos de cada servicio
+echo "Compilando requisitos de los servicios..."
 find . -path ./requirements.in -prune -o \
        -path ./watchers_env -prune -o \
        -name "requirements.in" -print | while read -r req_in; do
 
-    # Obtener el directorio y el archivo .txt correspondiente
     dir=$(dirname "$req_in")
     req_txt="${req_in%.in}.txt"
 
