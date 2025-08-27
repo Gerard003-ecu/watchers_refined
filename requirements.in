@@ -1,5 +1,4 @@
 # Common dependencies for all services
-flask==3.0.0
+flask>=3.0.3
 numpy==2.2.4
 requests
-werkzeug==3.0.3

@@ -2,3 +2,4 @@ numpy
 flask
 requests
 skidl
+future>=0.18.3
