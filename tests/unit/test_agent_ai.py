@@ -30,7 +30,6 @@ from agent_ai.agent_ai import (
 )
 
 
-@mock.patch("agent_ai.agent_ai.requests", new_callable=mock.MagicMock)
 @mock.patch("agent_ai.agent_ai.check_missing_dependencies")
 @mock.patch("agent_ai.agent_ai.validate_module_registration")
 @mock.patch("agent_ai.agent_ai.logger")
@@ -53,23 +52,18 @@ class TestAgentAI(unittest.TestCase):
     """
 
     def setUp(self):
-        """
-        Configura el entorno necesario antes de la ejecución de cada prueba.
-
-        Este método se invoca automáticamente por `unittest` antes de cada
-        método de prueba. Se encarga de limpiar variables de entorno relevantes
-        que podrían afectar la inicialización de `AgentAI` y crea una nueva
-        instancia de `AgentAI`. También se asegura de que si un hilo
-        estratégico de una prueba anterior sigue vivo, este sea detenido.
-        Además, inicializa un mock para `time.sleep` que se usa para
-        controlar los reintentos en las comunicaciones.
-        """
+        """Configura el entorno para cada prueba."""
         os.environ.pop(HARMONY_CONTROLLER_URL_ENV, None)
         os.environ.pop(HARMONY_CONTROLLER_REGISTER_URL_ENV, None)
         os.environ.pop(AGENT_AI_ECU_URL_ENV, None)
         os.environ.pop(AGENT_AI_MALLA_URL_ENV, None)
         os.environ.pop("AA_INITIAL_SETPOINT_VECTOR", None)
         os.environ.pop("AA_INITIAL_STRATEGY", None)
+
+        # Patch ApiClient
+        self.patcher_api_client = mock.patch("agent_ai.agent_ai.ApiClient")
+        self.MockApiClient = self.patcher_api_client.start()
+        self.mock_api_client_instance = self.MockApiClient.return_value
 
         self.agent = AgentAI()
 
@@ -78,16 +72,8 @@ class TestAgentAI(unittest.TestCase):
         self.mock_sleep = self.patcher_sleep.start()
 
     def tearDown(self):
-        """
-        Limpia el entorno después de la ejecución de cada prueba.
-
-        Este método se invoca automáticamente por `unittest` después de
-        cada método de prueba. Su principal responsabilidad es asegurar
-        que el hilo estratégico (`_strategic_thread`) del agente `AgentAI`
-        sea detenido correctamente si aún está en ejecución, para evitar
-        interferencias entre pruebas.
-        """
-        # Stop mock_sleep patcher
+        """Limpia el entorno después de cada prueba."""
+        self.patcher_api_client.stop()
         self.patcher_sleep.stop()
 
     def test_initialization_defaults(
@@ -95,24 +81,8 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests,
     ):
-        """
-        Verifica la inicialización de AgentAI con valores por defecto.
-
-        Esta prueba asegura que cuando `AgentAI` se instancia sin variables
-        de entorno específicas que modifiquen su configuración inicial,
-        se establecen correctamente los valores predeterminados para sus
-        atributos, tales como la lista de módulos (vacía), la estrategia
-        actual ('default'), el vector de setpoint objetivo, y las URLs
-        para los servicios centrales (Harmony Controller, ECU, Malla Watcher).
-
-        Args:
-            mock_get_logger, Mock del logger.
-            mock_validate, Mock de la función de validación de registro.
-            mock_check_deps, Mock de la función de chequeo de dependencias.
-            mock_requests, Mock del módulo `requests`.
-        """
+        """Verifica la inicialización de AgentAI con valores por defecto."""
         self.assertEqual(len(self.agent.modules), 0)
         self.assertEqual(self.agent.current_strategy, "default")
         self.assertListEqual(self.agent.target_setpoint_vector, [1.0, 0.0])
@@ -120,48 +90,23 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(self.agent.central_urls["ecu"], DEFAULT_ECU_URL)
         self.assertEqual(self.agent.central_urls["malla_watcher"], DEFAULT_MALLA_URL)
 
-    # --- NUEVOS TESTS para verificar __init__ y lectura de ENV ---
-
     def test_init_central_urls_defaults(
         self,
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests,
     ):
-        """
-        Verifica que AgentAI usa URLs por defecto si no hay variables
-        de entorno.
-
-        Esta prueba comprueba que, en ausencia de variables de entorno
-        que especifiquen las URLs para Harmony Controller, ECU y
-        Malla Watcher, `AgentAI` utiliza correctamente las URLs
-        predeterminadas definidas internamente. También verifica que la
-        URL de registro en Harmony Controller se construya a partir de la
-        URL base por defecto de HC.
-
-        Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
-            mock_requests, Mock para el módulo `requests`.
-        """
-        # Asegurar un entorno limpio para este test, sin las variables
-        # relevantes
+        """Verifica que AgentAI usa URLs por defecto si no hay variables de entorno."""
         env_vars_to_clear = [
             HARMONY_CONTROLLER_URL_ENV,
             HARMONY_CONTROLLER_REGISTER_URL_ENV,
             AGENT_AI_ECU_URL_ENV,
             AGENT_AI_MALLA_URL_ENV,
         ]
-        # Usar patch.dict para modificar os.environ temporalmente
         with mock.patch.dict(
             os.environ, {k: "" for k in env_vars_to_clear}, clear=True
         ):
-            # Crear instancia DENTRO del contexto del patch
             agent_test = AgentAI()
-
-            # Verificar que las URLs almacenadas son las defaults
             self.assertEqual(
                 agent_test.central_urls.get("harmony_controller"),
                 DEFAULT_HC_URL,
@@ -170,8 +115,6 @@ class TestAgentAI(unittest.TestCase):
             self.assertEqual(
                 agent_test.central_urls.get("malla_watcher"), DEFAULT_MALLA_URL
             )
-            # Verificar que la URL de registro se construye con el default de
-            # HC
             self.assertEqual(
                 agent_test.hc_register_url,
                 f"{DEFAULT_HC_URL}/api/harmony/register_tool",
@@ -182,31 +125,13 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests,
     ):
-        """
-        Verifica que AgentAI usa URLs de variables de entorno
-        cuando están definidas.
-
-        Esta prueba asegura que si las variables de entorno para
-        las URLs de Harmony Controller, ECU, Malla Watcher y el
-        endpoint de registro de HC están definidas, `AgentAI`
-        prioriza estos valores sobre los predeterminados durante
-        su inicialización.
-
-        Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
-            mock_requests, Mock para el módulo `requests`.
-        """
-        # Definir URLs de prueba para el entorno
+        """Verifica que AgentAI usa URLs de variables de entorno si están definidas."""
         test_hc_url = "http://test-hc:111"
         test_ecu_url = "http://test-ecu:222"
         test_malla_url = "http://test-malla:333"
         test_hc_reg_url = "http://test-hc:111/custom_register"
 
-        # Simular las variables de entorno
         simulated_env = {
             HARMONY_CONTROLLER_URL_ENV: test_hc_url,
             AGENT_AI_ECU_URL_ENV: test_ecu_url,
@@ -214,10 +139,7 @@ class TestAgentAI(unittest.TestCase):
             HARMONY_CONTROLLER_REGISTER_URL_ENV: test_hc_reg_url,
         }
         with mock.patch.dict(os.environ, simulated_env, clear=True):
-            # Crear instancia DENTRO del contexto del patch
             agent_test = AgentAI()
-
-            # Verificar que las URLs almacenadas son las del entorno simulado
             self.assertEqual(
                 agent_test.central_urls.get("harmony_controller"), test_hc_url
             )
@@ -225,52 +147,29 @@ class TestAgentAI(unittest.TestCase):
             self.assertEqual(
                 agent_test.central_urls.get("malla_watcher"), test_malla_url
             )
-            # Verificar que la URL de registro es la del entorno simulado
             self.assertEqual(agent_test.hc_register_url, test_hc_reg_url)
 
-    # --- FIN NUEVOS TESTS ---
-    # --- Tests de Comunicación con HC (sin cambios funcionales) ---
     def test_get_harmony_state_success(
         self,
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests,
     ):
-        """
-        Prueba la obtención exitosa del estado de Harmony Controller.
-
-        Verifica que el método `_get_harmony_state` puede procesar
-        correctamente una respuesta exitosa (código 200) del endpoint
-        de estado de Harmony Controller. Asegura que la URL correcta es
-        llamada y que los datos del estado son
-        extraídos y devueltos adecuadamente.
-
-        Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
-            mock_requests, Mock para el módulo `requests`.
-        """
-        mock_response = mock.MagicMock()
-        mock_response.status_code = 200
+        """Prueba la obtención exitosa del estado de HC con ApiClient."""
         mock_harmony_data = {
             "last_measurement": 0.5,
             "last_ecu_state": [[0.4], [0.3]],
-        }  # Ejemplo con lista de listas
-        mock_response.json.return_value = {
+        }
+        self.mock_api_client_instance.get.return_value = {
             "status": "success",
             "data": mock_harmony_data,
         }
-        mock_requests.get.return_value = mock_response
-        mock_requests.get.side_effect = None  # Limpiar side effects previos
+
         state = self.agent._get_harmony_state()
+
         hc_url = self.agent.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         expected_url = f"{hc_url}/api/harmony/state"
-        mock_requests.get.assert_called_once_with(
-            expected_url,
-            timeout=REQUESTS_TIMEOUT,  # Usar la URL esperada
-        )
+        self.mock_api_client_instance.get.assert_called_once_with(expected_url)
         self.assertEqual(state, mock_harmony_data)
 
     def test_get_harmony_state_network_error(
@@ -278,34 +177,16 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests,
     ):
-        """
-        Prueba el manejo de errores de red al obtener el estado de Harmony.
+        """Prueba el manejo de errores de red al obtener el estado de HC."""
+        self.mock_api_client_instance.get.return_value = None
 
-        Verifica que `_get_harmony_state` maneja adecuadamente los errores
-        de red (simulados por `requests.exceptions.RequestException`).
-        Se espera que el método intente la comunicación `MAX_RETRIES`
-        veces, con pausas entre intentos (verificadas por `mock_sleep`),
-        y que finalmente devuelva `None` si el error persiste.
-
-        Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
-            mock_requests, Mock para el módulo `requests`.
-        """
-        mock_requests.get.side_effect = requests.exceptions.RequestException(
-            "Connection failed"
-        )
         state = self.agent._get_harmony_state()
+
         self.assertIsNone(
             state, "Debe devolver None en caso de error de red persistente"
         )
-        # Verificar que reintentó MAX_RETRIES veces
-        self.assertEqual(mock_requests.get.call_count, MAX_RETRIES)
-        # Verificar que se llamó a sleep (mockeado) entre intentos
-        self.assertEqual(self.mock_sleep.call_count, MAX_RETRIES - 1)
+        self.mock_api_client_instance.get.assert_called_once()
 
     def test_get_harmony_state_bad_response(
         self,
@@ -345,34 +226,17 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests,
     ):
-        """
-        Prueba el envío exitoso de un setpoint a Harmony Controller.
-
-        Verifica que el método `_send_setpoint_to_harmony` construye
-        correctamente la solicitud POST (URL y payload JSON) para
-        enviar un nuevo vector de setpoint a Harmony Controller y que
-        maneja adecuadamente una respuesta exitosa (código 200).
-
-        Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
-            mock_requests, Mock para el módulo `requests`.
-        """
-        mock_response = mock.MagicMock()
-        mock_response.status_code = 200
-        mock_requests.post.return_value = mock_response
-        mock_requests.post.side_effect = None
+        """Prueba el envío exitoso de un setpoint a Harmony Controller con ApiClient."""
+        self.mock_api_client_instance.post.return_value = {"status": "success"}
         setpoint_vec = [1.5, -0.5]
         self.agent._send_setpoint_to_harmony(setpoint_vec)
+
         hc_url = self.agent.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         expected_url = f"{hc_url}/api/harmony/setpoint"
-        mock_requests.post.assert_called_once_with(
-            expected_url,  # Usar la URL esperada
-            json={"setpoint_vector": setpoint_vec},
-            timeout=REQUESTS_TIMEOUT,
+        self.mock_api_client_instance.post.assert_called_once_with(
+            expected_url,
+            json_data={"setpoint_vector": setpoint_vec},
         )
 
     def test_send_setpoint_to_harmony_error(
@@ -380,32 +244,13 @@ class TestAgentAI(unittest.TestCase):
         mock_logger,
         mock_validate_module_registration,
         mock_check_missing_dependencies,
-        mock_requests,
     ):
-        """
-        Prueba el manejo de errores de red al enviar setpoint a Harmony.
-
-        Verifica que `_send_setpoint_to_harmony` maneja errores de red
-        (simulados por `requests.exceptions.RequestException`) durante
-        el envío de un setpoint. Se espera que el método reintente la
-        operación `MAX_RETRIES` veces, con pausas intermedias, y que no
-        levante una excepción si el error persiste
-        (la gestión de errores es interna).
-
-        Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
-            mock_requests, Mock para el módulo `requests`.
-        """
-        mock_requests.post.side_effect = requests.exceptions.RequestException(
-            "Connection failed"
-        )
+        """Prueba el manejo de errores de red al enviar setpoint a HC con ApiClient."""
+        self.mock_api_client_instance.post.return_value = None
         setpoint_vec = [1.5, -0.5]
         self.agent._send_setpoint_to_harmony(setpoint_vec)
-        # Verificar que reintentó MAX_RETRIES veces
-        self.assertEqual(mock_requests.post.call_count, MAX_RETRIES)
-        self.assertEqual(self.mock_sleep.call_count, MAX_RETRIES - 1)
+
+        self.mock_api_client_instance.post.assert_called_once()
 
     def test_determine_harmony_setpoint_simple(
         self,
@@ -1416,27 +1261,11 @@ class TestAgentAI(unittest.TestCase):
         mock_requests.post.assert_not_called()
 
     def test_notify_hc_retry_and_fail(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps
     ):
-        """
-        Prueba el mecanismo de reintentos al notificar a Harmony Controller.
+        """Prueba el mecanismo de reintentos al notificar a HC con ApiClient."""
+        self.mock_api_client_instance.post.return_value = None
 
-        Verifica que la función intenta realizar la notificación
-        (una solicitud POST) a Harmony Controller si la solicitud falla
-        persistentemente (ej. por `requests.exceptions.RequestException`).
-        También asegura que se realizan pausas (`mock_sleep`) entre
-        los intentos.
-
-        Args:
-            mock_thread, Mock para la creación de hilos.
-            mock_os_exists, Mock para `os.path.exists`.
-            mock_check_deps, Mock para `check_missing_dependencies`.
-            mock_requests, Mock para el módulo `requests`.
-        """
-        # Mockear la notificación para que siempre falle
-        mock_requests.post.side_effect = requests.exceptions.RequestException("HC down")
-
-        # Llamar directamente a la función de notificación
         self.agent._notify_harmony_controller_of_tool(
             nombre="NotifyFail",
             url="http://someurl",
@@ -1444,14 +1273,10 @@ class TestAgentAI(unittest.TestCase):
             naturaleza="modulador",
         )
 
-        # Verificar reintentos
-        self.assertEqual(mock_requests.post.call_count, MAX_RETRIES)
-        self.assertEqual(self.mock_sleep.call_count, MAX_RETRIES - 1)
-
-    # --- Tests de Comandos y Estado Completo (AJUSTADOS) ---
+        self.mock_api_client_instance.post.assert_called_once()
 
     def test_actualizar_comando_estrategico(
-        self, mock_thread, mock_validate_registration, mock_check_deps, mock_requests
+        self, mock_thread, mock_validate_registration, mock_check_deps
     ):
         """
         Prueba la funcionalidad de actualizar comandos estratégicos del agente.
@@ -1477,26 +1302,21 @@ class TestAgentAI(unittest.TestCase):
         self.assertEqual(self.agent.current_strategy, "performance")
 
         # Set setpoint vector
-        mock_requests.post.reset_mock()
-        mock_response_post = mock.MagicMock(status_code=200)
-        mock_requests.post.return_value = mock_response_post
-        mock_requests.post.side_effect = None
+        self.mock_api_client_instance.post.reset_mock()
+        self.mock_api_client_instance.post.return_value = {"status": "success"}
 
-        # --- ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ PRESENTE ---
         new_vec = [2.0, 1.0]
-        # -------------------------------------------------
         result = self.agent.actualizar_comando_estrategico(
             "set_target_setpoint_vector", new_vec
-        )  # Ahora new_vec existe
+        )
         self.assertEqual(result["status"], "success")
         self.assertEqual(self.agent.target_setpoint_vector, new_vec)
-        # ... (verificación de llamada a post) ...
+
         hc_url = self.agent.central_urls.get("harmony_controller", DEFAULT_HC_URL)
         expected_url = f"{hc_url}/api/harmony/setpoint"
-        mock_requests.post.assert_called_once_with(
+        self.mock_api_client_instance.post.assert_called_once_with(
             expected_url,
-            json={"setpoint_vector": new_vec},
-            timeout=REQUESTS_TIMEOUT,
+            json_data={"setpoint_vector": new_vec},
         )
 
         # Comando inválido

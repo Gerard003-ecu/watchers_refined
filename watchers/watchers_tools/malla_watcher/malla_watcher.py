@@ -137,8 +137,10 @@ KEY_DESCRIPCION = "descripcion"
 class PhosWave:
     """Representa el mecanismo de acoplamiento entre celdas (osciladores).
 
-    Esta clase encapsula el coeficiente de acoplamiento (C) que determina
-    la fuerza de la interacción entre osciladores vecinos en la malla.
+    Esta clase encapsula el coeficiente de acoplamiento (C), análogo a la
+    energía de interacción que media la propagación de fonones (vibraciones
+    cuantizadas de la red) en un cristal. Un valor de C más alto implica una
+    interacción más fuerte entre celdas vecinas.
 
     Args:
         coef_acoplamiento (float): Coeficiente de acoplamiento inicial.
@@ -171,8 +173,10 @@ class Electron:
     """
     Representa el mecanismo de amortiguación local en cada celda (oscilador).
 
-    Esta clase encapsula el coeficiente de amortiguación (D) que determina
-    cómo la velocidad de un oscilador se disipa con el tiempo.
+    Esta clase encapsula el coeficiente de amortiguación (D). Físicamente,
+    es análogo a un término de arrastre o fricción que disipa energía del
+    oscilador, similar a la dispersión de electrones (scattering) en una red
+    cristalina que resulta en una pérdida de energía de las vibraciones.
 
     Args:
         coef_amortiguacion (float): Coeficiente de amortiguación inicial.
@@ -357,16 +361,19 @@ control_params: Dict[str, float] = {
 def simular_paso_malla() -> None:
     """Simula un paso de la dinámica de osciladores acoplados en la malla.
 
-    Actualiza la amplitud y velocidad de cada celda en la malla global
-    (`malla_cilindrica_global`) basándose en las interacciones con sus
-    vecinos (acoplamiento) y en su propia amortiguación local.
+    Este método modela la malla como un sistema de osciladores armónicos
+    acoplados. La ecuación de movimiento para cada oscilador 'i' se rige por:
+    m * d²x_i/dt² = Σ_j [k_mod * (x_j - x_i)] - b * dx_i/dt
+    donde 'x' es la amplitud, 'k_mod' es el acoplamiento modulado por el
+    campo externo, y 'b' es la amortiguación.
 
-    El coeficiente de acoplamiento se modula por la magnitud del campo
-    vectorial local (`q_vector`) de la celda. Se utiliza un método de
-    integración de Euler simple.
+    Se utiliza el método de integración de Euler, un esquema numérico de
+    primer orden, para resolver esta ecuación diferencial en pasos discretos 'dt'.
+    La fuerza neta (acoplamiento + amortiguación) determina la aceleración,
+    que a su vez actualiza la velocidad y luego la amplitud de cada celda.
 
-    No recibe argumentos ni retorna valores directamente, pero modifica
-    el estado de las celdas en `malla_cilindrica_global`.
+    No recibe argumentos ni retorna valores, pero modifica el estado (amplitud,
+    velocidad) de las celdas en `malla_cilindrica_global`.
     """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
@@ -422,16 +429,17 @@ def simular_paso_malla() -> None:
 def update_aggregate_state() -> None:
     """Calcula y actualiza el estado agregado de la malla.
 
-    Esta función calcula diversas métricas promedio y máximas sobre todas las
-    celdas de la malla global (`malla_cilindrica_global`), como amplitud,
-    velocidad, energía cinética y magnitud de actividad. También cuenta
-    cuántas celdas superan un umbral de actividad predefinido.
+    Calcula métricas promedio y máximas sobre todas las celdas, como amplitud,
+    velocidad y energía cinética. La energía cinética (KE) de cada celda se
+    calcula como KE = 0.5 * m * v², asumiendo una masa normalizada m=1.
+    También calcula una 'magnitud de actividad' y cuenta cuántas celdas
+    superan un umbral de actividad predefinido.
 
     Los resultados se almacenan en el diccionario global `aggregate_state`
-    bajo la protección de `aggregate_state_lock`.
+    de forma segura para hilos.
 
-    No recibe argumentos ni retorna valores directamente, pero modifica
-    el diccionario `aggregate_state`.
+    No recibe argumentos ni retorna valores, pero modifica el diccionario
+    `aggregate_state`.
     """
     mesh = malla_cilindrica_global
     if mesh is None or not mesh.cells:
@@ -466,7 +474,6 @@ def update_aggregate_state() -> None:
     # Calcular métricas individuales
     amplitudes = [cell.amplitude for cell in all_cells]
     velocities = [cell.velocity for cell in all_cells]
-    # KE = 0.5 * m * v^2, m=1
     kinetic_energies = [0.5 * v**2 for v in velocities]
     activity_magnitudes = [
         math.sqrt(cell.amplitude**2 + cell.velocity**2) for cell in all_cells
@@ -516,19 +523,33 @@ def update_aggregate_state() -> None:
 
 
 def calculate_flux(mesh: HexCylindricalMesh) -> float:
-    """Calcula una representación simplificada del flujo a través de la malla.
+    """Calcula el flujo del campo vectorial 'q_vector' a través de la malla.
 
-    Este "flujo" se define como la suma de la segunda componente (índice 1)
-    del atributo `q_vector` de cada celda en la malla proporcionada.
-    Se utiliza como una analogía simplificada del flujo magnético.
+    En física, el flujo de un campo vectorial a través de una superficie es una
+    medida de cuánto campo atraviesa dicha superficie. Se calcula mediante la
+    integral de superficie del producto punto entre el campo vectorial y el
+    vector normal a la superficie.
+
+    Φ = ∫_S F ⋅ dA
+
+    Donde:
+    - Φ es el flujo.
+    - F es el campo vectorial (en nuestro caso, `q_vector`).
+    - dA es el vector de área diferencial, normal a la superficie.
+
+    Para esta malla cilíndrica, aproximamos el cálculo de la siguiente manera:
+    1. Cada celda hexagonal se trata como una pequeña superficie plana.
+    2. El vector de área (dA) de cada celda tiene una magnitud igual al área
+       del hexágono y una dirección normal a la superficie del cilindro en la
+       posición de la celda.
+    3. El flujo total es la suma de los productos punto del `q_vector` de cada
+       celda con su vector de área.
 
     Args:
-        mesh (HexCylindricalMesh): La instancia de la malla sobre la cual
-            calcular el flujo.
+        mesh (HexCylindricalMesh): La instancia de la malla.
 
     Returns:
-        float: El valor total del flujo calculado. Retorna 0.0 si la malla
-            no está inicializada o no tiene celdas.
+        float: El valor total del flujo calculado.
     """
     if not mesh or not mesh.cells:
         return 0.0
@@ -537,18 +558,30 @@ def calculate_flux(mesh: HexCylindricalMesh) -> float:
     if not all_cells:
         return 0.0
 
-    # Crear un array 2D con todos los q_vectors
+    # Área de un hexágono regular de lado 's' (hex_size)
+    hex_area = (3 * math.sqrt(3) / 2) * (mesh.hex_size ** 2)
+
+    # q_vectors es un array de shape (num_cells, 2)
     q_vectors = np.array([cell.q_vector for cell in all_cells])
 
-    flux_component_index = 1  # Índice para la componente 'vy' del vector
-    # Sumar la componente de flujo de forma vectorizada
-    total_flux = np.sum(q_vectors[:, flux_component_index])
+    # thetas es un array de shape (num_cells,)
+    thetas = np.array([cell.theta for cell in all_cells])
 
-    logger.debug(
-        "Flujo calculado (suma de componente %d): %.3f",
-        flux_component_index,
-        total_flux,
-    )
+    # Vectores normales en el plano XY, shape (num_cells, 2)
+    # El vector normal a la superficie del cilindro en el punto (theta)
+    # proyectado en el plano XY es (cos(theta), sin(theta)).
+    normal_vectors = np.array([np.cos(thetas), np.sin(thetas)]).T
+
+    # Producto punto entre el campo y el vector normal para cada celda.
+    # np.einsum('ij,ij->i', ...) calcula el producto punto elemento a elemento
+    # de los dos arrays de vectores.
+    dot_products = np.einsum('ij,ij->i', q_vectors, normal_vectors)
+
+    # Flujo total = Suma( (F_i ⋅ n_i) * Area_i )
+    # Como el área es constante para todas las celdas, la sacamos fuera.
+    total_flux = np.sum(dot_products) * hex_area
+
+    logger.debug("Flujo físico calculado: %.3f", total_flux)
     return float(total_flux)
 
 

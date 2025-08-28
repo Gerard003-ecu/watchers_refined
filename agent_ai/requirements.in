@@ -1,4 +1,3 @@
 flask
 requests>=2.32.4
 numpy
-urllib3>=2.5.0

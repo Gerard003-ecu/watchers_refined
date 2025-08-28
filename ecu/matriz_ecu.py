@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-"""Módulo que define la simulación de un campo cimático.
+"""Módulo que define la simulación de un campo cimático toroidal.
 
-Este módulo modela un campo cimático en una topología toroidal. La dinámica
-de las ondas en este campo se rige por principios de propagación, disipación
-e interferencia, inspirados en el estudio de la cimática (la visualización
-de ondas y vibraciones).
+Este módulo establece el marco conceptual y la implementación para simular un
+campo cimático en una topología toroidal. La simulación modela cómo las ondas
+se propagan, interfieren y disipan energía a través de un medio tridimensional
+discretizado (grilla).
 
-El campo es un campo escalar complejo en una grilla 3D toroidal, donde cada
-punto (capa, fila, columna) almacena un número complejo que representa
-la amplitud y fase de una onda local. La dinámica simula la evolución de
-este campo de ondas.
+Conceptualmente, cada punto en la grilla representa un oscilador local con una
+amplitud y una fase, descritas por un número complejo (ψ). La topología
+toroidal implica que los bordes de la grilla se conectan, creando una
+superficie continua sin fronteras. Este diseño es ideal para modelar campos
+de ondas auto-contenidos y resonantes.
 
-Proporciona una API REST para:
-- Obtener un mapa de densidad de energía del campo.
-- Recibir influencias externas (perturbaciones de onda).
-- Monitorear la salud del servicio.
+El propósito es estudiar la emergencia de patrones coherentes (análogos a las
+figuras de Chladni en la cimática) a partir de la dinámica de ondas locales,
+gobernada por una ecuación de onda con términos de acoplamiento y disipación.
 
-Una simulación en segundo plano actualiza continuamente la dinámica del campo.
+Funcionalidad principal:
+- Define la clase `ToroidalField` que encapsula el estado y la dinámica del campo.
+- Ejecuta un bucle de simulación en un hilo de fondo para la evolución continua.
+- Expone una API REST (a través de Flask) para interactuar con la simulación.
 """
 
 import logging
@@ -24,10 +27,13 @@ import os
 import sys
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 from flask import Flask, jsonify, request
+
+from .validator_ecu import InfluenceValidator
+
 
 # --- Configuración del Logging ---
 def setup_logging():
@@ -38,16 +44,17 @@ def setup_logging():
 
     handler = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter(
-        '%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s'
+        "%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s"
     )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
     # Nivel de logging configurable por entorno
-    log_level = os.environ.get('ECU_LOG_LEVEL', 'INFO').upper()
+    log_level = os.environ.get("ECU_LOG_LEVEL", "INFO").upper()
     logger.setLevel(getattr(logging, log_level, logging.INFO))
 
     return logger
+
 
 logger = setup_logging()
 
@@ -89,15 +96,25 @@ BETA_COUPLING = get_env_float("ECU_BETA_COUPLING", 0.1)
 
 
 class ToroidalField:
-    """
-    Representa un campo de ondas cimáticas en una topología toroidal.
+    """Representa un campo de ondas cimáticas en una topología toroidal.
 
-    El campo se modela en una grilla 3D (capas x filas x columnas).
-    Cada punto de la grilla almacena un número complejo que representa
-    la amplitud y fase de la onda en ese punto.
-    La dinámica simula la evolución de este campo bajo efectos de
-    propagación de onda, acoplamiento entre capas y disipación de energía,
-    análogo a la Ecuación de Onda en un medio con disipación.
+    Esta clase es la analogía principal de la simulación: representa un campo
+    de ondas cimáticas evolucionando en un medio con propiedades específicas.
+    La dinámica del campo está diseñada para simular la Ecuación de Onda en un
+    medio con disipación, permitiendo la formación de patrones de interferencia
+    complejos y auto-organizados.
+
+    Atributos:
+        campo_q (List[np.ndarray]): Una lista de arrays de NumPy, donde cada
+            array representa una capa 2D del campo. Cada elemento del array es
+            un número complejo (ψ) que codifica la amplitud y la fase de la
+            onda en ese punto.
+        propagation_coeffs (List[float]): Análogo a la velocidad de fase de la
+            onda en cada capa del medio. Un valor más alto significa que la
+            fase de la onda evoluciona más rápidamente.
+        dissipation_coeffs (List[float]): Análogo a la atenuación de la onda
+            en cada capa. Controla la tasa a la que la energía (amplitud) de
+            la onda se disipa con el tiempo.
     """
 
     def __init__(
@@ -108,19 +125,23 @@ class ToroidalField:
         propagation_coeffs: Optional[List[float]] = None,
         dissipation_coeffs: Optional[List[float]] = None,
     ):
-        """
-        Inicializa el campo cimático con dimensiones y parámetros físicos por capa.
+        """Inicializa el campo cimático, definiendo las propiedades del medio.
+
+        Analogía: Este constructor define las propiedades fundamentales del
+        "medio" en el que las ondas cimáticas se propagarán. Las dimensiones
+        establecen la geometría del espacio, mientras que los coeficientes
+        de propagación y disipación determinan cómo las ondas evolucionan y
+        pierden energía en cada capa del medio.
 
         Args:
-            num_capas (int): Número de capas (dimensión de profundidad).
-            num_rows (int): Número de filas (dimensión vertical).
-            num_cols (int): Número de columnas (dimensión azimutal).
-            propagation_coeffs (Optional[List[float]]): Coeficientes de
-                propagación de la onda por capa. Controla la velocidad
-                con que la fase de la onda evoluciona.
-            dissipation_coeffs (Optional[List[float]]): Coeficientes de
-                disipación de la onda por capa. Controla la pérdida
-                de energía (amplitud) de la onda.
+            num_capas (int): Número de capas en la grilla (profundidad).
+            num_rows (int): Número de filas en la grilla (dimensión vertical).
+            num_cols (int): Número de columnas en la grilla (dimensión azimutal).
+            propagation_coeffs (Optional[List[float]]): Define la velocidad de
+                fase de la onda por capa. Si es `None`, se usa un valor por
+                defecto.
+            dissipation_coeffs (Optional[List[float]]): Define la atenuación
+                de la onda por capa. Si es `None`, se usa un valor por defecto.
         """
         if num_capas <= 0 or num_rows <= 0 or num_cols <= 0:
             raise ValueError(
@@ -186,11 +207,11 @@ class ToroidalField:
             capa (int): Índice de la capa (0 a num_capas-1).
             row (int): Índice de la fila (0 a num_rows-1).
             col (int): Índice de la columna (0 a num_cols-1).
-            vector (complex): Número complejo que representa la influencia (amplitud y fase).
+            vector (complex): Influencia como número complejo (amplitud y fase).
             nombre_watcher (str): Nombre del watcher que aplica la influencia.
 
         Returns:
-            bool: True si la influencia se aplicó correctamente, False en caso contrario.
+            bool: True si la influencia se aplicó, False en caso contrario.
         """
         if not (0 <= capa < self.num_capas):
             logger.error(
@@ -270,8 +291,7 @@ class ToroidalField:
         """
         if self.num_capas < 2:
             logger.warning(
-                "Se necesita al menos 2 capas para calcular el "
-                "gradiente entre capas."
+                "Se necesita al menos 2 capas para calcular el gradiente entre capas."
             )
             return np.array([])
 
@@ -286,22 +306,25 @@ class ToroidalField:
             magnitud_diferencia = np.abs(diferencia_vectorial)
             gradiente_entre_capas[i] = magnitud_diferencia
         logger.debug(
-            "Gradiente entre capas calculado "
-            f"(shape: {gradiente_entre_capas.shape})"
+            f"Gradiente entre capas calculado (shape: {gradiente_entre_capas.shape})"
         )
         return gradiente_entre_capas
 
     def get_energy_density_map(self) -> np.ndarray:
-        """
-        Genera un mapa de "densidad de energía", análogo a los patrones
-        visibles en los experimentos de cimática.
+        """Genera un mapa de densidad de energía, análogo a los patrones de la cimática.
 
-        Este mapa representa la energía agregada de la onda (amplitud al cuadrado)
-        en cada ubicación (fila, columna) a través de las capas. Las capas
-        más internas (índices bajos) suelen tener mayor peso en la ponderación.
+        Analogía: Este método calcula el análogo a los patrones visibles en los
+        experimentos de cimática, como las Figuras de Chladni, que revelan las
+        líneas nodales de un campo vibratorio.
+
+        Ecuación Conceptual: La energía de una onda es proporcional al cuadrado
+        de su amplitud (E ∝ |ψ|²). El mapa resultante agrega la energía en
+        cada ubicación (fila, columna) a través de todas las capas, creando
+        una representación 2D de la intensidad del campo.
 
         Returns:
-            np.ndarray: Array 2D (num_rows x num_cols) del mapa de densidad de energía.
+            np.ndarray: Un array 2D (num_rows x num_cols) que representa el mapa
+                de densidad de energía.
         """
         pesos = (
             np.linspace(1.0, 0.5, self.num_capas)
@@ -319,14 +342,38 @@ class ToroidalField:
         return energy_density_map
 
     def apply_wave_dynamics_step(self, dt: float, beta: float):
-        """Versión optimizada con operaciones vectorizadas."""
+        """Avanza un paso en la dinámica de la onda (propagación e interferencia).
+
+        Analogía: Este método es el corazón de la simulación. Simula cómo las
+        ondas se propagan a través de la grilla (advección), interactúan con
+        sus vecinos (acoplamiento/interferencia) y pierden energía con el
+        tiempo (disipación).
+
+        Ecuación Conceptual: Resuelve numéricamente una Ecuación Diferencial
+        Parcial (PDE) para la evolución del campo de ondas ψ. Conceptualmente,
+        la ecuación es de la forma:
+        ∂ψ/∂t ≈ -α*∇ψ (prop) + β*(vecinos) (interf) - γ*ψ (disipación)
+        donde α es `propagation_coeffs`, β es el factor de acoplamiento y γ es
+        `dissipation_coeffs`.
+
+        Args:
+            dt (float): Paso de tiempo para la integración numérica.
+            beta (float): Factor de acoplamiento que controla la influencia
+                entre capas adyacentes.
+        """
         if beta < 0:
-            logger.warning("El factor beta (acoplamiento vertical) debería ser no negativo.")
+            logger.warning(
+                "El factor beta (acoplamiento vertical) debería ser no negativo."
+            )
 
         with self.lock:
             # Precalcular arrays para broadcasting
-            propagation_coeffs_array = np.array(self.propagation_coeffs)[:, np.newaxis, np.newaxis]
-            dissipation_coeffs_array = np.array(self.dissipation_coeffs)[:, np.newaxis, np.newaxis]
+            propagation_coeffs_array = np.array(self.propagation_coeffs)[
+                :, np.newaxis, np.newaxis
+            ]
+            dissipation_coeffs_array = np.array(self.dissipation_coeffs)[
+                :, np.newaxis, np.newaxis
+            ]
 
             # Crear array 3D para operaciones vectorizadas
             campo_3d = np.stack(self.campo_q)
@@ -348,14 +395,13 @@ class ToroidalField:
             self.campo_q = [nuevo_campo_3d[i] for i in range(self.num_capas)]
 
     def set_uniform_potential_field(self, seed: Optional[int] = None):
-        """
-        Inicializa el campo a un estado de potencial uniforme (magnitud 1)
-        con fases aleatorias.
+        """Inicializa el campo a un estado de potencial uniforme pero incoherente.
 
-        Asigna a cada nodo del campo un estado en el círculo unitario con una
-        fase aleatoria, resultando en un número complejo `e^(i * random_angle)`.
-        Esto representa un estado de energía potencial uniforme pero sin
-        coherencia de fase.
+        Analogía: Este proceso es análogo a una superficie de agua en reposo
+        que, aunque parece macroscópicamente plana (potencial uniforme),
+        posee fluctuaciones de fase microscópicas en cada punto. Cada nodo se
+        inicializa con una amplitud de 1 y una fase aleatoria, representando
+        un estado de máxima energía potencial pero sin coherencia global.
 
         Args:
             seed (Optional[int]): Semilla para el generador de números
@@ -370,18 +416,21 @@ class ToroidalField:
                 self.campo_q[capa_idx] = np.exp(1j * random_angles)
 
     def apply_internal_phase_evolution(self, dt: float):
-        """
-        Simula la evolución intrínseca de la fase del medio.
+        """Simula la evolución intrínseca de la fase de la onda en cada punto.
 
-        Este método simula la evolución de la fase de cada punto del campo
-        según sus propiedades locales. La evolución sigue la ecuación de
-        Schrödinger para un paso de tiempo `dt` con un Hamiltoniano simple.
+        Analogía: Este método simula la evolución temporal intrínseca de la
+        fase de la onda en cada punto del medio, gobernada por las propiedades
+        locales (el coeficiente de propagación de la capa). Es como si cada
+        punto del campo fuera un reloj que avanza a su propio ritmo.
 
-        La transformación es: ψ(t+dt) = e^(-i * prop_coeff * dt) * ψ(t),
-        donde `prop_coeff` es el coeficiente de propagación de la capa.
+        Ecuación Conceptual: Aplica una rotación en el plano complejo a cada
+        punto del campo, lo que corresponde a la solución de la Ecuación de
+        Schrödinger para una partícula libre en su forma discreta:
+        ψ(t+dt) = e^(-i * α * dt) * ψ(t)
+        donde α es el `propagation_coeff` de la capa.
 
         Args:
-            dt (float): El paso de tiempo para la evolución.
+            dt (float): El paso de tiempo para la evolución de la fase.
         """
         with self.lock:
             # Convertir propagation_coeffs a array NumPy para broadcasting
@@ -452,11 +501,17 @@ def cymatic_simulation_loop_adaptive(dt: float, beta: float):
                 simulation_times.pop(0)
 
             # Ajustar dt si es necesario (no menos del 50% del valor original)
-            avg_time = sum(simulation_times) / len(simulation_times) if simulation_times else elapsed
+            avg_time = (
+                sum(simulation_times) / len(simulation_times)
+                if simulation_times
+                else elapsed
+            )
             if avg_time > dt * 0.8:  # Si usa más del 80% del tiempo disponible
                 new_dt = dt * 0.9  # Reducir dt un 10%
                 logger.info(f"Ajustando dt de {dt} a {new_dt} por sobrecarga")
-                dt = max(new_dt, SIMULATION_INTERVAL * 0.5)  # No menos de la mitad del original
+                dt = max(
+                    new_dt, SIMULATION_INTERVAL * 0.5
+                )  # No menos de la mitad del original
 
             sleep_time = max(0, dt - elapsed)
             stop_simulation_event.wait(sleep_time)
@@ -517,30 +572,27 @@ def obtener_mapa_energia() -> Tuple[Any, int]:
         energy_map = campo_toroidal_global_servicio.get_energy_density_map()
         response_data = {
             "status": "success",
-            "data": {
-                "energy_density_map": energy_map.tolist(),
-                "type": "energy_map"
-            },
+            "data": {"energy_density_map": energy_map.tolist(), "type": "energy_map"},
             "metadata": {
                 "description": "Mapa de densidad de energía del campo cimático",
                 "layers": campo_toroidal_global_servicio.num_capas,
                 "rows": campo_toroidal_global_servicio.num_rows,
                 "columns": campo_toroidal_global_servicio.num_cols,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             },
         }
         logger.info("Mapa de densidad de energía calculado y enviado.")
         return jsonify(response_data), 200
     except Exception as e:
         logger.exception("Error en endpoint /api/ecu/energy: %s", e)
-        return jsonify({
-            "status": "error",
-            "message": "Error interno del servidor al obtener el mapa de energía.",
-            "error_code": "INTERNAL_SERVER_ERROR"
-        }), 500
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Error interno del servidor al obtener el mapa de energía.",
+                "error_code": "INTERNAL_SERVER_ERROR",
+            }
+        ), 500
 
-
-from .validator import InfluenceValidator
 
 @app.route("/api/ecu/influence", methods=["POST"])
 def recibir_influencia_malla() -> Tuple[Any, int]:
@@ -548,12 +600,16 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
     logger.info("Solicitud POST /api/ecu/influence recibida.")
     data = request.get_json()
     if not data:
-        return jsonify({"status": "error", "message": "Payload JSON vacío o ausente"}), 400
+        return jsonify(
+            {"status": "error", "message": "Payload JSON vacío o ausente"}
+        ), 400
 
     required_fields = ["capa", "row", "col", "vector", "nombre_watcher"]
     missing = [f for f in required_fields if f not in data]
     if missing:
-        return jsonify({"status": "error", "message": f"Faltan campos: {', '.join(missing)}"}), 400
+        return jsonify(
+            {"status": "error", "message": f"Faltan campos: {', '.join(missing)}"}
+        ), 400
 
     try:
         capa, row, col = data["capa"], data["row"], data["col"]
@@ -576,22 +632,33 @@ def recibir_influencia_malla() -> Tuple[Any, int]:
         )
 
         if success:
-            return jsonify({
-                "status": "success",
-                "message": f"Influencia de '{data['nombre_watcher']}' aplicada.",
-                "applied_to": {"capa": capa, "row": row, "col": col},
-                "vector": [vector.real, vector.imag],
-            }), 200
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": f"Influencia de '{data['nombre_watcher']}' aplicada.",
+                    "applied_to": {"capa": capa, "row": row, "col": col},
+                    "vector": [vector.real, vector.imag],
+                }
+            ), 200
         else:
             # Este caso puede ser redundante si la validación es exhaustiva
-            return jsonify({"status": "error", "message": "Error interno al aplicar influencia."}), 400
+            return jsonify(
+                {"status": "error", "message": "Error interno al aplicar influencia."}
+            ), 400
 
     except (TypeError, ValueError) as e:
         logger.warning("Error de tipo/valor en payload de influencia: %s", e)
-        return jsonify({"status": "error", "message": "Error en el formato de los datos del payload."}), 400
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Error en el formato de los datos del payload.",
+            }
+        ), 400
     except Exception as e:
         logger.exception("Error inesperado en endpoint /api/ecu/influence: %s", e)
-        return jsonify({"status": "error", "message": "Error interno del servidor."}), 500
+        return jsonify(
+            {"status": "error", "message": "Error interno del servidor."}
+        ), 500
 
 
 @app.route("/api/ecu/field_vector", methods=["GET"])
@@ -605,17 +672,19 @@ def get_field_vector_paginated() -> Tuple[Any, int]:
         layer: Filtro opcional por capa específica
     """
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 100, type=int)
-        layer_filter = request.args.get('layer', type=int)
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 100, type=int)
+        layer_filter = request.args.get("layer", type=int)
 
         with campo_toroidal_global_servicio.lock:
             if layer_filter is not None:
                 if not 0 <= layer_filter < campo_toroidal_global_servicio.num_capas:
-                    return jsonify({
-                        "status": "error",
-                        "message": f"La capa {layer_filter} está fuera de rango"
-                    }), 400
+                    return jsonify(
+                        {
+                            "status": "error",
+                            "message": f"La capa {layer_filter} está fuera de rango",
+                        }
+                    ), 400
 
                 # Paginación sobre filas de una capa específica
                 layer_data = campo_toroidal_global_servicio.campo_q[layer_filter]
@@ -624,15 +693,18 @@ def get_field_vector_paginated() -> Tuple[Any, int]:
                 end_index = start_index + per_page
                 paginated_rows = layer_data[start_index:end_index]
 
-                campo_data = [[[cell.real, cell.imag] for cell in row]
-                             for row in paginated_rows]
+                campo_data = [
+                    [[cell.real, cell.imag] for cell in row] for row in paginated_rows
+                ]
 
             else:
                 # Paginación sobre las capas completas
                 total_items = campo_toroidal_global_servicio.num_capas
                 start_index = (page - 1) * per_page
                 end_index = start_index + per_page
-                paginated_layers = campo_toroidal_global_servicio.campo_q[start_index:end_index]
+                paginated_layers = campo_toroidal_global_servicio.campo_q[
+                    start_index:end_index
+                ]
 
                 campo_data = [
                     [[[cell.real, cell.imag] for cell in row] for row in layer]
@@ -643,23 +715,24 @@ def get_field_vector_paginated() -> Tuple[Any, int]:
         if page > total_pages and total_items > 0:
             return jsonify({"status": "error", "message": "Página fuera de rango"}), 404
 
-        return jsonify({
-            "status": "success",
-            "data": campo_data,
-            "pagination": {
-                "page": page,
-                "per_page": per_page,
-                "total_items": total_items,
-                "total_pages": total_pages
+        return jsonify(
+            {
+                "status": "success",
+                "data": campo_data,
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total_items": total_items,
+                    "total_pages": total_pages,
+                },
             }
-        }), 200
+        ), 200
 
     except Exception as e:
         logger.exception("Error en endpoint paginado: %s", e)
-        return jsonify({
-            "status": "error",
-            "message": "Error interno al procesar la solicitud"
-        }), 500
+        return jsonify(
+            {"status": "error", "message": "Error interno al procesar la solicitud"}
+        ), 500
 
 
 @app.route("/debug/set_random_phase", methods=["POST"])
@@ -798,7 +871,5 @@ if __name__ == "__main__":
             logger.info("Esperando finalización del hilo de simulación...")
             simulation_thread.join(timeout=SIMULATION_INTERVAL * 2)
             if simulation_thread.is_alive():
-                logger.warning(
-                    "El hilo de simulación cimática no terminó limpiamente."
-                )
+                logger.warning("El hilo de simulación cimática no terminó limpiamente.")
         logger.info("Servicio de simulación cimática finalizado.")

@@ -5,15 +5,18 @@ FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# Instalar dependencias del sistema (curl para HEALTHCHECK y libs para OpenCV)
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+# Instalar uv
+RUN apt-get update && apt-get install -y curl \
     libgl1-mesa-glx \
     libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
+    && curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Añadir uv al PATH
+ENV PATH="/root/.cargo/bin:$PATH"
 
 # 3. Optimización de Caché de Dependencias:
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY optical_controller/requirements.txt .
+RUN uv pip sync requirements.txt
 
 # Copia el resto del código de la aplicación.
 COPY . .

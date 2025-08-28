@@ -303,33 +303,23 @@ Para poner en marcha el ecosistema de Watchers, necesitarás el siguiente softwa
 
 - **Podman & podman-compose:** Para la gestión de contenedores.
 - **Python 3.10+:** El lenguaje principal del proyecto.
-- **pip-tools:** Para la gestión de dependencias de Python.
+- **uv:** Para la gestión de dependencias y entornos virtuales.
 
-## Instalación y Configuración
+## Configuración del Entorno de Desarrollo Local
 
-Sigue estos pasos para configurar tu entorno de desarrollo:
+Este proyecto utiliza `uv` para una gestión de paquetes y entornos ultrarrápida.
 
-1.  **Clona el repositorio:**
+1.  **Instala `uv`:**
     ```bash
-    git clone https://github.com/tu-usuario/watchers.git
-    cd watchers
+    curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
 
-2.  **Crea y activa el entorno virtual:**
+2.  **Crea el entorno virtual e instala las dependencias (un solo comando):**
     ```bash
-    python -m venv venv
-    source venv/bin/activate
+    uv venv && uv pip sync requirements-dev.txt
     ```
 
-3.  **Instala las herramientas de desarrollo:**
+3.  **Activa el entorno:**
     ```bash
-    pip install pip-tools
+    source .venv/bin/activate
     ```
-
-4.  **Compila e instala las dependencias:**
-    ```bash
-    pip-compile requirements-dev.in
-    pip install -r requirements-dev.txt
-    ```
-
-Ahora estás listo para explorar y contribuir al ecosistema Watchers. ¡Bienvenido!
