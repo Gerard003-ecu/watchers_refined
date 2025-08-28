@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel Interactivo: Unidad de Potencia Inteligente (IPU)</title>
+
+    <!-- Tailwind & Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=JetBrains+Mono:wght@400..600&display=swap" rel="stylesheet" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <!-- Tailwind config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'atomic-blue': '#58A6FF',
+                        'energy-amber': '#F1E05A',
+                        'plasma-purple': '#BC8EFF',
+                        'quantum-teal': '#39D3BB',
+                        'dark-matter': '#0D1117',
+                        'neutrino-gray': '#8B949E',
+                        'fusion-red': '#FF7B72',
+                        'quantum-green': '#238636'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 2.5s cubic-bezier(.4,0,.6,1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate'
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 0 0 rgba(88,166,255,.4)' },
+                            '100%': { boxShadow: '0 0 0 8px rgba(88,166,255,0)' }
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+:root {
+    --dark-matter: #0D1117;
+    --slate-900: #10141a;
+    --slate-800: #161B22;
+    --slate-700: #21262D;
+    --slate-400: #8B949E;
+    --slate-300: #C9D1D9;
+    --slate-200: #F0F6FC;
+    --atomic-blue: #58A6FF;
+    --quantum-teal: #39D3BB;
+    --energy-amber: #F1E05A;
+    --fusion-red: #FF7B72;
+    --plasma-purple: #BC8EFF;
+    --galaxy-blue: #1F2937;
+    --star-white: #F9FAFB;
+    --nebula-pink: #EC4899;
+    --solar-orange: #F59E0B;
+}
+
+::selection {
+    background-color: var(--atomic-blue);
+    color: var(--dark-matter);
+}
+
+body {
+    background: linear-gradient(180deg, var(--slate-900) 0%, var(--dark-matter) 100%);
+    color: var(--slate-200);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+}
+
+        .quantum-card {
+            background: linear-gradient(145deg, rgba(31, 41, 55, 0.4), rgba(15, 20, 30, 0.6));
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--slate-700);
+            border-radius: 1rem;
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), border-color 0.4s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .quantum-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: var(--atomic-blue);
+        }
+
+        .nav-link {
+            position: relative;
+            transition: color 0.3s ease;
+            padding: 0.5rem 0;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background-color: var(--quantum-teal);
+            transition: width 0.3s ease;
+        }
+
+        .nav-link.active,
+        .nav-link:hover {
+            color: white;
+        }
+
+        .nav-link.active,
+        .nav-link:hover {
+            color: var(--star-white);
+        }
+
+        .nav-link.active::after,
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        .quantum-glow {
+            animation: quantum-glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes quantum-glow {
+            from {
+                box-shadow: 0 0 8px var(--atomic-blue), 0 0 16px var(--atomic-blue), 0 0 24px var(--atomic-blue);
+            }
+            to {
+                box-shadow: 0 0 12px var(--atomic-blue), 0 0 24px var(--atomic-blue), 0 0 36px var(--atomic-blue);
+            }
+        }
+
+        .content-section {
+            display: none;
+            animation: fadeIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            min-height: 300px;
+        }
+
+        .tooltip {
+            position: absolute;
+            display: none;
+            background-color: var(--slate-800);
+            color: var(--slate-200);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            z-index: 100;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--slate-700);
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+.piston-chamber {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    background: radial-gradient(ellipse at bottom, #1e293b, #0f172a);
+    border: 2px solid #334155;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.6), 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.piston-rod {
+    position: absolute;
+    width: 24px;
+    height: 130px;
+    background: linear-gradient(to right, #e2e8f0, #94a3b8);
+    left: 50%;
+    transform: translateX(-50%);
+    top: 0;
+    z-index: 2;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+    transition: top 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.piston-head {
+    position: absolute;
+    width: 100px;
+    height: 40px;
+    background: linear-gradient(145deg, #fbbf24, #f59e0b);
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 0.75rem;
+    z-index: 3;
+    box-shadow: 0 0 25px rgba(251, 191, 36, 0.7), inset 0 3px 3px rgba(255,255,255,0.3);
+    transition: top 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+        .capacitor-charge {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, hsla(212, 100%, 67%, 0.8), hsla(212, 100%, 67%, 0));
+            transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: blur(5px);
+        }
+
+        .magnetic-field {
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            top: -25%;
+            left: -25%;
+            border-radius: 50%;
+            border: 3px dashed hsla(262, 83%, 68%, 0);
+            opacity: 0;
+            transition: all 0.5s ease-out;
+            animation: rotate 10s linear infinite;
+        }
+
+        .magnetic-field.active {
+            opacity: 1;
+            border-color: hsla(262, 83%, 68%, 0.5);
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+.spark {
+    position: absolute;
+    width: 8px;
+    height: 80px;
+    background: #ffffff;
+    top: 50%;
+    left: 50%;
+    transform-origin: center;
+    opacity: 0;
+    box-shadow: 0 0 35px 15px #ffffff, 0 0 60px 25px #fef08a, 0 0 85px 40px #ef4444;
+    z-index: 4;
+    transition: opacity 0.1s ease-in-out;
+}
+
+.energy-wave {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, hsla(52, 95%, 70%, 0.6) 0%, transparent 75%);
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1.5);
+}
+
+        .energy-meter {
+            position: relative;
+            height: 24px;
+            background-color: var(--slate-800);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 1.5rem;
+            border: 1px solid var(--slate-700);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .energy-level {
+            height: 100%;
+            background: linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple));
+            width: 0%;
+            transition: width 0.5s ease-out;
+            border-radius: 12px;
+            box-shadow: 0 0 10px var(--atomic-blue), 0 0 20px var(--plasma-purple);
+        }
+
+        .component-btn {
+            transition: all 0.3s ease;
+        }
+
+        .component-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .component-btn.active {
+            background-color: var(--quantum-teal) !important;
+            color: white !important;
+            box-shadow: 0 0 15px rgba(57, 211, 187, 0.5);
+        }
+
+        .diagram-block {
+            transition: all 0.3s ease;
+        }
+
+        .diagram-block:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(88, 166, 255, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .lg\\:grid-cols-5 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-link {
+                display: none;
+            }
+
+            #mobile-menu-button {
+                display: block;
+            }
+
+            .grid-cols-1.md\\:grid-cols-5 {
+                grid-template-columns: 1fr;
+            }
+
+            .text-4xl.md\\:text-5xl {
+                font-size: 2rem;
+            }
+
+            .text-lg {
+                font-size: 1rem;
+            }
+
+            .py-8.md\\:py-12 {
+                padding-top: 2rem;
+                padding-bottom: 2rem;
+            }
+        }
+
+        @media (min-width: 769px) {
+            #mobile-menu {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="antialiased">
+
+    <header class="bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-700">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 md:h-20">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-quantum-teal to-atomic-blue flex items-center justify-center quantum-glow">
+                        <i class="fas fa-atom text-white text-xl md:text-2xl"></i>
+                    </div>
+                    <h1 class="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-quantum-teal to-atomic-blue">
+                        Unidad de Potencia Inteligente (IPU)
+                    </h1>
+                </div>
+
+                <nav class="hidden md:flex space-x-6 lg:space-x-8">
+                    <a href="#inicio" class="nav-link font-medium text-slate-300 active">Inicio</a>
+                    <a href="#ipu" class="nav-link font-medium text-slate-300">El Núcleo: IPU</a>
+                    <a href="#componentes" class="nav-link font-medium text-slate-300">Componentes</a>
+                    <a href="#baterias-avanzadas" class="nav-link font-medium text-slate-300">Baterías</a>
+                    <a href="#flujo-energia-avanzado" class="nav-link font-medium text-slate-300">Flujo Avanzado</a>
+                    <a href="#power-output" class="nav-link font-medium text-slate-300">Potencia</a>
+                    <a href="#desafios" class="nav-link font-medium text-slate-300">Futuro</a>
+                </nav>
+
+                <button id="mobile-menu-button" class="md:hidden p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-700">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+
+            <div id="mobile-menu" class="hidden md:hidden pb-4">
+                <a href="#inicio" class="nav-link-mobile block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700">Inicio</a>
+                <a href="#ipu" class="nav-link-mobile block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700">El Núcleo: IPU</a>
+                <a href="#componentes" class="nav-link-mobile block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700">Componentes</a>
+                <a href="#baterias-avanzadas" class="nav-link-mobile block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700">Baterías</a>
+                <a href="#flujo-energia-avanzado" class="nav-link-mobile block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700">Flujo Avanzado</a>
+                <a href="#power-output" class="nav-link-mobile block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700">Potencia</a>
+                <a href="#desafios" class="nav-link-mobile block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700">Futuro</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <!-- Inicio -->
+        <section id="inicio" class="content-section active">
+            <div class="text-center mb-16">
+                <div class="inline-block p-3 rounded-full bg-slate-800 mb-6">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-energy-amber to-fusion-red flex items-center justify-center">
+                        <i class="fas fa-bolt text-white text-2xl"></i>
+                    </div>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    Transformando la Energía Solar con Inteligencia
+                </h2>
+                <p class="max-w-3xl mx-auto text-lg text-slate-400">
+                    Explora la Unidad de Potencia Inteligente (IPU), un sistema que revoluciona la gestión de energía en instalaciones fotovoltaicas mediante electrónica de potencia, microcontroladores y baterías avanzadas.
+                </p>
+            </div>
+
+            <div class="quantum-card p-6 md:p-8">
+                <h3 class="text-2xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-quantum-teal to-atomic-blue mb-8">
+                    Flujo de Energía en un Sistema Fotovoltaico Moderno
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-5 items-center gap-6 text-center">
+                    <div class="flex flex-col items-center">
+                        <div class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4 glow">
+                            <i class="fas fa-sun text-energy-amber text-3xl"></i>
+                        </div>
+                        <h4 class="font-semibold text-slate-200">Paneles Solares</h4>
+                        <p class="text-sm text-slate-400">Generan energía CC</p>
+                    </div>
+                    <div class="text-4xl text-slate-500 md:transform-none transform rotate-90">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-quantum-teal to-atomic-blue flex items-center justify-center mb-4 glow">
+                            <i class="fas fa-microchip text-white text-4xl"></i>
+                        </div>
+                        <h4 class="font-semibold text-slate-200">IPU</h4>
+                        <p class="text-sm text-slate-400">Gestiona & optimiza</p>
+                    </div>
+                    <div class="text-4xl text-slate-500 md:transform-none transform rotate-90">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4 glow">
+                            <i class="fas fa-home text-atomic-blue text-3xl"></i>
+                        </div>
+                        <h4 class="font-semibold text-slate-200">Hogar & Red</h4>
+                        <p class="text-sm text-slate-400">Consumo CA</p>
+                    </div>
+                </div>
+                <p class="mt-10 text-center text-slate-400 max-w-4xl mx-auto">
+                    La IPU actúa como el corazón y cerebro: convierte, almacena y raciona la energía para maximizar la eficiencia (hasta 98 %) y estabilizar la red.
+                </p>
+            </div>
+        </section>
+
+        <!-- El Núcleo -->
+        <section id="ipu" class="content-section">
+            <div class="text-center mb-16">
+                <div class="inline-block p-3 rounded-full bg-slate-800 mb-6">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-atomic-blue to-plasma-purple flex items-center justify-center">
+                        <i class="fas fa-atom text-white text-2xl"></i>
+                    </div>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    El Núcleo: Unidad de Potencia Inteligente (IPU)
+                </h2>
+                <p class="max-w-3xl mx-auto text-lg text-slate-400">
+                    Inspirado en la analogía física del trampolín atómico, la IPU almacena y libera energía en pulsos rápidos y potentes gracias a la sinergia de condensadores e inductores.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+                <!-- Diagrama Dinámico -->
+                <div class="quantum-card p-6">
+                    <h3 class="text-xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-energy-amber to-fusion-red mb-4">
+                        Dinámica del Pistón
+                    </h3>
+                    <div class="space-y-6">
+                        <div class="piston-chamber">
+                            <div class="piston-rod" id="piston-rod"></div>
+                            <div class="piston-head" id="piston-head"></div>
+                            <div class="capacitor-charge" id="capacitor-charge"></div>
+                            <div class="inductor-coil">
+                                <div class="magnetic-field" id="magnetic-field"></div>
+                            </div>
+                            <div class="spark" id="spark"></div>
+                            <div class="energy-wave" id="energy-wave"></div>
+                        </div>
+
+                        <div class="energy-meter">
+                            <div class="energy-level" id="energy-level"></div>
+                        </div>
+                        <div class="meter-labels flex justify-between text-xs text-slate-400">
+                            <span>0 V</span><span>250 V</span><span>500 V</span><span>750 V</span><span>1000 V</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mt-4 text-sm">
+                            <div class="bg-slate-800/50 p-3 rounded-lg">
+                                <h4 class="font-semibold text-slate-200 mb-1">Estado del Capacitor</h4>
+                                <div id="capacitor-state">Cargando...</div>
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded-lg">
+                                <h4 class="font-semibold text-slate-200 mb-1">Campo Magnético</h4>
+                                <div id="magnetic-state">Inactivo</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arquitectura -->
+                <div class="quantum-card p-6">
+                    <h3 class="text-xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-quantum-teal to-atomic-blue mb-4">
+                        Arquitectura de la IPU
+                    </h3>
+                    <p class="text-sm text-slate-400 mb-4 text-center">
+                        Interactúa con cada bloque para conocer su función.
+                    </p>
+                    <div class="grid grid-cols-3 gap-3 text-center text-xs font-medium">
+                        <div class="col-span-3 diagram-block bg-energy-amber/20 text-energy-amber p-3 rounded-lg" data-tooltip="Fuente de energía primaria que genera corriente continua a partir de la luz solar.">
+                            <i class="fas fa-sun mr-1"></i> Paneles Solares
+                        </div>
+                        <div class="col-span-3 flex justify-center py-2">
+                            <div class="h-2 w-2 rounded-full bg-atomic-blue"></div>
+                        </div>
+
+                        <div class="col-span-3 diagram-block bg-slate-800 text-atomic-blue p-4 rounded-lg" data-tooltip="Optimiza la energía (MPPT) y regula el voltaje para su almacenamiento y uso.">
+                            <i class="fas fa-exchange-alt mr-1"></i> Convertidor CC-CC
+                        </div>
+                        <div class="col-span-3 flex justify-center py-2">
+                            <div class="h-2 w-2 rounded-full bg-atomic-blue"></div>
+                        </div>
+
+                        <div class="diagram-block bg-quantum-green/20 text-quantum-green p-3 rounded-lg" data-tooltip="Almacena grandes cantidades de energía a largo plazo.">
+                            <i class="fas fa-battery-full mr-1"></i> Batería Principal
+                        </div>
+                        <div class="diagram-block bg-quantum-teal/20 text-quantum-teal p-3 rounded-lg" data-tooltip="El cerebro: ejecuta algoritmos y gestiona la comunicación.">
+                            <i class="fas fa-microchip mr-1"></i> Microcontrolador
+                        </div>
+                        <div class="diagram-block bg-atomic-blue/20 text-atomic-blue p-3 rounded-lg" data-tooltip="Almacena y libera energía rápidamente para pulsos de alta potencia.">
+                            <i class="fas fa-bolt mr-1"></i> Potencia Pulsada
+                        </div>
+
+                        <div class="col-span-3 flex justify-center py-2">
+                            <div class="h-2 w-2 rounded-full bg-atomic-blue"></div>
+                        </div>
+                        <div class="col-span-3 diagram-block bg-plasma-purple/20 text-plasma-purple p-4 rounded-lg" data-tooltip="Convierte CC a CA para uso doméstico o inyección a la red.">
+                            <i class="fas fa-plug mr-1"></i> Inversor / Carga
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="tooltip" class="tooltip"></div>
+        </section>
+
+        <!-- Componentes -->
+        <section id="componentes" class="content-section">
+            <div class="text-center mb-16">
+                <div class="inline-block p-3 rounded-full bg-slate-800 mb-6">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-plasma-purple to-fusion-red flex items-center justify-center">
+                        <i class="fas fa-cogs text-white text-2xl"></i>
+                    </div>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    Componentes Clave de la IPU
+                </h2>
+                <p class="max-w-3xl mx-auto text-lg text-slate-400">
+                    La IPU integra gestión de potencia, control inteligente y almacenamiento eficiente para maximizar el rendimiento.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Gestión de Potencia -->
+                <div class="quantum-card p-6">
+                    <h3 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-quantum-teal to-atomic-blue mb-4">
+                        Gestión de Potencia: El Músculo
+                    </h3>
+                    <p class="text-slate-400 mb-4">
+                        Estos componentes manejan el flujo de energía; su eficiencia es crítica para minimizar pérdidas.
+                    </p>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <button class="component-btn bg-slate-800 px-3 py-1 rounded-full text-sm font-medium" data-component="inversor">Inversores</button>
+                        <button class="component-btn bg-slate-800 px-3 py-1 rounded-full text-sm font-medium" data-component="controlador">Controladores</button>
+                        <button class="component-btn bg-slate-800 px-3 py-1 rounded-full text-sm font-medium" data-component="convertidor">Convertidores</button>
+                    </div>
+                    <div id="component-details" class="bg-slate-800/50 p-4 rounded-lg mb-4 text-sm text-slate-400"></div>
+                    <div class="chart-container h-64">
+                        <canvas id="efficiencyChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Control Inteligente -->
+                <div class="quantum-card p-6">
+                    <h3 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-energy-amber to-fusion-red mb-4">
+                        Control Inteligente: El Cerebro
+                    </h3>
+                    <p class="text-slate-400 mb-4">
+                        El ESP32 ejecuta algoritmos complejos y mantiene comunicación remota.
+                    </p>
+                    <div class="bg-slate-800/50 p-4 rounded-lg space-y-3 text-sm">
+                        <h4 class="font-bold text-slate-200">ESP32: capacidades clave</h4>
+                        <ul class="grid grid-cols-2 gap-x-4 gap-y-1 text-slate-400">
+                            <li><i class="fas fa-microchip text-quantum-teal mr-2"></i>CPU Dual-Core @ 240 MHz</li>
+                            <li><i class="fas fa-wifi text-quantum-teal mr-2"></i>Wi-Fi + Bluetooth</li>
+                            <li><i class="fas fa-sitemap text-quantum-teal mr-2"></i>34 GPIOs</li>
+                            <li><i class="fas fa-bolt text-quantum-teal mr-2"></i>Bajo consumo</li>
+                            <li><i class="fas fa-shield-alt text-quantum-teal mr-2"></i>Seguridad HW</li>
+                            <li><i class="fas fa-chart-line text-quantum-teal mr-2"></i>ADC 12-bit</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Almacenamiento -->
+            <div class="quantum-card p-6 md:p-8">
+                <h3 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-atomic-blue to-plasma-purple mb-2 text-center">
+                    Almacenamiento de Energía: La Reserva
+                </h3>
+                <p class="text-slate-400 mb-6 text-center max-w-3xl mx-auto">
+                    Haz clic en una barra para explorar cada tecnología.
+                </p>
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+                    <div class="lg:col-span-3">
+                        <div class="chart-container">
+                            <canvas id="batteryChart"></canvas>
+                        </div>
+                    </div>
+                    <div id="battery-details" class="lg:col-span-2 bg-slate-800/50 p-4 rounded-lg min-h-[200px]"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Baterías Avanzadas -->
+        <section id="baterias-avanzadas" class="content-section">
+            <div class="text-center mb-16">
+                <div class="inline-block p-3 rounded-full bg-slate-800 mb-6">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-quantum-green to-quantum-teal flex items-center justify-center">
+                        <i class="fas fa-battery-full text-white text-2xl"></i>
+                    </div>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    Baterías Avanzadas y su Impacto en el Pistón
+                </h2>
+                <p class="max-w-3xl mx-auto text-lg text-slate-400">
+                    La vida útil de una batería depende de la profundidad de descarga y la química. Aquí se compara.
+                </p>
+            </div>
+            <div class="quantum-card p-6 md:p-8">
+                <h3 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-quantum-teal to-atomic-blue mb-4 text-center">
+                    Vida Útil vs. Profundidad de Descarga
+                </h3>
+                <div class="chart-container">
+                    <canvas id="cycleLifeChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Flujo Avanzado -->
+        <section id="flujo-energia-avanzado" class="content-section">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    Componentes Sofisticados para el Flujo de Energía
+                </h2>
+                <p class="max-w-3xl mx-auto text-lg text-slate-400">
+                    Evolución de componentes estándar a avanzados para mayor precisión y eficiencia.
+                </p>
+            </div>
+            <div class="quantum-card p-6 md:p-8">
+                <h3 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-quantum-teal to-atomic-blue mb-4 text-center">
+                    Comparativa: Estándar vs. Avanzado
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 text-sm font-semibold text-slate-200">Característica</th>
+                                <th class="py-3 px-4 text-sm font-semibold text-slate-200">Estándar (MVP)</th>
+                                <th class="py-3 px-4 text-sm font-semibold text-slate-200">Avanzado (Escalabilidad)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-slate-400">
+                            <tr>
+                                <td class="py-3 px-4 border-b border-slate-700 font-semibold">Eficiencia</td>
+                                <td class="py-3 px-4 border-b border-slate-700">Hasta 98 %</td>
+                                <td class="py-3 px-4 border-b border-slate-700">98–99 %+ (SiC/GaN)</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 border-b border-slate-700 font-semibold">Bidireccional</td>
+                                <td class="py-3 px-4 border-b border-slate-700">Limitado</td>
+                                <td class="py-3 px-4 border-b border-slate-700">Total</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 border-b border-slate-700 font-semibold">Frecuencia</td>
+                                <td class="py-3 px-4 border-b border-slate-700">Baja/moderada</td>
+                                <td class="py-3 px-4 border-b border-slate-700">Alta (kHz)</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 border-b border-slate-700 font-semibold">Costo/Beneficio</td>
+                                <td class="py-3 px-4 border-b border-slate-700"><span class="text-quantum-green font-bold">Alto</span></td>
+                                <td class="py-3 px-4 border-b border-slate-700"><span class="text-energy-amber font-bold">Moderado</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 font-semibold">Disponibilidad</td>
+                                <td class="py-3 px-4"><span class="text-quantum-green font-bold">Fácil</span></td>
+                                <td class="py-3 px-4"><span class="text-energy-amber font-bold">Moderada</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Power Output -->
+        <section id="power-output" class="content-section">
+            <div class="text-center mb-16">
+                <div class="inline-block p-3 rounded-full bg-slate-800 mb-6">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-fusion-red to-energy-amber flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-2xl"></i>
+                    </div>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    Salida de Potencia de la IPU
+                </h2>
+                <p class="max-w-3xl mx-auto text-lg text-slate-400">
+                    Visualización en tiempo real de la salida de potencia de la IPU, mostrando la capacidad de respuesta del sistema a las demandas de energía.
+                </p>
+            </div>
+            <div class="quantum-card p-6 md:p-8">
+                <h3 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-atomic-blue to-plasma-purple mb-4 text-center">
+                    Curva de Potencia en Tiempo Real
+                </h3>
+                <div class="chart-container">
+                    <canvas id="powerOutputChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Desafíos y Futuro -->
+        <section id="desafios" class="content-section">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    Desafíos y Oportunidades Futuras
+                </h2>
+                <p class="max-w-3xl mx-auto text-lg text-slate-400">
+                    La IPU enfrenta retos técnicos, pero su potencial para transformar el sistema energético es enorme.
+                </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="quantum-card p-6">
+                    <h3 class="text-xl font-bold text-fusion-red mb-4 flex items-center">
+                        <i class="fas fa-exclamation-triangle mr-3"></i>Desafíos
+                    </h3>
+                    <ul class="space-y-3 text-slate-400 text-sm">
+                        <li class="flex"><i class="fas fa-thermometer-half text-fusion-red mr-2 mt-1"></i><span><strong>Gestión térmica:</strong> disipar el calor de alta potencia.</span></li>
+                        <li class="flex"><i class="fas fa-cogs text-fusion-red mr-2 mt-1"></i><span><strong>Degradación:</strong> ciclos rápidos estresan componentes.</span></li>
+                        <li class="flex"><i class="fas fa-bolt text-fusion-red mr-2 mt-1"></i><span><strong>Eficiencia de pulso:</strong> minimizar pérdidas en micro-segundos.</span></li>
+                        <li class="flex"><i class="fas fa-shield-alt text-fusion-red mr-2 mt-1"></i><span><strong>Seguridad:</strong> proteger ante picos masivos.</span></li>
+                    </ul>
+                </div>
+                <div class="quantum-card p-6">
+                    <h3 class="text-xl font-bold text-quantum-green mb-4 flex items-center">
+                        <i class="fas fa-rocket mr-3"></i>Oportunidades
+                    </h3>
+                    <ul class="space-y-3 text-slate-400 text-sm">
+                        <li class="flex"><i class="fas fa-network-wired text-quantum-green mr-2 mt-1"></i><span>Estabilidad de red y servicios auxiliares.</span></li>
+                        <li class="flex"><i class="fas fa-gem text-quantum-green mr-2 mt-1"></i><span>Semiconductores WBG (SiC/GaN) → mayor eficiencia.</span></li>
+                        <li class="flex"><i class="fas fa-brain text-quantum-green mr-2 mt-1"></i><span>IA/ML para control predictivo.</span></li>
+                        <li class="flex"><i class="fas fa-puzzle-piece text-quantum-green mr-2 mt-1"></i><span>Diseño modular escalable.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 mt-12 border-t border-slate-800">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm">
+            <p>Panel Interactivo de la Unidad de Potencia Inteligente (IPU).</p>
+            <p>Basado en el informe técnico de componentes para sistemas fotovoltaicos.</p>
+        </div>
+    </footer>
+
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+            const data = {
+                "componentData": {
+                    "inversor": {
+                        "details": "<strong>Función:</strong> Convierte CC a CA.<br><strong>Eficiencia:</strong> Hasta 98 %.",
+                        "efficiency": 98
+                    },
+                    "controlador": {
+                        "details": "<strong>Función:</strong> Protege la batería.<br><strong>Eficiencia:</strong> Hasta 99 %.",
+                        "efficiency": 99
+                    },
+                    "convertidor": {
+                        "details": "<strong>Función:</strong> Ajusta voltaje CC.<br><strong>Eficiencia:</strong> Hasta 97 %.",
+                        "efficiency": 97
+                    }
+                },
+                "batteryData": {
+                    "labels": ["LiFePO4", "NMC", "LTO", "Ión-Sodio", "Plomo-Ácido", "Flujo"],
+                    "datasets": [
+                        { "label": "Densidad (Wh/kg)", "data": [175, 220, 70, 150, 40, 28], "backgroundColor": "#39D3BB" },
+                        { "label": "Ciclos", "data": [4500, 1500, 10000, 2000, 650, 12500], "backgroundColor": "#F1E05A" },
+                        { "label": "Eficiencia (%)", "data": [92, 90, 95, 90, 80, 78], "backgroundColor": "#58A6FF" }
+                    ],
+                    "details": [
+                        { "title": "LiFePO4 (Litio-Ferrofosfato)", "text": "<strong>Ventajas:</strong> Muy segura, larga vida útil (más de 4000 ciclos), buena estabilidad térmica.<br><strong>Desventajas:</strong> Menor densidad energética que NMC." },
+                        { "title": "NMC (Níquel-Manganeso-Cobalto)", "text": "<strong>Ventajas:</strong> Alta densidad energética, comúnmente usada en vehículos eléctricos.<br><strong>Desventajas:</strong> Mayor costo y menor vida útil que LiFePO4." },
+                        { "title": "LTO (Titanato de Litio)", "text": "<strong>Ventajas:</strong> Vida útil extremadamente larga (más de 10,000 ciclos), carga y descarga muy rápidas.<br><strong>Desventajas:</strong> Baja densidad energética y alto costo." },
+                        { "title": "Ión-Sodio", "text": "<strong>Ventajas:</strong> Abundante y de bajo costo, buen rendimiento en bajas temperaturas.<br><strong>Desventajas:</strong> Menor densidad energética que las baterías de litio." },
+                        { "title": "Plomo-Ácido", "text": "<strong>Ventajas:</strong> Tecnología madura y de bajo costo.<br><strong>Desventajas:</strong> Corta vida útil, baja densidad energética, contiene materiales tóxicos." },
+                        { "title": "Batería de Flujo", "text": "<strong>Ventajas:</strong> Larga vida útil (más de 10,000 ciclos), escalabilidad independiente de potencia y energía.<br><strong>Desventajas:</strong> Baja densidad energética y complejidad del sistema." }
+                    ]
+                },
+                "cycleData": {
+                    "labels": ["20%", "40%", "60%", "80%", "100%"],
+                    "datasets": [
+                        { "label": "LiFePO4", "data": [10000, 8000, 6000, 4500, 3000], "borderColor": "#39D3BB", "backgroundColor": "rgba(57,211,187,.2)", "tension": 0.3, "fill": true },
+                        { "label": "NMC", "data": [4000, 3000, 2000, 1500, 1000], "borderColor": "#F1E05A", "backgroundColor": "rgba(241,224,90,.2)", "tension": 0.3, "fill": true },
+                        { "label": "LTO", "data": [25000, 20000, 18000, 15000, 10000], "borderColor": "#58A6FF", "backgroundColor": "rgba(88,166,255,.2)", "tension": 0.3, "fill": true }
+                    ]
+                },
+                "powerOutputData": {
+                    "labels": [],
+                    "datasets": [
+                        {
+                            "label": "Potencia (kW)",
+                            "data": [],
+                            "borderColor": "#FF7B72",
+                            "backgroundColor": "rgba(255, 123, 114, 0.2)",
+                            "fill": true,
+                            "tension": 0.4
+                        }
+                    ]
+                }
+            };
+
+            /* ---------- Navegación ---------- */
+            const navLinks = document.querySelectorAll('.nav-link, .nav-link-mobile');
+            const sections = document.querySelectorAll('.content-section');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const mobileBtn = document.getElementById('mobile-menu-button');
+
+            function showSection(id) {
+                sections.forEach(s => s.classList.toggle('active', s.id === id));
+                navLinks.forEach(l => {
+                    const isActive = l.getAttribute('href') === `#${id}`;
+                    if (l.classList.contains('nav-link')) {
+                        l.classList.toggle('active', isActive);
+                    } else {
+                        l.classList.toggle('bg-slate-700', isActive);
+                    }
+                });
+                mobileMenu.classList.add('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            navLinks.forEach(l => l.addEventListener('click', e => {
+                e.preventDefault();
+                showSection(l.getAttribute('href').slice(1));
+            }));
+            mobileBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+
+            /* ---------- Componentes ---------- */
+            const { componentData } = data;
+            const compBtns = document.querySelectorAll('.component-btn');
+            const compDetails = document.getElementById('component-details');
+            let effChart;
+
+            function updateCompView(key) {
+                compBtns.forEach(b => b.classList.toggle('active', b.dataset.component === key));
+                const d = componentData[key];
+                compDetails.innerHTML = d.details;
+                if (effChart) {
+                    effChart.data.labels = [key.charAt(0).toUpperCase() + key.slice(1)];
+                    effChart.data.datasets[0].data = [d.efficiency];
+                    effChart.update();
+                }
+            }
+
+            function createEffChart() {
+                const ctx = document.getElementById('efficiencyChart');
+                if (!ctx) return;
+                effChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: [], datasets: [{ label: 'Eficiencia (%)', data: [], backgroundColor: ['#58A6FF'], borderWidth: 0, barThickness: 40 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                        scales: { x: { min: 85, max: 100, grid: { color: 'rgba(255,255,255,.1)' }, ticks: { color: '#8B949E' } }, y: { display: false } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            compBtns.forEach(b => b.addEventListener('click', () => updateCompView(b.dataset.component)));
+
+            /* ---------- Baterías ---------- */
+            const { batteryData } = data;
+            const batDet = document.getElementById('battery-details');
+            let batChart;
+
+            function updateBatDetails(i) {
+                const d = batteryData.details[i];
+                batDet.innerHTML = `<h4 class="font-bold text-lg text-slate-200 mb-2">${d.title}</h4><p class="text-sm text-slate-400">${d.text}</p>`;
+            }
+
+            function createBatChart() {
+                const ctx = document.getElementById('batteryChart');
+                if (!ctx) return;
+                batChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: batteryData,
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.1)' }, ticks: { color: '#8B949E' } }, x: { ticks: { color: '#8B949E' } } },
+                        plugins: { legend: { labels: { color: '#8B949E' } }, tooltip: { mode: 'index' } },
+                        onClick: (_, els) => els.length && updateBatDetails(els[0].index)
+                    }
+                });
+            }
+
+            /* ---------- Vida útil vs DoD ---------- */
+            const { cycleData } = data;
+            function createCycleChart() {
+                const ctx = document.getElementById('cycleLifeChart');
+                if (!ctx) return;
+                new Chart(ctx, {
+                    type: 'line',
+                    data: cycleData,
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            x: { title: { display: true, text: 'Profundidad de Descarga', color: '#8B949E' }, ticks: { color: '#8B949E' } },
+                            y: { title: { display: true, text: 'Ciclos de Vida', color: '#8B949E' }, ticks: { color: '#8B949E' } }
+                        },
+                        plugins: { legend: { labels: { color: '#8B949E' } } }
+                    }
+                });
+            }
+
+            /* ---------- Power Output Chart ---------- */
+            const { powerOutputData } = data;
+            let powerOutputChart;
+
+            function createPowerOutputChart() {
+                const ctx = document.getElementById('powerOutputChart');
+                if (!ctx) return;
+
+                powerOutputChart = new Chart(ctx, {
+                    type: 'line',
+                    data: powerOutputData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'second'
+                                },
+                                grid: {
+                                    color: 'rgba(255,255,255,.1)'
+                                },
+                                ticks: {
+                                    color: '#8B949E'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(255,255,255,.1)'
+                                },
+                                ticks: {
+                                    color: '#8B949E'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#8B949E'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                let lastValue = 50;
+                setInterval(() => {
+                    const now = new Date();
+                    const change = (Math.random() - 0.5) * 10;
+                    lastValue = Math.max(0, Math.min(100, lastValue + change));
+
+                    powerOutputData.labels.push(now);
+                    powerOutputData.datasets[0].data.push(lastValue);
+
+                    if (powerOutputData.labels.length > 30) {
+                        powerOutputData.labels.shift();
+                        powerOutputData.datasets[0].data.shift();
+                    }
+
+                    powerOutputChart.update();
+                }, 1500);
+            }
+
+            /* ---------- Tooltips ---------- */
+            const tooltip = document.getElementById('tooltip');
+            document.querySelectorAll('.diagram-block').forEach(block => {
+                block.addEventListener('mouseenter', e => {
+                    tooltip.textContent = e.target.dataset.tooltip || '';
+                    tooltip.style.display = 'block';
+                    const r = e.target.getBoundingClientRect();
+                    tooltip.style.left = `${r.left}px`;
+                    tooltip.style.top = `${r.top - tooltip.offsetHeight - 8}px`;
+                });
+                block.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+            });
+
+            /* ---------- Pistón Animation ---------- */
+            const rod = document.getElementById('piston-rod');
+            const head = document.getElementById('piston-head');
+            const charge = document.getElementById('capacitor-charge');
+            const magnetic = document.getElementById('magnetic-field');
+            const sparkEl = document.getElementById('spark');
+            const wave = document.getElementById('energy-wave');
+            const level = document.getElementById('energy-level');
+            const capState = document.getElementById('capacitor-state');
+            const magState = document.getElementById('magnetic-state');
+
+let step = 0;
+function runAnimation() {
+    const steps = [
+        () => { // Charging
+            charge.style.height = '100%';
+            rod.style.top = '110px';
+            head.style.top = '180px';
+            level.style.width = '30%';
+            capState.textContent = 'Cargando Capacitor';
+            magState.textContent = 'Inactivo';
+            magnetic.classList.remove('active');
+        },
+        () => { // Full Charge
+            level.style.width = '100%';
+            capState.textContent = 'Capacitor Lleno (1000V)';
+        },
+        () => { // Discharging
+            charge.style.height = '40%';
+            rod.style.top = '60px';
+            head.style.top = '90px';
+            magnetic.classList.add('active');
+            level.style.width = '65%';
+            capState.textContent = 'Descargando en Inductor';
+            magState.textContent = 'Campo Magnético en Expansión';
+        },
+        () => { // Max Field
+            level.style.width = '40%';
+            magState.textContent = 'Campo Magnético Máximo';
+        },
+        () => { // Pulse
+            charge.style.height = '0%';
+            rod.style.top = '10px';
+            head.style.top = '40px';
+            magnetic.classList.remove('active');
+            sparkEl.style.opacity = '1';
+            sparkEl.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scale(1.8)`;
+            wave.style.opacity = '1';
+            wave.style.transform = 'scale(1.8)';
+            level.style.width = '100%';
+            level.style.background = 'linear-gradient(90deg, #ef4444, #fef08a)';
+            capState.textContent = 'Descarga Completa';
+            magState.textContent = '¡Pulso de Potencia Liberado!';
+        },
+        () => { // Reset
+            sparkEl.style.opacity = '0';
+            wave.style.opacity = '0';
+            wave.style.transform = 'scale(0)';
+            level.style.width = '0%';
+            level.style.background = 'linear-gradient(90deg, var(--atomic-blue), var(--plasma-purple))';
+            capState.textContent = 'Iniciando Nuevo Ciclo';
+            magState.textContent = 'Campo Colapsado';
+        }
+    ];
+    steps[step]();
+    step = (step + 1) % steps.length;
+}
+
+            /* ---------- Init ---------- */
+            showSection('inicio');
+            createEffChart();
+            updateCompView('inversor');
+            createBatChart();
+            updateBatDetails(0);
+            createCycleChart();
+            createPowerOutputChart();
+            if (rod) {
+                setInterval(runAnimation, 2000);
+
+                document.querySelectorAll('.diagram-block').forEach(block => {
+                    block.addEventListener('mouseenter', () => {
+                        if (block.dataset.tooltip) {
+                            tooltip.textContent = block.dataset.tooltip;
+                            tooltip.style.display = 'block';
+                            const r = block.getBoundingClientRect();
+                            tooltip.style.left = `${r.left}px`;
+                            tooltip.style.top = `${r.top - tooltip.offsetHeight - 8}px`;
+                        }
+                    });
+                    block.addEventListener('mouseleave', () => {
+                        tooltip.style.display = 'none';
+                    });
+                });
+            }
+        });
+</script>
+</body>
+</html>
