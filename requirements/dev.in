@@ -1,5 +1,5 @@
 # High-level dependencies for development, linting, and testing.
--c requirements.txt
+-c base.txt
 
 # Used to compile .in files into .txt files.
 pip-tools
