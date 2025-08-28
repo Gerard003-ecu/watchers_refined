@@ -14,7 +14,9 @@ COLOR_NC='\033[0m' # No Color
 
 # --- Instalación de Herramientas ---
 echo -e "${COLOR_INFO}Asegurando que las herramientas de auditoría estén instaladas...${COLOR_NC}"
-pip install --quiet pip-tools pipreqs pip-audit
+# Instalar pipreqs y pip-audit usando uv pip install en el entorno virtual activo
+# uv ya debe estar en el PATH del sistema
+uv pip install --quiet pipreqs pip-audit
 
 # --- Variables de Resumen ---
 services_audited=0
@@ -25,11 +27,11 @@ sync_errors=0
 echo -e "\n${COLOR_INFO}--- Iniciando Auditoría de Dependencias ---${COLOR_NC}"
 
 # --- Búsqueda de archivos requirements.in ---
-# Usamos process substitution para evitar que el bucle while se ejecute en una subshell,
-# lo que perdería los valores de los contadores.
+# Excluir el directorio watchers_env, venv y el directorio requirements/
 while IFS= read -r req_in_file; do
     ((services_audited++))
     service_dir=$(dirname "$req_in_file")
+    # Limpiar el nombre del servicio para el informe
     service_name=$(echo "$service_dir" | sed 's|^\./||')
     req_txt_file="$service_dir/requirements.txt"
 
@@ -42,7 +44,8 @@ while IFS= read -r req_in_file; do
 
     # Generar un requirements.txt temporal con pipreqs
     # Usamos --force para sobrescribir si ya existe
-    pipreqs --force --savepath "$service_dir/requirements.pipreqs.txt" "$service_dir" > /dev/null 2>&1
+    # pipreqs debe ejecutarse en el contexto del directorio del servicio
+    (cd "$service_dir" && pipreqs --force --savepath "requirements.pipreqs.txt" . > /dev/null 2>&1)
 
     # Comparar requirements.in con el archivo generado por pipreqs
     # Leemos cada línea de requirements.in, extraemos el nombre del paquete y lo buscamos
@@ -50,8 +53,8 @@ while IFS= read -r req_in_file; do
         # Extraer el nombre del paquete (ignorando versiones, extras, etc.)
         pkg_name=$(echo "$dep" | sed -E 's/([a-zA-Z0-9\-_]+).*/\1/')
 
-        # Ignorar líneas vacías o comentarios
-        if [[ -z "$pkg_name" || "$pkg_name" == \#* ]]; then
+        # Ignorar líneas vacías, comentarios o líneas de restricciones (-c)
+        if [[ -z "$pkg_name" || "$pkg_name" == \#* || "$pkg_name" == "-c" ]]; then
             continue
         fi
 
@@ -68,16 +71,17 @@ while IFS= read -r req_in_file; do
     # --- 2. Análisis de Seguridad (Vulnerabilidades) ---
     echo -e "${COLOR_INFO}--- 2. Analizando vulnerabilidades de seguridad...${COLOR_NC}"
 
-    # a. Verificar que requirements.txt exista y esté actualizado
+    # a. Verificar que requirements.txt exista y esté actualizado con uv pip compile --check
     if [ ! -f "$req_txt_file" ]; then
-        echo -e "${COLOR_ERROR}[ERROR CRÍTICO] $service_name: No se encontró requirements.txt.${COLOR_NC}"
+        echo -e "${COLOR_ERROR}[ERROR CRÍTICO] $service_name: No se encontró requirements.txt en $service_dir.${COLOR_NC}"
         ((sync_errors++))
         continue # Saltar al siguiente servicio
     fi
 
-    # Usamos pip-compile --dry-run para verificar consistencia. La salida de error indica desactualización.
-    if ! pip-compile --dry-run "$req_in_file" --output-file=- > /dev/null 2>&1; then
-        echo -e "${COLOR_ERROR}[ERROR CRÍTICO] $service_name: requirements.txt está desactualizado. Ejecute 'pip-compile $req_in_file'.${COLOR_NC}"
+    # Usamos uv pip compile --check para verificar consistencia.
+    # Se añade --constraint requirements/base.txt para que la verificación use las mismas restricciones que la compilación
+    if ! uv pip compile --check "$req_in_file" --constraint requirements/base.txt > /dev/null 2>&1; then
+        echo -e "${COLOR_ERROR}[ERROR CRÍTICO] $service_name: requirements.txt está desactualizado. Ejecute 'uv pip compile $req_in_file --constraint requirements/base.txt'.${COLOR_NC}"
         ((sync_errors++))
         continue # Saltar al siguiente servicio
     fi
@@ -94,7 +98,7 @@ while IFS= read -r req_in_file; do
         echo -e "${COLOR_SUCCESS}[OK] $service_name: No se encontraron vulnerabilidades.${COLOR_NC}"
     fi
 
-done < <(find . -type f -name "requirements.in" -not -path "./.venv/*" -not -path "./venv/*" -not -path "./watchers_env/*")
+done < <(find . -type f -name "requirements.in" -not -path "./watchers_env/*" -not -path "./venv/*" -not -path "./requirements/*")
 
 # --- Informe Final ---
 echo -e "\n${COLOR_INFO}=======================================================================${COLOR_NC}"
