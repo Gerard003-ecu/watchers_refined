@@ -9,9 +9,12 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /app
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-# Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+# Instalar uv
+RUN apt-get update && apt-get install -y curl && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Añadir uv al PATH
+ENV PATH="/root/.cargo/bin:$PATH"
 
 # Crear un usuario y grupo no-root 'appuser' con UID/GID fijos
 RUN groupadd -r appgroup -g 1001 && \
@@ -19,7 +22,7 @@ RUN groupadd -r appgroup -g 1001 && \
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
 COPY watchers/watchers_tools/watchers_wave/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip sync requirements.txt
 
 # Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
 COPY watchers/ /app/watchers/

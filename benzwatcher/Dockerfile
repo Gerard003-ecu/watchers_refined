@@ -3,9 +3,17 @@ FROM python:3.9-slim
 # Establecer directorio de trabajo
 WORKDIR /app/benzwatcher
 
+# Instalar uv
+RUN apt-get update && apt-get install -y curl && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    apt-get remove -y curl && apt-get clean
+
+# Añadir uv al PATH
+ENV PATH="/root/.cargo/bin:$PATH"
+
 # Copiar requirements.txt y luego instalar dependencias
 COPY benzwatcher/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip sync requirements.txt
 
 # Copiar el resto de los archivos
 COPY . .

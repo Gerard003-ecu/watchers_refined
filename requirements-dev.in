@@ -3,6 +3,7 @@
 
 # Used to compile .in files into .txt files.
 pip-tools
+uv
 
 # Testing framework and plugins
 pytest
