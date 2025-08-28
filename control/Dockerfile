@@ -9,19 +9,23 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /app
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-# Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+# Instalar uv
+RUN apt-get update && apt-get install -y curl \
     libgl1-mesa-glx \
     libglib2.0-0 \
     libglib2.0-dev \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && rm -rf /var/lib/apt/lists/*
+
+# Añadir uv al PATH
+ENV PATH="/root/.cargo/bin:$PATH"
 
 # Crear un usuario y grupo no-root
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
 COPY control/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip sync requirements.txt
 
 # Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
 # Esto asegura que la estructura de paquetes se mantiene dentro del contenedor

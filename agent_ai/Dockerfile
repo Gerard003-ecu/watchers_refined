@@ -9,16 +9,20 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /app
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-# Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y --no-install-recommends curl build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Instalar uv
+RUN apt-get update && apt-get install -y curl && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    apt-get remove -y curl && apt-get clean
+
+# Añadir uv al PATH
+ENV PATH="/root/.cargo/bin:$PATH"
 
 # Crear un usuario y grupo no-root
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 # Copiar el fichero de requisitos específico del servicio y instalar dependencias
 COPY agent_ai/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip sync requirements.txt
 
 # Copiar los directorios de los paquetes necesarios desde el contexto de build (la raíz del proyecto)
 COPY agent_ai/ /app/agent_ai/

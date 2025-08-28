@@ -34,6 +34,7 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
+.hypothesis/
 
 # Archivos temporales
 *~

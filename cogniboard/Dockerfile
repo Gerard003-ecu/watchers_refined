@@ -5,13 +5,16 @@ FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# Instalar dependencias del sistema (curl para HEALTHCHECK)
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+# Instalar uv
+RUN apt-get update && apt-get install -y curl && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Añadir uv al PATH
+ENV PATH="/root/.cargo/bin:$PATH"
 
 # 3. Optimización de Caché de Dependencias:
 COPY cogniboard/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip sync requirements.txt
 
 # Copia el resto del código de la aplicación.
 COPY . .
