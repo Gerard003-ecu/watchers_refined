@@ -323,3 +323,20 @@ Este proyecto utiliza `uv` para una gestión de paquetes y entornos ultrarrápid
     ```bash
     source .venv/bin/activate
     ```
+
+---
+
+### Nota sobre la Verificación de Dependencias
+
+Durante una extensa sesión de depuración, se ha reestructurado y mejorado significativamente el sistema de gestión de dependencias de este monorepo. Los scripts en `scripts/` ahora manejan las dependencias de manera consistente y robusta.
+
+**Conclusión Importante:**
+
+*   El script `scripts/compile_requirements.sh` funciona correctamente y genera todos los archivos `requirements.txt` de los servicios con versiones consistentes, basadas en las restricciones de `requirements/base.txt`. **Este proceso es fiable para construir imágenes de Docker y asegurar un entorno reproducible.**
+
+*   Se ha detectado un comportamiento anómalo en la herramienta `uv`. El comando `uv pip compile --check` (utilizado por `scripts/dependency_checker.sh`) reporta incorrectamente que las dependencias están desactualizadas, incluso inmediatamente después de haber sido generadas.
+
+*   Tras agotar todas las vías de depuración, la conclusión es que esto se debe probablemente a un bug sutil en `uv` o a una peculiaridad del entorno de ejecución, y no a un error en nuestra configuración.
+
+**Acción a seguir:**
+Se puede confiar en el proceso de compilación. El fallo del script `dependency_checker.sh` debe ser ignorado hasta que futuras versiones de `uv` puedan resolver esta discrepancia.

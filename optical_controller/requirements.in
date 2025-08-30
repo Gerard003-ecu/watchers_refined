@@ -1,2 +1,1 @@
-numpy
-flask
+-c ../requirements/base.txt
