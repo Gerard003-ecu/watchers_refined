@@ -1,3 +1,4 @@
+-c ../requirements/base.txt
 fastapi
 uvicorn
 prometheus-client

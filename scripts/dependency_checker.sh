@@ -2,6 +2,12 @@
 
 # --- Verificación de Consistencia de Dependencias del Ecosistema Watchers ---
 
+# --- Configuración de Rutas ---
+# Obtener la ruta absoluta del directorio raíz del proyecto
+PROJECT_ROOT=$(pwd)
+# Obtener la ruta absoluta del archivo base.txt
+BASE_REQUIREMENTS_TXT="$PROJECT_ROOT/requirements/base.txt"
+
 # Contadores para el resumen
 consistent_services=0
 inconsistent_services=0
@@ -14,7 +20,7 @@ echo ""
 while IFS= read -r req_in_file; do
     service_dir=$(dirname "$req_in_file")
     # Limpiar el nombre del servicio para el informe
-    service_name=$(echo "$service_dir" | sed 's|^\./||')
+    service_name=$(echo "$service_dir" | sed 's|^./||')
     req_txt_file="$service_dir/requirements.txt"
 
     # 1. Verificar si requirements.txt existe
@@ -26,9 +32,9 @@ while IFS= read -r req_in_file; do
 
     # 2. Usar uv pip compile --check para verificar la consistencia
     # Se redirige la salida a /dev/null para no ensuciar el informe
-    # Se añade --constraint requirements/base.txt para que la verificación use las mismas restricciones que la compilación
-    if ! uv pip compile --check --quiet "$req_in_file" --constraint requirements/base.txt >/dev/null 2>&1; then
-        echo "[ ! ] $service_name: ERROR - requirements.txt está desactualizado. Por favor, ejecute 'uv pip compile $req_in_file --constraint requirements/base.txt'."
+    # La restricción se lee desde el propio archivo .in
+    if ! uv pip compile --check --quiet "$req_in_file" >/dev/null 2>&1; then
+        echo "[ ! ] $service_name: ERROR - requirements.txt está desactualizado. Por favor, ejecute 'uv pip compile $req_in_file'."
         ((inconsistent_services++))
     else
         echo "[ ✓ ] $service_name: OK"

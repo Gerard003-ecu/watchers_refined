@@ -1,4 +1,2 @@
-flask
-requests>=2.32.4
-numpy
+-c ../../../requirements/base.txt
 scipy

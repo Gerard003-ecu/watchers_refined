@@ -1,6 +1,4 @@
+-c ../requirements/base.txt
 dash>=3.2.0
 dash-bootstrap-components
 plotly
-requests
-numpy
-flask

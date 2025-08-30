@@ -1,2 +1,2 @@
-numpy
+-c ../../../../requirements/base.txt
 scipy
