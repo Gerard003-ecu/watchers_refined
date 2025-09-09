@@ -342,19 +342,30 @@ class ToroidalField:
         return energy_density_map
 
     def apply_wave_dynamics_step(self, dt: float, beta: float):
-        """Avanza un paso en la dinámica de la onda (propagación e interferencia).
+        """Avanza un paso en la dinámica de la onda.
 
-        Analogía: Este método es el corazón de la simulación. Simula cómo las
-        ondas se propagan a través de la grilla (advección), interactúan con
-        sus vecinos (acoplamiento/interferencia) y pierden energía con el
-        tiempo (disipación).
+        Este método implementa una solución numérica de la Ecuación de Onda 2D
+        con disipación usando el método de diferencias finitas. Modela cómo las
+        ondas se propagan, interfieren y disipan energía.
 
-        Ecuación Conceptual: Resuelve numéricamente una Ecuación Diferencial
-        Parcial (PDE) para la evolución del campo de ondas ψ. Conceptualmente,
-        la ecuación es de la forma:
-        ∂ψ/∂t ≈ -α*∇ψ (prop) + β*(vecinos) (interf) - γ*ψ (disipación)
-        donde α es `propagation_coeffs`, β es el factor de acoplamiento y γ es
-        `dissipation_coeffs`.
+        Ecuación Física Implementada:
+        La ecuación diferencial parcial (PDE) que este método resuelve es:
+        ∂²ψ/∂t² = c²∇²ψ - γ(∂ψ/∂t)
+
+        Donde:
+        - ψ: Es el campo de ondas (amplitud y fase).
+        - c: Es la velocidad de propagación, relacionada con `propagation_coeffs`.
+        - ∇²: Es el operador Laplaciano, que representa la curvatura del campo.
+        - γ: Es el coeficiente de disipación, relacionado con `dissipation_coeffs`.
+
+        Correspondencia de la Implementación:
+        La solución numérica se descompone en los siguientes términos:
+        - `damped`: Corresponde al término de disipación (-γ(∂ψ/∂t)), que reduce
+          la amplitud de la onda con el tiempo.
+        - `advected`: Representa una parte del término de propagación (c²∇²ψ),
+          simulando el movimiento de la onda en una dirección.
+        - `coupled`: Representa otra parte del término de propagación (c²∇²ψ),
+          modelando la interacción (acoplamiento) con los nodos vecinos.
 
         Args:
             dt (float): Paso de tiempo para la integración numérica.

@@ -207,17 +207,29 @@ class AtomicPiston:
         logger.debug(f"Señal eléctrica: {voltage:.2f}V → Fuerza: {applied_force:.2f}N")
 
     def update_state(self, dt: float):
-        """Actualiza el estado físico del pistón para un intervalo de tiempo dt.
+        """Actualiza el estado del pistón resolviendo la ecuación del oscilador
+        armónico amortiguado y forzado mediante integración de Verlet.
 
-        Este método calcula la nueva posición, velocidad y aceleración del pistón
-        utilizando la integración de Verlet para mayor estabilidad numérica.
-        Considera las fuerzas internas (resorte y amortiguador) y cualquier
-        fuerza externa acumulada a través de `apply_force` o
-        `apply_electronic_signal`.
+        Ecuación Física Implementada:
+        Este método resuelve numéricamente la ecuación diferencial ordinaria (ODE)
+        fundamental para un sistema masa-resorte-amortiguador forzado:
+        m * d²x/dt² + c * dx/dt + k * x = F(t)
 
-        También actualiza el estado electrónico del sistema y registra
-        la energía y eficiencia. La fuerza externa acumulada se resetea
-        después de cada actualización.
+        Donde:
+        - m: Masa del pistón (`self.m`).
+        - c: Coeficiente de amortiguación (`self.c`).
+        - k: Constante elástica del resorte (`self.k`).
+        - x: Posición del pistón (`self.position`).
+        - F(t): Fuerza externa total aplicada (`self.last_applied_force`).
+
+        Correspondencia de la Implementación:
+        1. Se calcula la fuerza total sumando la fuerza externa (`F(t)`), la
+           fuerza del resorte (`-k*x`) y la fuerza de amortiguación (`-c*dx/dt`).
+        2. La aceleración (d²x/dt²) se obtiene de la fuerza total mediante la
+           segunda ley de Newton (a = F/m).
+        3. Se utiliza la fórmula de integración de Verlet para actualizar la
+           posición, lo que proporciona una solución estable y precisa para
+           este tipo de sistema físico.
 
         Args:
             dt: El paso de tiempo (delta t, en segundos) para la simulación.
