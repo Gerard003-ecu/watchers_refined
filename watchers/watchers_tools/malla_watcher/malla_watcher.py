@@ -363,7 +363,9 @@ def simular_paso_malla() -> None:
 
     Este método modela la malla como un sistema de osciladores armónicos
     acoplados. La ecuación de movimiento para cada oscilador 'i' se rige por:
-    m * d²x_i/dt² = Σ_j [k_mod * (x_j - x_i)] - b * dx_i/dt
+    ```latex
+    m \frac{d^2x_i}{dt^2} = \sum_{j \in vecinos} k_{\text{mod}}(q_i) (x_j - x_i) - b \frac{dx_i}{dt}
+    ```
     donde 'x' es la amplitud, 'k_mod' es el acoplamiento modulado por el
     campo externo, y 'b' es la amortiguación.
 
@@ -530,7 +532,12 @@ def calculate_flux(mesh: HexCylindricalMesh) -> float:
     integral de superficie del producto punto entre el campo vectorial y el
     vector normal a la superficie.
 
-    Φ = ∫_S F ⋅ dA
+    ```latex
+    \Phi = \int_S \vec{q} \cdot d\vec{A}
+    ```
+
+    La influencia que la malla ejerce de vuelta sobre `matriz_ecu` es
+    proporcional a la tasa de cambio de este flujo (`dΦ/dt`).
 
     Donde:
     - Φ es el flujo.

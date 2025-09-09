@@ -494,7 +494,9 @@ class AtomicPiston:
         movimiento del pistón usando un integrador Runge-Kutta de 4º orden.
 
         La EDO gobernante es:
-        m*x'' + c*x' + F_fricción_seca + k*x + ε*x³ = F_externa(t)
+        ```latex
+        m \frac{d^2x}{dt^2} + c \frac{dx}{dt} + kx + \epsilon x^3 + F_{\text{fricción}} = F_{\text{externa}}(t)
+        ```
 
         Interpretación Física de los Términos:
         - m*x'': Término de Inercia. Representa la resistencia del pistón a

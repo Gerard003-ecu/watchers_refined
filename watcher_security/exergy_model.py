@@ -1,13 +1,22 @@
 """
-Propósito:
-Cuantifica la capacidad útil de trabajo del sistema para priorizar acciones de
-seguridad mediante principios termodinámicos.
+Modelo de Exergía para la Homeostasis del Sistema Watcher Security.
 
-Métricas Operativas:
+Principio Físico:
+El monitoreo de la salud del sistema se fundamenta en la Segunda Ley de la
+Termodinámica, utilizando el concepto de Exergía (Ex). La exergía es la
+cantidad máxima de trabajo útil que se puede extraer de un sistema cuando
+alcanza el equilibrio con su entorno. La destrucción de exergía es una medida
+directa de la ineficiencia e irreversibilidad, sirviendo como un indicador
+robusto de anomalías o "enfermedad" en el sistema.
 
-- Entropía de Seguridad: Desorden en señales de monitoreo [Umbral: > 2.5 bits]
-- Pérdida de Exergía: Eficiencia termodinámica degradada [Umbral: > 15%]
-- Tiempo de Respuesta: Latencia en ejecutar protocolos [Umbral: < 200 ms]
+Ecuación Gobernante:
+La evolución de la salud del sistema se rige por la ecuación de balance de
+exergía:
+```latex
+\frac{dEx_{sistema}}{dt} = \sum \dot{Ex}_{entrada} - \sum \dot{Ex}_{salida} - \dot{Ex}_{destruida}
+```
+Este modelo calcula la exergía y sus componentes para cuantificar la
+capacidad útil de trabajo del sistema y priorizar acciones de seguridad.
 """
 
 import numpy as np

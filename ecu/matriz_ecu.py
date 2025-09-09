@@ -350,7 +350,9 @@ class ToroidalField:
 
         Ecuación Física Implementada:
         La ecuación diferencial parcial (PDE) que este método resuelve es:
-        ∂²ψ/∂t² = c²∇²ψ - γ(∂ψ/∂t)
+        ```latex
+        \frac{\partial^2 \psi}{\partial t^2} = c^2 \nabla^2 \psi - \gamma \frac{\partial \psi}{\partial t}
+        ```
 
         Donde:
         - ψ: Es el campo de ondas (amplitud y fase).
