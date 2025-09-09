@@ -16,6 +16,7 @@ La arquitectura del sistema está diseñada como un conjunto de microservicios q
 *   **`atomic_piston` (Resonador Mecánico / Actuador)**: Simula una unidad de potencia inteligente (IPU). Funciona como un actuador y un modelo de almacenamiento/liberación de energía mecánica.
 *   **`config_agent` (Arquitecto Topológico)**: Valida la estructura del ecosistema. Construye y verifica la Matriz de Interacción Central (MIC), asegurando la coherencia arquitectónica.
 *   **`watcher_security` (Sistema Inmunológico)**: Monitorea la homeostasis del sistema utilizando principios de termodinámica (Exergía) para detectar y reaccionar ante anomalías.
+*   **`malla_watcher` (Red Cristalina)**: Simula una malla hexagonal cilíndrica (`cilindro_grafenal`) como un sistema de osciladores acoplados. Modula su comportamiento en respuesta al campo de `matriz_ecu` y, a su vez, induce cambios en dicho campo, creando un bucle de retroalimentación complejo.
 
 ## 2. Fundamentos Físico-Matemáticos de los Modelos de Simulación
 
@@ -69,7 +70,63 @@ El método `update_state` en `atomic_piston/atomic_piston_service.py` resuelve e
 
 **Conclusión:** La implementación en `atomic_piston_service.py` es una simulación físicamente coherente del modelo de oscilador armónico forzado y amortiguado, utilizando métodos numéricos estándar para su resolución.
 
+### 2.3. `harmony_controller` - El Modelo de Excitación Resonante
+
+**Principio Físico:** Se modela como un **generador de funciones de onda controladas**. Su propósito es inyectar energía en `matriz_ecu` con patrones espaciotemporales específicos (frecuencia, amplitud, forma de onda) para excitar selectivamente los modos normales del sistema, análogo a un transductor piezoeléctrico en un experimento de cimática.
+
+**Ecuación Gobernante:** La salida del controlador, `F(t)`, que actúa como una fuerza externa sobre el campo `ψ`, se describe como una superposición de formas de onda. En su forma más simple, es una onda sinusoidal controlable:
+```latex
+F(x, y, t) = A(t) \sin(2\pi f(t) \cdot t + \phi(t)) \cdot G(x, y)
+```
+Donde:
+- `A(t)`, `f(t)`, y `\phi(t)` son la amplitud, frecuencia y fase, respectivamente. Estas son las variables de control ajustadas por `agent_ai` para sintonizar la resonancia.
+- `G(x, y)` es una función de distribución espacial que define dónde se aplica la fuerza en la `matriz_ecu`.
+
+**Análisis de la Implementación:** El método `generate_harmony_signal` en `control/harmony_controller.py` debe implementar esta ecuación. La lógica interna ajustará los parámetros `A`, `f`, y `\phi` basándose en las directivas recibidas del `agent_ai` para construir y emitir la señal de control hacia `matriz_ecu`.
+
+### 2.4. `watcher_security` - El Modelo de Homeostasis Termodinámica
+
+**Principio Físico:** El monitoreo de la salud del sistema se fundamenta en la **Segunda Ley de la Termodinámica**, utilizando el concepto de **Exergía (Ex)**. La exergía es la cantidad máxima de trabajo útil que se puede extraer de un sistema cuando alcanza el equilibrio con su entorno. La destrucción de exergía es una medida directa de la ineficiencia e irreversibilidad, sirviendo como un indicador robusto de anomalías o "enfermedad" en el sistema.
+
+**Ecuación Gobernante:** La evolución de la salud del sistema se rige por la **ecuación de balance de exergía**:
+```latex
+\frac{dEx_{sistema}}{dt} = \sum \dot{Ex}_{entrada} - \sum \dot{Ex}_{salida} - \dot{Ex}_{destruida}
+```
+Donde:
+- `\dot{Ex}_{entrada/salida}` son las tasas de transferencia de exergía asociadas a flujos de materia, calor o trabajo.
+- `\dot{Ex}_{destruida}` es la tasa de destrucción de exergía debido a procesos irreversibles (fricción, disipación, etc.).
+
+**Análisis de la Implementación:** El servicio `watcher_security` (específicamente en `watcher_security/exergy_model.py`) debe calcular `Ex}_{destruida}`. Un aumento súbito o una tendencia creciente en este valor indica una desviación del estado de operación homeostático (saludable), activando una alerta o una intervención correctiva. El modelo debe agregar las contribuciones de disipación de todos los componentes (ej. el término `γ` de `matriz_ecu` y el término `c` de `atomic_piston`) para estimar la destrucción total de exergía del ecosistema.
+
+### 2.5. `malla_watcher` - El Modelo de Red Cristalina Acoplada
+
+**Principio Físico:** Este microservicio modela el `cilindro_grafenal` como una **red de osciladores armónicos acoplados**, un modelo fundamental en la física del estado sólido para describir las vibraciones de una red cristalina (fonones). Adicionalmente, introduce un mecanismo de retroalimentación inspirado en la **Ley de Inducción de Faraday**.
+
+**Ecuaciones Gobernantes:**
+1.  **Dinámica de los Osciladores:** La evolución de la amplitud `x_i` de cada celda/oscilador `i` se rige por la ecuación de movimiento de un oscilador acoplado y amortiguado, resuelta numéricamente:
+    '''latex
+    m \frac{d^2x_i}{dt^2} = \sum_{j \in vecinos} k_{\text{mod}}(q_i) (x_j - x_i) - b \frac{dx_i}{dt}
+    '''
+    Donde:
+    -   `m` es la masa (asumida como 1).
+    -   El primer término es la **fuerza de acoplamiento** con los vecinos `j`. El coeficiente `k_mod` es el acoplamiento base (`PhosWave.C`) modulado por la magnitud del campo externo local `q_i` proveniente de `matriz_ecu`.
+    -   El segundo término es la **fuerza de amortiguación** (`Electron.D`).
+
+2.  **Retroalimentación Inductiva:** La malla ejerce una influencia sobre `matriz_ecu` análoga a una fuerza electromotriz inducida. Esta se basa en la tasa de cambio del flujo (`Φ`) del campo `q` a través de la superficie de la malla.
+    '''latex
+    \text{Influencia} \propto \frac{dΦ}{dt} \quad \text{donde} \quad Φ = \int_S \vec{q} \cdot dA}
+    '''
+    El flujo `Φ` se calcula como la suma de los productos punto del campo local `q_i` y el vector normal al área de cada celda.
+
+**Análisis de la Implementación:**
+-   La dinámica de los osciladores se implementa en `malla_watcher.py` dentro de la función `simular_paso_malla`, que utiliza una integración de Euler para actualizar la velocidad y amplitud de cada `Cell`.
+-   El acoplamiento modulado (`k_mod`) y la amortiguación (`b`) se corresponden con los parámetros de las clases `PhosWave` y `Electron`.
+-   El cálculo del flujo (`Φ`) se realiza en la función `calculate_flux`, y su derivada temporal (`dΦ/dt`) se calcula en `_calculate_flux_change` para luego ser enviada como influencia a `matriz_ecu` a través de `send_influence_to_torus`.
+
+**Conclusión:** La implementación en `malla_watcher` representa un sistema ciberfísico complejo, donde una estructura discreta (la malla) interactúa dinámicamente con un campo continuo (`matriz_ecu`), exhibiendo comportamiento emergente a través de un bucle de retroalimentación físicamente inspirado.
+
 ## 3. La Matriz de Interacción Central (MIC) como Topología
+
 
 La **Matriz de Interacción Central (MIC)**, definida en el fichero `config/ecosystem_topology.yml`, es más que una simple lista de permisos. Es una representación formal de la **topología de interacciones** del sistema, análoga a una matriz de adyacencia en la teoría de grafos. Define explícitamente qué canales de comunicación existen, modelando el sistema como un grafo dirigido donde los servicios son los nodos y los permisos son las aristas.
 
