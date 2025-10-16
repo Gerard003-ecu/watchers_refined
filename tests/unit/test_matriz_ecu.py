@@ -174,38 +174,6 @@ def test_aplicar_influencia_vector_invalido(campo_toroidal_test: ToroidalField, 
             assert np.array_equal(tf.campo_q[i], valor_original[i])
 
 
-def test_get_neighbors_conectividad_toroidal(campo_toroidal_test: ToroidalField):
-    """Test: Vecinos con wraparound toroidal."""
-    tf = campo_toroidal_test
-    vecinos_00 = tf.get_neighbors(0, 0)
-    expected_00 = [(2, 0), (1, 0), (0, 3), (0, 1)]
-    assert set(vecinos_00) == set(expected_00), "Error en vecinos de (0,0)"
-
-    vecinos_23 = tf.get_neighbors(2, 3)
-    expected_23 = [(1, 3), (0, 3), (2, 2), (2, 0)]
-    assert set(vecinos_23) == set(expected_23), "Error en vecinos de (2,3)"
-
-
-def test_calcular_gradiente_adaptativo(campo_toroidal_test: ToroidalField):
-    """Test: Cálculo de gradiente entre capas."""
-    tf = campo_toroidal_test
-    tf.aplicar_influencia(0, 1, 1, 3.0 + 4.0j, "test_grad1_capa0")
-    tf.aplicar_influencia(1, 1, 1, 0.0 - 6.0j, "test_grad1_capa1")
-
-    gradiente = tf.calcular_gradiente_adaptativo()
-    assert gradiente.shape == (1, 3, 4)
-
-    expected_diff_mag = np.abs((3.0 + 4.0j) - (0.0 - 6.0j))
-    assert gradiente[0, 1, 1] == pytest.approx(expected_diff_mag)
-    assert gradiente[0, 0, 0] == pytest.approx(0.0)
-
-
-def test_calcular_gradiente_sin_suficientes_capas():
-    """Test: Gradiente con menos de 2 capas."""
-    tf = ToroidalField(num_capas=1, num_rows=2, num_cols=2)
-    gradiente = tf.calcular_gradiente_adaptativo()
-    assert gradiente.size == 0
-    assert gradiente.shape == (0,)
 
 
 def test_get_energy_density_map(campo_toroidal_test: ToroidalField):
@@ -364,7 +332,7 @@ def test_endpoint_influence_invalido_datos(cliente_flask: FlaskClient):
     }
     respuesta = cliente_flask.post("/api/ecu/influence", json=payload_vec_err_len)
     assert respuesta.status_code == 400
-    assert "lista de 2 elementos" in respuesta.get_json()["message"].lower()
+    assert "formato de vector inválido" in respuesta.get_json()["message"].lower()
 
     payload_vec_err_type = {
         "capa": 0,

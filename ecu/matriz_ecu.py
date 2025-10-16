@@ -61,6 +61,11 @@ logger = setup_logging()
 # --- Funciones Auxiliares para Configuración ---
 
 
+def _is_complex_like(x: Any) -> bool:
+    """Verifica si un objeto es de tipo complejo o similar (como np.complex128)."""
+    return np.issubdtype(type(x), np.complexfloating) or isinstance(x, complex)
+
+
 def get_env_int(var_name: str, default: int) -> int:
     """Obtiene una variable de entorno como entero con fallback y logging."""
     try:
@@ -240,7 +245,7 @@ class ToroidalField:
                 self.num_cols - 1,
             )
             return False
-        if not isinstance(vector, complex):
+        if not _is_complex_like(vector):
             logger.error(
                 "Error al aplicar influencia de '%s': vector de influencia "
                 "inválido. Debe ser un número complejo. Recibido: %s",
@@ -273,42 +278,6 @@ class ToroidalField:
             )
             return False
 
-    def get_neighbors(self, row: int, col: int) -> List[Tuple[int, int]]:
-        """
-        Obtiene las coordenadas (row, col) de los 4 vecinos directos
-        (arriba, abajo, izquierda, derecha) de un nodo, aplicando
-        conectividad toroidal.
-        """
-        rows = np.array([row - 1, row + 1, row, row]) % self.num_rows
-        cols = np.array([col, col, col - 1, col + 1]) % self.num_cols
-        return list(zip(rows, cols, strict=False))
-
-    def calcular_gradiente_adaptativo(self) -> np.ndarray:
-        """
-        Calcula el gradiente adaptativo (diferencia de magnitud) entre
-        capas adyacentes. Puede interpretarse como una medida de la
-        "tensión" o "interferencia" entre capas de ondas.
-        """
-        if self.num_capas < 2:
-            logger.warning(
-                "Se necesita al menos 2 capas para calcular el gradiente entre capas."
-            )
-            return np.array([])
-
-        with self.lock:
-            campo_copia = [np.copy(capa) for capa in self.campo_q]
-
-        gradiente_entre_capas = np.zeros(
-            (self.num_capas - 1, self.num_rows, self.num_cols)
-        )
-        for i in range(self.num_capas - 1):
-            diferencia_vectorial = campo_copia[i] - campo_copia[i + 1]
-            magnitud_diferencia = np.abs(diferencia_vectorial)
-            gradiente_entre_capas[i] = magnitud_diferencia
-        logger.debug(
-            f"Gradiente entre capas calculado (shape: {gradiente_entre_capas.shape})"
-        )
-        return gradiente_entre_capas
 
     def get_energy_density_map(self) -> np.ndarray:
         """Genera un mapa de densidad de energía, análogo a los patrones de la cimática.
@@ -342,70 +311,65 @@ class ToroidalField:
         return energy_density_map
 
     def apply_wave_dynamics_step(self, dt: float, beta: float):
-        """Avanza un paso en la dinámica de la onda.
+        """
+        Avanza un paso en la dinámica de la onda usando un modelo de difusión
+        complejo de primer orden.
 
-        Este método implementa una solución numérica de la Ecuación de Onda 2D
-        con disipación usando el método de diferencias finitas. Modela cómo las
-        ondas se propagan, interfieren y disipan energía.
+        Este método implementa una solución numérica para una ecuación tipo
+        Schrödinger o de difusión compleja, que es de primer orden en el tiempo
+        y más estable para esta implementación.
 
-        Ecuación Física Implementada:
-        La ecuación diferencial parcial (PDE) que este método resuelve es:
-        ```latex
-        \frac{\partial^2 \psi}{\partial t^2} = c^2 \nabla^2 \psi - \gamma \frac{\partial \psi}{\partial t}
-        ```
+        Ecuación Física Implementada (Conceptual):
+        i ∂ψ/∂t = -α ∇²ψ - iγ ψ
+        ψ(t+dt) ≈ ψ(t) - i dt (-α ∇²ψ - iγ ψ) = ψ(t) + iα dt ∇²ψ - γ dt ψ
 
         Donde:
-        - ψ: Es el campo de ondas (amplitud y fase).
-        - c: Es la velocidad de propagación, relacionada con `propagation_coeffs`.
-        - ∇²: Es el operador Laplaciano, que representa la curvatura del campo.
-        - γ: Es el coeficiente de disipación, relacionado con `dissipation_coeffs`.
-
-        Correspondencia de la Implementación:
-        La solución numérica se descompone en los siguientes términos:
-        - `damped`: Corresponde al término de disipación (-γ(∂ψ/∂t)), que reduce
-          la amplitud de la onda con el tiempo.
-        - `advected`: Representa una parte del término de propagación (c²∇²ψ),
-          simulando el movimiento de la onda en una dirección.
-        - `coupled`: Representa otra parte del término de propagación (c²∇²ψ),
-          modelando la interacción (acoplamiento) con los nodos vecinos.
+        - ψ: Campo complejo.
+        - α: Coeficiente de propagación/difusión.
+        - γ: Coeficiente de disipación/atenuación.
+        - ∇²: Laplaciano discreto (suma de vecinos - 4 * centro).
 
         Args:
             dt (float): Paso de tiempo para la integración numérica.
-            beta (float): Factor de acoplamiento que controla la influencia
-                entre capas adyacentes.
+            beta (float): Factor de acoplamiento (no se usa en este modelo,
+                          pero se mantiene por compatibilidad de firma).
         """
+        with self.lock:
+            self.apply_wave_dynamics_step_internal(dt, beta)
+
+    def apply_wave_dynamics_step_internal(self, dt: float, beta: float):
+        """Lógica interna de la dinámica de onda, sin bloqueo."""
         if beta < 0:
             logger.warning(
                 "El factor beta (acoplamiento vertical) debería ser no negativo."
             )
 
-        with self.lock:
-            # Precalcular arrays para broadcasting
-            propagation_coeffs_array = np.array(self.propagation_coeffs)[
-                :, np.newaxis, np.newaxis
-            ]
-            dissipation_coeffs_array = np.array(self.dissipation_coeffs)[
-                :, np.newaxis, np.newaxis
-            ]
+        propagation_coeffs_array = np.array(self.propagation_coeffs)[
+            :, np.newaxis, np.newaxis
+        ]
+        dissipation_coeffs_array = np.array(self.dissipation_coeffs)[
+            :, np.newaxis, np.newaxis
+        ]
+        campo_3d = np.stack(self.campo_q)
 
-            # Crear array 3D para operaciones vectorizadas
-            campo_3d = np.stack(self.campo_q)
+        # Calcular los 4 vecinos para el Laplaciano simétrico
+        v_left = np.roll(campo_3d, 1, axis=2)
+        v_right = np.roll(campo_3d, -1, axis=2)
+        v_up = np.roll(campo_3d, 1, axis=1)
+        v_down = np.roll(campo_3d, -1, axis=1)
 
-            # Calcular vecinos con roll (condiciones toroidales)
-            v_left = np.roll(campo_3d, shift=1, axis=2)
-            v_up = np.roll(campo_3d, shift=1, axis=1)
-            v_down = np.roll(campo_3d, shift=-1, axis=1)
+        # Calcular el Laplaciano discreto
+        laplacian = v_left + v_right + v_up + v_down - 4 * campo_3d
 
-            # Cálculos vectorizados
-            damped = campo_3d * (1.0 - dissipation_coeffs_array * dt)
-            advected = propagation_coeffs_array * v_left * dt
-            coupled = beta * (v_up + v_down) * dt
+        # Aplicar el modelo de difusión complejo: ψ(t+dt) = ψ(t) + iα∇²ψ - γψ
+        # Nota: El término de acoplamiento beta no se usa aquí para mantener
+        # el modelo físicamente simple y enfocado en la difusión 2D.
+        diffused = 1j * propagation_coeffs_array * laplacian * dt
+        damped = dissipation_coeffs_array * campo_3d * dt
 
-            # Actualizar campo
-            nuevo_campo_3d = damped + advected + coupled
+        nuevo_campo_3d = campo_3d + diffused - damped
 
-            # Convertir de vuelta a lista de arrays 2D
-            self.campo_q = [nuevo_campo_3d[i] for i in range(self.num_capas)]
+        self.campo_q = [nuevo_campo_3d[i] for i in range(self.num_capas)]
 
     def set_uniform_potential_field(self, seed: Optional[int] = None):
         """Inicializa el campo a un estado de potencial uniforme pero incoherente.
@@ -446,43 +410,64 @@ class ToroidalField:
             dt (float): El paso de tiempo para la evolución de la fase.
         """
         with self.lock:
-            # Convertir propagation_coeffs a array NumPy para broadcasting
-            propagation_coeffs_array = np.array(self.propagation_coeffs)
-            # Calcular el cambio de fase para todas las capas a la vez
-            phase_changes = np.exp(
-                -1j * propagation_coeffs_array[:, np.newaxis, np.newaxis] * dt
-            )
+            self.apply_internal_phase_evolution_internal(dt)
 
-            # Aplicar el cambio de fase a todas las capas
-            for i in range(self.num_capas):
-                self.campo_q[i] *= phase_changes[i]
+    def apply_internal_phase_evolution_internal(self, dt: float):
+        """Lógica interna de la evolución de fase, sin bloqueo."""
+        propagation_coeffs_array = np.array(self.propagation_coeffs)
+        phase_changes = np.exp(
+            -1j * propagation_coeffs_array[:, np.newaxis, np.newaxis] * dt
+        )
+        for i in range(self.num_capas):
+            self.campo_q[i] *= phase_changes[i]
+
+    def advance_time_step(self, dt: float, beta: float):
+        """
+        Avanza un paso de tiempo de simulación de forma atómica, combinando
+        la dinámica de ondas y la evolución de fase.
+        """
+        with self.lock:
+            self.apply_wave_dynamics_step_internal(dt, beta)
+            self.apply_internal_phase_evolution_internal(dt)
 
 
 # --- Instancia Global y Lógica de Simulación ---
-try:
-    # Usar las constantes globales para la instancia del servicio
-    campo_toroidal_global_servicio = ToroidalField(
-        num_capas=NUM_CAPAS,
-        num_rows=NUM_FILAS,
-        num_cols=NUM_COLUMNAS,
-        propagation_coeffs=None,  # Usará los defaults internos
-        dissipation_coeffs=None,  # Usará los defaults internos
-    )
-    logger.info("Aplicando influencias iniciales al campo cimático global...")
-    campo_toroidal_global_servicio.aplicar_influencia(
-        capa=0, row=1, col=2, vector=complex(1.0, 0.5), nombre_watcher="watcher_init_1"
-    )
-    campo_toroidal_global_servicio.aplicar_influencia(
-        capa=2, row=3, col=0, vector=complex(0.2, -0.1), nombre_watcher="watcher_init_2"
-    )
-    logger.info("Influencias iniciales aplicadas al campo cimático global.")
+def create_global_field() -> ToroidalField:
+    """Crea y configura la instancia global del campo toroidal."""
+    try:
+        field = ToroidalField(
+            num_capas=NUM_CAPAS,
+            num_rows=NUM_FILAS,
+            num_cols=NUM_COLUMNAS,
+            propagation_coeffs=None,
+            dissipation_coeffs=None,
+        )
+        logger.info("Aplicando influencias iniciales al campo cimático global...")
+        field.aplicar_influencia(
+            capa=0,
+            row=1,
+            col=2,
+            vector=complex(1.0, 0.5),
+            nombre_watcher="watcher_init_1",
+        )
+        field.aplicar_influencia(
+            capa=2,
+            row=3,
+            col=0,
+            vector=complex(0.2, -0.1),
+            nombre_watcher="watcher_init_2",
+        )
+        logger.info("Influencias iniciales aplicadas.")
+        return field
+    except ValueError:
+        logger.exception("Error crítico al inicializar ToroidalField. Terminando.")
+        raise
+    except Exception as e:
+        logger.exception(f"Error inesperado durante la inicialización: {e}")
+        raise
 
-except ValueError:
-    logger.exception("Error crítico al inicializar ToroidalField global. Terminando.")
-    exit(1)
-except Exception as e:
-    logger.exception(f"Error inesperado durante la inicialización del servicio: {e}")
-    exit(1)
+
+campo_toroidal_global_servicio = create_global_field()
 
 
 # --- Hilo y Función de Simulación ---
@@ -501,9 +486,8 @@ def cymatic_simulation_loop_adaptive(dt: float, beta: float):
         try:
             start_time = time.monotonic()
 
-            # Ejecutar paso de simulación
-            campo_toroidal_global_servicio.apply_wave_dynamics_step(dt, beta)
-            campo_toroidal_global_servicio.apply_internal_phase_evolution(dt)
+            # Ejecutar paso de simulación de forma atómica
+            campo_toroidal_global_servicio.advance_time_step(dt, beta)
 
             # Calcular tiempo de ejecución
             elapsed = time.monotonic() - start_time
@@ -874,9 +858,17 @@ def main():
 # --- Punto de Entrada ---
 if __name__ == "__main__":
     try:
-        main()
+        # La creación del campo puede fallar, así que se maneja aquí.
+        if "campo_toroidal_global_servicio" in locals() or "campo_toroidal_global_servicio" in globals():
+            main()
+        else:
+            logger.error("No se pudo iniciar el servicio porque el campo no se creó.")
+            exit(1)
     except KeyboardInterrupt:
         logger.info("Interrupción por teclado detectada.")
+    except Exception:
+        logger.exception("Excepción no controlada en el nivel superior. Saliendo.")
+        exit(1)
     finally:
         logger.info("Enviando señal de detención al hilo de simulación cimática...")
         stop_simulation_event.set()

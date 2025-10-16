@@ -25,19 +25,23 @@ class InfluenceValidator:
         return errors
 
     @staticmethod
-    def validate_vector(
-        vector_data: Any,
-    ) -> Tuple[Optional[complex], Optional[str]]:
-        """Valida y convierte el vector de influencia."""
-        if not isinstance(vector_data, list) or len(vector_data) != 2:
+    def validate_vector(vec: Any) -> Tuple[Optional[complex], Optional[str]]:
+        """Valida y convierte el vector de influencia desde múltiples formatos."""
+        if isinstance(vec, list) and len(vec) == 2:
+            try:
+                return complex(float(vec[0]), float(vec[1])), None
+            except (ValueError, TypeError):
+                return None, "Vector debe ser [real, imag] con números válidos."
+        elif isinstance(vec, dict) and "real" in vec and "imag" in vec:
+            try:
+                return complex(float(vec["real"]), float(vec["imag"])), None
+            except (ValueError, TypeError) as e:
+                return (
+                    None,
+                    f"Vector debe tener claves 'real' e 'imag' numéricas. Error: {e}",
+                )
+        else:
             return (
                 None,
-                "El vector debe ser una lista de 2 elementos [real, imaginario]",
+                "Formato de vector inválido. Use [real, imag] o {'real': ..., 'imag': ...}.",
             )
-
-        try:
-            real_part = float(vector_data[0])
-            imag_part = float(vector_data[1])
-            return complex(real_part, imag_part), None
-        except (ValueError, TypeError):
-            return None, "Los componentes del vector deben ser números válidos"
