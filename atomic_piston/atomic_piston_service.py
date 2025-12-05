@@ -537,8 +537,11 @@ class AtomicPiston:
         nl = self.nonlinear_elasticity
         capacity = self.capacity
 
+        # Cálculo de back_emf_force
+        back_emf_force = self.circuit_current * self.force_sensitivity
+
         # Función de derivadas optimizada
-        def derivatives(state: np.ndarray, ext_force: float) -> np.ndarray:
+        def derivatives(state: np.ndarray, ext_force: float, back_emf: float) -> np.ndarray:
             pos, vel = state
 
             # 2. FUERZA ELÁSTICA (k*x + ε*x³)
@@ -557,8 +560,8 @@ class AtomicPiston:
             # Pérdida de energía por fricción con el medio, proporcional a la velocidad.
             damping_force = -c * vel
 
-            # Suma de todas las fuerzas para obtener la fuerza neta.
-            total_force = ext_force + spring_force + friction_force + damping_force
+            # Suma de todas las fuerzas para obtener la fuerza neta, incluyendo back_emf
+            total_force = ext_force + spring_force + friction_force + damping_force + back_emf
 
             # 5. RESPUESTA INERCIAL (m*x'')
             # La aceleración resultante, que es la manifestación de la inercia
@@ -569,30 +572,22 @@ class AtomicPiston:
 
         # Integración RK4
         state = np.array([self.position, self.velocity])
-        k1 = derivatives(state, external_force)
-        k2 = derivatives(state + 0.5 * dt * k1, external_force)
-        k3 = derivatives(state + 0.5 * dt * k2, external_force)
-        k4 = derivatives(state + dt * k3, external_force)
+        k1 = derivatives(state, external_force, back_emf_force)
+        k2 = derivatives(state + 0.5 * dt * k1, external_force, back_emf_force)
+        k3 = derivatives(state + 0.5 * dt * k2, external_force, back_emf_force)
+        k4 = derivatives(state + dt * k3, external_force, back_emf_force)
 
         new_state = state + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
         self.position, self.velocity = new_state
 
-        # Manejar límites físicos con conservación de energía
+        # Manejar límites físicos con colisión inelástica
         if abs(self.position) > capacity:
-            # Calcular energía antes del ajuste
-            energy_before = self.stored_energy
-
-            # Aplicar restricción conservando la dirección
             self.position = np.clip(self.position, -capacity, capacity)
-
-            # Ajustar velocidad para conservar energía (coeficiente de restitución)
-            energy_after = self.stored_energy
-            if energy_before > 0 and energy_after < energy_before:
-                velocity_scale = math.sqrt(energy_after / energy_before)
-                self.velocity *= velocity_scale * 0.8  # Factor de pérdida
+            # Coeficiente de restitución de -0.8 para pérdida de energía
+            self.velocity *= -0.8
 
         # Actualizar aceleración para reporte
-        self.acceleration = derivatives(new_state, external_force)[1]
+        self.acceleration = derivatives(new_state, external_force, back_emf_force)[1]
 
         # Actualizar sistemas electrónicos y resetear fuerzas
         self.update_electronic_state()
