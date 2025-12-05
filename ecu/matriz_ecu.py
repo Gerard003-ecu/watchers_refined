@@ -361,15 +361,20 @@ class ToroidalField:
         # Calcular el Laplaciano discreto
         laplacian = v_left + v_right + v_up + v_down - 4 * campo_3d
 
-        # Aplicar el modelo de difusión complejo: ψ(t+dt) = ψ(t) + iα∇²ψ - γψ
-        # Nota: El término de acoplamiento beta no se usa aquí para mantener
-        # el modelo físicamente simple y enfocado en la difusión 2D.
-        diffused = 1j * propagation_coeffs_array * laplacian * dt
-        damped = dissipation_coeffs_array * campo_3d * dt
+        # Acoplamiento vertical
+        v_above = np.roll(campo_3d, 1, axis=0)
+        v_below = np.roll(campo_3d, -1, axis=0)
+        vertical_diff = v_above + v_below - 2 * campo_3d
 
-        nuevo_campo_3d = campo_3d + diffused - damped
+        # Actualización explícita de Euler con acoplamiento vertical
+        delta = (
+            1j * propagation_coeffs_array * laplacian * dt
+            - dissipation_coeffs_array * campo_3d * dt
+            + 1j * beta * vertical_diff * dt
+        )
 
-        self.campo_q = [nuevo_campo_3d[i] for i in range(self.num_capas)]
+        nuevo_campo_3d = campo_3d + delta
+        self.campo_q = list(nuevo_campo_3d)
 
     def set_uniform_potential_field(self, seed: Optional[int] = None):
         """Inicializa el campo a un estado de potencial uniforme pero incoherente.

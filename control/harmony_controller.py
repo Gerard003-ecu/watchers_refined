@@ -849,13 +849,21 @@ def _distribute_signals_to_tools(
 @measure_performance(agent_ai_url=AGENT_AI_URL, source_service="harmony_controller")
 def harmony_control_loop():
     """Ejecuta el bucle principal de control táctico del Harmony Controller."""
-    logger.info("Iniciando bucle de control Harmony...")
+    logger.info("Iniciando bucle de control Harmony (Drift Correcting)...")
 
     affinity_to_setpoint_index = {"malla_watcher": 0, "matriz_ecu": 1}
     num_control_axes = len(affinity_to_setpoint_index)
 
+    # Drift Correcting Loop Initialization
+    next_tick = time.monotonic()
+
     while True:
-        start_time = time.monotonic()
+        # Update next_tick
+        next_tick += CONTROL_LOOP_INTERVAL
+
+        # NOTE: dt is implicitly CONTROL_LOOP_INTERVAL in this design,
+        # but for PID we might want the actual elapsed time or just assume fixed step.
+        # Assuming fixed step for stability as requested by Drift Correcting logic.
         dt = CONTROL_LOOP_INTERVAL
 
         with controller_state.lock:
@@ -907,16 +915,14 @@ def harmony_control_loop():
                         control_val
                     )
 
-        elapsed_time = time.monotonic() - start_time
-        sleep_time = max(0, dt - elapsed_time)
-        if sleep_time > 0:
-            time.sleep(sleep_time)
+        # Sleep calculation for drift correction
+        sleep_time = next_tick - time.monotonic()
+
+        if sleep_time < 0:
+             logger.warning("Slippage detected! System lagging by %.3fs", -sleep_time)
+             next_tick = time.monotonic() # Resync
         else:
-            logger.warning(
-                "El ciclo de control (%.3f)s excedió el intervalo (%.3f)s.",
-                elapsed_time,
-                dt,
-            )
+             time.sleep(sleep_time)
 
 
 # --- API Flask ---

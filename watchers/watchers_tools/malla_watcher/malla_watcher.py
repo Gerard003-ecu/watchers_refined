@@ -132,6 +132,9 @@ KEY_NATURALEZA_AUXILIAR = "naturaleza_auxiliar"
 KEY_DESCRIPCION = "descripcion"
 
 
+# --- Caché Global ---
+_CACHED_GEOMETRY = {}
+
 # --- Clases PhosWave y Electron ---
 @dataclass
 class PhosWave:
@@ -558,34 +561,45 @@ def calculate_flux(mesh: HexCylindricalMesh) -> float:
     Returns:
         float: El valor total del flujo calculado.
     """
+    global _CACHED_GEOMETRY
+
     if not mesh or not mesh.cells:
         return 0.0
 
-    all_cells = mesh.get_all_cells()
-    if not all_cells:
-        return 0.0
+    # Usamos propiedades estructurales para la clave de caché para evitar colisiones de id()
+    # y detectar cambios reales en la geometría
+    cache_key = (mesh.hex_size, len(mesh.cells), mesh.radius)
 
-    # Área de un hexágono regular de lado 's' (hex_size)
-    hex_area = (3 * math.sqrt(3) / 2) * (mesh.hex_size ** 2)
+    if cache_key not in _CACHED_GEOMETRY:
+        # Solo usamos cells para calcular la geometría estática
+        cells_for_geom = mesh.get_all_cells()
+        if not cells_for_geom:
+             return 0.0
 
-    # q_vectors es un array de shape (num_cells, 2)
-    q_vectors = np.array([cell.q_vector for cell in all_cells])
+        # Área de un hexágono regular de lado 's' (hex_size)
+        hex_area = (3 * math.sqrt(3) / 2) * (mesh.hex_size ** 2)
 
-    # thetas es un array de shape (num_cells,)
-    thetas = np.array([cell.theta for cell in all_cells])
+        # Vectores normales precalculados
+        thetas = np.array([cell.theta for cell in cells_for_geom])
+        normals = np.array([np.cos(thetas), np.sin(thetas)]).T
 
-    # Vectores normales en el plano XY, shape (num_cells, 2)
-    # El vector normal a la superficie del cilindro en el punto (theta)
-    # proyectado en el plano XY es (cos(theta), sin(theta)).
-    normal_vectors = np.array([np.cos(thetas), np.sin(thetas)]).T
+        # NO guardamos las celdas en caché, solo la geometría estática
+        _CACHED_GEOMETRY[cache_key] = (hex_area, normals)
 
-    # Producto punto entre el campo y el vector normal para cada celda.
-    # np.einsum('ij,ij->i', ...) calcula el producto punto elemento a elemento
-    # de los dos arrays de vectores.
-    dot_products = np.einsum('ij,ij->i', q_vectors, normal_vectors)
+    hex_area, normals = _CACHED_GEOMETRY[cache_key]
 
-    # Flujo total = Suma( (F_i ⋅ n_i) * Area_i )
-    # Como el área es constante para todas las celdas, la sacamos fuera.
+    # Obtenemos las celdas ACTUALES de la malla pasada como argumento
+    current_cells = mesh.get_all_cells()
+
+    # Extraemos q_vectors de las celdas actuales
+    # IMPORTANTE: El orden de current_cells debe coincidir con el orden usado para normals
+    # Dado que mesh.get_all_cells() es determinista para una topología dada, esto es válido.
+    q_vectors = np.array([cell.q_vector for cell in current_cells])
+
+    # Flujo vectorizado: suma( (q * n) ) * area
+    # axis=1 realiza el producto punto fila a fila
+    dot_products = np.sum(q_vectors * normals, axis=1)
+
     total_flux = np.sum(dot_products) * hex_area
 
     logger.debug("Flujo físico calculado: %.3f", total_flux)
