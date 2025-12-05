@@ -1,0 +1,886 @@
+### 1. simulation_loop() - Robustecido
+
+def simulation_loop() -> None:
+    """Bucle principal de simulación que se ejecuta en un hilo de fondo."""
+    logger.info("Iniciando bucle de simulación del pistón atómico...")
+
+    if not config:
+        logger.error(
+            "La configuración global no está disponible. "
+            "Deteniendo el hilo de simulación."
+        )
+        return
+
+    # MEJORA: Validar intervalo de simulación antes de entrar al bucle
+    if config.simulation_interval <= 0:
+        logger.error(
+            "El intervalo de simulación debe ser positivo. "
+            f"Valor actual: {config.simulation_interval}"
+        )
+        return
+
+    while not stop_simulation_event.is_set():
+        start_time = time.monotonic()
+
+        if not ipu_instance:
+            logger.warning(
+                "Instancia de IPU no inicializada, saltando ciclo de simulación."
+            )
+            # MEJORA: Verificar si el evento fue señalizado durante la espera
+            if stop_simulation_event.wait(1):
+                break
+            continue
+
+        try:
+            with ipu_lock:
+                ipu_instance.update_state(config.simulation_interval)
+                ipu_instance.discharge(config.simulation_interval)
+
+        except ValueError as e:
+            # MEJORA: Diferenciar errores recuperables de catastróficos
+            logger.error(
+                "Error de validación durante el ciclo de simulación: %s", e
+            )
+            if stop_simulation_event.wait(1):
+                break
+            continue
+        except Exception as e:
+            logger.exception(
+                "Error catastrófico durante el ciclo de simulación del pistón: %s", e
+            )
+            if stop_simulation_event.wait(5):
+                break
+            continue  # MEJORA: Continuar en lugar de quedarse bloqueado
+
+        elapsed_time = time.monotonic() - start_time
+        sleep_time = max(0.0, config.simulation_interval - elapsed_time)
+
+        if sleep_time > 0:
+            # MEJORA: Salir del bucle si el evento es señalizado durante la espera
+            if stop_simulation_event.wait(sleep_time):
+                break
+
+    logger.info("Bucle de simulación del pistón detenido.")
+
+### 2. register_with_agent_ai() - Robustecido
+
+def register_with_agent_ai(
+    module_name: str, module_url: str, health_url: str, description: str = ""
+) -> bool:
+    """Intenta registrar el microservicio en el AgentAI."""
+    if not config:
+        logger.error("La configuración global no está disponible para el registro.")
+        return False
+
+    # MEJORA: Validar parámetros de entrada
+    if not module_name or not module_name.strip():
+        logger.error("El nombre del módulo no puede estar vacío.")
+        return False
+    if not module_url or not module_url.strip():
+        logger.error("La URL del módulo no puede estar vacía.")
+        return False
+
+    payload = {
+        "nombre": module_name,
+        "url": module_url,
+        "url_salud": health_url,
+        "tipo": "hardware_simulation",
+        "aporta_a": "ecosistema_watchers",
+        "naturaleza_auxiliar": "gemelo_digital_ipu",
+        "descripcion": description,
+    }
+
+    logger.info(
+        "Intentando registrar '%s' en AgentAI (%s)...",
+        module_name,
+        config.agent_ai_register_url,
+    )
+
+    for attempt in range(config.max_registration_retries):
+        try:
+            response = requests.post(
+                config.agent_ai_register_url,
+                json=payload,
+                timeout=config.requests_timeout,
+                verify=False,
+            )
+            
+            # MEJORA: Considerar códigos 2xx como exitosos, no solo 200
+            if 200 <= response.status_code < 300:
+                logger.info("Registro de '%s' exitoso en AgentAI.", module_name)
+                return True
+            
+            # MEJORA: Manejar códigos de error específicos
+            if response.status_code >= 400 and response.status_code < 500:
+                logger.error(
+                    "Error de cliente al registrar '%s' (status %d). "
+                    "No se reintentará. Respuesta: %s",
+                    module_name,
+                    response.status_code,
+                    response.text,
+                )
+                return False  # Errores 4xx no se reintentan
+            
+            logger.warning(
+                "Registro de '%s' recibido con status %d. Respuesta: %s",
+                module_name,
+                response.status_code,
+                response.text,
+            )
+            
+        except requests.exceptions.Timeout:
+            logger.error(
+                f"Timeout al registrar '{module_name}' "
+                f"(intento {attempt + 1}/{config.max_registration_retries})"
+            )
+        except requests.exceptions.ConnectionError as e:
+            logger.error(
+                f"Error de conexión al registrar '{module_name}' "
+                f"(intento {attempt + 1}/{config.max_registration_retries}): {e}"
+            )
+        except requests.exceptions.RequestException as e:
+            logger.error(
+                f"Error de solicitud al registrar '{module_name}' "
+                f"(intento {attempt + 1}/{config.max_registration_retries}): {e}"
+            )
+        except Exception as e:
+            logger.exception(
+                f"Error inesperado durante el registro de '{module_name}' "
+                f"(intento {attempt + 1}/{config.max_registration_retries}): {e}"
+            )
+
+        # MEJORA: Solo reintentar si no es el último intento
+        if attempt < config.max_registration_retries - 1:
+            logger.info(
+                f"Reintentando registro en {config.retry_delay_seconds} segundos..."
+            )
+            time.sleep(config.retry_delay_seconds)
+
+    logger.error(
+        f"No se pudo registrar '{module_name}' en AgentAI después de "
+        f"{config.max_registration_retries} intentos."
+    )
+    return False
+
+### 3. AtomicPiston.__init__() - Validaciones Robustecidas
+
+def __init__(
+    self,
+    capacity: float,
+    elasticity: float,
+    damping: float,
+    piston_mass: float = 1.0,
+    mode: PistonMode = PistonMode.CAPACITOR,
+    transducer_type: TransducerType = TransducerType.PIEZOELECTRIC,
+    friction_model: FrictionModel = FrictionModel.VISCOUS,
+    coulomb_friction: float = 0.2,
+    stribeck_coeffs: Tuple[float, float, float] = (0.3, 0.1, 0.05),
+    nonlinear_elasticity: float = 0.01,
+) -> None:
+    """Inicializa una nueva instancia de AtomicPiston."""
+    
+    # -- Validación Exhaustiva de Entradas --
+    if not isinstance(capacity, (int, float)) or capacity <= 0:
+        raise ValueError(
+            f"La capacidad (capacity) debe ser un número positivo. Recibido: {capacity}"
+        )
+    if not isinstance(elasticity, (int, float)) or elasticity < 0:
+        raise ValueError(
+            f"La elasticidad (elasticity) no puede ser negativa. Recibido: {elasticity}"
+        )
+    if not isinstance(damping, (int, float)) or damping < 0:
+        raise ValueError(
+            f"El amortiguamiento (damping) no puede ser negativo. Recibido: {damping}"
+        )
+    if not isinstance(piston_mass, (int, float)) or piston_mass <= 0:
+        raise ValueError(
+            f"La masa del pistón (piston_mass) debe ser positiva. Recibido: {piston_mass}"
+        )
+    
+    # MEJORA: Validar parámetros de fricción
+    if not isinstance(coulomb_friction, (int, float)) or coulomb_friction < 0:
+        raise ValueError(
+            f"La fricción de Coulomb debe ser no negativa. Recibido: {coulomb_friction}"
+        )
+    
+    # MEJORA: Validar coeficientes de Stribeck
+    if not isinstance(stribeck_coeffs, tuple) or len(stribeck_coeffs) != 3:
+        raise ValueError(
+            f"stribeck_coeffs debe ser una tupla de 3 elementos. Recibido: {stribeck_coeffs}"
+        )
+    f_static, f_coulomb, v_stribeck = stribeck_coeffs
+    if f_static < 0 or f_coulomb < 0:
+        raise ValueError(
+            f"Los coeficientes de fricción de Stribeck deben ser no negativos. "
+            f"Recibido: f_static={f_static}, f_coulomb={f_coulomb}"
+        )
+    if v_stribeck <= 0:
+        raise ValueError(
+            f"La velocidad de Stribeck (v_stribeck) debe ser positiva. Recibido: {v_stribeck}"
+        )
+    
+    # MEJORA: Validar elasticidad no lineal
+    if not isinstance(nonlinear_elasticity, (int, float)):
+        raise ValueError(
+            f"nonlinear_elasticity debe ser un número. Recibido: {nonlinear_elasticity}"
+        )
+    
+    # MEJORA: Validar tipos de enum
+    if not isinstance(mode, PistonMode):
+        raise TypeError(f"mode debe ser de tipo PistonMode. Recibido: {type(mode)}")
+    if not isinstance(transducer_type, TransducerType):
+        raise TypeError(
+            f"transducer_type debe ser de tipo TransducerType. Recibido: {type(transducer_type)}"
+        )
+    if not isinstance(friction_model, FrictionModel):
+        raise TypeError(
+            f"friction_model debe ser de tipo FrictionModel. Recibido: {type(friction_model)}"
+        )
+
+    # -- Parámetros Físicos --
+    self.capacity: float = float(capacity)
+    self.k: float = float(elasticity)
+    self.c: float = float(damping)
+    self.m: float = float(piston_mass)
+    self.mode: PistonMode = mode
+    self.transducer_type: TransducerType = transducer_type
+    self.dt: float = 0.01
+
+    # -- Parámetros de Fricción y No Linealidad --
+    self.friction_model: FrictionModel = friction_model
+    self.coulomb_friction: float = float(coulomb_friction)
+    self.stribeck_coeffs: Tuple[float, float, float] = (
+        float(f_static), float(f_coulomb), float(v_stribeck)
+    )
+    self.nonlinear_elasticity: float = float(nonlinear_elasticity)
+
+    # ... resto de la inicialización sin cambios ...
+
+### 4. _set_transducer_params() - Robustecido
+
+def _set_transducer_params(self) -> None:
+    """Configura los parámetros del transductor según el tipo seleccionado."""
+    transducer_params = {
+        TransducerType.PIEZOELECTRIC: {
+            "voltage_sensitivity": 50.0,
+            "force_sensitivity": 0.02,
+            "internal_resistance": 100.0,
+        },
+        TransducerType.ELECTROSTATIC: {
+            "voltage_sensitivity": 100.0,
+            "force_sensitivity": 0.01,
+            "internal_resistance": 500.0,
+        },
+        TransducerType.MAGNETOSTRICTIVE: {
+            "voltage_sensitivity": 30.0,
+            "force_sensitivity": 0.05,
+            "internal_resistance": 50.0,
+        },
+    }
+
+    # MEJORA: Manejar tipo de transductor desconocido con valores por defecto
+    params = transducer_params.get(self.transducer_type)
+    
+    if params is None:
+        logger.warning(
+            f"Tipo de transductor desconocido: {self.transducer_type}. "
+            "Usando valores por defecto (PIEZOELECTRIC)."
+        )
+        params = transducer_params[TransducerType.PIEZOELECTRIC]
+
+    self.voltage_sensitivity = params["voltage_sensitivity"]
+    self.force_sensitivity = params["force_sensitivity"]
+    self.internal_resistance = params["internal_resistance"]
+
+    logger.debug(
+        f"Parámetros de transductor establecidos para {self.transducer_type.value}: "
+        f"V_sens={self.voltage_sensitivity}, F_sens={self.force_sensitivity}, "
+        f"R_int={self.internal_resistance}"
+    )
+
+### 5. calculate_friction() - Robustecido
+
+def calculate_friction(self, driving_force: float) -> float:
+    """Calcula la fuerza de fricción seca según el modelo configurado."""
+    
+    # MEJORA: Definir umbral de velocidad como constante de clase
+    VELOCITY_THRESHOLD = 1e-5
+    
+    # MEJORA: Manejar explícitamente el modelo VISCOUS
+    if self.friction_model == FrictionModel.VISCOUS:
+        # La fricción viscosa se maneja en la ecuación de movimiento (-c*v)
+        return 0.0
+
+    # Fricción cinética (cuando hay movimiento apreciable)
+    if abs(self.velocity) > VELOCITY_THRESHOLD:
+        if self.friction_model == FrictionModel.COULOMB:
+            return -np.sign(self.velocity) * self.coulomb_friction
+
+        elif self.friction_model == FrictionModel.STRIBECK:
+            f_static, f_coulomb, v_stribeck = self.stribeck_coeffs
+            
+            # MEJORA: Protección contra división por cero
+            if v_stribeck <= 0:
+                logger.warning(
+                    "v_stribeck es cero o negativo. Usando modelo Coulomb simplificado."
+                )
+                return -np.sign(self.velocity) * f_coulomb
+            
+            # Modelo de Stribeck: F_f = F_c + (F_s - F_c) * exp(-(v/v_stribeck)²)
+            velocity_ratio = abs(self.velocity) / v_stribeck
+            # MEJORA: Limitar el exponente para evitar underflow
+            exponent = min(velocity_ratio ** 2, 700)  # exp(-700) ≈ 0
+            friction = f_coulomb + (f_static - f_coulomb) * np.exp(-exponent)
+            return -np.sign(self.velocity) * friction
+
+    # Fricción estática (velocidad casi cero)
+    else:
+        # MEJORA: Manejar caso donde driving_force es cero
+        if abs(driving_force) < 1e-9:
+            return 0.0
+            
+        if self.friction_model == FrictionModel.COULOMB:
+            return -np.sign(driving_force) * min(
+                abs(driving_force), self.coulomb_friction
+            )
+
+        elif self.friction_model == FrictionModel.STRIBECK:
+            f_static, _, _ = self.stribeck_coeffs
+            return -np.sign(driving_force) * min(abs(driving_force), f_static)
+
+    # MEJORA: Caso por defecto explícito para modelos desconocidos
+    logger.warning(f"Modelo de fricción no reconocido: {self.friction_model}")
+    return 0.0
+
+### 6. apply_force() - Robustecido
+
+def apply_force(
+    self, signal_value: float, source: str, mass_factor: float = 1.0
+) -> None:
+    """Aplica una fuerza mecánica externa basada en una señal de entrada."""
+    
+    # MEJORA: Validar parámetros de entrada
+    if not isinstance(signal_value, (int, float)):
+        logger.warning(f"signal_value debe ser numérico. Recibido: {type(signal_value)}")
+        return
+    if not source or not isinstance(source, str):
+        logger.warning("source debe ser una cadena no vacía.")
+        return
+    if not isinstance(mass_factor, (int, float)) or mass_factor <= 0:
+        logger.warning(f"mass_factor debe ser positivo. Usando 1.0. Recibido: {mass_factor}")
+        mass_factor = 1.0
+
+    current_time = time.monotonic()
+    signal_velocity = 0.0
+    
+    if source in self.last_signal_info:
+        last_val, last_time = self.last_signal_info[source]
+        dt_signal = current_time - last_time
+        
+        # MEJORA: Evitar velocidades extremas por dt muy pequeño
+        MIN_DT_SIGNAL = 1e-4  # 0.1 ms mínimo
+        if dt_signal > MIN_DT_SIGNAL:
+            signal_velocity = (signal_value - last_val) / dt_signal
+            
+            # MEJORA: Limitar velocidad de señal para evitar fuerzas extremas
+            MAX_SIGNAL_VELOCITY = 1e6
+            signal_velocity = np.clip(signal_velocity, -MAX_SIGNAL_VELOCITY, MAX_SIGNAL_VELOCITY)
+        else:
+            logger.debug(
+                f"dt_signal muy pequeño ({dt_signal:.6f}s). Ignorando cambio de velocidad."
+            )
+
+    self.last_signal_info[source] = (signal_value, current_time)
+
+    force = self.compression_direction * 0.5 * mass_factor * (signal_velocity ** 2)
+    
+    # MEJORA: Limitar fuerza máxima aplicable
+    MAX_APPLIED_FORCE = 1e6  # Newton
+    force = np.clip(force, -MAX_APPLIED_FORCE, MAX_APPLIED_FORCE)
+    
+    self.last_applied_force += force
+    logger.debug(f"Fuente '{source}': Fuerza aplicada = {force:.2f}N")
+
+### 7. apply_electronic_signal() - Robustecido
+
+def apply_electronic_signal(self, voltage: float) -> None:
+    """Aplica una señal eléctrica que se traduce en una fuerza mecánica."""
+    
+    # MEJORA: Validar voltaje de entrada
+    if not isinstance(voltage, (int, float)):
+        logger.warning(f"voltage debe ser numérico. Recibido: {type(voltage)}")
+        return
+    
+    # MEJORA: Limitar voltaje a rangos físicamente razonables
+    MAX_VOLTAGE = 1e4  # 10 kV
+    if abs(voltage) > MAX_VOLTAGE:
+        logger.warning(
+            f"Voltaje excede límite máximo ({MAX_VOLTAGE}V). "
+            f"Limitando de {voltage}V a {np.sign(voltage) * MAX_VOLTAGE}V"
+        )
+        voltage = np.clip(voltage, -MAX_VOLTAGE, MAX_VOLTAGE)
+
+    applied_force = voltage * self.force_sensitivity
+    
+    if self.transducer_type == TransducerType.MAGNETOSTRICTIVE:
+        # MEJORA: Validar que dt sea positivo y razonable
+        if self.dt <= 0:
+            logger.warning("dt no es positivo. Usando valor por defecto 0.01s")
+            effective_dt = 0.01
+        else:
+            effective_dt = self.dt
+            
+        # MEJORA: Evitar división por cero en inductancia
+        if self.equivalent_inductance <= 0:
+            logger.warning("Inductancia no positiva. Saltando actualización de corriente.")
+        else:
+            voltage_drop = self.circuit_current * self.internal_resistance
+            di_dt = (voltage - voltage_drop) / self.equivalent_inductance
+            
+            # MEJORA: Limitar tasa de cambio de corriente
+            MAX_DI_DT = 1e6  # A/s
+            di_dt = np.clip(di_dt, -MAX_DI_DT, MAX_DI_DT)
+            
+            self.circuit_current += di_dt * effective_dt
+            self.circuit_voltage = self.circuit_current * self.internal_resistance
+            
+        applied_force = self.circuit_current * self.force_sensitivity
+
+    # MEJORA: Limitar fuerza aplicada
+    MAX_FORCE = 1e6
+    applied_force = np.clip(applied_force, -MAX_FORCE, MAX_FORCE)
+    
+    self.last_applied_force += applied_force
+    logger.debug(f"Señal eléctrica: {voltage:.2f}V → Fuerza: {applied_force:.2f}N")
+
+### 8. update_state() - Robustecido
+
+def update_state(self, dt: float) -> None:
+    """Actualiza el estado físico del pistón usando integración RK4."""
+    
+    # MEJORA: Validación más estricta de dt
+    if not isinstance(dt, (int, float)):
+        raise TypeError(f"dt debe ser numérico. Recibido: {type(dt)}")
+    if dt <= 0:
+        raise ValueError(f"El paso de tiempo (dt) debe ser positivo. Recibido: {dt}")
+    if dt > 1.0:
+        logger.warning(
+            f"dt muy grande ({dt}s) puede causar inestabilidad numérica."
+        )
+    
+    self.dt = dt
+
+    # 1. FUERZAS IMPULSORAS
+    external_force = self.last_applied_force
+    if self.target_speed != 0.0:
+        external_force += self.speed_controller.update(
+            self.target_speed, self.velocity, dt
+        )
+
+    # MEJORA: Capturar parámetros en variables locales inmutables para el closure
+    k = self.k
+    c = self.c
+    m = self.m
+    nl = self.nonlinear_elasticity
+    capacity = self.capacity
+    friction_model = self.friction_model
+    coulomb_friction = self.coulomb_friction
+    stribeck_coeffs = self.stribeck_coeffs
+
+    def derivatives(state: np.ndarray, ext_force: float) -> np.ndarray:
+        pos, vel = state
+
+        # Fuerza elástica
+        spring_force = -k * pos - nl * (pos ** 3)
+
+        # Fuerza de fricción seca
+        driving_force = ext_force + spring_force
+        
+        # MEJORA: Cálculo de fricción inline para evitar dependencia de self
+        friction_force = 0.0
+        VELOCITY_THRESHOLD = 1e-5
+        
+        if friction_model in (FrictionModel.COULOMB, FrictionModel.STRIBECK):
+            if abs(vel) > VELOCITY_THRESHOLD:
+                if friction_model == FrictionModel.COULOMB:
+                    friction_force = -np.sign(vel) * coulomb_friction
+                else:  # STRIBECK
+                    f_static, f_coulomb, v_stribeck = stribeck_coeffs
+                    if v_stribeck > 0:
+                        exponent = min((abs(vel) / v_stribeck) ** 2, 700)
+                        friction = f_coulomb + (f_static - f_coulomb) * np.exp(-exponent)
+                        friction_force = -np.sign(vel) * friction
+            else:
+                if abs(driving_force) > 1e-9:
+                    if friction_model == FrictionModel.COULOMB:
+                        friction_force = -np.sign(driving_force) * min(
+                            abs(driving_force), coulomb_friction
+                        )
+                    else:
+                        f_static = stribeck_coeffs[0]
+                        friction_force = -np.sign(driving_force) * min(
+                            abs(driving_force), f_static
+                        )
+
+        # Amortiguamiento viscoso
+        damping_force = -c * vel
+
+        total_force = ext_force + spring_force + friction_force + damping_force
+        
+        # MEJORA: Protección contra masa cero (aunque validado en __init__)
+        if m <= 0:
+            return np.array([vel, 0.0])
+            
+        acceleration = total_force / m
+        
+        # MEJORA: Limitar aceleración para estabilidad numérica
+        MAX_ACCELERATION = 1e8
+        acceleration = np.clip(acceleration, -MAX_ACCELERATION, MAX_ACCELERATION)
+
+        return np.array([vel, acceleration])
+
+    # Integración RK4
+    state = np.array([self.position, self.velocity])
+    k1 = derivatives(state, external_force)
+    k2 = derivatives(state + 0.5 * dt * k1, external_force)
+    k3 = derivatives(state + 0.5 * dt * k2, external_force)
+    k4 = derivatives(state + dt * k3, external_force)
+
+    new_state = state + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
+    self.position, self.velocity = new_state
+
+    # Manejar límites físicos
+    if abs(self.position) > capacity:
+        energy_before = self.stored_energy
+        self.position = np.clip(self.position, -capacity, capacity)
+        energy_after = self.stored_energy
+        
+        # MEJORA: Solo ajustar velocidad si hay pérdida de energía significativa
+        if energy_before > 1e-9 and energy_after < energy_before:
+            # Coeficiente de restitución para simular pérdida en el impacto
+            restitution_coeff = 0.8
+            energy_ratio = energy_after / energy_before
+            velocity_scale = math.sqrt(max(0.0, energy_ratio)) * restitution_coeff
+            self.velocity *= velocity_scale
+        else:
+            # MEJORA: Invertir velocidad en impacto elástico si no hay pérdida
+            self.velocity *= -0.8
+
+    # MEJORA: Limitar velocidad máxima
+    MAX_VELOCITY = 1e4
+    self.velocity = np.clip(self.velocity, -MAX_VELOCITY, MAX_VELOCITY)
+
+    # Actualizar aceleración
+    self.acceleration = derivatives(
+        np.array([self.position, self.velocity]), external_force
+    )[1]
+
+    # Actualizar sistemas electrónicos y resetear fuerzas
+    self.update_electronic_state()
+    self.last_applied_force = 0.0
+
+    # Registrar métricas
+    self.energy_history.append(self.stored_energy)
+    self.efficiency_history.append(self.get_conversion_efficiency())
+
+    current_spring_force = -k * self.position - nl * self.position ** 3
+    friction = self.calculate_friction(external_force + current_spring_force)
+    self.friction_force_history.append(friction)
+
+### 9. battery_discharge() - Robustecido
+
+def battery_discharge(self, dt: float) -> Optional[Dict[str, Any]]:
+    """Realiza una descarga continua en modo BATTERY si está activada."""
+    if not self.battery_is_discharging:
+        return None
+
+    # MEJORA: Validar dt
+    if dt <= 0:
+        logger.warning(f"dt debe ser positivo para descarga. Recibido: {dt}")
+        return None
+
+    # Verificar carga disponible
+    CHARGE_THRESHOLD = 1e-5
+    if self.current_charge <= CHARGE_THRESHOLD:
+        self.battery_is_discharging = False
+        logger.info(
+            "Descarga BATTERY: Carga agotada o insignificante. "
+            "Descarga desactivada."
+        )
+        self.position = 0.0
+        return None
+
+    # MEJORA: Validar tasa de descarga
+    if self.battery_discharge_rate <= 0:
+        logger.warning("Tasa de descarga no positiva. Desactivando descarga.")
+        self.battery_is_discharging = False
+        return None
+
+    # Limitar descarga al 80% de la carga actual para evitar vaciado instantáneo
+    max_discharge = self.current_charge * 0.8
+    discharge_amount = min(self.battery_discharge_rate * dt, max_discharge)
+    
+    # MEJORA: Asegurar que discharge_amount sea positivo
+    discharge_amount = max(0.0, discharge_amount)
+
+    new_position = self.position + discharge_amount
+    self.position = min(0.0, new_position)
+
+    # MEJORA: Cálculo robusto de amplitud de salida
+    expected_discharge = self.battery_discharge_rate * dt
+    if expected_discharge > 0:
+        output_amplitude = min(1.0, discharge_amount / expected_discharge)
+    else:
+        output_amplitude = 0.0
+
+    return {"type": "sustained", "amplitude": output_amplitude, "duration": dt}
+
+### 10. simulate_discharge_circuit() - Robustecido
+
+def simulate_discharge_circuit(
+    self, load_resistance: float, dt: float
+) -> Tuple[float, float, float]:
+    """Simula la descarga de energía a través de una carga externa."""
+    
+    # MEJORA: Validar parámetros
+    if not isinstance(load_resistance, (int, float)) or load_resistance <= 0:
+        logger.warning(
+            f"load_resistance debe ser positivo. Recibido: {load_resistance}"
+        )
+        return 0.0, 0.0, 0.0
+    
+    if not isinstance(dt, (int, float)) or dt <= 0:
+        logger.warning(f"dt debe ser positivo. Recibido: {dt}")
+        return 0.0, 0.0, 0.0
+
+    logger.debug(
+        f"Simulando descarga con resistencia de carga: {load_resistance} Ohm"
+    )
+    
+    # MEJORA: Verificar voltaje significativo
+    if abs(self.circuit_voltage) < 1e-9:
+        return 0.0, 0.0, 0.0
+
+    total_resistance = self.internal_resistance + load_resistance
+    
+    # MEJORA: Protección adicional contra resistencia total cero
+    if total_resistance <= 0:
+        logger.error("Resistencia total es cero o negativa. Abortando descarga.")
+        return 0.0, 0.0, 0.0
+        
+    discharge_current = self.circuit_voltage / total_resistance
+    discharge_energy = discharge_current ** 2 * load_resistance * dt
+
+    # Calcular cambio de posición por disipación de energía
+    if abs(self.position) > 1e-6 and self.k > 0:
+        position_change = -discharge_energy / (self.k * self.position)
+        
+        # MEJORA: Limitar cambio de posición para estabilidad
+        max_position_change = abs(self.position) * 0.1  # Máximo 10% por paso
+        position_change = np.clip(
+            position_change, -max_position_change, max_position_change
+        )
+    else:
+        position_change = 0.0
+
+    # Aplicar cambio solo si el pistón está comprimido
+    if self.position < 0:
+        self.position += position_change
+        self.position = np.clip(self.position, -self.capacity, 0.0)
+
+    self.update_electronic_state()
+    
+    load_voltage = discharge_current * load_resistance
+    power_dissipated = load_voltage * discharge_current
+    
+    return load_voltage, discharge_current, power_dissipated
+
+### 11. get_differential_equation_terms() - Corregido
+
+def get_differential_equation_terms(self) -> Dict[str, float]:
+    """Devuelve los términos de la ecuación diferencial del movimiento."""
+    
+    # Calcular fuerzas del resorte
+    spring_force = -self.k * self.position
+    nonlinear_spring_force = -self.nonlinear_elasticity * self.position ** 3
+    
+    # MEJORA: Calcular driving_force correctamente antes de llamar a calculate_friction
+    driving_force = self.last_applied_force + spring_force + nonlinear_spring_force
+    friction_force = self.calculate_friction(driving_force)
+    
+    # Amortiguamiento viscoso
+    damping_force = -self.c * self.velocity
+    
+    total_force = (
+        self.last_applied_force
+        + spring_force
+        + nonlinear_spring_force
+        + friction_force
+        + damping_force
+    )
+
+    return {
+        "mass_term": self.m * self.acceleration,
+        "damping_force": damping_force,
+        "friction_force": friction_force,  # MEJORA: Separar fricción de amortiguamiento
+        "spring_force": spring_force,
+        "nonlinear_spring_force": nonlinear_spring_force,
+        "external_force": self.last_applied_force,
+        "total_force": total_force,
+        "residual": abs(self.m * self.acceleration - total_force),  # MEJORA: Verificación
+    }
+
+### 12. PIDController.update() - Robustecido
+
+def update(self, setpoint: float, current_value: float, dt: float) -> float:
+    """Calcula la salida del controlador PID para un paso de tiempo."""
+    
+    # MEJORA: Validación robusta de dt
+    if not isinstance(dt, (int, float)) or dt <= 0:
+        logger.debug("dt inválido en PID. Retornando 0.")
+        return 0.0
+    
+    # MEJORA: Protección contra valores NaN o infinitos
+    if not (math.isfinite(setpoint) and math.isfinite(current_value)):
+        logger.warning("Valores no finitos en PID. Retornando 0.")
+        return 0.0
+
+    error = setpoint - current_value
+
+    # Término Proporcional
+    p_term = self.kp * error
+
+    # Término Integral
+    # MEJORA: Aplicar anti-windup ANTES de acumular si la salida previa estaba saturada
+    prospective_integral = self.integral + error * dt
+    prospective_i_term = self.ki * prospective_integral
+
+    # Término Derivativo con filtro básico
+    derivative = (error - self.previous_error) / dt
+    
+    # MEJORA: Limitar derivada para evitar picos por ruido
+    MAX_DERIVATIVE = self.output_limit / max(self.kd, 1e-6) if self.kd > 0 else float('inf')
+    derivative = np.clip(derivative, -MAX_DERIVATIVE, MAX_DERIVATIVE)
+    d_term = self.kd * derivative
+
+    # Salida combinada prospectiva
+    output = p_term + prospective_i_term + d_term
+
+    # MEJORA: Anti-windup con back-calculation
+    if abs(output) > self.output_limit:
+        # Saturar la salida
+        saturated_output = np.clip(output, -self.output_limit, self.output_limit)
+        
+        # Calcular cuánto exceso de integral causó la saturación
+        if abs(self.ki) > 1e-9:
+            # Back-calculation: ajustar integral para que la salida esté en el límite
+            excess = output - saturated_output
+            integral_correction = excess / self.ki
+            self.integral = prospective_integral - integral_correction
+        # else: si ki es ~0, la integral no contribuye, no corregir
+        
+        output = saturated_output
+    else:
+        # Sin saturación: actualizar integral normalmente
+        self.integral = prospective_integral
+
+    self.previous_error = error
+    
+    # MEJORA: Verificación final de salida válida
+    if not math.isfinite(output):
+        logger.warning("Salida PID no finita. Retornando 0 y reseteando.")
+        self.reset()
+        return 0.0
+        
+    return output
+
+### 13. simulate_step_response() y simulate_impulse_response() - Robustecidos
+
+def simulate_step_response(
+    self, force_amplitude: float, duration: float, dt: float
+) -> Dict[str, Any]:
+    """Simula la respuesta del pistón a una entrada de fuerza escalón."""
+    
+    # MEJORA: Validar parámetros
+    if not isinstance(force_amplitude, (int, float)):
+        raise TypeError(f"force_amplitude debe ser numérico. Recibido: {type(force_amplitude)}")
+    if not isinstance(duration, (int, float)) or duration <= 0:
+        raise ValueError(f"duration debe ser positivo. Recibido: {duration}")
+    if not isinstance(dt, (int, float)) or dt <= 0:
+        raise ValueError(f"dt debe ser positivo. Recibido: {dt}")
+    if dt > duration:
+        raise ValueError(f"dt ({dt}) no puede ser mayor que duration ({duration})")
+
+    self.reset()
+    
+    # MEJORA: Usar linspace para evitar errores de punto flotante en arange
+    num_steps = int(math.ceil(duration / dt))
+    time_series = np.linspace(0, duration, num_steps, endpoint=False)
+    
+    position_history = []
+    velocity_history = []
+    acceleration_history = []
+
+    for _ in time_series:
+        self.last_applied_force = force_amplitude
+        self.update_state(dt)
+        position_history.append(self.position)
+        velocity_history.append(self.velocity)
+        acceleration_history.append(self.acceleration)
+
+    return {
+        "time": time_series,
+        "position": np.array(position_history),
+        "velocity": np.array(velocity_history),
+        "acceleration": np.array(acceleration_history),
+    }
+
+
+def simulate_impulse_response(
+    self, impulse_magnitude: float, duration: float, dt: float
+) -> Dict[str, Any]:
+    """Simula la respuesta del pistón a una entrada de fuerza impulso."""
+    
+    # MEJORA: Validar parámetros
+    if not isinstance(impulse_magnitude, (int, float)):
+        raise TypeError(f"impulse_magnitude debe ser numérico. Recibido: {type(impulse_magnitude)}")
+    if not isinstance(duration, (int, float)) or duration <= 0:
+        raise ValueError(f"duration debe ser positivo. Recibido: {duration}")
+    if not isinstance(dt, (int, float)) or dt <= 0:
+        raise ValueError(f"dt debe ser positivo. Recibido: {dt}")
+    if dt > duration:
+        raise ValueError(f"dt ({dt}) no puede ser mayor que duration ({duration})")
+
+    self.reset()
+    
+    num_steps = int(math.ceil(duration / dt))
+    time_series = np.linspace(0, duration, num_steps, endpoint=False)
+    
+    position_history = []
+    velocity_history = []
+    acceleration_history = []
+
+    # MEJORA: Protección contra masa cero
+    if self.m <= 0:
+        raise ValueError("La masa del pistón debe ser positiva para simular impulso.")
+    
+    # Aplicar el impulso como cambio instantáneo en velocidad
+    self.velocity += impulse_magnitude / self.m
+    
+    # MEJORA: Limitar velocidad inicial
+    MAX_VELOCITY = 1e4
+    self.velocity = np.clip(self.velocity, -MAX_VELOCITY, MAX_VELOCITY)
+
+    for _ in time_series:
+        self.update_state(dt)
+        position_history.append(self.position)
+        velocity_history.append(self.velocity)
+        acceleration_history.append(self.acceleration)
+
+    return {
+        "time": time_series,
+        "position": np.array(position_history),
+        "velocity": np.array(velocity_history),
+        "acceleration": np.array(acceleration_history),
+    }
+    
